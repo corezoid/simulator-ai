@@ -1,4 +1,4 @@
-// Package mcpserver exposes only the R1.1 public read profile to a host agent.
+// Package mcpserver exposes closed public API profiles to the host agent.
 package mcpserver
 
 import (
@@ -58,15 +58,21 @@ func New(c *publicapi.Client) *server.MCPServer {
 		v, e := c.ListLayerActors(ctx, a.LayerID, limit, a.Offset)
 		return result(v, e), nil
 	})
+	if c.SmartFormsEnabled() {
+		addSmartForms(s, c)
+	}
 	return s
 }
 func tool[T any](name, description, schema string) mcp.Tool {
 	return mcp.NewTool(name, mcp.WithDescription(description), mcp.WithRawInputSchema(json.RawMessage(schema)), mcp.WithOutputSchema[T](), mcp.WithReadOnlyHintAnnotation(true), mcp.WithDestructiveHintAnnotation(false), mcp.WithIdempotentHintAnnotation(true))
 }
 func decode[T any](r mcp.CallToolRequest) (T, error) {
+	return decodeLimit[T](r, 4096)
+}
+func decodeLimit[T any](r mcp.CallToolRequest, limit int) (T, error) {
 	var a T
 	b, e := json.Marshal(r.GetRawArguments())
-	if e != nil || len(b) > 4096 {
+	if e != nil || len(b) > limit {
 		return a, errors.New("invalid or oversized tool arguments")
 	}
 	if len(b) == 0 || b[0] != '{' {

@@ -4,7 +4,9 @@ Public MCP tools and portable skills for the new Simulator JSON-RPC API. This re
 is separate from [simulator-ai-plugin](https://github.com/corezoid/simulator-ai-plugin),
 which continues to serve legacy. It does not change legacy configuration or routing.
 
-**R1.1 + R1.2a development slices:** desktop stdio, API-user key, three metadata reads. It is not a
+**Development profiles:** desktop stdio, API-user key, three metadata reads by default.
+Opt in to thirteen recoverable Smart Forms tools with `SIMULATOR_AI_PROFILE=smart-forms`;
+see [Smart Forms setup and guarantees](docs/smart-forms.md). It is not a
 full legacy replacement or an accepted production release. Claude Code/Codex use their own
 agent; this binary launches no Hermes, model, LiteLLM or server AI billing.
 
@@ -17,7 +19,7 @@ agent; this binary launches no Hermes, model, LiteLLM or server AI billing.
 API scopes are `actors.readonly` / `forms.readonly`, plus existing workspace and object ACLs.
 The server binds one explicit origin/workspace/key per process. Tools cannot supply another
 workspace, arbitrary RPC, URL, credentials or `with` expansion. Read requests are never
-coalesced with counts. No automatic retries, paid tests, writes or remote MCP in this slice.
+coalesced with counts. No automatic retries, paid tests or remote MCP. Writes require the explicit Smart Forms profile.
 
 ## Local setup
 
@@ -35,6 +37,7 @@ mechanism. No default production endpoint or workspace is assumed:
 
 - `SIMULATOR_AI_ORIGIN`: explicit `https://your-simulator-origin.example` (origin only).
 - `SIMULATOR_AI_WORKSPACE`: workspace ID for the API user.
+- `SIMULATOR_AI_PROFILE`: `read` (default) or `smart-forms` (explicit write capability).
 - `SIMULATOR_AI_API_KEY`: API-user key; never paste it into chat, a tool call or committed config.
 
 Only literal loopback HTTP is accepted for local scripted development. HTTPS verifies TLS;
@@ -42,7 +45,7 @@ redirects are refused, including same-origin redirects, so credentials cannot be
 No login/OAuth is claimed. Normal human Bearer sessions are not accepted by this profile.
 
 The `plugins/simulator-ai` directory includes Claude Code and Codex manifests, MCP config
-and the portable `simulator-ai-read` skill. Its MCP command is the separately installed
+and the portable `simulator-ai-read` / `simulator-ai-smart-forms` skills. Its MCP command is the separately installed
 `simulator-ai` binary. Install that plugin directory using your client's plugin mechanism,
 or configure the MCP directly (the latter does not install the skill automatically):
 
@@ -56,7 +59,7 @@ Codex MCP configuration equivalent:
 [mcp_servers.simulator-ai]
 command = "simulator-ai"
 args = []
-env_vars = ["SIMULATOR_AI_ORIGIN", "SIMULATOR_AI_WORKSPACE", "SIMULATOR_AI_API_KEY"]
+env_vars = ["SIMULATOR_AI_ORIGIN", "SIMULATOR_AI_WORKSPACE", "SIMULATOR_AI_API_KEY", "SIMULATOR_AI_PROFILE"]
 ```
 
 Do not store a key in either example. Use the client's environment injection to supply it.

@@ -39,7 +39,7 @@ func TestHostPackagingConfiguration(t *testing.T) {
 		}
 		expected := []string(nil)
 		if host == "codex" {
-			expected = []string{"SIMULATOR_AI_ORIGIN", "SIMULATOR_AI_WORKSPACE", "SIMULATOR_AI_API_KEY"}
+			expected = []string{"SIMULATOR_AI_ORIGIN", "SIMULATOR_AI_WORKSPACE", "SIMULATOR_AI_API_KEY", "SIMULATOR_AI_PROFILE"}
 		}
 		if !slices.Equal(server.EnvVars, expected) {
 			t.Fatalf("%s environment forwarding drift", host)

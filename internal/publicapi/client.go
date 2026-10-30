@@ -19,7 +19,7 @@ const maxResponseBytes = 4 << 20
 
 var actorFields = []string{"id", "title", "description", "formId", "status", "ref"}
 
-// Client exposes only the three supported reads. No public arbitrary RPC proxy exists.
+// Client exposes closed, typed public methods. No arbitrary RPC proxy exists.
 type Client struct {
 	config Config
 	http   *http.Client
@@ -71,6 +71,11 @@ func read[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 	default:
 		return result, errors.New("unsupported public method")
 	}
+	return call[P, R](ctx, c, method, params)
+}
+
+func call[P, R any](ctx context.Context, c *Client, method string, params P) (R, error) {
+	var result R
 	// Source: sim-api rpc_handler.Request.ID is a string. Preserve its exact wire type.
 	id := strconv.FormatUint(c.nextID.Add(1), 10)
 	b, e := json.Marshal(request[P]{"2.0", id, method, params})
@@ -90,7 +95,7 @@ func read[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 		if ctx.Err() != nil {
 			return result, ctx.Err()
 		}
-		return result, errors.New("public API transport unavailable; read may be retried")
+		return result, errors.New("public API transport unavailable; outcome unknown; preserve original operationId and payload for recovery")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -113,7 +118,7 @@ func read[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 		}
 		reason := "remote_error"
 		switch env.Error.Data.Reason {
-		case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams":
+		case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams", "operationConflict", "operationResultExpired", "appEnvironmentChanged", "appFileSourceMismatch", "invalidRoutes":
 			reason = env.Error.Data.Reason
 		}
 		return result, &APIError{Code: env.Error.Code, Reason: reason}

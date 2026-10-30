@@ -1,7 +1,7 @@
 {
   "name": "simulator-ai",
-  "version": "0.1.0-dev.3",
-  "description": "Public sim-api read-only metadata tools. Early R1 profile; no writes or legacy parity claim.",
+  "version": "0.1.0-dev.4",
+  "description": "Public Simulator metadata tools and opt-in recoverable Smart Forms profile; host agent only.",
   "skills": "./skills/",
   "mcpServers": "./.codex-mcp.json"
 }

@@ -12,17 +12,21 @@ import (
 type Config struct {
 	Origin    string
 	Workspace string
+	Profile   string
 	APIKey    string
 }
 
 func LoadConfig(getenv func(string) string) (Config, error) {
-	c := Config{Origin: getenv("SIMULATOR_AI_ORIGIN"), Workspace: getenv("SIMULATOR_AI_WORKSPACE"), APIKey: getenv("SIMULATOR_AI_API_KEY")}
+	c := Config{Origin: getenv("SIMULATOR_AI_ORIGIN"), Workspace: getenv("SIMULATOR_AI_WORKSPACE"), APIKey: getenv("SIMULATOR_AI_API_KEY"), Profile: getenv("SIMULATOR_AI_PROFILE")}
 	if err := c.validate(); err != nil {
 		return Config{}, err
 	}
 	return c, nil
 }
 func (c Config) validate() error {
+	if c.Profile != "" && c.Profile != "read" && c.Profile != "smart-forms" {
+		return errors.New("SIMULATOR_AI_PROFILE must be read or smart-forms")
+	}
 	u, e := url.Parse(c.Origin)
 	if e != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Path != "" && u.Path != "/") || u.Opaque != "" {
 		return errors.New("SIMULATOR_AI_ORIGIN must be an origin without credentials, path, query or fragment")

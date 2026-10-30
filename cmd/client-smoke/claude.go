@@ -32,7 +32,7 @@ func claudeSmoke(ctx context.Context, env []string, dir, root, executable string
 	if err != nil {
 		return err
 	}
-	if !strings.Contains(string(details), "simulator-ai-read") {
+	if !strings.Contains(string(details), "simulator-ai-read") || !strings.Contains(string(details), "simulator-ai-smart-forms") {
 		return errors.New("Claude did not load installed skill")
 	}
 	e.ClaudeSkill = true
