@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/corezoid/simulator-ai/internal/version"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -41,6 +42,9 @@ func TestTypedReadsAndProjection(t *testing.T) {
 	calls := 0
 	c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		calls++
+		if r.Header.Get("X-App-Version") != version.Current {
+			t.Error("app version drift")
+		}
 		if r.Method != "POST" || r.URL.Path != "/api/2.0/rpc" || r.URL.RawQuery != "" {
 			t.Error("wrong public endpoint")
 		}

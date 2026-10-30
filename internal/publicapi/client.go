@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/corezoid/simulator-ai/internal/version"
 	"io"
 	"net/http"
 	"strings"
@@ -81,7 +82,7 @@ func read[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 	req.Header.Set("Authorization", "ApiKey "+c.config.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-App-Platform", "simulator-ai")
-	req.Header.Set("X-App-Version", "0.1.0-dev.1")
+	req.Header.Set("X-App-Version", version.Current)
 	resp, e := c.http.Do(req)
 	if e != nil {
 		if ctx.Err() != nil {

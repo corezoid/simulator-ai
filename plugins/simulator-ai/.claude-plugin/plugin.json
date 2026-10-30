@@ -1,6 +1,6 @@
 {
   "name": "simulator-ai",
-  "version": "0.1.0-dev.1",
+  "version": "0.1.0-dev.2",
   "description": "Public sim-api read-only metadata tools. Early R1 profile; no writes or legacy parity claim.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"

@@ -9,11 +9,12 @@ import (
 	"io"
 
 	"github.com/corezoid/simulator-ai/internal/publicapi"
+	"github.com/corezoid/simulator-ai/internal/version"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
-const Version = "0.1.0-dev.1"
+const Version = version.Current
 
 type ActorArgs struct {
 	ActorID string `json:"actorId"`
