@@ -57,7 +57,7 @@ func creation() CreateApplicationInput {
 	return CreateApplicationInput{Operation: Operation{"create-1"}, Ref: "test-app", Title: "Test"}
 }
 
-const created = `{"application":{"id":"app-1","ref":"test-app","data":{"secret":"not-for-tools"}},"envs":[{"id":1,"actorId":"app-1","rootFolderId":10,"title":"develop","corezoidCredentials":{"apiSecret":"credential-canary"}},{"id":2,"actorId":"app-1","rootFolderId":20,"title":"production"}]}`
+const created = `{"application":{"id":"app-1","ref":"test-app","data":{"secret":"not-for-tools"}},"envs":[{"id":1,"actorId":"app-1","title":"develop","corezoidCredentials":{"apiSecret":"credential-canary"}},{"id":2,"actorId":"app-1","title":"production"}]}`
 
 func TestSmartCreationLossRecoveryNoAutomaticRetry(t *testing.T) {
 	writes, lookups := 0, 0
@@ -180,5 +180,36 @@ func TestSmartUpdateRequiresAllPreconditions(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Fatalf("calls=%d", calls)
+	}
+}
+
+func TestReleaseRetentionMustBeExplicit(t *testing.T) {
+	for _, field := range []string{"", `,"prunedByRetention":null`} {
+		c := smartClient(t, contracts.SmartForms, func(w http.ResponseWriter, r *http.Request) {
+			q := readSmart(t, r)
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"id":9,"actorId":"app-1","envId":2,"sourceEnvId":1,"status":"active"%s}}`, q.ID, field)
+		})
+		if _, err := c.GetRelease(context.Background(), ReleaseInput{AppTarget: AppTarget{"app-1"}, ReleaseID: 9}); err == nil {
+			t.Fatal("missing/null current retention accepted")
+		}
+		if _, err := c.GetReleaseOperation(context.Background(), AppOperationInput{AppTarget: AppTarget{"app-1"}, Operation: Operation{"release-1"}}); err == nil {
+			t.Fatal("missing/null receipt retention accepted")
+		}
+		_, err := c.CreateRelease(context.Background(), CreateReleaseInput{AppTarget: AppTarget{"app-1"}, Operation: Operation{"release-1"}, SourceEnvID: 1, TargetEnvID: 2, ExpectedSourceEnvironmentHash: strings.Repeat("a", 64), ExpectedTargetEnvironmentHash: strings.Repeat("b", 64)})
+		var uncertain *WriteError
+		if !errors.As(err, &uncertain) {
+			t.Fatalf("missing/null retention did not preserve unknown write: %v", err)
+		}
+	}
+}
+func TestUpdateWrongFileSuccessIsUnresolved(t *testing.T) {
+	c := smartClient(t, contracts.SmartForms, func(w http.ResponseWriter, r *http.Request) {
+		q := readSmart(t, r)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"files":[{"id":41,"folderId":1,"objType":"file","title":"config","type":"application/json","source":"","sourceHash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}]}}`, q.ID)
+	})
+	_, err := c.UpdateFiles(context.Background(), UpdateFilesInput{AppTarget: AppTarget{"app-1"}, Operation: Operation{"update-1"}, Items: []FileUpdate{{ID: 40, Title: "config", Type: "application/json", IfMatchHash: strings.Repeat("a", 64)}}, EnvironmentPreconditions: []EnvironmentPrecondition{{EnvID: 1, EnvironmentHash: strings.Repeat("b", 64)}}})
+	var uncertain *WriteError
+	if !errors.As(err, &uncertain) {
+		t.Fatalf("wrong file success was not unresolved: %v", err)
 	}
 }

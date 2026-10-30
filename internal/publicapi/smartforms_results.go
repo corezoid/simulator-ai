@@ -22,7 +22,7 @@ func validateSmartResult(value any) error {
 		}
 		seen := map[int64]bool{}
 		for _, e := range r.Envs {
-			if !validEnvironment(e) || e.ActorID != *r.Application.ID || seen[e.ID] {
+			if !validEnvironmentIdentity(e) || e.ActorID != *r.Application.ID || seen[e.ID] {
 				return invalid
 			}
 			seen[e.ID] = true
@@ -64,7 +64,7 @@ func validateSmartResult(value any) error {
 			seen[f.ID] = true
 		}
 	case Release:
-		if r.ID < 1 || r.ActorID == "" || r.EnvID < 1 {
+		if r.ID < 1 || r.ActorID == "" || r.EnvID < 1 || r.PrunedByRetention == nil {
 			return invalid
 		}
 		switch r.Status {
@@ -82,7 +82,10 @@ func validateSmartResult(value any) error {
 	return nil
 }
 func validEnvironment(e Environment) bool {
-	return e.ID > 0 && e.ActorID != "" && e.Title != "" && e.RootFolderID > 0
+	return validEnvironmentIdentity(e) && e.RootFolderID > 0
+}
+func validEnvironmentIdentity(e Environment) bool {
+	return e.ID > 0 && e.ActorID != "" && e.Title != ""
 }
 func validContentNode(n ContentNode, depth int) bool {
 	if depth > 128 || n.ID < 1 || n.Title == "" {

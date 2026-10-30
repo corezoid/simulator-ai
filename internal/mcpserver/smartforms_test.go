@@ -41,7 +41,7 @@ func TestSmartFormsCatalogAndPublicWorkflow(t *testing.T) {
 		output := ""
 		switch q.Method {
 		case "application/create", "application/operation/get":
-			output = `{"application":{"id":"app-1","ref":"test-app"},"envs":[{"id":1,"actorId":"app-1","title":"develop","rootFolderId":10},{"id":2,"actorId":"app-1","title":"production","rootFolderId":20}]}`
+			output = `{"application":{"id":"app-1","ref":"test-app"},"envs":[{"id":1,"actorId":"app-1","title":"develop"},{"id":2,"actorId":"app-1","title":"production"}]}`
 		case "application/env/list":
 			output = `{"canModify":true,"envs":[{"id":1,"actorId":"app-1","title":"develop","rootFolderId":10,"corezoidCredentials":{"apiSecret":"canary"}}]}`
 		case "application/snapshot/get":

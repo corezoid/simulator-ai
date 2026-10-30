@@ -78,6 +78,9 @@ func smartCall[P smartRequest, R any](ctx context.Context, c *Client, method str
 	if err == nil {
 		err = validateSmartResult(result)
 	}
+	if err == nil && write {
+		err = validateWriteBinding(p, result)
+	}
 	if err != nil && write {
 		return result, &WriteError{Cause: err}
 	}

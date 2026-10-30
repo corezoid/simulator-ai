@@ -115,6 +115,16 @@ func checkShape(t *testing.T, typ reflect.Type, s contractShape, path string, de
 		t.Fatalf("unmodeled type %s at %s", typ, path)
 	}
 }
+func TestCreationReceiptDoesNotRequireEnrichedEnvironmentRoots(t *testing.T) {
+	id, ref := "app-1", "test-app"
+	r := CreatedApplication{Application: Actor{ID: &id, Ref: &ref}, Envs: []Environment{{ID: 1, ActorID: id, Title: "develop"}, {ID: 2, ActorID: id, Title: "production"}}}
+	if err := validateSmartResult(r); err != nil {
+		t.Fatal(err)
+	}
+	if validateSmartResult(Environments{Envs: r.Envs}) == nil {
+		t.Fatal("env/list must still supply current roots")
+	}
+}
 func TestMalformedSmartResultsAreRejected(t *testing.T) {
 	for _, v := range []any{CreatedApplication{}, Environments{}, Files{}, Folders{}, Snapshot{}, Release{}, RouteKey{ActiveReleaseID: 1}} {
 		if validateSmartResult(v) == nil {
@@ -124,5 +134,26 @@ func TestMalformedSmartResultsAreRejected(t *testing.T) {
 	bad := Files{Files: []File{{ID: 1, FolderID: 2, Title: "config", ObjType: "file", Type: "application/json", Source: "changed", SourceHash: strings.Repeat("a", 64)}}}
 	if validateSmartResult(bad) == nil {
 		t.Fatal("source/hash mismatch accepted")
+	}
+}
+
+func TestWriteResultsMustMatchKnownInputs(t *testing.T) {
+	p := &UpdateFilesInput{Items: []FileUpdate{{ID: 40, Title: "config", Type: "application/json"}, {ID: 41, Title: "config", Type: "application/json"}}}
+	good := Files{Files: []File{{ID: 41, Title: "config", Type: "application/json"}, {ID: 40, Title: "config", Type: "application/json"}}}
+	if err := validateWriteBinding(p, good); err != nil {
+		t.Fatal(err)
+	}
+	bad := good
+	bad.Files = bad.Files[:1]
+	if validateWriteBinding(p, bad) == nil {
+		t.Fatal("partial response accepted")
+	}
+	bad = Files{Files: []File{{ID: 40, Title: "config", Type: "application/json"}, {ID: 42, Title: "config", Type: "application/json"}}}
+	if validateWriteBinding(p, bad) == nil {
+		t.Fatal("another file accepted")
+	}
+	pCreate := &CreateFilesInput{Items: []FileItem{{FolderID: 3, Title: "config", Type: "application/json", Source: "{}"}}}
+	if validateWriteBinding(pCreate, Files{Files: []File{{ID: 1, FolderID: 4, Title: "config", Type: "application/json", Source: "{}"}}}) == nil {
+		t.Fatal("another parent accepted")
 	}
 }

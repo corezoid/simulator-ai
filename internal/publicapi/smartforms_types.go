@@ -52,7 +52,7 @@ type Environment struct {
 	ID           int64  `json:"id"`
 	ActorID      string `json:"actorId"`
 	Title        string `json:"title"`
-	RootFolderID int64  `json:"rootFolderId"`
+	RootFolderID int64  `json:"rootFolderId,omitempty"`
 	Readonly     bool   `json:"readonly"`
 }
 
@@ -207,7 +207,7 @@ type Release struct {
 	SourceEnvID       int64  `json:"sourceEnvId"`
 	ReleaseNumber     int64  `json:"releaseNumber"`
 	Status            string `json:"status"`
-	PrunedByRetention bool   `json:"prunedByRetention"`
+	PrunedByRetention *bool  `json:"prunedByRetention"`
 }
 
 // RouteKey follows public route/key/get. It never grants viewer access.
