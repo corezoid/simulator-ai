@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "simulator-ai": {
+      "command": "simulator-ai",
+      "args": []
+    }
+  }
+}
