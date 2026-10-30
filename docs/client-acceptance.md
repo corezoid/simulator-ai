@@ -58,6 +58,12 @@ Host protocol assumptions are checked against the installed CLI's generated app-
 schema (`codex app-server generate-json-schema --experimental`). Unsupported client versions
 fail the smoke; they do not silently downgrade the assertions.
 
+## Live backend follow-up
+
+The R1.2b [live backend acceptance](live-backend-acceptance.md) exercises real readonly keys,
+object ACLs and this binary. It found and fixed the string JSON-RPC ID mismatch in version
+0.1.0-dev.3. The issuer-level revoke gate below remains separate.
+
 ## Remaining release checks
 
 - Live new sim-api, `integrationAPI=enforce`, a designated API-user test workspace and known

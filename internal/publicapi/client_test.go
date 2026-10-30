@@ -15,7 +15,7 @@ import (
 )
 
 type received struct {
-	ID     uint64 `json:"id"`
+	ID     string `json:"id"`
 	Method string `json:"method"`
 	Params struct {
 		AccID   string   `json:"accId"`
@@ -76,7 +76,7 @@ func TestTypedReadsAndProjection(t *testing.T) {
 			t.Errorf("unexpected method %s", q.Method)
 			result = `{}`
 		}
-		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":%s}`, q.ID, result)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, q.ID, result)
 	})
 	a, e := c.GetActor(context.Background(), "actor-a")
 	if e != nil {
@@ -128,14 +128,16 @@ func TestMalformedErrorsAndBounds(t *testing.T) {
 		name, body string
 		status     int
 	}{
-		{"wrong-id", `{"jsonrpc":"2.0","id":99,"result":{"id":"a"}}`, 200},
-		{"wrong-version", `{"jsonrpc":"1.0","id":1,"result":{"id":"a"}}`, 200},
-		{"missing-result", `{"jsonrpc":"2.0","id":1}`, 200},
-		{"null-result", `{"jsonrpc":"2.0","id":1,"result":null}`, 200},
-		{"identity-mismatch", `{"jsonrpc":"2.0","id":1,"result":{"id":"different"}}`, 200},
-		{"business", `{"jsonrpc":"2.0","id":1,"error":{"code":1,"message":"synthetic-test-key","data":{"reason":"accessDenied"}}}`, 200},
-		{"unsafe-reason", `{"jsonrpc":"2.0","id":1,"error":{"code":1,"message":"synthetic-test-key","data":{"reason":"synthetic-test-key"}}}`, 200},
-		{"ambiguous", `{"jsonrpc":"2.0","id":1,"result":{},"error":{"code":1}}`, 200},
+		{"numeric-id", `{"jsonrpc":"2.0","id":1,"result":{"id":"a"}}`, 200},
+		{"wrong-id", `{"jsonrpc":"2.0","id":"99","result":{"id":"a"}}`, 200},
+		{"wrong-version", `{"jsonrpc":"1.0","id":"1","result":{"id":"a"}}`, 200},
+		{"missing-result", `{"jsonrpc":"2.0","id":"1"}`, 200},
+		{"null-result", `{"jsonrpc":"2.0","id":"1","result":null}`, 200},
+		{"identity-mismatch", `{"jsonrpc":"2.0","id":"1","result":{"id":"different"}}`, 200},
+		{"business", `{"jsonrpc":"2.0","id":"1","error":{"code":1,"message":"synthetic-test-key","data":{"reason":"accessDenied"}}}`, 200},
+		{"auth-denial", `{"jsonrpc":"2.0","id":"1","error":{"code":1,"data":{"reason":"notAuthorized"}}}`, 200},
+		{"unsafe-reason", `{"jsonrpc":"2.0","id":"1","error":{"code":1,"message":"synthetic-test-key","data":{"reason":"synthetic-test-key"}}}`, 200},
+		{"ambiguous", `{"jsonrpc":"2.0","id":"1","result":{},"error":{"code":1}}`, 200},
 		{"bad-json", `synthetic-test-key`, 200},
 		{"http-body", `synthetic-test-key`, 401},
 		{"oversize", strings.Repeat("x", maxResponseBytes+1), 200},
@@ -157,6 +159,12 @@ func TestMalformedErrorsAndBounds(t *testing.T) {
 			}
 			if calls != 1 {
 				t.Fatal("unexpected retry")
+			}
+			if tc.name == "auth-denial" {
+				var apiErr *APIError
+				if !errors.As(e, &apiErr) || apiErr.Code != 1 || apiErr.Reason != "notAuthorized" {
+					t.Fatal("typed authorization error lost")
+				}
 			}
 			if tc.name == "business" {
 				var apiErr *APIError
@@ -241,7 +249,7 @@ func TestEmptyLayerPageDoesNotEndLaterReads(t *testing.T) {
 		if q.Params.Offset == 2 {
 			result = `{"list":[{"laId":3,"id":"live-actor","actor":{"id":"live-actor"}}]}`
 		}
-		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":%s}`, q.ID, result)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, q.ID, result)
 	})
 	first, e := c.ListLayerActors(context.Background(), "layer-a", 2, 0)
 	if e != nil || len(first.List) != 0 {
@@ -263,7 +271,7 @@ func TestInvalidPlacementResults(t *testing.T) {
 	} {
 		t.Run(body, func(t *testing.T) {
 			c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":%s}`, body)
+				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":"1","result":%s}`, body)
 			})
 			if _, e := c.ListLayerActors(context.Background(), "layer-a", 2, 0); e == nil {
 				t.Fatal("malformed placement accepted")

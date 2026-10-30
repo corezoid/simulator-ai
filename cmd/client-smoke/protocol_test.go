@@ -55,7 +55,7 @@ func TestFixtureAcceptsOnlyProjectedRead(t *testing.T) {
 	f := startFixture()
 	defer f.server.Close()
 	for _, method := range []string{"actor/get", "actor/update"} {
-		body := `{"id":1,"method":"` + method + `","params":{"accId":"synthetic-workspace","actorId":"synthetic-actor","fields":["id","title","description","formId","status","ref"]}}`
+		body := `{"id":"1","method":"` + method + `","params":{"accId":"synthetic-workspace","actorId":"synthetic-actor","fields":["id","title","description","formId","status","ref"]}}`
 		req, err := http.NewRequest("POST", f.server.URL+"/api/2.0/rpc", strings.NewReader(body))
 		if err != nil {
 			t.Fatal(err)

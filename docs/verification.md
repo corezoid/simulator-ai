@@ -29,3 +29,7 @@ CI activation is pending: the available GitHub token lacks `workflow` scope and 
 authorized key. The prepared workflow is in `docs/ci/check.yml.pending`; a repository admin
 can move it to `.github/workflows/check.yml`. Local checks above are executed; no hosted CI
 pass is claimed.
+
+R1.2b adds [real backend acceptance](live-backend-acceptance.md), including the actual public
+wire ID contract and ACL revoke/regrant through a persistent MCP process. Exact paired commits
+and review/check results are recorded in its PR/MR; issuer revoke is still not claimed.

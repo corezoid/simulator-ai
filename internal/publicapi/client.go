@@ -9,6 +9,7 @@ import (
 	"github.com/corezoid/simulator-ai/internal/version"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -52,13 +53,13 @@ type rpcError struct {
 }
 type envelope struct {
 	Version string          `json:"jsonrpc"`
-	ID      uint64          `json:"id"`
+	ID      string          `json:"id"`
 	Result  json.RawMessage `json:"result"`
 	Error   *rpcError       `json:"error"`
 }
 type request[P any] struct {
 	Version string `json:"jsonrpc"`
-	ID      uint64 `json:"id"`
+	ID      string `json:"id"`
 	Method  string `json:"method"`
 	Params  P      `json:"params"`
 }
@@ -70,7 +71,8 @@ func read[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 	default:
 		return result, errors.New("unsupported public method")
 	}
-	id := c.nextID.Add(1)
+	// Source: sim-api rpc_handler.Request.ID is a string. Preserve its exact wire type.
+	id := strconv.FormatUint(c.nextID.Add(1), 10)
 	b, e := json.Marshal(request[P]{"2.0", id, method, params})
 	if e != nil {
 		return result, errors.New("cannot encode public request")
@@ -111,7 +113,7 @@ func read[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 		}
 		reason := "remote_error"
 		switch env.Error.Data.Reason {
-		case "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams":
+		case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams":
 			reason = env.Error.Data.Reason
 		}
 		return result, &APIError{Code: env.Error.Code, Reason: reason}
