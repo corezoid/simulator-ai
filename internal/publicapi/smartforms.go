@@ -135,6 +135,13 @@ func (c *Client) CreateFiles(ctx context.Context, p CreateFilesInput) (Files, er
 	return smartCall[*CreateFilesInput, Files](ctx, c, "app_file/create", &p, true)
 }
 func (c *Client) UpdateFiles(ctx context.Context, p UpdateFilesInput) (Files, error) {
+	files := map[int64]bool{}
+	for _, item := range p.Items {
+		if files[item.ID] {
+			return Files{}, errors.New("duplicate file id in update items")
+		}
+		files[item.ID] = true
+	}
 	seen := map[int64]bool{}
 	for _, v := range p.EnvironmentPreconditions {
 		if seen[v.EnvID] {

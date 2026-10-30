@@ -78,3 +78,7 @@ environments do not contain enriched root folder ids; successful file writes mus
 requested ids/count/parents; missing/null release retention is unknown, not false. Regression
 tests cover each. Both portable skill walkthroughs (lost release response and existing app
 update) were checked; neither permits rekeying unresolved work or skipping current-state checks.
+
+Repeated file ids in one update are refused before even fetching the contract. The public
+backend can process repeated items sequentially, but such a receipt is ambiguous for this
+profile's one-result-per-file binding; rejection before writing avoids unrecoverable success.

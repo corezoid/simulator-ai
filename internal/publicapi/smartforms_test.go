@@ -213,3 +213,18 @@ func TestUpdateWrongFileSuccessIsUnresolved(t *testing.T) {
 		t.Fatalf("wrong file success was not unresolved: %v", err)
 	}
 }
+
+func TestDuplicateUpdateFileIDsNeverReachAPI(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls++ }))
+	defer server.Close()
+	c, err := New(Config{Origin: server.URL, Workspace: "workspace-a", APIKey: "synthetic", Profile: "smart-forms"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, second := "first", "second"
+	_, err = c.UpdateFiles(context.Background(), UpdateFilesInput{AppTarget: AppTarget{"app-1"}, Operation: Operation{"update-1"}, Items: []FileUpdate{{ID: 40, Title: "config", Type: "application/json", Source: &first, IfMatchHash: strings.Repeat("a", 64)}, {ID: 40, Title: "renamed", Type: "application/json", Source: &second, IfMatchHash: strings.Repeat("a", 64)}}, EnvironmentPreconditions: []EnvironmentPrecondition{{EnvID: 1, EnvironmentHash: strings.Repeat("b", 64)}}})
+	if err == nil || calls != 0 {
+		t.Fatalf("duplicate ids reached API: calls=%d err=%v", calls, err)
+	}
+}
