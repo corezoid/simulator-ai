@@ -44,7 +44,7 @@ func TestScriptedStdioCatalogAndCalls(t *testing.T) {
 			t.Error("unexpected API request")
 		}
 		var q struct {
-			ID     uint64 `json:"id"`
+			ID     string `json:"id"`
 			Method string `json:"method"`
 			Params struct {
 				AccID string `json:"accId"`
@@ -59,7 +59,7 @@ func TestScriptedStdioCatalogAndCalls(t *testing.T) {
 		if q.Method != "actor/get" {
 			t.Error("unexpected method")
 		}
-		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":{"id":"actor-a","title":"Fixture actor"}}`, q.ID)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"id":"actor-a","title":"Fixture actor"}}`, q.ID)
 	}))
 	defer api.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

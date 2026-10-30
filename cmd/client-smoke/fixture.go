@@ -33,7 +33,7 @@ func startFixture() *fixture {
 			return
 		}
 		var request struct {
-			ID     uint64 `json:"id"`
+			ID     string `json:"id"`
 			Method string `json:"method"`
 			Params struct {
 				AccID   string   `json:"accId"`
@@ -48,7 +48,7 @@ func startFixture() *fixture {
 		}
 		f.reads.Add(1)
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":{"id":"synthetic-actor","title":"Client smoke fixture"}}`, request.ID)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"id":"synthetic-actor","title":"Client smoke fixture"}}`, request.ID)
 	}))
 	return f
 }
