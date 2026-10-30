@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "simulator-ai": {
+      "command": "simulator-ai",
+      "args": [],
+      "env_vars": [
+        "SIMULATOR_AI_ORIGIN",
+        "SIMULATOR_AI_WORKSPACE",
+        "SIMULATOR_AI_API_KEY"
+      ]
+    }
+  }
+}

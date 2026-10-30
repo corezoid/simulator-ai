@@ -13,7 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-const Version = "0.1.0-dev.1"
+const Version = "0.1.0-dev.2"
 
 type ActorArgs struct {
 	ActorID string `json:"actorId"`

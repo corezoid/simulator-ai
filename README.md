@@ -4,7 +4,7 @@ Public MCP tools and portable skills for the new Simulator JSON-RPC API. This re
 is separate from [simulator-ai-plugin](https://github.com/corezoid/simulator-ai-plugin),
 which continues to serve legacy. It does not change legacy configuration or routing.
 
-**R1.1 development slice:** desktop stdio, API-user key, three metadata reads. It is not a
+**R1.1 + R1.2a development slices:** desktop stdio, API-user key, three metadata reads. It is not a
 full legacy replacement or an accepted production release. Claude Code/Codex use their own
 agent; this binary launches no Hermes, model, LiteLLM or server AI billing.
 
@@ -56,11 +56,13 @@ Codex MCP configuration equivalent:
 [mcp_servers.simulator-ai]
 command = "simulator-ai"
 args = []
+env_vars = ["SIMULATOR_AI_ORIGIN", "SIMULATOR_AI_WORKSPACE", "SIMULATOR_AI_API_KEY"]
 ```
 
 Do not store a key in either example. Use the client's environment injection to supply it.
-Actual plugin-install/client smoke and live API-user ACL/revoke tests are R1.2 gates; see
-[verification](docs/verification.md). Merely shipping manifests does not pass them.
+Run `make client-smoke` to install into disposable Codex/Claude Code profiles and check real
+client loading against a scripted loopback API, without a model turn. See
+[client acceptance](docs/client-acceptance.md) for evidence and remaining live ACL/revoke gates.
 
 ## Development and contracts
 

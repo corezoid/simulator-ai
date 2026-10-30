@@ -4,8 +4,9 @@ Development profile only. All API responses in local tests come from scripted HT
 no model calls, server agent, real workspace writes or production credentials are used.
 Checks and independent xhigh review are recorded on the PR with the exact reviewed commit.
 
-R1.2 client-install and live API-user ACL/revoke acceptance remain open. This distinction
-is intentional: transport mocks cannot prove backend rights or full legacy parity.
+R1.2a adds real isolated client-install smoke; see [client acceptance](client-acceptance.md).
+Live API-user ACL/revoke acceptance remains open: transport mocks cannot prove backend
+rights or full legacy parity.
 
 Local 2026-10-30 checks:
 
