@@ -15,16 +15,17 @@ import (
 )
 
 type evidence struct {
-	CodexVersion  string `json:"codexVersion"`
-	ClaudeVersion string `json:"claudeVersion"`
-	CodexInstall  bool   `json:"codexInstall"`
-	CodexSkill    bool   `json:"codexSkill"`
-	CodexTools    int    `json:"codexTools"`
-	CodexRead     bool   `json:"codexRead"`
-	ClaudeInstall bool   `json:"claudeInstall"`
-	ClaudeSkill   bool   `json:"claudeSkill"`
-	ClaudeMCP     bool   `json:"claudeMCP"`
-	FixtureReads  int32  `json:"fixtureReads"`
+	RejectedTokenCountProbes int32  `json:"rejectedTokenCountProbes"`
+	CodexVersion             string `json:"codexVersion"`
+	ClaudeVersion            string `json:"claudeVersion"`
+	CodexInstall             bool   `json:"codexInstall"`
+	CodexSkill               bool   `json:"codexSkill"`
+	CodexTools               int    `json:"codexTools"`
+	CodexRead                bool   `json:"codexRead"`
+	ClaudeInstall            bool   `json:"claudeInstall"`
+	ClaudeSkill              bool   `json:"claudeSkill"`
+	ClaudeMCP                bool   `json:"claudeMCP"`
+	FixtureReads             int32  `json:"fixtureReads"`
 }
 
 func main() {
@@ -91,6 +92,7 @@ func smoke(root string) (evidence, error) {
 		return result, err
 	}
 	result.FixtureReads = f.reads.Load()
+	result.RejectedTokenCountProbes = f.tokenCountProbes.Load()
 	if f.unexpected.Load() != 0 || result.FixtureReads != 1 {
 		return result, errors.New("unexpected fixture calls or missing Codex read")
 	}

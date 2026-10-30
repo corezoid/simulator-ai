@@ -8,7 +8,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -99,6 +103,42 @@ func TestChild(t *testing.T) {
 	if os.Getenv("SIMULATOR_SMOKE_TEST_CHILD") != "1" {
 		return
 	}
+	if mode := os.Getenv("SIMULATOR_SMOKE_TEST_MODE"); mode != "" {
+		path := os.Getenv("SIMULATOR_SMOKE_TEST_HEARTBEAT")
+		if mode == "grandchild" {
+			for {
+				f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+				if err != nil {
+					os.Exit(2)
+				}
+				_, _ = f.Write([]byte("x"))
+				_ = f.Close()
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
+		child := exec.Command(os.Args[0], "-test.run=^TestChild$")
+		child.Env = []string{"SIMULATOR_SMOKE_TEST_CHILD=1", "SIMULATOR_SMOKE_TEST_MODE=grandchild", "SIMULATOR_SMOKE_TEST_HEARTBEAT=" + path}
+		child.Stdout, child.Stderr = io.Discard, io.Discard
+		if child.Start() != nil {
+			os.Exit(2)
+		}
+		deadline := time.Now().Add(time.Second)
+		for {
+			if _, err := os.Stat(path); err == nil {
+				break
+			}
+			if time.Now().After(deadline) {
+				_ = child.Process.Kill()
+				os.Exit(2)
+			}
+			time.Sleep(time.Millisecond)
+		}
+		_ = os.WriteFile(path+".pid", []byte(strconv.Itoa(child.Process.Pid)), 0600)
+		if mode == "failure" {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	if os.Getenv("SIMULATOR_SMOKE_TEST_SLEEP") == "1" {
 		time.Sleep(time.Minute)
 	}
@@ -111,5 +151,60 @@ func TestProcessCancellation(t *testing.T) {
 	_, err := run(ctx, []string{"SIMULATOR_SMOKE_TEST_CHILD=1", "SIMULATOR_SMOKE_TEST_SLEEP=1"}, t.TempDir(), os.Args[0], "-test.run=^TestChild$")
 	if err == nil {
 		t.Fatal("deadline did not stop child")
+	}
+}
+
+func TestProcessCleansGrandchildrenOnEveryExit(t *testing.T) {
+	for _, mode := range []string{"success", "failure"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			path := filepath.Join(t.TempDir(), "heartbeat")
+			_, err := run(ctx, []string{"SIMULATOR_SMOKE_TEST_CHILD=1", "SIMULATOR_SMOKE_TEST_MODE=" + mode, "SIMULATOR_SMOKE_TEST_HEARTBEAT=" + path}, t.TempDir(), os.Args[0], "-test.run=^TestChild$")
+			data, readErr := os.ReadFile(path + ".pid")
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			pid, parseErr := strconv.Atoi(string(data))
+			if parseErr != nil || pid < 1 {
+				t.Fatal("invalid fixture pid")
+			}
+			t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
+			if (err != nil) != (mode == "failure") {
+				t.Fatalf("unexpected parent exit: %v", err)
+			}
+			time.Sleep(30 * time.Millisecond)
+			before, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			time.Sleep(100 * time.Millisecond)
+			after, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if before.Size() != after.Size() {
+				t.Fatal("grandchild survived completed CLI command")
+			}
+		})
+	}
+}
+
+func TestFixtureRejectsTokenProbesAndModelExecution(t *testing.T) {
+	f := startFixture()
+	defer f.server.Close()
+	for _, path := range []string{"/disabled-model/v1/messages/count_tokens", "/disabled-model/v1/messages"} {
+		res, err := f.server.Client().Post(f.server.URL+path, "application/json", strings.NewReader(`{}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.Copy(io.Discard, res.Body)
+		_ = res.Body.Close()
+		if res.StatusCode < 400 {
+			t.Fatal("model endpoint was accepted")
+		}
+	}
+	if f.tokenCountProbes.Load() != 1 || f.unexpected.Load() != 1 || f.reads.Load() != 0 {
+		t.Fatal("metadata probe hid a model call")
 	}
 }

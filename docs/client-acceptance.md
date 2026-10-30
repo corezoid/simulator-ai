@@ -24,7 +24,9 @@ The child environment is allowlisted; production/provider credentials are not in
 Only synthetic API-user credentials and a loopback scripted API are supplied. Codex's model
 provider and Claude's model endpoint point at a rejecting loopback route as an additional
 check against accidental model invocation. No `turn/start`, `codex exec`, Claude prompt or
-paid evaluation is part of the test. The fixture fails on any unexpected request.
+paid evaluation is part of the test. Claude inventory may probe `count_tokens`; those
+non-generative requests are explicitly rejected locally and counted in evidence, so inventory
+token estimates are not validated. Every other unexpected request fails the fixture.
 
 The JSON evidence records client versions and these separate checks:
 

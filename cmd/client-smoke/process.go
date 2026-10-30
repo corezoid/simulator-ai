@@ -45,6 +45,11 @@ func run(ctx context.Context, env []string, dir, executable string, args ...stri
 	step, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	c := command(step, env, dir, executable, args...)
+	defer func() {
+		if c.Process != nil {
+			_ = c.Cancel()
+		}
+	}()
 	var out boundedBuffer
 	c.Stdout, c.Stderr = &out, io.Discard
 	if err := c.Run(); err != nil {
