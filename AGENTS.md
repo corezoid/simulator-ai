@@ -4,8 +4,9 @@ New public plugin, separate from simulator-ai-plugin. Domain tools call only doc
 public sim-api JSON-RPC at /api/2.0/rpc. Never use /papi, private RPC, SQL or internal HTTP.
 Desktop uses its host agent: do not add Hermes, LiteLLM or server billing to this path.
 
-Current slice R1.1 is three read-only metadata tools, explicit ApiKey/origin/workspace.
-No write, OAuth, remote MCP or full legacy parity claim. Capability additions require
+Default profile is three read-only metadata tools, explicit ApiKey/origin/workspace.
+The opt-in smart-forms profile adds thirteen typed public tools with mandatory recovery
+keys/CAS and backend contract preflight. No OAuth, remote MCP or full legacy parity claim. Capability additions require
 source schemas, named parity mapping, ACL/error/side-effect/recovery tests and docs.
 
 Go code/commands, pinned dependency versions, gofmt. Never hand-edit types.gen.go;

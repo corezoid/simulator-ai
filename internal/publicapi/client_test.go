@@ -32,7 +32,7 @@ func testClient(t *testing.T, h http.HandlerFunc) (*Client, *httptest.Server) {
 	t.Helper()
 	s := httptest.NewServer(h)
 	t.Cleanup(s.Close)
-	c, e := New(Config{s.URL, "workspace-a", "synthetic-test-key"})
+	c, e := New(Config{Origin: s.URL, Workspace: "workspace-a", APIKey: "synthetic-test-key"})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -218,17 +218,17 @@ func TestCancellation(t *testing.T) {
 }
 func TestConfigRejectsUnsafeOrAmbiguousOrigin(t *testing.T) {
 	for _, origin := range []string{"", "https://", "http://example.com", "https://u:p@example.com", "https://example.com/path", "https://example.com?q=x", "https://example.com?", "https://example.com#x", "file:///tmp/foo"} {
-		if _, e := New(Config{origin, "ws", "key"}); e == nil {
+		if _, e := New(Config{Origin: origin, Workspace: "ws", APIKey: "key"}); e == nil {
 			t.Fatalf("accepted %s", origin)
 		}
 	}
 	for _, origin := range []string{"https://example.com", "http://127.0.0.1:9100", "http://[::1]:9100"} {
-		if _, e := New(Config{origin, "ws", "key"}); e != nil {
+		if _, e := New(Config{Origin: origin, Workspace: "ws", APIKey: "key"}); e != nil {
 			t.Fatalf("rejected %s: %v", origin, e)
 		}
 	}
 	for _, key := range []string{"", "a\r\nX: bad", "Bearer key"} {
-		if _, e := New(Config{"https://example.com", "ws", key}); e == nil {
+		if _, e := New(Config{Origin: "https://example.com", Workspace: "ws", APIKey: key}); e == nil {
 			t.Fatal("invalid key")
 		}
 	}

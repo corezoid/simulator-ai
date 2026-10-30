@@ -55,13 +55,15 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 	if err = p.call("skills/list", map[string]any{"cwds": []string{dir}, "forceReload": true}, &skills); err != nil {
 		return err
 	}
+	loaded := map[string]bool{}
 	for _, group := range skills.Data {
 		for _, s := range group.Skills {
-			if s.Name == "simulator-ai:simulator-ai-read" && s.Enabled {
-				e.CodexSkill = true
+			if s.Enabled {
+				loaded[s.Name] = true
 			}
 		}
 	}
+	e.CodexSkill = loaded["simulator-ai:simulator-ai-read"] && loaded["simulator-ai:simulator-ai-smart-forms"]
 	if !e.CodexSkill {
 		return errors.New("Codex skills/list did not load installed skill")
 	}
@@ -83,8 +85,12 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		return err
 	}
 	serverName := ""
+	expectedTools := 3
+	if e.Profile == "smart-forms" {
+		expectedTools = 16
+	}
 	for _, s := range status.Data {
-		if s.Name == "simulator-ai" && len(s.Tools) == 3 {
+		if s.Name == "simulator-ai" && len(s.Tools) == expectedTools {
 			_, actor := s.Tools["actor_get"]
 			_, form := s.Tools["form_get"]
 			_, layer := s.Tools["layer_actors_list"]
@@ -112,5 +118,15 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		return errors.New("Codex tool did not return fixture metadata")
 	}
 	e.CodexRead = true
+	if e.Profile == "smart-forms" {
+		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "application_create", "arguments": map[string]string{"operationId": "smoke-create-1", "ref": "smoke-app", "title": "Smoke app"}}, &call); err != nil {
+			return err
+		}
+		encoded, _ = json.Marshal(call)
+		if call.IsError || !strings.Contains(string(encoded), "synthetic-app") || strings.Contains(string(encoded), "credential-canary") {
+			return errors.New("Codex Smart Form creation failed")
+		}
+		e.CodexCreate = true
+	}
 	return nil
 }

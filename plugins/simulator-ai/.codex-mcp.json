@@ -6,7 +6,8 @@
       "env_vars": [
         "SIMULATOR_AI_ORIGIN",
         "SIMULATOR_AI_WORKSPACE",
-        "SIMULATOR_AI_API_KEY"
+        "SIMULATOR_AI_API_KEY",
+        "SIMULATOR_AI_PROFILE"
       ]
     }
   }
