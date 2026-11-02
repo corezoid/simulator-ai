@@ -10,6 +10,10 @@ see [Smart Forms setup and guarantees](docs/smart-forms.md). It is not a
 full legacy replacement or an accepted production release. Claude Code/Codex use their own
 agent; this binary launches no Hermes, model, LiteLLM or server AI billing.
 
+The separate [Console delegated-read profile](docs/delegated-read.md) accepts only
+manager-delivered scoped credentials and exposes `actor_get`/`form_get`. It does not
+change desktop configuration, provision a runtime or enable Console routing.
+
 | MCP tool | Public RPC | Returned subset |
 | --- | --- | --- |
 | `actor_get` | `actor/get` | id, title, description, formId, status, ref |

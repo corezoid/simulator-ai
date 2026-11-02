@@ -37,10 +37,19 @@ func TestStdioChild(t *testing.T) {
 	os.Exit(0)
 }
 func TestScriptedStdioCatalogAndCalls(t *testing.T) {
+	for _, profile := range []string{"read", "delegated-read"} {
+		t.Run(profile, func(t *testing.T) { runScriptedProfile(t, profile) })
+	}
+}
+
+func runScriptedProfile(t *testing.T, profile string) {
+	delegated := profile == "delegated-read"
+	key, token, scheme := "synthetic-test-key", "", "ApiKey synthetic-test-key"
+	if delegated { key, token = "", strings.Repeat("A", 43); scheme = "Delegated " + token }
 	var calls atomic.Int32
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		if r.URL.Path != "/api/2.0/rpc" || r.Header.Get("Authorization") != "ApiKey synthetic-test-key" {
+		if r.URL.Path != "/api/2.0/rpc" || r.Header.Get("Authorization") != scheme {
 			t.Error("unexpected API request")
 		}
 		var q struct {
@@ -65,7 +74,7 @@ func TestScriptedStdioCatalogAndCalls(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	child := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestStdioChild$")
-	child.Env = append(os.Environ(), "SIMULATOR_AI_TEST_CHILD=1", "SIMULATOR_AI_ORIGIN="+api.URL, "SIMULATOR_AI_WORKSPACE=workspace-a", "SIMULATOR_AI_API_KEY=synthetic-test-key")
+	child.Env = append(os.Environ(), "SIMULATOR_AI_TEST_CHILD=1", "SIMULATOR_AI_ORIGIN="+api.URL, "SIMULATOR_AI_WORKSPACE=workspace-a", "SIMULATOR_AI_API_KEY="+key, "SIMULATOR_AI_PROFILE="+profile, "SIMULATOR_AI_DELEGATED_TOKEN="+token)
 	in, e := child.StdinPipe()
 	if e != nil {
 		t.Fatal(e)
@@ -121,7 +130,9 @@ func TestScriptedStdioCatalogAndCalls(t *testing.T) {
 	if e = json.Unmarshal(catalog["result"], &result); e != nil {
 		t.Fatal(e)
 	}
-	if len(result.Tools) != 3 {
+	wanted := []string{"actor_get", "form_get"}
+	if !delegated { wanted = append(wanted, "layer_actors_list") }
+	if len(result.Tools) != len(wanted) {
 		t.Fatalf("unexpected tools: %s", catalog["result"])
 	}
 	seen := map[string]bool{}
@@ -131,7 +142,7 @@ func TestScriptedStdioCatalogAndCalls(t *testing.T) {
 			t.Fatal("unsafe annotations")
 		}
 	}
-	for _, name := range []string{"actor_get", "form_get", "layer_actors_list"} {
+	for _, name := range wanted {
 		if !seen[name] {
 			t.Fatal(name)
 		}
@@ -155,6 +166,10 @@ func TestScriptedStdioCatalogAndCalls(t *testing.T) {
 	unknown := exchange(`{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"actor_update","arguments":{"actorId":"actor-a"}}}`)
 	if unknown["error"] == nil && !strings.Contains(string(unknown["result"]), `"isError":true`) {
 		t.Fatal("write tool accepted")
+	}
+	if delegated {
+		unknown := exchange(`{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"layer_actors_list","arguments":{"layerId":"layer-a"}}}`)
+		if unknown["error"] == nil && !strings.Contains(string(unknown["result"]), `"isError":true`) { t.Fatal("layer tool exposed to delegated profile") }
 	}
 	if calls.Load() != 1 {
 		t.Fatalf("invalid tools reached API; calls=%d", calls.Load())

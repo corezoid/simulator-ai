@@ -46,6 +46,9 @@ func New(c *publicapi.Client) *server.MCPServer {
 		v, e := c.GetForm(ctx, a.FormID)
 		return result(v, e), nil
 	})
+	if c.DelegatedReadEnabled() {
+		return s
+	}
 	s.AddTool(tool[publicapi.LayerResult]("layer_actors_list", "Read ONE page of node placements and permitted actor metadata. No edges or total. Layer View and per-actor ACL apply. Offset pagination is not a stable snapshot under concurrent edits. Default/maximum limit 50; short or empty pages do not prove completion: deleted actors are filtered after pagination. This tool cannot certify complete enumeration.", `{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255},"limit":{"type":"integer","minimum":1,"maximum":50},"offset":{"type":"integer","minimum":0}},"required":["layerId"],"additionalProperties":false}`), func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		a, e := decode[LayerArgs](r)
 		if e != nil {

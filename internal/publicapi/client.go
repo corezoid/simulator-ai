@@ -76,6 +76,9 @@ func read[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 
 func call[P, R any](ctx context.Context, c *Client, method string, params P) (R, error) {
 	var result R
+	if c.DelegatedReadEnabled() && method != "actor/get" && method != "form/get" {
+		return result, errors.New("method unavailable in delegated-read profile")
+	}
 	// Source: sim-api rpc_handler.Request.ID is a string. Preserve its exact wire type.
 	id := strconv.FormatUint(c.nextID.Add(1), 10)
 	b, e := json.Marshal(request[P]{"2.0", id, method, params})
@@ -86,7 +89,7 @@ func call[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 	if e != nil {
 		return result, errors.New("invalid request")
 	}
-	req.Header.Set("Authorization", "ApiKey "+c.config.APIKey)
+	req.Header.Set("Authorization", c.config.authorization())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-App-Platform", "simulator-ai")
 	req.Header.Set("X-App-Version", version.Current)

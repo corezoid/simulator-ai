@@ -4,11 +4,14 @@ description: Read actor or account-template metadata and paged layer node placem
 ---
 
 Use the `simulator-ai` MCP server's actual catalog. This initial profile provides
-`actor_get`, `form_get`, and `layer_actors_list`. It returns metadata, not complete form
+`actor_get`, `form_get`, and `layer_actors_list` in the desktop read profile. The
+Console `delegated-read` profile exposes only `actor_get` and `form_get`; do not call
+layer tools when absent. It returns metadata, not complete form
 schemas, actor data fields, graph edges or a stable graph snapshot. State these limits when
 they matter to the user's request; do not infer missing fields or absent edges.
 
-The host configures origin, workspace and API-user key outside the conversation. Tool
+The host configures origin, workspace and the selected credential outside the
+conversation: API-user key for desktop, manager-issued restricted token for Console. Tool
 arguments contain object IDs and bounded pagination only. If configuration is missing,
 ask for configuration through the host's environment; never request secrets in chat.
 An access error is not proof that the object does not exist. Do not retry with another
