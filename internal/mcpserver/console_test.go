@@ -19,8 +19,7 @@ var consoleReplies = map[string]string{
 	"actor/create":                        `{"id":"a1","title":"Demo","formId":42}`,
 	"actor/update":                        `{"id":"a1","title":"Renamed","formId":42}`,
 	"form/system/get":                     `{"id":7,"title":"Layers","type":"system","form":{}}`,
-	"form/system/list":                    `{"list":[{"id":5,"title":"FlowchartBlock","type":"system"},{"id":6,"title":"Process","type":"system","parentId":5},{"id":8,"title":"Events","type":"system"}]}`,
-	"form/get":                            `{"id":6,"title":"Process","parentId":5,"updatedAt":10,"form":` + blockForm + `}`,
+	"form/flowchart-block/search":         `{"list":[{"id":6,"parentId":5,"title":"Process","blockId":"process","collection":"basic","updatedAt":10,"form":` + blockForm + `}],"hasMore":false}`,
 	"edge_type/get":                       `{"id":3,"name":"hierarchy"}`,
 	"edge/create":                         `{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"yes"}`,
 	"graph/layer/actors/manage":           `{"nodes":[{"laId":11,"actorId":"a1","position":{"x":0,"y":0}}],"edges":[]}`,
@@ -130,9 +129,8 @@ func TestConsoleRequests(t *testing.T) {
 	}{
 		{"actor_create", `{"formId":5,"title":"Start","color":"#17B26A","data":{"__form__6:blockId":"process"}}`, "actor/create", `"color":"#17B26A","data":{"__form__6:blockId":"process"}`, `"id":"a1"`},
 		{"actor_update", `{"actorId":"a1","title":"Renamed"}`, "actor/update", `"actorId":"a1","fields":["id","title","description","formId","status","ref"],"title":"Renamed"`, `"title":"Renamed"`},
-		{"flowchart_blocks_list", `{}`, "form/system/list,form/get", `"formId":6`, `"list":[{"formId":5,"title":"Process","blockId":"process","collection":"basic"}]`},
-		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/system/list,form/get", `"formId":6`, `"layerSettings":{"width":120,"height":60,"blockId":"process"`},
-		{"flowchart_blocks_list", `{"query":"decision"}`, "form/system/list", `"accId":"ws"`, `"list":[]`},
+		{"flowchart_blocks_list", `{"query":" proc "}`, "form/flowchart-block/search", `"accId":"ws","limit":100,"query":"proc"`, `"list":[{"formId":5,"title":"Process","blockId":"process","collection":"basic"}],"hasMore":false`},
+		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/flowchart-block/search", `"blockIds":["process"]`, `"layerSettings":{"width":120,"height":60,"blockId":"process"`},
 		{"layer_create", `{"title":"Flow"}`, "form/system/get,actor/create", `"data":{},"fields"`, `"id":"a1"`},
 		{"edge_create", `{"source":"a1","target":"a2","name":"yes"}`, "edge_type/get,edge/create", `"edgeTypeId":3,"forceDirection":true,"name":"yes","source":"a1","target":"a2"`, `"id":"e1"`},
 		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":0,"y":0}}]}`, "graph/layer/actors/manage", `"actorId":"L","items":[{"action":"create","data":{"id":"a1","position":{"x":0,"y":0},"type":"node"}}]`, `"laId":11`},
@@ -142,7 +140,7 @@ func TestConsoleRequests(t *testing.T) {
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
 		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
 		{"smart_form_files_create", `{"appId":"app1","items":[{"folderId":102,"title":"locale","type":"application/json","source":"{}"}]}`, "app_file/create", `"items":[{"folderId":102`, `"id":104`},
-		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true}`},
+		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"smart-form: app1"}`},
 		{"smart_form_release_get", `{"appId":"app1","releaseId":9}`, "application/env/list,release/get", `"releaseId":9`, `"ready":false`},
 	}
 	for _, tc := range cases {
@@ -208,7 +206,7 @@ func TestConsoleFailures(t *testing.T) {
 		{"reverse edge is not reported as the new one", "edge_create", `{"source":"a2","target":"a1","name":"retry"}`, nil, "other endpoints"},
 		{"develop release is not ready production", "smart_form_release_get", `{"appId":"app1","releaseId":9}`,
 			map[string]string{"release/get": `"result":{"id":9,"actorId":"app1","envId":1,"sourceEnvId":2,"releaseNumber":2,"status":"active"}`}, "not a production release"},
-		{"no flowchart catalog", "flowchart_blocks_list", `{}`, map[string]string{"form/system/list": `"result":{"list":[]}`}, "FlowchartBlock system template not found"},
+		{"catalog page must be well formed", "flowchart_blocks_list", `{}`, map[string]string{"form/flowchart-block/search": `"result":{"list":[]}`}, "invalid native block catalog page"},
 		{"updated actor must be the requested one", "actor_update", `{"actorId":"a9","title":"x"}`, nil, "identity mismatch"},
 	}
 	for _, tc := range cases {

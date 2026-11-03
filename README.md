@@ -111,7 +111,7 @@ step needs.
 | --- | --- | --- |
 | `actor_get` | `actor/get` | id, title, description, formId, status, ref |
 | `actor_create` / `actor_update` | `actor/create` / `actor/update` | same actor subset |
-| `flowchart_blocks_list` | `form/system/list` + `form/get` per block (until `form/flowchart-block/search` is public) | formId, title, blockId; with `blockIds` also ready `data` and `layerSettings` |
+| `flowchart_blocks_list` | `form/flowchart-block/search` | formId, title, blockId, `hasMore`; with `blockIds` also ready `data` and `layerSettings` |
 | `layer_create` | `form/system/get` (`Layers`) + `actor/create` | layer actor |
 | `edge_create` | `edge_type/get` (default `hierarchy`) + `edge/create` | id, source, target, edgeTypeId, name |
 | `layer_placements_create` | `graph/layer/actors/manage` (create only) | nodes `{laId, actorId, position}`, edges `{laId, edgeId, laIdSource, laIdTarget}` |
@@ -120,15 +120,16 @@ step needs.
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
 | `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
-| `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready}` |
+| `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
 | `smart_form_release_get` | `release/get` | same release result |
 
 Flowchart: `flowchart_blocks_list` → `actor_create(formId, title, data)` per block → `layer_placements_create`
 nodes with the block's `layerSettings` → `edge_create` (`name` is the label) → `layer_placements_create`
 edges between the node `laId`s → `layer_get` to read it back. Smart Form: `smart_form_create` →
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its
-`ready: true` (status `active`, snapshot kept) is the contract sim-api relies on to put `appId` into the reply
-reaction with `appSettings.autorun`.
+`ready: true` (status `active`, snapshot kept, production env) comes with `marker: "smart-form: <appId>"`. The
+agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries
+no tool results) to put `appId` into the reply reaction with `appSettings.autorun`.
 
 ## Development and contracts
 

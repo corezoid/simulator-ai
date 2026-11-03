@@ -113,12 +113,15 @@ type SmartFormReleaseInput struct {
 
 // SmartFormRelease is the result contract the Console backend reads: Ready is true only when the
 // release is the active production content, so appId can be opened inline (appSettings.autorun).
+// Marker ("smart-form: <appId>", only when ready) is the line the agent ends its reply with: the
+// Hermes run stream carries no tool results, so sim-api finds the form in the final Markdown.
 type SmartFormRelease struct {
 	AppID         string `json:"appId"`
 	ReleaseID     int64  `json:"releaseId"`
 	ReleaseNumber int64  `json:"releaseNumber"`
 	Status        string `json:"status"`
 	Ready         bool   `json:"ready"`
+	Marker        string `json:"marker,omitempty"`
 }
 
 type appRequest struct {
@@ -267,8 +270,12 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 }
 
 func released(appID string, r Release) SmartFormRelease {
-	return SmartFormRelease{AppID: appID, ReleaseID: r.ID, ReleaseNumber: r.ReleaseNumber, Status: r.Status,
+	out := SmartFormRelease{AppID: appID, ReleaseID: r.ID, ReleaseNumber: r.ReleaseNumber, Status: r.Status,
 		Ready: r.Status == "active" && (r.PrunedByRetention == nil || !*r.PrunedByRetention)}
+	if out.Ready {
+		out.Marker = "smart-form: " + appID
+	}
+	return out
 }
 
 // ReleaseSmartForm deploys develop into production; production then serves this release.

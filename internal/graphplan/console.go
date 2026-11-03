@@ -19,14 +19,15 @@ type Block struct {
 }
 
 type Blocks struct {
-	List []Block `json:"list"`
+	List    []Block `json:"list"`
+	HasMore bool    `json:"hasMore"`
 }
 
 // ConsoleBlocks decodes catalog definitions; a malformed definition is skipped, never replaced
 // by a generic shape.
-func ConsoleBlocks(defs []publicapi.GraphBlock, full bool) Blocks {
-	out := Blocks{List: []Block{}}
-	for _, def := range defs {
+func ConsoleBlocks(catalog publicapi.GraphCatalog, full bool) Blocks {
+	out := Blocks{List: []Block{}, HasMore: catalog.HasMore}
+	for _, def := range catalog.List {
 		data, settings, err := decodeDefinition(def)
 		if err != nil {
 			continue
