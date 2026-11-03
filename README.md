@@ -51,8 +51,14 @@ mechanism. No default production endpoint or workspace is assumed:
 - `SIMULATOR_AI_ORIGIN`: explicit `https://your-simulator-origin.example` (origin only).
 - `SIMULATOR_AI_WORKSPACE`: workspace ID for the API user.
 - `SIMULATOR_AI_PROFILE`: `read` (default), `graph-read` (native graph metadata), `graph-create` (create-only graph operations), or
-  `smart-forms` (Smart Form writes), `reactions-read` (reaction statistics). Console `delegated-read` has separate setup.
+  `smart-forms` (Smart Form writes), `reactions-read` (reaction statistics), `console` (AI Console: `actor_get` and a
+  plain `actor_create` via public `actor/create`, no receipt key or contract preflight — sim-api deduplicates
+  Console retries). Console `delegated-read` has separate setup.
 - `SIMULATOR_AI_API_KEY`: API-user key; never paste it into chat, a tool call or committed config.
+- `SIMULATOR_AI_AUTHORIZATION`: instead of the API key, a complete `Authorization` header value —
+  `Bearer <token>`, `Simulator <jwt>` or `ApiKey <key>` — for a host that starts this process per request under
+  the requesting user's own credential (the Hermes relay in sim-api `docs/hermes-local.md`). Not with
+  `SIMULATOR_AI_API_KEY`, `SIMULATOR_AI_DELEGATED_TOKEN` or `delegated-read`.
 - `SIMULATOR_AI_ACTOR`: optional host-bound target for `reactions-read` or `graph-read`; exposes
   only the respective reaction/layer statistics tool with empty arguments. Leave unset for workspace mode.
 

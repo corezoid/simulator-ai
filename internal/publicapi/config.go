@@ -18,6 +18,10 @@ type Config struct {
 	ActorID        string
 	APIKey         string `json:"-"`
 	DelegatedToken string `json:"-"`
+	// Authorization is a complete header value, "Bearer <token>", "Simulator <jwt>" or
+	// "ApiKey <key>": the run initiator's own credential when a host (Hermes relay) starts this
+	// process per run. Exclusive with APIKey and DelegatedToken.
+	Authorization string `json:"-"`
 }
 
 func (c Config) String() string       { return "[Simulator AI configuration redacted]" }
@@ -25,15 +29,15 @@ func (c Config) GoString() string     { return c.String() }
 func (c Config) LogValue() slog.Value { return slog.StringValue(c.String()) }
 
 func LoadConfig(getenv func(string) string) (Config, error) {
-	c := Config{Origin: getenv("SIMULATOR_AI_ORIGIN"), Workspace: getenv("SIMULATOR_AI_WORKSPACE"), APIKey: getenv("SIMULATOR_AI_API_KEY"), Profile: getenv("SIMULATOR_AI_PROFILE"), ActorID: getenv("SIMULATOR_AI_ACTOR"), DelegatedToken: getenv("SIMULATOR_AI_DELEGATED_TOKEN")}
+	c := Config{Origin: getenv("SIMULATOR_AI_ORIGIN"), Workspace: getenv("SIMULATOR_AI_WORKSPACE"), APIKey: getenv("SIMULATOR_AI_API_KEY"), Profile: getenv("SIMULATOR_AI_PROFILE"), ActorID: getenv("SIMULATOR_AI_ACTOR"), DelegatedToken: getenv("SIMULATOR_AI_DELEGATED_TOKEN"), Authorization: getenv("SIMULATOR_AI_AUTHORIZATION")}
 	if err := c.validate(); err != nil {
 		return Config{}, err
 	}
 	return c, nil
 }
 func (c Config) validate() error {
-	if c.Profile != "" && c.Profile != "read" && c.Profile != "smart-forms" && c.Profile != "delegated-read" && c.Profile != "graph-read" && c.Profile != "graph-create" && c.Profile != "reactions-read" {
-		return errors.New("SIMULATOR_AI_PROFILE must be read, smart-forms, graph-read, graph-create, reactions-read or delegated-read")
+	if c.Profile != "" && c.Profile != "read" && c.Profile != "smart-forms" && c.Profile != "delegated-read" && c.Profile != "graph-read" && c.Profile != "graph-create" && c.Profile != "reactions-read" && c.Profile != "console" {
+		return errors.New("SIMULATOR_AI_PROFILE must be read, smart-forms, graph-read, graph-create, reactions-read, console or delegated-read")
 	}
 	if c.ActorID != "" && ((c.Profile != "reactions-read" && c.Profile != "graph-read") || len(c.ActorID) > 255 || strings.IndexFunc(c.ActorID, unicode.IsSpace) >= 0 || strings.IndexFunc(c.ActorID, unicode.IsControl) >= 0) {
 		return errors.New("SIMULATOR_AI_ACTOR requires reactions-read or graph-read and a nonempty actor ID up to 255 bytes without whitespace")
@@ -49,7 +53,16 @@ func (c Config) validate() error {
 		}
 	}
 	credential := c.APIKey
-	if c.Profile == "delegated-read" {
+	if c.Authorization != "" {
+		if c.APIKey != "" || c.DelegatedToken != "" || c.Profile == "delegated-read" {
+			return errors.New("SIMULATOR_AI_AUTHORIZATION excludes SIMULATOR_AI_API_KEY, SIMULATOR_AI_DELEGATED_TOKEN and the delegated-read profile")
+		}
+		scheme, token, ok := strings.Cut(c.Authorization, " ")
+		if !ok || (scheme != "Bearer" && scheme != "Simulator" && scheme != "ApiKey") {
+			return errors.New(`SIMULATOR_AI_AUTHORIZATION must be "Bearer <token>", "Simulator <jwt>" or "ApiKey <key>"`)
+		}
+		credential = token
+	} else if c.Profile == "delegated-read" {
 		if c.APIKey != "" || len(c.DelegatedToken) != 43 {
 			return errors.New("delegated-read requires only SIMULATOR_AI_DELEGATED_TOKEN; API key must be absent")
 		}
@@ -72,6 +85,9 @@ func (c Config) validate() error {
 func (c *Client) DelegatedReadEnabled() bool { return c.config.Profile == "delegated-read" }
 
 func (c Config) authorization() string {
+	if c.Authorization != "" {
+		return c.Authorization
+	}
 	if c.Profile == "delegated-read" {
 		return "Delegated " + c.DelegatedToken
 	}
