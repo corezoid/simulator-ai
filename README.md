@@ -32,7 +32,7 @@ change desktop configuration, provision a runtime or enable Console routing.
 API scopes are `actors.readonly` / `forms.readonly`, plus existing workspace and object ACLs.
 The server binds one explicit origin/workspace/key per process. Tools cannot supply another
 workspace, arbitrary RPC, URL, credentials or `with` expansion. Read requests are never
-coalesced with counts. No automatic retries, paid tests or remote MCP. Writes require the explicit `smart-forms` or `graph-create` profile.
+coalesced with counts. No automatic retries, paid tests or remote MCP. Writes require the explicit `smart-forms`, `graph-create` or `console` profile.
 
 ## Local setup
 
@@ -51,9 +51,8 @@ mechanism. No default production endpoint or workspace is assumed:
 - `SIMULATOR_AI_ORIGIN`: explicit `https://your-simulator-origin.example` (origin only).
 - `SIMULATOR_AI_WORKSPACE`: workspace ID for the API user.
 - `SIMULATOR_AI_PROFILE`: `read` (default), `graph-read` (native graph metadata), `graph-create` (create-only graph operations), or
-  `smart-forms` (Smart Form writes), `reactions-read` (reaction statistics), `console` (AI Console: `actor_get` and a
-  plain `actor_create` via public `actor/create`, no receipt key or contract preflight — sim-api deduplicates
-  Console retries). Console `delegated-read` has separate setup.
+  `smart-forms` (Smart Form writes), `reactions-read` (reaction statistics), `console` (AI Console, see
+  [below](#ai-console-profile)). Console `delegated-read` has separate setup.
 - `SIMULATOR_AI_API_KEY`: API-user key; never paste it into chat, a tool call or committed config.
 - `SIMULATOR_AI_AUTHORIZATION`: instead of the API key, a complete `Authorization` header value —
   `Bearer <token>`, `Simulator <jwt>` or `ApiKey <key>` — for a host that starts this process per request under
@@ -84,10 +83,52 @@ args = []
 env_vars = ["SIMULATOR_AI_ORIGIN", "SIMULATOR_AI_WORKSPACE", "SIMULATOR_AI_API_KEY", "SIMULATOR_AI_PROFILE", "SIMULATOR_AI_ACTOR"]
 ```
 
+Or register it from the command line. Claude Code starts stdio servers with its own environment, so
+export the `SIMULATOR_AI_*` variables in the shell that runs `claude`:
+
+```sh
+claude mcp add --scope user simulator-ai -- simulator-ai
+```
+
+Codex forwards only the variables named in `env_vars`: after `codex mcp add simulator-ai -- simulator-ai`
+add the `env_vars` line above to `[mcp_servers.simulator-ai]` in `~/.codex/config.toml`
+(include `SIMULATOR_AI_AUTHORIZATION` when you use it instead of the API key).
+
 Do not store a key in either example. Use the client's environment injection to supply it.
 Run `make client-smoke` to install into disposable Codex/Claude Code profiles and check real
 client loading against a scripted loopback API, without a model turn. See
 [client acceptance](docs/client-acceptance.md) for evidence and remaining live ACL/revoke gates.
+
+## AI Console profile
+
+`SIMULATOR_AI_PROFILE=console` is what Hermes runs per AI Console request under the initiator's own
+`SIMULATOR_AI_AUTHORIZATION`. It covers two Console answers: a flowchart drawn on a layer and a released
+Smart Form opened inline in the reply. Writes are plain public calls: no receipt keys and no contract
+preflight, because sim-api deduplicates Console retries. Each tool returns only ids and what the next
+step needs.
+
+| MCP tool | Public RPC | Result |
+| --- | --- | --- |
+| `actor_get` | `actor/get` | id, title, description, formId, status, ref |
+| `actor_create` / `actor_update` | `actor/create` / `actor/update` | same actor subset |
+| `flowchart_blocks_list` | `form/system/list` + `form/get` per block (until `form/flowchart-block/search` is public) | formId, title, blockId; with `blockIds` also ready `data` and `layerSettings` |
+| `layer_create` | `form/system/get` (`Layers`) + `actor/create` | layer actor |
+| `edge_create` | `edge_type/get` (default `hierarchy`) + `edge/create` | id, source, target, edgeTypeId, name |
+| `layer_placements_create` | `graph/layer/actors/manage` (create only) | nodes `{laId, actorId, position}`, edges `{laId, edgeId, laIdSource, laIdTarget}` |
+| `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
+| `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges, `hasMore` |
+| `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
+| `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources |
+| `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
+| `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready}` |
+| `smart_form_release_get` | `release/get` | same release result |
+
+Flowchart: `flowchart_blocks_list` → `actor_create(formId, title, data)` per block → `layer_placements_create`
+nodes with the block's `layerSettings` → `edge_create` (`name` is the label) → `layer_placements_create`
+edges between the node `laId`s → `layer_get` to read it back. Smart Form: `smart_form_create` →
+`smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its
+`ready: true` (status `active`, snapshot kept) is the contract sim-api relies on to put `appId` into the reply
+reaction with `appSettings.autorun`.
 
 ## Development and contracts
 
