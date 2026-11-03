@@ -31,8 +31,9 @@ is its child, and `config`, `locale`, `viewModel` are files inside `main`.
 The server validates on save and release. Matching schema/catalog support is required.
 
 This is a display-only starter, not a backend transaction example. Dynamic/business
-behavior requires the current catalog's binding/action contracts plus separately configured
-Corezoid logic. Do not put API keys or Corezoid credentials in view models or source files.
+behavior requires the current catalog's binding/action contracts. Native public operations
+can work without Corezoid: see [the single-use request pattern](native-request.md).
+Corezoid-backed behavior additionally requires separately configured process logic. Do not put API keys or Corezoid credentials in view models or source files.
 The public Smart Forms tools here intentionally do not execute `page/render` or
 `page/submit`: initialization itself can invoke a business process, and submit needs its
 own viewer/session/idempotency contract.

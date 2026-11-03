@@ -82,3 +82,11 @@ update) were checked; neither permits rekeying unresolved work or skipping curre
 Repeated file ids in one update are refused before even fetching the contract. The public
 backend can process repeated items sequentially, but such a receipt is ambiguous for this
 profile's one-result-per-file binding; rejection before writing avoids unrecoverable success.
+
+## Native viewer request workflow
+
+The portable skill includes a [single-use request pattern](../plugins/simulator-ai/skills/simulator-ai-smart-forms/references/native-request.md)
+and executable CDU fixture. It authors a new app through the same thirteen tools; the
+viewer runtime executes keyed public actor creation/recovery under its own session.
+No new MCP method, runtime delegation, credential, or Corezoid dependency is introduced.
+Domain/UI fixture verification is separate from model/Console end-to-end acceptance.

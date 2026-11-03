@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "2.0",
+  "id": "index",
+  "tree": {
+    "id": "request",
+    "type": "Form",
+    "props": {
+      "valueKey": "request",
+      "fields": [
+        {
+          "name": "title",
+          "label": "Request",
+          "required": true
+        }
+      ]
+    },
+    "children": [
+      {
+        "id": "layout",
+        "type": "Stack",
+        "children": [
+          {
+            "id": "title",
+            "type": "TextInput",
+            "props": {
+              "value": "{{vm.request.title}}",
+              "visibility": "{{(vm.busy or $exists(vm.pending) or $exists(vm.saved)) ? 'disabled' : 'visible'}}",
+              "label": "Request"
+            },
+            "actions": {
+              "onChange": [
+                {
+                  "type": "state",
+                  "path": "vm.request.title",
+                  "value": "{{$event.value}}",
+                  "mode": "set"
+                }
+              ]
+            }
+          },
+          {
+            "id": "submit",
+            "type": "Button",
+            "props": {
+              "title": "Submit request",
+              "visibility": "{{(vm.busy or $exists(vm.saved)) ? 'disabled' : 'visible'}}"
+            },
+            "actions": {
+              "onClick": [
+                {
+                  "type": "form.validate",
+                  "form": "request"
+                },
+                {
+                  "type": "if",
+                  "cond": "vm.valid.request and $not(vm.busy) and $not($exists(vm.saved))",
+                  "then": [
+                    {
+                      "type": "state",
+                      "path": "vm.busy",
+                      "value": true,
+                      "mode": "set"
+                    },
+                    {
+                      "type": "if",
+                      "cond": "$not($exists(vm.pending))",
+                      "then": [
+                        {
+                          "type": "state",
+                          "path": "vm.pending",
+                          "value": {
+                            "title": "{{vm.request.title}}"
+                          },
+                          "mode": "set"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "form.submit",
+                      "formId": "request",
+                      "via": "simapi",
+                      "simapiMethod": "actor/create",
+                      "simapiExtraParams": {
+                        "accId": "{{vm.workspaceId}}",
+                        "formId": "{{vm.targetFormId}}",
+                        "operationId": "{{vm.operationId}}",
+                        "title": "{{vm.pending.title}}",
+                        "data": {},
+                        "fields": ["id", "title"]
+                      },
+                      "onSuccess": [
+                        {
+                          "type": "state",
+                          "path": "vm.saved",
+                          "value": "{{$event.id}}",
+                          "mode": "set"
+                        },
+                        {
+                          "type": "state",
+                          "path": "vm.status",
+                          "value": "Request saved",
+                          "mode": "set"
+                        },
+                        {
+                          "type": "state",
+                          "path": "vm.busy",
+                          "value": false,
+                          "mode": "set"
+                        }
+                      ],
+                      "onError": [
+                        {
+                          "type": "state",
+                          "path": "vm.status",
+                          "value": "Result unconfirmed. Recover the saved request or retry unchanged.",
+                          "mode": "set"
+                        },
+                        {
+                          "type": "state",
+                          "path": "vm.busy",
+                          "value": false,
+                          "mode": "set"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "recover",
+            "type": "Button",
+            "props": {
+              "title": "Recover request",
+              "visibility": "{{(vm.busy or $exists(vm.saved)) ? 'disabled' : 'visible'}}"
+            },
+            "actions": {
+              "onClick": [
+                {
+                  "type": "form.submit",
+                  "formId": "request",
+                  "via": "simapi",
+                  "simapiMethod": "actor/operation/get",
+                  "simapiExtraParams": {
+                    "accId": "{{vm.workspaceId}}",
+                    "operationId": "{{vm.operationId}}",
+                    "fields": ["id", "title"]
+                  },
+                  "onSuccess": [
+                    {
+                      "type": "state",
+                      "mode": "set",
+                      "path": "vm.saved",
+                      "value": "{{$event.id}}"
+                    },
+                    {
+                      "type": "state",
+                      "mode": "set",
+                      "path": "vm.status",
+                      "value": "Request recovered"
+                    }
+                  ],
+                  "onError": [
+                    {
+                      "type": "state",
+                      "path": "vm.status",
+                      "value": "No confirmed result. Keep the original operation key.",
+                      "mode": "set"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "status",
+            "type": "Label",
+            "props": {
+              "text": "{{vm.status}}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

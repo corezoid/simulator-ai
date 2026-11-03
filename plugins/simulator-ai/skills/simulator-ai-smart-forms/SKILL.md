@@ -27,15 +27,18 @@ into sources. Do not switch to legacy/private RPC when a capability is unavailab
    For components beyond the verified starter, consult the matching current CDU catalog;
    do not invent properties or reuse legacy grid/forms syntax. This profile does not yet
    supply a full catalog tool. A missing catalog blocks only components that need it.
-5. Reuse existing pages/config files. Create missing folders with
+5. For a single-use native actor request, use [the executable request pattern](references/native-request.md)
+   and its page fixture. It avoids Corezoid and uses viewer-side keyed public writes; do not
+   generalize its one-request-per-viewer semantics to a multi-request workflow.
+6. Reuse existing pages/config files. Create missing folders with
    `application_folders_create`, then files with `application_files_create`. Titles are
    not unique: receipts prevent duplicate retries, not writes with different keys.
-6. For edits, use `application_files_update` with the original `sourceHash` as
+7. For edits, use `application_files_update` with the original `sourceHash` as
    `ifMatchHash` for every file, and `environmentPreconditions` for every source/destination
    environment. Send current `title` and `type` to preserve them. Omit source to preserve
    it; `""` explicitly clears it. All items of a call are atomic. After each successful
    write, refresh snapshots before the next distinct write; the old hashes are stale.
-7. Backend save validation rejects invalid CDU configs; release validation also resolves
+8. Backend save validation rejects invalid CDU configs; release validation also resolves
    fragments and validates routes/protocol consistency. A save success alone does not
    prove a runnable app. Inspect the committed source before publishing.
 
