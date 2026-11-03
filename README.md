@@ -131,6 +131,26 @@ edges between the node `laId`s → `layer_get` to read it back. Smart Form: `sma
 agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries
 no tool results) to put `appId` into the reply reaction with `appSettings.autorun`.
 
+### Live smoke on a local stand
+
+`make smoke SIM_API_DIR=<sim-api checkout> WORKSPACE=<workspace id>` first runs sim-api's
+`make ai-smoke-env`, which creates or finds a workspace API user and key (or a short seed-user session) on the
+local stand and writes `~/.config/simulator-ai/smoke.env` (`SIMULATOR_AI_ORIGIN`, `SIMULATOR_AI_WORKSPACE`,
+`SIMULATOR_AI_API_KEY` or `SIMULATOR_AI_AUTHORIZATION`, mode 0600). It then builds the binary and runs
+`cmd/console-smoke` over stdio: a layer with Start / Process / End blocks, two labelled edges and their
+placements read back with `layer_get`, then a Smart Form with a field and a submit button, released and
+read back as `ready`. Each run creates new objects in that workspace; nothing secret is printed.
+
+The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:
+
+```sh
+set -a; . ~/.config/simulator-ai/smoke.env; set +a; export SIMULATOR_AI_PROFILE=read
+claude mcp add --scope user simulator-ai -- simulator-ai   # once; then run `claude`
+codex mcp add simulator-ai -- simulator-ai                 # once; add env_vars (above) incl. SIMULATOR_AI_AUTHORIZATION, then run `codex`
+```
+
+`claude mcp list` shows `simulator-ai ... ✔ Connected`; ask either agent for `actor_get` of a known actor.
+
 ## Development and contracts
 
 [contracts/source.json](contracts/source.json) pins the source commit and complete public
