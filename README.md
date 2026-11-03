@@ -112,9 +112,10 @@ step needs.
 | `actor_get` | `actor/get` | id, title, description, formId, status, ref |
 | `actor_create` / `actor_update` | `actor/create` / `actor/update` | same actor subset |
 | `flowchart_blocks_list` | `form/flowchart-block/search` | formId, title, blockId, `hasMore`; with `blockIds` also ready `data` and `layerSettings` |
+| `flowchart_layout` | `form/flowchart-block/search` (read-only) | per node formId, data, grid position and layerSettings; `returnEdges` |
 | `layer_create` | `form/system/get` (`Layers`) + `actor/create` | layer actor |
 | `edge_create` | `edge_type/get` (default `hierarchy`) + `edge/create` | id, source, target, edgeTypeId, name |
-| `layer_placements_create` | `graph/layer/actors/manage` (create only) | nodes `{laId, actorId, position}`, edges `{laId, edgeId, laIdSource, laIdTarget}` |
+| `layer_placements_create` | `graph/layer/actors/manage` (create only); a flowchart node is border-snapped and gets the block's `areaPicture` | nodes `{laId, actorId, position}`, edges `{laId, edgeId, laIdSource, laIdTarget}` |
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
 | `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges, `hasMore` |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
@@ -123,9 +124,15 @@ step needs.
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
 | `smart_form_release_get` | `application/env/list` + `release/get` | same release result |
 
-Flowchart: `flowchart_blocks_list` → `actor_create(formId, title, data)` per block → `layer_placements_create`
-nodes with the block's `layerSettings` → `edge_create` (`name` is the label) → `layer_placements_create`
-edges between the node `laId`s → `layer_get` to read it back. Smart Form: `smart_form_create` →
+Flowchart: `flowchart_blocks_list` (kinds) → `flowchart_layout(nodes, edges)` → `actor_create(formId, title,
+color, data)` per node → `layer_placements_create` nodes with the layout's `position`, `layerSettings` and the same
+`color` → `edge_create` (`name` is the label) → `layer_placements_create` edges between the node `laId`s →
+`layer_get` to read it back. Geometry follows Graph Editor: a cell is 50 units and grid lines lie on cell
+boundaries (25 + 50k); a position is the block centre and a block's top-left corner sits on a grid line, so a
+block of whole cells fills whole cells. The layout ranks nodes top to bottom (loop-back edges excluded from
+ranking) with three free cells between blocks and ranks. Like the editor, the placement carries the block
+silhouette as `areaPicture`, which makes it graphic, so sim-api keeps that position instead of snapping the centre
+to a multiple of 50 (half a cell off for even-sized blocks). Smart Form: `smart_form_create` →
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its
 `ready: true` (status `active`, snapshot kept, production env) comes with `marker: "smart-form: <appId>"`. The
 agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries

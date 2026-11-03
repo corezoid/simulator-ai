@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 )
 
 type block struct {
@@ -21,8 +22,9 @@ type id struct {
 	ID string `json:"id"`
 }
 
-// graph: layer -> Start / Process / End blocks -> node placements -> two labelled edges -> edge
-// placements -> layer_get readback.
+// graph: layer -> flowchart_layout of Start, Decision, two Process branches and End -> blocks ->
+// node placements -> labelled edges -> edge placements -> layer_get, checking that every block
+// stays where the layout put it: corners on grid lines (25 + 50k), so it fills whole cells.
 func graph(c *client, stamp string) error {
 	var layer id
 	if err := c.tool("layer_create", map[string]any{"title": "AI smoke flowchart " + stamp}, &layer); err != nil {
@@ -36,28 +38,54 @@ func graph(c *client, stamp string) error {
 	for _, b := range catalog.List {
 		kinds[b.Title] = b.BlockID
 	}
-	start, step := kinds["Start / Stop"], kinds["Process"]
-	if start == "" || step == "" {
-		return fmt.Errorf("workspace catalog has no Start / Stop or Process block")
+	for _, title := range []string{"Start / Stop", "Process", "Decision"} {
+		if kinds[title] == "" {
+			return fmt.Errorf("workspace catalog has no %s block", title)
+		}
 	}
-	var full blocks
-	if err := c.tool("flowchart_blocks_list", map[string]any{"blockIds": []string{start, step}}, &full); err != nil {
+	plan := []struct{ key, title, kind, color string }{
+		{"start", "Start", kinds["Start / Stop"], "#17B26A"}, {"check", "Approved?", kinds["Decision"], "#F79009"},
+		{"yes", "Book leave", kinds["Process"], "#539fdf"}, {"no", "Notify employee", kinds["Process"], "#F04438"},
+		{"end", "End", kinds["Start / Stop"], "#17B26A"}}
+	links := []struct{ source, target, name string }{{"start", "check", "request"}, {"check", "yes", "yes"}, {"check", "no", "no"}, {"yes", "end", ""}, {"no", "end", ""}}
+	var nodesIn, edgesIn []map[string]any
+	for _, p := range plan {
+		nodesIn = append(nodesIn, map[string]any{"key": p.key, "blockId": p.kind})
+	}
+	for _, l := range links {
+		edgesIn = append(edgesIn, map[string]any{"source": l.source, "target": l.target})
+	}
+	var laid struct {
+		Nodes []struct {
+			FormID        int64           `json:"formId"`
+			Data          json.RawMessage `json:"data"`
+			Position      struct{ X, Y float64 }
+			LayerSettings struct {
+				Width  float64 `json:"width"`
+				Height float64 `json:"height"`
+			} `json:"layerSettings"`
+		} `json:"nodes"`
+	}
+	var raw struct {
+		Nodes []struct {
+			LayerSettings json.RawMessage `json:"layerSettings"`
+		} `json:"nodes"`
+	}
+	if err := c.tool("flowchart_layout", map[string]any{"nodes": nodesIn, "edges": edgesIn}, &laid); err != nil {
 		return err
 	}
-	defs := map[string]block{}
-	for _, b := range full.List {
-		defs[b.BlockID] = b
+	if err := c.reuse(&raw); err != nil {
+		return err
 	}
-	plan := []struct{ title, kind, color string }{{"Start", start, "#17B26A"}, {"Fill request", step, "#539fdf"}, {"End", start, "#17B26A"}}
-	actors := make([]string, len(plan))
-	nodes := make([]map[string]any, len(plan))
+	actors, nodes := map[string]string{}, []map[string]any{}
 	for i, p := range plan {
 		var a id
-		if err := c.tool("actor_create", map[string]any{"formId": defs[p.kind].FormID, "title": p.title, "color": p.color, "data": defs[p.kind].Data}, &a); err != nil {
+		n := laid.Nodes[i]
+		if err := c.tool("actor_create", map[string]any{"formId": n.FormID, "title": p.title, "color": p.color, "data": n.Data}, &a); err != nil {
 			return err
 		}
-		actors[i] = a.ID
-		nodes[i] = map[string]any{"actorId": a.ID, "position": map[string]any{"x": 0, "y": 200 * i}, "layerSettings": defs[p.kind].LayerSettings}
+		actors[p.key] = a.ID
+		nodes = append(nodes, map[string]any{"actorId": a.ID, "position": map[string]any{"x": n.Position.X, "y": n.Position.Y}, "layerSettings": raw.Nodes[i].LayerSettings, "color": p.color})
 	}
 	var placed struct {
 		Nodes []struct {
@@ -73,12 +101,12 @@ func graph(c *client, stamp string) error {
 		la[n.ActorID] = n.LaID
 	}
 	var edges []map[string]any
-	for i, label := range []string{"begin", "done"} {
+	for _, l := range links {
 		var e id
-		if err := c.tool("edge_create", map[string]any{"source": actors[i], "target": actors[i+1], "name": label}, &e); err != nil {
+		if err := c.tool("edge_create", map[string]any{"source": actors[l.source], "target": actors[l.target], "name": l.name}, &e); err != nil {
 			return err
 		}
-		edges = append(edges, map[string]any{"edgeId": e.ID, "laIdSource": la[actors[i]], "laIdTarget": la[actors[i+1]]})
+		edges = append(edges, map[string]any{"edgeId": e.ID, "laIdSource": la[actors[l.source]], "laIdTarget": la[actors[l.target]]})
 	}
 	var ignored json.RawMessage
 	if err := c.tool("layer_placements_create", map[string]any{"layerId": layer.ID, "edges": edges}, &ignored); err != nil {
@@ -86,21 +114,31 @@ func graph(c *client, stamp string) error {
 	}
 	var view struct {
 		Nodes []struct {
-			BlockID string `json:"blockId"`
+			ActorID  string `json:"actorId"`
+			BlockID  string `json:"blockId"`
+			Position struct{ X, Y float64 }
 		} `json:"nodes"`
-		Edges []struct {
-			Name string `json:"name"`
-		} `json:"edges"`
+		Edges []json.RawMessage `json:"edges"`
 	}
 	if err := c.tool("layer_get", map[string]any{"layerId": layer.ID}, &view); err != nil {
 		return err
 	}
-	if len(view.Nodes) != 3 || len(view.Edges) != 2 {
-		return fmt.Errorf("layer readback has %d nodes and %d edges, want 3 and 2", len(view.Nodes), len(view.Edges))
+	if len(view.Nodes) != len(plan) || len(view.Edges) != len(links) {
+		return fmt.Errorf("layer readback has %d nodes and %d edges, want %d and %d", len(view.Nodes), len(view.Edges), len(plan), len(links))
 	}
+	want := map[string]int{}
+	for i, p := range plan {
+		want[actors[p.key]] = i
+	}
+	onLine := func(v float64) bool { return math.Mod(math.Abs(v-25), 50) == 0 }
 	for _, n := range view.Nodes {
-		if n.BlockID == "" {
-			return fmt.Errorf("a node placement has no flowchart blockId")
+		l := laid.Nodes[want[n.ActorID]]
+		if n.BlockID == "" || n.Position != l.Position {
+			return fmt.Errorf("block %s stored at %v, laid out at %v", n.ActorID, n.Position, l.Position)
+		}
+		w, h := l.LayerSettings.Width, l.LayerSettings.Height
+		if !onLine(n.Position.X-w/2) || !onLine(n.Position.Y-h/2) || !onLine(n.Position.X+w/2) || !onLine(n.Position.Y+h/2) {
+			return fmt.Errorf("block %s at %v (%vx%v) is off the grid", n.ActorID, n.Position, w, h)
 		}
 	}
 	fmt.Println("OK graph layer", layer.ID)

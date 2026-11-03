@@ -34,11 +34,14 @@ type edgeCreateRequest struct {
 	ForceDirection bool `json:"forceDirection"`
 }
 
-// NodePlacement places an existing actor; LayerSettings is set for native flowchart blocks.
+// NodePlacement places an existing actor; LayerSettings is set for native flowchart blocks, whose
+// Color paints the AreaPicture the console tool derives from the block shape (never tool input).
 type NodePlacement struct {
 	ActorID       string               `json:"actorId"`
 	Position      GraphPoint           `json:"position"`
 	LayerSettings *GraphNativeSettings `json:"layerSettings,omitempty"`
+	Color         string               `json:"color,omitempty"`
+	AreaPicture   *GraphAreaPicture    `json:"-"`
 }
 
 // EdgePlacement draws an existing edge between two node placements of the same layer.
@@ -211,7 +214,7 @@ func (c *Client) CreatePlacements(ctx context.Context, in PlacementsCreateInput)
 			return GraphCreatedPlacements{}, errors.New("node placement needs actorId")
 		}
 		pos := p.Position
-		items = append(items, GraphPlacementItem{Action: "create", Data: GraphPlacementData{ID: p.ActorID, Type: "node", Position: &pos, LayerSettings: p.LayerSettings}})
+		items = append(items, GraphPlacementItem{Action: "create", Data: GraphPlacementData{ID: p.ActorID, Type: "node", Position: &pos, LayerSettings: p.LayerSettings, AreaPicture: p.AreaPicture}})
 	}
 	for _, p := range in.Edges {
 		if !validID(p.EdgeID) || p.LaIDSource < 1 || p.LaIDTarget < 1 {

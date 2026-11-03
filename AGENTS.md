@@ -15,7 +15,7 @@ The opt-in smart-forms profile adds thirteen typed public tools with mandatory r
 keys/CAS and backend contract preflight. No OAuth, remote MCP or full legacy parity claim. Capability additions require
 source schemas, named parity mapping, ACL/error/side-effect/recovery tests and docs.
 The console profile is run by Hermes per AI Console request under the initiator's own
-SIMULATOR_AI_AUTHORIZATION: fifteen plain public tools for a flowchart on a layer and a released
+SIMULATOR_AI_AUTHORIZATION: sixteen plain public tools for a grid-aligned flowchart on a layer and a released
 Smart Form (README lists them). Writes carry no receipt keys or contract preflight because sim-api
 deduplicates Console retries; errors include the server's bounded message so the agent can fix input.
 The separate reactions-read profile adds reaction_stats_get to the three metadata reads;

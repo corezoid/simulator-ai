@@ -12,7 +12,7 @@ import (
 	"github.com/corezoid/simulator-ai/internal/publicapi"
 )
 
-const blockForm = `{"sections":[{"content":[{"id":"blockId","value":"process"},{"id":"collection","value":"basic"},{"id":"view","value":"{\"shape\":{\"type\":\"path\",\"d\":\"M0 0H1\"},\"size\":{\"w\":120,\"h\":60},\"textFrame\":{\"x\":0,\"y\":0,\"w\":120,\"h\":60}}"}]}]}`
+const blockForm = `{"sections":[{"content":[{"id":"blockId","value":"process"},{"id":"collection","value":"basic"},{"id":"view","value":"{\"shape\":{\"type\":\"path\",\"d\":\"M0 0H1\"},\"size\":{\"w\":200,\"h\":100},\"textFrame\":{\"x\":0,\"y\":0,\"w\":200,\"h\":100}}"}]}]}`
 
 // consoleReplies are canned public results by method, shaped like sim-api answers.
 var consoleReplies = map[string]string{
@@ -106,11 +106,11 @@ func TestConsoleCatalog(t *testing.T) {
 			t.Errorf("%s output schema types open JSON as bytes", tool.Name)
 		}
 	}
-	want := "actor_create,actor_get,actor_update,edge_create,flowchart_blocks_list,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
+	want := "actor_create,actor_get,actor_update,edge_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
 	if strings.Join(names, ",") != want {
 		t.Fatal("console tools:", names)
 	}
-	for _, name := range []string{"actor_get", "flowchart_blocks_list", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
+	for _, name := range []string{"actor_get", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
 		if !reads[name] {
 			t.Errorf("%s must be read-only", name)
 		}
@@ -130,10 +130,18 @@ func TestConsoleRequests(t *testing.T) {
 		{"actor_create", `{"formId":5,"title":"Start","color":"#17B26A","data":{"__form__6:blockId":"process"}}`, "actor/create", `"color":"#17B26A","data":{"__form__6:blockId":"process"}`, `"id":"a1"`},
 		{"actor_update", `{"actorId":"a1","title":"Renamed"}`, "actor/update", `"actorId":"a1","fields":["id","title","description","formId","status","ref"],"title":"Renamed"`, `"title":"Renamed"`},
 		{"flowchart_blocks_list", `{"query":" proc ","offset":100}`, "form/flowchart-block/search", `"accId":"ws","limit":100,"offset":100,"query":"proc"`, `"list":[{"formId":5,"title":"Process","blockId":"process","collection":"basic"}],"hasMore":false`},
-		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/flowchart-block/search", `"blockIds":["process"]`, `"layerSettings":{"width":120,"height":60,"blockId":"process"`},
+		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/flowchart-block/search", `"blockIds":["process"]`, `"layerSettings":{"width":200,"height":100,"blockId":"process"`},
 		{"layer_create", `{"title":"Flow"}`, "form/system/get,actor/create", `"data":{},"fields"`, `"id":"a1"`},
 		{"edge_create", `{"source":"a1","target":"a2","name":"yes"}`, "edge_type/get,edge/create", `"edgeTypeId":3,"forceDirection":true,"name":"yes","source":"a1","target":"a2"`, `"id":"e1"`},
 		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":0,"y":0}}]}`, "graph/layer/actors/manage", `"actorId":"L","items":[{"action":"create","data":{"id":"a1","position":{"x":0,"y":0},"type":"node"}}]`, `"laId":11`},
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","color":"#539fdf","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "graph/layer/actors/manage",
+			`"data":{"areaPicture":{"height":100,"img":"data:image/svg+xml;base64,`, `"laId":11`},
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "graph/layer/actors/manage",
+			`"position":{"x":25,"y":25},"type":"node"`, `"laId":11`},
+		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"blockIds":["process"]`,
+			`"key":"b","blockId":"process","formId":5,"data":{"__form__6:blockId":"process"`},
+		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"limit":100`,
+			`"position":{"x":-25,"y":325},"layerSettings":{"width":200,"height":100,"blockId":"process"`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"x":150,"y":0}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":150,"y":0}}]`, `"updated":1`},
 		{"layer_get", `{"layerId":"L"}`, "graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":0,"y":0},"blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
 		{"smart_form_create", `{"ref":"leave_form","title":"Leave request","sharedWith":"allWorkspaceUsers"}`, "application/create", `"cduVersion":2,"ref":"leave_form","sharedWith":"allWorkspaceUsers"`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},

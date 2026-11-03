@@ -109,61 +109,14 @@ func Build(p Input, catalog []publicapi.GraphBlock) (Plan, error) {
 // The resulting DAG's longest paths place merges after every forward predecessor.
 // Input order breaks ties; row packing uses actual native sizes and a 150-unit gap.
 func layout(p *Plan) {
-	index := map[string]int{}
+	keys := make([]string, len(p.Nodes))
 	for i, n := range p.Nodes {
-		index[n.Key] = i
+		keys[i] = n.Key
 	}
-	adjacency := make([][]int, len(p.Nodes))
-	for i, e := range p.Edges {
-		adjacency[index[e.Source]] = append(adjacency[index[e.Source]], i)
-	}
-	state := make([]int, len(p.Nodes))
-	back := make([]bool, len(p.Edges))
-	var visit func(int)
-	visit = func(n int) {
-		state[n] = 1
-		for _, i := range adjacency[n] {
-			target := index[p.Edges[i].Target]
-			if state[target] == 1 {
-				back[i] = true
-			} else if state[target] == 0 {
-				visit(target)
-			}
-		}
-		state[n] = 2
-	}
-	for i := range p.Nodes {
-		if state[i] == 0 {
-			visit(i)
-		}
-	}
-	indegree := make([]int, len(p.Nodes))
-	rank := make([]int, len(p.Nodes))
+	rank, back := ranks(keys, p.Edges)
 	for i, e := range p.Edges {
 		if back[i] {
 			p.ReturnEdges = append(p.ReturnEdges, e.Key)
-		} else {
-			indegree[index[e.Target]]++
-		}
-	}
-	queue := []int{}
-	for i := range p.Nodes {
-		if indegree[i] == 0 {
-			queue = append(queue, i)
-		}
-	}
-	for head := 0; head < len(queue); head++ {
-		n := queue[head]
-		for _, i := range adjacency[n] {
-			if back[i] {
-				continue
-			}
-			target := index[p.Edges[i].Target]
-			rank[target] = max(rank[target], rank[n]+1)
-			indegree[target]--
-			if indegree[target] == 0 {
-				queue = append(queue, target)
-			}
 		}
 	}
 	const gap = 150.0
@@ -188,4 +141,65 @@ func layout(p *Plan) {
 		}
 		y += h + gap
 	}
+}
+
+// ranks returns each node's longest-path rank over the edges, and which edges are DFS back edges
+// (return links), excluded from ranking only. Edge endpoints are node keys.
+func ranks(keys []string, edges []Edge) ([]int, []bool) {
+	index := map[string]int{}
+	for i, k := range keys {
+		index[k] = i
+	}
+	adjacency := make([][]int, len(keys))
+	for i, e := range edges {
+		adjacency[index[e.Source]] = append(adjacency[index[e.Source]], i)
+	}
+	state := make([]int, len(keys))
+	back := make([]bool, len(edges))
+	var visit func(int)
+	visit = func(n int) {
+		state[n] = 1
+		for _, i := range adjacency[n] {
+			target := index[edges[i].Target]
+			if state[target] == 1 {
+				back[i] = true
+			} else if state[target] == 0 {
+				visit(target)
+			}
+		}
+		state[n] = 2
+	}
+	for i := range keys {
+		if state[i] == 0 {
+			visit(i)
+		}
+	}
+	indegree := make([]int, len(keys))
+	rank := make([]int, len(keys))
+	for i, e := range edges {
+		if !back[i] {
+			indegree[index[e.Target]]++
+		}
+	}
+	queue := []int{}
+	for i := range keys {
+		if indegree[i] == 0 {
+			queue = append(queue, i)
+		}
+	}
+	for head := 0; head < len(queue); head++ {
+		n := queue[head]
+		for _, i := range adjacency[n] {
+			if back[i] {
+				continue
+			}
+			target := index[edges[i].Target]
+			rank[target] = max(rank[target], rank[n]+1)
+			indegree[target]--
+			if indegree[target] == 0 {
+				queue = append(queue, target)
+			}
+		}
+	}
+	return rank, back
 }

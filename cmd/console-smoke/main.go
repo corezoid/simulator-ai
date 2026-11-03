@@ -17,9 +17,10 @@ import (
 )
 
 type client struct {
-	in  *json.Encoder
-	out *bufio.Scanner
-	seq int
+	in   *json.Encoder
+	out  *bufio.Scanner
+	seq  int
+	last json.RawMessage
 }
 
 func (c *client) rpc(method string, params any) (json.RawMessage, error) {
@@ -71,8 +72,12 @@ func (c *client) tool(name string, args map[string]any, out any) error {
 		shown = shown[:400] + "…"
 	}
 	fmt.Printf("%s: %s\n", name, shown)
+	c.last = r.Structured
 	return json.Unmarshal(r.Structured, out)
 }
+
+// reuse decodes the previous tool result again into another shape.
+func (c *client) reuse(out any) error { return json.Unmarshal(c.last, out) }
 
 func main() {
 	bin := flag.String("bin", "bin/simulator-ai", "simulator-ai binary")
