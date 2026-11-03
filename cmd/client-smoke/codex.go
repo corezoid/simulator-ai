@@ -182,6 +182,27 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		}
 		e.CodexLayerStats = true
 	}
+	if e.Profile == "graph-read" {
+		for offset := 0; offset < 2; offset++ {
+			args := map[string]any{"isSystem": false, "filter": "id,name,userId", "limit": 1, "offset": offset}
+			if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "graph_edge_types_list", "arguments": args}, &call); err != nil {
+				return err
+			}
+			var page struct {
+				List []map[string]json.RawMessage `json:"list"`
+			}
+			if call.IsError || json.Unmarshal(call.StructuredContent, &page) != nil || page.List == nil || len(page.List) != 1-offset {
+				return errors.New("Codex edge type paging failed")
+			}
+			if offset == 0 {
+				row := page.List[0]
+				if len(row) != 3 || string(row["id"]) != "2" || string(row["name"]) != `"Synthetic custom"` || string(row["userId"]) != "null" {
+					return errors.New("Codex edge type projection/null failed")
+				}
+			}
+		}
+		e.CodexEdgeTypes = true
+	}
 	if e.Profile == "smart-forms" {
 		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "application_create", "arguments": map[string]string{"operationId": "smoke-create-1", "ref": "smoke-app", "title": "Smoke app"}}, &call); err != nil {
 			return err

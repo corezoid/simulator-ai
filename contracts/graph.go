@@ -63,7 +63,14 @@ func initializeGraph() {
 				param.Schema["items"] = map[string]any{"type": "string", "minLength": 1, "maxLength": 128}
 			case "title":
 				param.Schema["enum"] = []string{"Graphs", "Layers", "FlowchartBlock"}
+			case "isSystem":
+				param.Schema["description"] = "Omit for all types; true selects system and false selects custom types before pagination. MCP requires a boolean when supplied, not null."
 			}
+		}
+		if method.Name == "edge_type/list" {
+			// Legacy filterData is an MCP projection after full-row validation,
+			// not a public RPC parameter that could remove identity evidence.
+			properties["filter"] = map[string]any{"type": "string", "maxLength": 512, "description": "Comma-separated exact fields: id,name,accId,userId,isSystem,createdAt,isTree. Omit or empty for all; unknown names ignored; spaces not trimmed. Applies after pagination."}
 		}
 		schema := map[string]any{"type": "object", "properties": properties, "required": required, "additionalProperties": false}
 		raw, err := json.Marshal(schema)

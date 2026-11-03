@@ -7,7 +7,7 @@ key documented in the README. Workspace mode has the three default reads plus th
 | --- | --- | --- | --- |
 | `flowchart_blocks_search` | `form/flowchart-block/search` | `forms.readonly` | Browse `query`, `collection`, `quickOnly`, `limit`, `offset`; or exact `blockIds`. Returns `list` and `hasMore`, child/root IDs, native kind, title and full form definition. |
 | `graph_system_form_get` | `form/system/get` | `forms.readonly` | `title` is exactly `Graphs`, `Layers` or `FlowchartBlock`. Returns id/title/type/form; no editor token or owner identity. |
-| `graph_edge_types_list` | `edge_type/list` | `actors.readonly` | Optional limit/offset; returns id/name/isSystem/isTree. No account/user identity or timestamps. |
+| `graph_edge_types_list` | `edge_type/list` | `actors.readonly` | Optional isSystem/filter/limit/offset; returns selected id/name/accId/userId/isSystem/createdAt/isTree. Unrecorded creator is null. See [edge-type parity](edge-types.md). |
 | `graph_layer_stats_get` | `graph/layer/stats/get` | `actors.readonly` | Layer actorId; six recipient-eligible placement/hole counters. Host-bound graph-read accepts only `{}` and exposes only this tool. |
 
 The host binds workspace and credential. Unknown properties, credentials, workspace changes,
@@ -23,8 +23,9 @@ omit it for browsing. Duplicate requested IDs are deduplicated by the API, missi
 are omitted, and exact lookup returns `hasMore=false`. Exact selection ignores browse
 filters and pagination after validating them. An explicit empty array is rejected by the
 MCP profile to prevent an accidental broad read. Edge-type pages default to 50, maximum
-100. No total or fabricated completion flag is added to edge pages; offset pages are not
-stable snapshots during concurrent edits. Input is bounded to 32 KiB and existing transport
+100. Edge pages sort by ascending id, with isSystem filtering before pagination; a short or
+empty page ends an unchanged collection. No total or fabricated completion flag is added;
+offset pages are not stable snapshots during concurrent edits. Input is bounded to 32 KiB and existing transport
 limits/cancellation apply. There are no automatic retries or internal endpoint fallbacks.
 
 The client refuses malformed identities, missing catalog `hasMore`, null lists, contradictory
@@ -48,6 +49,7 @@ write permission, or proof that the current user may create actors under that te
 {"name":"flowchart_blocks_search","arguments":{"blockIds":["actual-kind-from-search"]}}
 {"name":"graph_system_form_get","arguments":{"title":"Layers"}}
 {"name":"graph_edge_types_list","arguments":{"limit":50,"offset":0}}
+{"name":"graph_edge_types_list","arguments":{"isSystem":false,"filter":"id,name,isTree","limit":50,"offset":0}}
 ```
 
 This supplies native metadata needed by the legacy `getForms`, `createActor` and
@@ -59,13 +61,13 @@ Hermes. No model turn, billing delivery or private Console routing is enabled he
 ## Contract source and checks
 
 `contracts/graph-source.json` records reviewed sim-api revision
-`0178ed493ecc5e24b389c57d596fd22b48e618c9` and the projected artifact digest.
+`855a30bfe10938935cba2a05c25f317a5e4b306c` and the projected artifact digest.
 Export public OpenRPC from that reviewed local revision, then refresh only these descriptors:
 
 ```sh
 GOMAXPROCS=2 go run -p=1 ./cmd/gen-graph-contract \
   -input /absolute/path/to/public-openrpc.json \
-  -revision 0178ed493ecc5e24b389c57d596fd22b48e618c9
+  -revision 855a30bfe10938935cba2a05c25f317a5e4b306c
 ```
 
 Record the printed revision/digest in `graph-source.json`; review schemas, named DTOs and

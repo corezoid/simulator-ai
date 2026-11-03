@@ -92,28 +92,6 @@ func (c *Client) GetGraphSystemForm(ctx context.Context, p GraphSystemFormInput)
 	return r, err
 }
 
-func (c *Client) ListGraphEdgeTypes(ctx context.Context, p GraphEdgeTypesInput) (GraphEdgeTypes, error) {
-	if p.Limit == nil {
-		limit := int64(50)
-		p.Limit = &limit
-	}
-	r, err := graphCall[GraphEdgeTypesInput, GraphEdgeTypes](ctx, c, "edge_type/list", p)
-	if err != nil {
-		return GraphEdgeTypes{}, err
-	}
-	if r.List == nil || int64(len(r.List)) > *p.Limit {
-		return GraphEdgeTypes{}, errors.New("invalid edge type page")
-	}
-	seen := map[int64]bool{}
-	for _, item := range r.List {
-		if item.ID < 1 || strings.TrimSpace(item.Name) == "" || item.IsSystem == nil || item.IsTree == nil || seen[item.ID] {
-			return GraphEdgeTypes{}, errors.New("invalid edge type identity")
-		}
-		seen[item.ID] = true
-	}
-	return r, nil
-}
-
 func jsonObject(raw json.RawMessage) bool {
 	raw = bytes.TrimSpace(raw)
 	return len(raw) > 1 && raw[0] == '{' && json.Valid(raw)

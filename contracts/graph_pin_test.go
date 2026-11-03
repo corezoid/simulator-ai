@@ -23,7 +23,7 @@ func TestGraphSourcePin(t *testing.T) {
 	if err = json.Unmarshal(raw, &source); err != nil {
 		t.Fatal(err)
 	}
-	if source.Revision != "0178ed493ecc5e24b389c57d596fd22b48e618c9" || source.Digest != fmt.Sprintf("%x", sha256.Sum256(GraphReads)) || source.Methods != 3 {
+	if source.Revision != "855a30bfe10938935cba2a05c25f317a5e4b306c" || source.Digest != fmt.Sprintf("%x", sha256.Sum256(GraphReads)) || source.Methods != 3 {
 		t.Fatal("graph contract source pin drift")
 	}
 	var document struct {

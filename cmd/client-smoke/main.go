@@ -27,6 +27,7 @@ type evidence struct {
 	CodexRead                bool   `json:"codexRead"`
 	CodexReactionStats       bool   `json:"codexReactionStats"`
 	CodexLayerStats          bool   `json:"codexLayerStats"`
+	CodexEdgeTypes           bool   `json:"codexEdgeTypes"`
 	ClaudeInstall            bool   `json:"claudeInstall"`
 	ClaudeSkill              bool   `json:"claudeSkill"`
 	ClaudeMCP                bool   `json:"claudeMCP"`
@@ -114,8 +115,10 @@ func smoke(root, profile string) (evidence, error) {
 	}
 	result.RejectedTokenCountProbes = f.tokenCountProbes.Load()
 	expectedReads := int32(1)
-	if profile == "reactions-read" || profile == "graph-read" {
+	if profile == "reactions-read" {
 		expectedReads = 2
+	} else if profile == "graph-read" {
+		expectedReads = 4
 	}
 	if f.unexpected.Load() != 0 || result.FixtureReads != expectedReads || result.FixtureCreates != expectedCreates {
 		return result, errors.New("unexpected fixture calls or missing Codex read")

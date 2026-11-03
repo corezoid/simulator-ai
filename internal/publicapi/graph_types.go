@@ -46,19 +46,49 @@ type GraphSystemForm struct {
 	Form  json.RawMessage `json:"form"`
 }
 
-// GraphEdgeTypesInput follows edge_type/list with a stricter profile page bound of 100.
+// GraphEdgeTypesInput follows edge_type/list with a profile page bound of 100.
+// Filter is the legacy MCP-only CSV projection, applied after full-row validation.
 type GraphEdgeTypesInput struct {
-	Limit  *int64 `json:"limit,omitempty"`
-	Offset int64  `json:"offset,omitempty"`
+	Limit    *int64 `json:"limit,omitempty"`
+	Offset   int64  `json:"offset,omitempty"`
+	IsSystem *bool  `json:"isSystem,omitempty"`
+	Filter   string `json:"filter,omitempty"`
 }
 
-// GraphEdgeType projects edge_type/list. Presence pointers distinguish missing flags from false.
+// GraphEdgeType projects the seven named public fields with legacy filterData
+// selection. Pointers preserve an unselected field separately from false/zero.
 type GraphEdgeType struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	IsSystem *bool  `json:"isSystem"`
-	IsTree   *bool  `json:"isTree"`
+	ID        *int64            `json:"id,omitempty"`
+	Name      *string           `json:"name,omitempty"`
+	AccID     *string           `json:"accId,omitempty"`
+	UserID    *GraphTypeCreator `json:"userId,omitempty"`
+	IsSystem  *bool             `json:"isSystem,omitempty"`
+	CreatedAt *int64            `json:"createdAt,omitempty"`
+	IsTree    *bool             `json:"isTree,omitempty"`
 }
+
+// GraphTypeCreator restores the legacy SQL user_id null when the public backend
+// omits an unrecorded creator. A nil outer field means excluded by filter instead.
+type GraphTypeCreator struct{ Value *int64 }
+
+func (c GraphTypeCreator) MarshalJSON() ([]byte, error) { return json.Marshal(c.Value) }
+
 type GraphEdgeTypes struct {
 	List []GraphEdgeType `json:"list"`
+}
+
+// graphEdgeTypeWire follows rpc_edge.edgeTypeRes. This client
+// fetches full typed rows to validate identity before local field projection.
+type graphEdgeTypeWire struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	AccID     string `json:"accId"`
+	UserID    *int64 `json:"userId"`
+	IsSystem  *bool  `json:"isSystem"`
+	CreatedAt *int64 `json:"createdAt"`
+	IsTree    *bool  `json:"isTree"`
+}
+
+type graphEdgeTypesWire struct {
+	List []graphEdgeTypeWire `json:"list"`
 }

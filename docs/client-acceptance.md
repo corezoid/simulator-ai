@@ -118,3 +118,10 @@ includes a zero `edgeHolesClosed` value. `codexLayerStats` records the assertion
 Claude still checks installation and connection only. These commands use the same
 disposable synthetic loopback setup and never start a model turn. See
 [layer semantics](layer-stats.md) for backend and remaining acceptance boundaries.
+
+Graph-read also calls `graph_edge_types_list` with explicit isSystem=false and a
+CSV projection, then checks an exhausted offset page. The fixture preserves a
+selected null creator and verifies exact projected fields; `codexEdgeTypes` records
+this check. Graph-read now expects four fixture reads (actor, layer counts and two
+edge-type pages). The actor-bound graph mode still exposes only layer counts and
+expects one read, matching the hidden legacy edge-type catalog in actor mode.

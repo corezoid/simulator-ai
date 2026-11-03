@@ -76,7 +76,7 @@ func runScriptedProfile(t *testing.T, profile string) {
 		case "form/system/get":
 			result = `{"id":20,"title":"Layers","type":"system","form":{},"editToken":"private-canary"}`
 		case "edge_type/list":
-			result = `{"list":[{"id":3,"name":"interaction","isTree":false,"isSystem":true,"userId":42}]}`
+			result = `{"list":[{"id":3,"name":"interaction","accId":"workspace-a","createdAt":1,"isTree":false,"isSystem":true,"userId":42}]}`
 		case "reaction/stats/get":
 			result = `{"comment":2,"view":0}`
 		case "graph/layer/stats/get":

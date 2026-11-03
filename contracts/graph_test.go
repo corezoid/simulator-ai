@@ -25,6 +25,14 @@ func TestGraphInputBoundsAndHostBinding(t *testing.T) {
 		{"form/system/get", `{"title":"Layers"}`, true},
 		{"form/system/get", `{"title":"Secrets"}`, false},
 		{"edge_type/list", `{"limit":100,"offset":0}`, true},
+		{"edge_type/list", `{"isSystem":false,"filter":"id,name"}`, true},
+		{"edge_type/list", `{"isSystem":true,"filter":""}`, true},
+		{"edge_type/list", `{"filter":"unknown, name"}`, true},
+		{"edge_type/list", `{"isSystem":null}`, false},
+		{"edge_type/list", `{"isSystem":"false"}`, false},
+		{"edge_type/list", `{"filter":null}`, false},
+		{"edge_type/list", `{"filter":["id"]}`, false},
+		{"edge_type/list", `{"filter":"` + strings.Repeat("x", 513) + `"}`, false},
 		{"edge_type/list", `{"offset":-1}`, false},
 		{"form/flowchart-block/list", `{}`, false},
 		{"form/system/get", `{"title":"Layers"} {}`, false},
@@ -49,9 +57,16 @@ func TestGraphOutputSchemaDoesNotPromiseUnprojectedSecrets(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, field := range []string{"editToken", "ownerId", "userId", "accId"} {
+		for _, field := range []string{"editToken", "ownerId"} {
 			if strings.Contains(string(raw), `"`+field+`":`) {
 				t.Fatalf("%s promises %s", method, field)
+			}
+		}
+		if method != "edge_type/list" {
+			for _, field := range []string{"userId", "accId"} {
+				if strings.Contains(string(raw), `"`+field+`":`) {
+					t.Fatalf("%s promises %s", method, field)
+				}
 			}
 		}
 	}

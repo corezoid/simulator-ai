@@ -50,6 +50,10 @@ func startFixture() *fixture {
 				ActorID     string   `json:"actorId"`
 				RootActorID string   `json:"rootActorId"`
 				Fields      []string `json:"fields"`
+				Limit       int64    `json:"limit"`
+				Offset      int64    `json:"offset"`
+				IsSystem    *bool    `json:"isSystem"`
+				Filter      string   `json:"filter"`
 			} `json:"params"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&request); err != nil || request.Params.AccID != "synthetic-workspace" {
@@ -70,6 +74,15 @@ func startFixture() *fixture {
 		if request.Method == "graph/layer/stats/get" && request.Params.ActorID == "synthetic-layer" {
 			f.reads.Add(1)
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"nodes":7,"edges":8,"holes":1,"holesClosed":2,"edgeHoles":3,"edgeHolesClosed":0}}`, request.ID)
+			return
+		}
+		if request.Method == "edge_type/list" && request.Params.Limit == 1 && request.Params.IsSystem != nil && !*request.Params.IsSystem && request.Params.Filter == "" && (request.Params.Offset == 0 || request.Params.Offset == 1) {
+			f.reads.Add(1)
+			list := `[{"id":2,"name":"Synthetic custom","accId":"synthetic-workspace","userId":null,"createdAt":0,"isSystem":false,"isTree":false}]`
+			if request.Params.Offset == 1 {
+				list = `[]`
+			}
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"list":%s}}`, request.ID, list)
 			return
 		}
 		if request.Method != "actor/get" || request.Params.ActorID != "synthetic-actor" || len(request.Params.Fields) != 6 {

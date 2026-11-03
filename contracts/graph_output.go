@@ -35,11 +35,15 @@ func graphOutput(method string, raw json.RawMessage) (json.RawMessage, error) {
 			return nil, errors.New("invalid graph item schema")
 		}
 		if method == "edge_type/list" {
-			fields = []string{"id", "name", "isSystem", "isTree"}
+			fields = []string{"id", "name", "accId", "userId", "isSystem", "createdAt", "isTree"}
 			if err := retainGraphProperties(item, fields); err != nil {
 				return nil, err
 			}
-			item["required"] = fields
+			// CSV selection can omit every property. The typed client validates full
+			// identity before projection and normalizes the legacy nullable creator.
+			item["required"] = []string{}
+			creator := item["properties"].(map[string]any)["userId"].(map[string]any)
+			creator["type"] = []string{"integer", "null"}
 		} else {
 			if err := retainGraphProperties(item, []string{"id", "parentId", "title", "blockId", "collection", "quickBlock", "updatedAt", "form"}); err != nil {
 				return nil, err

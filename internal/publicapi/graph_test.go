@@ -88,7 +88,7 @@ func TestGraphSystemAndEdgeTypeProjections(t *testing.T) {
 	if _, err := c.GetGraphSystemForm(context.Background(), GraphSystemFormInput{Title: "Layers"}); err == nil {
 		t.Fatal("wrong system form accepted")
 	}
-	response = `{"list":[{"id":4,"name":"interaction","isTree":false,"isSystem":true,"userId":42}]}`
+	response = `{"list":[{"id":4,"name":"interaction","accId":"workspace-a","createdAt":1,"isTree":false,"isSystem":true,"userId":42}]}`
 	edges, err := c.ListGraphEdgeTypes(context.Background(), GraphEdgeTypesInput{})
 	if err != nil || len(edges.List) != 1 || *edges.List[0].IsTree {
 		t.Fatalf("%+v %v", edges, err)

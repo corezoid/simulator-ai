@@ -20,7 +20,7 @@
           "name": "limit",
           "schema": {
             "type": "integer",
-            "description": "Maximum number of items to return",
+            "description": "Maximum number of items to return; default 200, maximum 1000",
             "default": 200,
             "minimum": 1,
             "maximum": 1000,
@@ -34,11 +34,18 @@
           "name": "offset",
           "schema": {
             "type": "integer",
-            "description": "Number of items to skip",
+            "description": "Number of filtered rows to skip in ascending id order; concurrent deletions can shift later pages",
             "minimum": 0,
             "x-validation-rules": [
               "min=0"
             ]
+          }
+        },
+        {
+          "name": "isSystem",
+          "schema": {
+            "type": "boolean",
+            "description": "Omit or null for all types; true selects system types and false selects custom types, before pagination"
           }
         }
       ],
@@ -82,7 +89,7 @@
                   }
                 }
               },
-              "description": "Edge types on this page"
+              "description": "Edge types in ascending id order; empty array at exhaustion, no total or snapshot guarantee"
             }
           }
         }

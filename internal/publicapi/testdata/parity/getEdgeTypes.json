@@ -1,0 +1,249 @@
+{
+  "id": "parity/getEdgeTypes",
+  "legacyRevision": "f11283155e3471091798abc640de7a0d0553c4a5",
+  "legacyHandlerRevision": "cd9a1051d11ea0124c000fcdfb53d7d428d38141",
+  "normalization": "Source-derived getEdgeTypesReq/edgeTypesDB/filterData oracle, not a live legacy-server run. Replace outer data with list; current API orders by id and paginates. Legacy handler ignores advertised isSystem and does not select the field; public true/false filtering and flag are explicit enhancements tested separately. Missing public creator is normalized to legacy null when selected. Static IDs identify fixture rows; live tests assert real created IDs, not these literal values.",
+  "cases": [
+    {
+      "name": "legacy-fields",
+      "filter": "id,name,accId,userId,createdAt,isTree",
+      "legacy": {
+        "data": [
+          {
+            "id": 1,
+            "name": "hierarchy",
+            "accId": "workspace",
+            "userId": 12,
+            "createdAt": 10,
+            "isTree": false
+          },
+          {
+            "id": 2,
+            "name": "custom",
+            "accId": "workspace",
+            "userId": null,
+            "createdAt": 0,
+            "isTree": false
+          }
+        ]
+      },
+      "public": {
+        "list": [
+          {
+            "id": 1,
+            "name": "hierarchy",
+            "accId": "workspace",
+            "userId": 12,
+            "createdAt": 10,
+            "isTree": false,
+            "isSystem": true
+          },
+          {
+            "id": 2,
+            "name": "custom",
+            "accId": "workspace",
+            "createdAt": 0,
+            "isTree": false,
+            "isSystem": false
+          }
+        ]
+      },
+      "expected": {
+        "list": [
+          {
+            "id": 1,
+            "name": "hierarchy",
+            "accId": "workspace",
+            "userId": 12,
+            "createdAt": 10,
+            "isTree": false
+          },
+          {
+            "id": 2,
+            "name": "custom",
+            "accId": "workspace",
+            "userId": null,
+            "createdAt": 0,
+            "isTree": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "identity",
+      "filter": "id,name",
+      "legacy": {
+        "data": [
+          {
+            "id": 1,
+            "name": "hierarchy"
+          },
+          {
+            "id": 2,
+            "name": "custom"
+          }
+        ]
+      },
+      "public": {
+        "list": [
+          {
+            "id": 1,
+            "name": "hierarchy",
+            "accId": "workspace",
+            "userId": 12,
+            "createdAt": 10,
+            "isTree": false,
+            "isSystem": true
+          },
+          {
+            "id": 2,
+            "name": "custom",
+            "accId": "workspace",
+            "createdAt": 0,
+            "isTree": false,
+            "isSystem": false
+          }
+        ]
+      },
+      "expected": {
+        "list": [
+          {
+            "id": 1,
+            "name": "hierarchy"
+          },
+          {
+            "id": 2,
+            "name": "custom"
+          }
+        ]
+      }
+    },
+    {
+      "name": "exact-spaces",
+      "filter": "id, name",
+      "legacy": {
+        "data": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ]
+      },
+      "public": {
+        "list": [
+          {
+            "id": 1,
+            "name": "hierarchy",
+            "accId": "workspace",
+            "userId": 12,
+            "createdAt": 10,
+            "isTree": false,
+            "isSystem": true
+          },
+          {
+            "id": 2,
+            "name": "custom",
+            "accId": "workspace",
+            "createdAt": 0,
+            "isTree": false,
+            "isSystem": false
+          }
+        ]
+      },
+      "expected": {
+        "list": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown",
+      "filter": "unknown",
+      "legacy": {
+        "data": [
+          {},
+          {}
+        ]
+      },
+      "public": {
+        "list": [
+          {
+            "id": 1,
+            "name": "hierarchy",
+            "accId": "workspace",
+            "userId": 12,
+            "createdAt": 10,
+            "isTree": false,
+            "isSystem": true
+          },
+          {
+            "id": 2,
+            "name": "custom",
+            "accId": "workspace",
+            "createdAt": 0,
+            "isTree": false,
+            "isSystem": false
+          }
+        ]
+      },
+      "expected": {
+        "list": [
+          {},
+          {}
+        ]
+      }
+    },
+    {
+      "name": "nullable-creator",
+      "filter": "userId",
+      "legacy": {
+        "data": [
+          {
+            "userId": 12
+          },
+          {
+            "userId": null
+          }
+        ]
+      },
+      "public": {
+        "list": [
+          {
+            "id": 1,
+            "name": "hierarchy",
+            "accId": "workspace",
+            "userId": 12,
+            "createdAt": 10,
+            "isTree": false,
+            "isSystem": true
+          },
+          {
+            "id": 2,
+            "name": "custom",
+            "accId": "workspace",
+            "createdAt": 0,
+            "isTree": false,
+            "isSystem": false
+          }
+        ]
+      },
+      "expected": {
+        "list": [
+          {
+            "userId": 12
+          },
+          {
+            "userId": null
+          }
+        ]
+      }
+    }
+  ]
+}

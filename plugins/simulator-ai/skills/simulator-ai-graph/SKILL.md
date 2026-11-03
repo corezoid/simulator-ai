@@ -25,7 +25,14 @@ exact readback of a creation receipt. Do not write merely to obtain counts.
    accepted work. If creating a layer in an existing graph, read that graph first.
    Use `graph_system_form_get` for actual Graphs/Layers forms and
    `graph_edge_types_list` for the actual hierarchy and a suitable **non-tree**
-   connector type. Follow bounded pagination if absent on the first page. A return
+   connector type. It supports isSystem true/false (omit for all) and exact CSV
+   filter such as `id,name,isSystem,isTree`; do not omit fields needed for your
+   decision. Names and flags are returned as stored; the hierarchy relation is
+   special even when its stored isTree is false. Follow ascending-id bounded pages
+   with the same filter until short/empty, recognizing concurrent edits can shift
+   offsets. The read can insert missing system defaults but never changes existing
+   same-name types or grants access. It is unavailable in host-bound actor mode.
+   A return
    loop cannot use a tree type. Do not invent numeric IDs or infer write access.
 2. Describe the requested process as ordered nodes `{key,blockId,title}` and edges
    `{key,source,target,name?}`. Keys are local plan labels, never actor IDs. Browse
