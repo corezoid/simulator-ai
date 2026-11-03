@@ -110,7 +110,7 @@ func darken(color string, amount float64) string {
 	trimmed := strings.TrimSpace(color)
 	hex := strings.TrimPrefix(trimmed, "#")
 	switch len(hex) {
-	case 3, 4:
+	case 3:
 		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
 	case 8:
 		hex = hex[:6] // the editor writes the darkened stroke opaque
