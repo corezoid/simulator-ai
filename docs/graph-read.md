@@ -61,13 +61,13 @@ Hermes. No model turn, billing delivery or private Console routing is enabled he
 ## Contract source and checks
 
 `contracts/graph-source.json` records reviewed sim-api revision
-`855a30bfe10938935cba2a05c25f317a5e4b306c` and the projected artifact digest.
+`d2d24e4eeec0037665de64d8ec2a4c179cd16731` and the projected artifact digest.
 Export public OpenRPC from that reviewed local revision, then refresh only these descriptors:
 
 ```sh
 GOMAXPROCS=2 go run -p=1 ./cmd/gen-graph-contract \
   -input /absolute/path/to/public-openrpc.json \
-  -revision 855a30bfe10938935cba2a05c25f317a5e4b306c
+  -revision d2d24e4eeec0037665de64d8ec2a4c179cd16731
 ```
 
 Record the printed revision/digest in `graph-source.json`; review schemas, named DTOs and
