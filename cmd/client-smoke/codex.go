@@ -70,6 +70,9 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 	if strings.HasPrefix(e.Profile, "reactions-") && !loaded["simulator-ai:simulator-ai-reactions"] {
 		return errors.New("Codex did not load reactions skill")
 	}
+	if strings.HasPrefix(e.Profile, "graph-") && !loaded["simulator-ai:simulator-ai-graph"] {
+		return errors.New("Codex did not load graph skill")
+	}
 	var thread struct {
 		Thread struct {
 			ID string `json:"id"`
@@ -95,6 +98,10 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		expectedTools = 4
 	} else if e.Profile == "reactions-actor" {
 		expectedTools = 1
+	} else if e.Profile == "graph-read" {
+		expectedTools = 8
+	} else if e.Profile == "graph-actor" {
+		expectedTools = 1
 	}
 	for _, s := range status.Data {
 		if s.Name == "simulator-ai" && len(s.Tools) == expectedTools {
@@ -102,11 +109,16 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 			_, form := s.Tools["form_get"]
 			_, layer := s.Tools["layer_actors_list"]
 			_, stats := s.Tools["reaction_stats_get"]
+			_, layerStats := s.Tools["graph_layer_stats_get"]
 			matches := actor && form && layer
 			if e.Profile == "reactions-read" {
 				matches = matches && stats
 			} else if e.Profile == "reactions-actor" {
 				matches = stats
+			} else if e.Profile == "graph-read" {
+				matches = matches && layerStats
+			} else if e.Profile == "graph-actor" {
+				matches = layerStats
 			}
 			if matches {
 				serverName = s.Name
@@ -124,7 +136,7 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		} `json:"content"`
 		StructuredContent json.RawMessage `json:"structuredContent"`
 	}
-	if e.Profile != "reactions-actor" {
+	if e.Profile != "reactions-actor" && e.Profile != "graph-actor" {
 		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "actor_get", "arguments": map[string]string{"actorId": "synthetic-actor"}}, &call); err != nil {
 			return err
 		}
@@ -150,6 +162,25 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 			return errors.New("Codex reaction zero count lost")
 		}
 		e.CodexReactionStats = true
+	}
+	if strings.HasPrefix(e.Profile, "graph-") {
+		args := map[string]string{}
+		if e.Profile == "graph-read" {
+			args["actorId"] = "synthetic-layer"
+		}
+		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "graph_layer_stats_get", "arguments": args}, &call); err != nil {
+			return err
+		}
+		var counts map[string]int64
+		if call.IsError || json.Unmarshal(call.StructuredContent, &counts) != nil || len(counts) != 6 {
+			return errors.New("Codex layer counts failed")
+		}
+		for key, want := range map[string]int64{"nodes": 7, "edges": 8, "holes": 1, "holesClosed": 2, "edgeHoles": 3, "edgeHolesClosed": 0} {
+			if value, ok := counts[key]; !ok || value != want {
+				return errors.New("Codex layer count missing or changed")
+			}
+		}
+		e.CodexLayerStats = true
 	}
 	if e.Profile == "smart-forms" {
 		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "application_create", "arguments": map[string]string{"operationId": "smoke-create-1", "ref": "smoke-app", "title": "Smoke app"}}, &call); err != nil {

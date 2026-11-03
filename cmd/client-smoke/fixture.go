@@ -67,6 +67,11 @@ func startFixture() *fixture {
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"comment":2,"view":0}}`, request.ID)
 			return
 		}
+		if request.Method == "graph/layer/stats/get" && request.Params.ActorID == "synthetic-layer" {
+			f.reads.Add(1)
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"nodes":7,"edges":8,"holes":1,"holesClosed":2,"edgeHoles":3,"edgeHolesClosed":0}}`, request.ID)
+			return
+		}
 		if request.Method != "actor/get" || request.Params.ActorID != "synthetic-actor" || len(request.Params.Fields) != 6 {
 			f.unexpected.Add(1)
 			http.Error(w, "unexpected request", 400)

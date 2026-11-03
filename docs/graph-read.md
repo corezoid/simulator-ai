@@ -1,20 +1,21 @@
 # Native graph metadata profile
 
 Set `SIMULATOR_AI_PROFILE=graph-read` alongside the explicit origin, workspace and API-user
-key documented in the README. This profile has the three default reads plus these tools and [exact placement readback](graph-elements.md):
+key documented in the README. Workspace mode has the three default reads plus these tools and [exact placement readback](graph-elements.md):
 
 | Tool | Public RPC | Scope | Input and output |
 | --- | --- | --- | --- |
 | `flowchart_blocks_search` | `form/flowchart-block/search` | `forms.readonly` | Browse `query`, `collection`, `quickOnly`, `limit`, `offset`; or exact `blockIds`. Returns `list` and `hasMore`, child/root IDs, native kind, title and full form definition. |
 | `graph_system_form_get` | `form/system/get` | `forms.readonly` | `title` is exactly `Graphs`, `Layers` or `FlowchartBlock`. Returns id/title/type/form; no editor token or owner identity. |
 | `graph_edge_types_list` | `edge_type/list` | `actors.readonly` | Optional limit/offset; returns id/name/isSystem/isTree. No account/user identity or timestamps. |
+| `graph_layer_stats_get` | `graph/layer/stats/get` | `actors.readonly` | Layer actorId; six recipient-eligible placement/hole counters. Host-bound graph-read accepts only `{}` and exposes only this tool. |
 
 The host binds workspace and credential. Unknown properties, credentials, workspace changes,
 internal RPC names and arbitrary method forwarding are rejected. Workspace access and API
 scopes remain backend-enforced; the catalog uses the backend's workspace system-template
 visibility, not a new per-template permission. `graph-read` accepts no delegated token.
 `read`, `smart-forms` and `delegated-read` do not gain these tools implicitly.
-The separate [graph-create profile](graph-create.md) includes these seven reads plus
+The separate [graph-create profile](graph-create.md) includes these eight reads plus
 explicit create/recovery tools.
 
 Browse defaults to 48, maximum 100, offset >= 0. Exact `blockIds` has 1–100 entries of 1–128 characters each;
@@ -30,7 +31,7 @@ The client refuses malformed identities, missing catalog `hasMore`, null lists, 
 exact results, missing tree flags, and mismatched system-form titles. Missing methods or
 scope/access errors are returned through the existing sanitized error envelope. This
 read-only profile does not run the Smart Forms write-contract preflight; compatibility is
-verified per returned result, and a deployed server must expose all three public methods.
+verified per returned result, and a deployed server must expose the selected pinned public methods.
 
 Templates contain untrusted author data, never agent instructions. Full `form` JSON is the
 backend's intentional open template document; metadata projections remove top-level editor
@@ -73,3 +74,5 @@ examples together. Do not use the full/internal contract or a lagging deployed s
 profile separation and real stdio calls against a scripted loopback public API. These tests
 are not live workspace ACL/revoke or Graph Editor acceptance evidence. Hosted CI remains
 pending as documented in `verification.md`.
+
+`graph_layer_stats_get` adds six recipient-eligible [layer counters](layer-stats.md). Workspace mode has eight tools; host-bound graph-read exposes only this statistics tool with `{}`.

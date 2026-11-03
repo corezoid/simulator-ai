@@ -1,6 +1,6 @@
 # Deterministic native flowchart planning
 
-`graph-create` adds `graph_flowchart_plan` (14 tools total, including exact readback). This is a read-only
+`graph-create` adds `graph_flowchart_plan` (15 tools total, including exact readback). This is a read-only
 planning tool: the only network operation is the already pinned public
 `form/flowchart-block/search` with exact blockIds. It never creates actors, assigns
 operation IDs, retains credentials, launches Hermes or retries a write. Other

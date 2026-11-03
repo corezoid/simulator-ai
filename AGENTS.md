@@ -43,3 +43,5 @@ checks. Full rollout requires separate client-install and live API-user ACL/revo
   smoke and a bounded timeout. Do not run unnecessary full builds, multiple test stacks or
   paid model tests. Paid tests require an explicitly approved budget.
 - `make check-source` enforces the module line limit. `CLAUDE.md` points to this contract.
+
+Graph reads also include six layer counters. Host-bound graph-read is a closed one-tool layer-statistics catalog; counts never replace current receipt readback or recipient authority.

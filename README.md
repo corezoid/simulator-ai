@@ -10,7 +10,7 @@ see [Smart Forms setup and guarantees](docs/smart-forms.md). It is not a
 full legacy replacement or an accepted production release. Claude Code/Codex use their own
 agent; this binary launches no Hermes, model, LiteLLM or server AI billing.
 
-Native graph metadata is available through the seven-tool `graph-read` profile; see
+Native graph metadata is available through the eight-tool `graph-read` profile; see
 [graph metadata and constraints](docs/graph-read.md). This prepares native flowchart
 planning and [exact node/edge readback](docs/graph-elements.md). The [native planner and portable graph skill](docs/graph-planning.md) calculate creation payloads and geometry. The separate [graph-create profile](docs/graph-create.md) adds six public
 create/recovery tools with mandatory receipt keys and per-write contract preflight.
@@ -53,8 +53,8 @@ mechanism. No default production endpoint or workspace is assumed:
 - `SIMULATOR_AI_PROFILE`: `read` (default), `graph-read` (native graph metadata), `graph-create` (create-only graph operations), or
   `smart-forms` (Smart Form writes), `reactions-read` (reaction statistics). Console `delegated-read` has separate setup.
 - `SIMULATOR_AI_API_KEY`: API-user key; never paste it into chat, a tool call or committed config.
-- `SIMULATOR_AI_ACTOR`: optional host-bound target for `reactions-read` only; exposes
-  only `reaction_stats_get` with empty arguments. Leave unset for workspace mode.
+- `SIMULATOR_AI_ACTOR`: optional host-bound target for `reactions-read` or `graph-read`; exposes
+  only the respective reaction/layer statistics tool with empty arguments. Leave unset for workspace mode.
 
 Only literal loopback HTTP is accepted for local scripted development. HTTPS verifies TLS;
 redirects are refused, including same-origin redirects, so credentials cannot be forwarded.

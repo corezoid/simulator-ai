@@ -34,6 +34,10 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addReactionReads(s, c)
 		return s
 	}
+	if c.LayerStatsActorBound() {
+		addLayerStats(s, c)
+		return s
+	}
 	s.AddTool(tool[publicapi.Actor]("actor_get", "Read actor metadata in the configured workspace. Returns id/title/description/formId/status/ref only; no data fields or related objects. Public actor/get; actors.readonly scope and actor View required.", `{"type":"object","properties":{"actorId":{"type":"string","minLength":1,"maxLength":255}},"required":["actorId"],"additionalProperties":false}`), func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		a, e := decode[ActorArgs](r)
 		if e != nil {

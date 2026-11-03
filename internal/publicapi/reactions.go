@@ -19,7 +19,7 @@ type reactionStatsRequest struct {
 func (c *Client) ReactionReadsEnabled() bool { return c.config.Profile == "reactions-read" }
 
 // ReactionActorBound is host configuration, never a delegated permission grant.
-func (c *Client) ReactionActorBound() bool { return c.config.ActorID != "" }
+func (c *Client) ReactionActorBound() bool { return c.ReactionReadsEnabled() && c.config.ActorID != "" }
 
 func (c *Client) GetReactionStats(ctx context.Context, actorID string) (ReactionStats, error) {
 	if !c.ReactionReadsEnabled() {

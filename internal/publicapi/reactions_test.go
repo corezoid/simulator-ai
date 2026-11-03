@@ -143,7 +143,7 @@ func TestReactionStatsHostActorBinding(t *testing.T) {
 	if calls != 1 {
 		t.Fatal("rejected binding reached API")
 	}
-	for _, profile := range []string{"read", "graph-read", "graph-create", "smart-forms", "delegated-read"} {
+	for _, profile := range []string{"read", "graph-create", "smart-forms", "delegated-read"} {
 		if _, err = New(Config{Origin: backend.URL, Workspace: "workspace", APIKey: "fixture", Profile: profile, ActorID: "host-actor"}); err == nil {
 			t.Fatal("actor binding silently ignored by another profile")
 		}

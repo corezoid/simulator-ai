@@ -35,8 +35,8 @@ func (c Config) validate() error {
 	if c.Profile != "" && c.Profile != "read" && c.Profile != "smart-forms" && c.Profile != "delegated-read" && c.Profile != "graph-read" && c.Profile != "graph-create" && c.Profile != "reactions-read" {
 		return errors.New("SIMULATOR_AI_PROFILE must be read, smart-forms, graph-read, graph-create, reactions-read or delegated-read")
 	}
-	if c.ActorID != "" && (c.Profile != "reactions-read" || len(c.ActorID) > 255 || strings.IndexFunc(c.ActorID, unicode.IsSpace) >= 0 || strings.IndexFunc(c.ActorID, unicode.IsControl) >= 0) {
-		return errors.New("SIMULATOR_AI_ACTOR requires reactions-read and a nonempty actor ID up to 255 bytes without whitespace")
+	if c.ActorID != "" && ((c.Profile != "reactions-read" && c.Profile != "graph-read") || len(c.ActorID) > 255 || strings.IndexFunc(c.ActorID, unicode.IsSpace) >= 0 || strings.IndexFunc(c.ActorID, unicode.IsControl) >= 0) {
+		return errors.New("SIMULATOR_AI_ACTOR requires reactions-read or graph-read and a nonempty actor ID up to 255 bytes without whitespace")
 	}
 	u, e := url.Parse(c.Origin)
 	if e != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Path != "" && u.Path != "/") || u.Opaque != "" {

@@ -3,8 +3,8 @@
 `graph_elements_get` is available in `graph-read` and `graph-create`, using existing
 public `graph/layer/elements/list` (`actors.readonly`). Origin, workspace and API-user
 credential remain host-bound. No delegated Console profile, private RPC, arbitrary
-fields/with expansion, writes or retries are enabled. Graph-create has 14 tools,
-graph-read 7. The three-tool default and delegated-read profiles are unchanged.
+fields/with expansion, writes or retries are enabled. Graph-create has 15 tools,
+graph-read 8. The three-tool default and delegated-read profiles are unchanged.
 
 Input requires `actorId` (layer), `nodes` and `edges`, with explicit empty arrays
 allowed individually, and 1–100 combined positive unique laIds. Node/edge laIds

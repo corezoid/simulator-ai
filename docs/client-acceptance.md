@@ -107,3 +107,14 @@ reported one tool/one fixture read. Both reported installed skills, direct Codex
 reaction counts and Claude MCP connectivity. Four Claude token-count probes per
 run were rejected locally; no model request or fixture write occurred. These are
 local installation results, not hosted CI or issuer-side revocation acceptance.
+
+## Layer-statistics profile checks
+
+`go run ./cmd/client-smoke -profile graph-read` checks the eight-tool workspace
+catalog and directly reads metadata plus all six layer counters through Codex.
+`-profile graph-actor` supplies a host layer and checks the one-tool catalog and
+`{}` call. Both require the installed graph skill in Codex and Claude; the fixture
+includes a zero `edgeHolesClosed` value. `codexLayerStats` records the assertion.
+Claude still checks installation and connection only. These commands use the same
+disposable synthetic loopback setup and never start a model turn. See
+[layer semantics](layer-stats.md) for backend and remaining acceptance boundaries.

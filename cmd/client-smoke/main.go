@@ -26,6 +26,7 @@ type evidence struct {
 	CodexTools               int    `json:"codexTools"`
 	CodexRead                bool   `json:"codexRead"`
 	CodexReactionStats       bool   `json:"codexReactionStats"`
+	CodexLayerStats          bool   `json:"codexLayerStats"`
 	ClaudeInstall            bool   `json:"claudeInstall"`
 	ClaudeSkill              bool   `json:"claudeSkill"`
 	ClaudeMCP                bool   `json:"claudeMCP"`
@@ -34,7 +35,7 @@ type evidence struct {
 
 func main() {
 	root := flag.String("repo", ".", "repository root containing the built bin/simulator-ai")
-	profile := flag.String("profile", "read", "read, smart-forms, reactions-read or reactions-actor")
+	profile := flag.String("profile", "read", "read, smart-forms, reactions-read, reactions-actor, graph-read or graph-actor")
 	flag.Parse()
 	result, err := smoke(*root, *profile)
 	if err != nil {
@@ -45,7 +46,7 @@ func main() {
 }
 func smoke(root, profile string) (evidence, error) {
 	var result evidence
-	if profile != "read" && profile != "smart-forms" && profile != "reactions-read" && profile != "reactions-actor" {
+	if profile != "read" && profile != "smart-forms" && profile != "reactions-read" && profile != "reactions-actor" && profile != "graph-read" && profile != "graph-actor" {
 		return result, errors.New("invalid profile")
 	}
 	result.Profile = profile
@@ -87,6 +88,8 @@ func smoke(root, profile string) (evidence, error) {
 	}
 	if profile == "reactions-actor" {
 		env = append(env, "SIMULATOR_AI_PROFILE=reactions-read", "SIMULATOR_AI_ACTOR=synthetic-actor")
+	} else if profile == "graph-actor" {
+		env = append(env, "SIMULATOR_AI_PROFILE=graph-read", "SIMULATOR_AI_ACTOR=synthetic-layer")
 	}
 	// Fail closed if a future smoke change accidentally attempts a model turn.
 	config := fmt.Sprintf("model = \"scripted-no-model\"\nmodel_provider = \"scripted\"\n[model_providers.scripted]\nname = \"Scripted smoke only\"\nbase_url = %q\nwire_api = \"responses\"\n", f.server.URL+"/disabled-model")
@@ -111,7 +114,7 @@ func smoke(root, profile string) (evidence, error) {
 	}
 	result.RejectedTokenCountProbes = f.tokenCountProbes.Load()
 	expectedReads := int32(1)
-	if profile == "reactions-read" {
+	if profile == "reactions-read" || profile == "graph-read" {
 		expectedReads = 2
 	}
 	if f.unexpected.Load() != 0 || result.FixtureReads != expectedReads || result.FixtureCreates != expectedCreates {

@@ -8,8 +8,9 @@ The portable `simulator-ai-reactions` skill describes this bounded workflow.
 Set optional host-only `SIMULATOR_AI_ACTOR` with `reactions-read` to bind the process
 to one actor. Its catalog then contains only `reaction_stats_get`, with empty `{}`
 arguments; supplying any actor/workspace argument is rejected. The client injects
-the configured actor and backend ACL still applies on every call. Other profiles
-reject this variable rather than silently ignoring it. This is the legacy actor
+the configured actor and backend ACL still applies on every call. `graph-read`
+uses the same host setting for its separate one-tool layer-statistics catalog;
+other profiles reject it rather than silently ignoring it. This is the legacy actor
 binding for this capability, not a delegated credential or Console integration.
 
 | Legacy capability | Public tool / RPC | Behavior |

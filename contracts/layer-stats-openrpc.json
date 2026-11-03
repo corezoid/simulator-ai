@@ -1,0 +1,69 @@
+{
+  "methods": [
+    {
+      "name": "graph/layer/stats/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Layer actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "edgeHoles": {
+              "type": "integer",
+              "description": "Recipient-eligible open edge holes"
+            },
+            "edgeHolesClosed": {
+              "type": "integer",
+              "description": "Closed edge holes with eligible source and target references"
+            },
+            "edges": {
+              "type": "integer",
+              "description": "Recipient-eligible edge placements and state containment relations"
+            },
+            "holes": {
+              "type": "integer",
+              "description": "Recipient-eligible open actor holes"
+            },
+            "holesClosed": {
+              "type": "integer",
+              "description": "Closed actor holes with eligible source and target references"
+            },
+            "nodes": {
+              "type": "integer",
+              "description": "Recipient-eligible actor placements on the layer"
+            }
+          }
+        }
+      },
+      "x-audience": "public",
+      "x-scope": "actors.readonly"
+    }
+  ]
+}

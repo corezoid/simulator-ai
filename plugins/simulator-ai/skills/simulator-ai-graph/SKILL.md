@@ -1,13 +1,24 @@
 ---
 name: simulator-ai-graph
-description: Create a saved native graph layer and flowchart through public Simulator AI tools, with deterministic planning and receipt-based recovery. Use for graph, layer or flowchart creation in the configured workspace.
+description: Read layer statistics or create a saved native graph layer and flowchart through public Simulator AI tools, with deterministic planning and receipt-based recovery.
 ---
 
-Use the actual `simulator-ai` tool catalog. This workflow requires the explicit
-`graph-create` profile, including `graph_flowchart_plan` and the create/recovery
-tools. It runs in the desktop host agent; never start Hermes or use legacy/private
+Use the actual `simulator-ai` tool catalog. Reads use `graph-read` or `graph-create`;
+the creation workflow below requires `graph-create`, including `graph_flowchart_plan`
+and the create/recovery tools. It runs in the desktop host agent; never start Hermes or use legacy/private
 API, SQL, alternate identities or model credentials. Missing tools stop only the
 unsupported operation. No write permission follows from tool discovery or a plan.
+
+For counts, call `graph_layer_stats_get` with the intended layer's `actorId`.
+Inspect the schema first: host-bound `graph-read` exposes only this tool and accepts
+`{}`; never infer or override the host layer. Preserve all six counters, including
+zero: nodes/edges are placements (repeated nodes and geometry-only placements can
+count), holes/holesClosed and edgeHoles/edgeHolesClosed distinguish open and closed
+holes. Recipient restrictions apply independently of layer View. The backend may
+repair shared counters, but returns a fresh primary aggregation for this caller;
+do not cache it across identities. An error is not an empty layer. Counts and
+separate pages are not a snapshot, so counts never prove complete enumeration or
+exact readback of a creation receipt. Do not write merely to obtain counts.
 
 1. Resolve the intended existing graph/layer from the user's context or public
    `actor_get`. Preserve exact workspace and target IDs; navigation does not retarget

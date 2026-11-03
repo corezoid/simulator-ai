@@ -79,6 +79,8 @@ func runScriptedProfile(t *testing.T, profile string) {
 			result = `{"list":[{"id":3,"name":"interaction","isTree":false,"isSystem":true,"userId":42}]}`
 		case "reaction/stats/get":
 			result = `{"comment":2,"view":0}`
+		case "graph/layer/stats/get":
+			result = `{"nodes":7,"edges":8,"holes":1,"holesClosed":2,"edgeHoles":3,"edgeHolesClosed":4}`
 		default:
 			t.Error("unexpected method")
 		}
@@ -149,7 +151,7 @@ func runScriptedProfile(t *testing.T, profile string) {
 		wanted = append(wanted, "layer_actors_list")
 	}
 	if profile == "graph-read" || profile == "graph-create" {
-		wanted = append(wanted, "graph_elements_get", "flowchart_blocks_search", "graph_system_form_get", "graph_edge_types_list")
+		wanted = append(wanted, "graph_elements_get", "flowchart_blocks_search", "graph_system_form_get", "graph_edge_types_list", "graph_layer_stats_get")
 	}
 	if profile == "graph-create" {
 		wanted = append(wanted, "graph_flowchart_plan", "graph_actor_create", "graph_actor_operation_get", "graph_edge_create", "graph_edge_operation_get", "graph_placements_create", "graph_placements_operation_get")
@@ -223,13 +225,14 @@ func runScriptedProfile(t *testing.T, profile string) {
 			{"flowchart_blocks_search", `{"blockIds":["process"]}`},
 			{"graph_system_form_get", `{"title":"Layers"}`},
 			{"graph_edge_types_list", `{}`},
+			{"graph_layer_stats_get", `{"actorId":"layer"}`},
 		} {
 			reply := exchange(fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":{"name":%q,"arguments":%s}}`, 60+i, step.name, step.args))
 			if reply["error"] != nil || strings.Contains(string(reply["result"]), `"isError":true`) || strings.Contains(string(reply["result"]), "private-canary") {
 				t.Fatalf("graph read failed or leaked capability: %s", reply["result"])
 			}
 		}
-		expectedCalls += 3
+		expectedCalls += 4
 		for i, args := range []string{`{"blockIds":[]}`, `{"accId":"other"}`, `{"limit":101}`, `{"method":"actor/create"}`, `{"apiKey":"other"}`} {
 			bad := exchange(fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":{"name":"flowchart_blocks_search","arguments":%s}}`, 70+i, args))
 			if bad["error"] == nil && !strings.Contains(string(bad["result"]), `"isError":true`) {
