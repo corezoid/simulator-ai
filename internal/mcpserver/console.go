@@ -11,7 +11,7 @@ import (
 )
 
 // maxConsoleInput bounds one tool call; Smart Form file batches are the largest inputs.
-const maxConsoleInput = 2 << 20
+const maxConsoleInput = 4 << 20
 
 const (
 	point        = `{"type":"object","properties":{"x":{"type":"number"},"y":{"type":"number"}},"required":["x","y"],"additionalProperties":false}`
@@ -55,7 +55,7 @@ func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {
 
 func addConsoleSmartForms(s *server.MCPServer, c *publicapi.Client) {
 	consoleTool(s, "smart_form_create", "Create a Smart Form (CDU v2). It starts with a develop tree holding a pages/index page (config with an empty Stack), locale, viewModel and styles/index. Returns appId and env ids; edit develop with smart_form_files_get/update/create, then smart_form_release.",
-		`{"type":"object","properties":{"ref":{"type":"string","pattern":"^[0-9a-zA-Z_-]{5,255}$","description":"Short name unique among the workspace's Smart Forms"},"title":{"type":"string","minLength":1,"maxLength":255},"description":{"type":"string","maxLength":10000},"sharedWith":{"type":"string","enum":["userList","allWorkspaceUsers","allRegisteredUsers","anyone"],"description":"Who may open it; default userList (its access list)"}},"required":["ref","title"],"additionalProperties":false}`, true, c.CreateSmartForm)
+		`{"type":"object","properties":{"ref":{"type":"string","pattern":"^[0-9a-zA-Z_-]{5,255}$","description":"Short name unique among the workspace's Smart Forms"},"title":{"type":"string","minLength":1,"maxLength":255},"description":{"type":"string","maxLength":10000},"sharedWith":{"type":"string","enum":["userList","allWorkspaceUsers","allRegisteredUsers"],"description":"Who may open it; default userList (its access list). Widen only when the user asks"}},"required":["ref","title"],"additionalProperties":false}`, true, c.CreateSmartForm)
 	consoleTool(s, "smart_form_files_get", "List the develop folders and files of a Smart Form by path (pages/index/config, locale, styles/index, ...) with id, type and sourceHash; withSource adds file sources. Use folder ids for new files and file ids for updates.",
 		`{"type":"object","properties":{"appId":{"type":"string","minLength":1,"maxLength":255},"withSource":{"type":"boolean"}},"required":["appId"],"additionalProperties":false}`, false, c.GetSmartFormFiles)
 	consoleTool(s, "smart_form_files_update", "Replace develop files of a Smart Form in one transaction. title and type are always written: send the current ones. A pages/<page>/config source must be a valid CDU page config ({schemaVersion:\"2.0\", id, tree}); the error carries the server's message naming what is wrong. ifMatchHash (the sourceHash you read) refuses a stale overwrite. Returns ids and new sourceHash.",

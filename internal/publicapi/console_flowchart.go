@@ -103,7 +103,11 @@ func (c *Client) ListFlowchartBlocks(ctx context.Context, in FlowchartBlocksInpu
 			break
 		}
 	}
-	sort.Slice(blocks, func(i, j int) bool { return blocks[i].Title < blocks[j].Title })
+	// Like sim-api: lowercase title, then id.
+	sort.SliceStable(blocks, func(i, j int) bool {
+		a, b := strings.ToLower(blocks[i].Title), strings.ToLower(blocks[j].Title)
+		return a < b || (a == b && blocks[i].ID < blocks[j].ID)
+	})
 	return blocks, nil
 }
 
