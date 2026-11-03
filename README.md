@@ -134,8 +134,9 @@ no tool results) to put `appId` into the reply reaction with `appSettings.autoru
 ### Live smoke on a local stand
 
 `make smoke SIM_API_DIR=<sim-api checkout> WORKSPACE=<workspace id>` builds the binary, then runs sim-api's
-`make ai-smoke-env`, which creates or finds a workspace API user and key (or a short seed-user session) on the
-local stand and writes `~/.config/simulator-ai/smoke.env` (`SIMULATOR_AI_ORIGIN`, `SIMULATOR_AI_WORKSPACE`,
+`make ai-smoke-env` (sim-api `cmd/ai-dev-credential/README.md`), which creates or finds a workspace API user and
+key on the local stand (`SMOKE_KIND=session` for a short seed-user Bearer session, `ROTATE=1` for a new key) and
+writes `~/.config/simulator-ai/smoke.env` (`SIMULATOR_AI_ORIGIN`, `SIMULATOR_AI_WORKSPACE`,
 `SIMULATOR_AI_API_KEY` or `SIMULATOR_AI_AUTHORIZATION`, mode 0600). It then runs `cmd/console-smoke` over stdio with only that file's credential (five-minute bound): a layer with Start / Process / End blocks, two labelled edges and their
 placements read back with `layer_get`, then a Smart Form with a field and a submit button, released and
 read back as `ready`. Each run creates new objects in that workspace; nothing secret is printed.
