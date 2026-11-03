@@ -47,18 +47,19 @@ func validateGraphPlacements(r GraphCreatedPlacements) error {
 	if r.Nodes == nil || r.Edges == nil || len(r.Nodes)+len(r.Edges) < 1 || len(r.Nodes)+len(r.Edges) > 100 {
 		return errors.New("invalid placement result size")
 	}
-	seen := map[int64]bool{}
+	// Node and edge placements have independent PostgreSQL sequences/namespaces.
+	seenNodes, seenEdges := map[int64]bool{}, map[int64]bool{}
 	for _, n := range r.Nodes {
-		if n.LaID < 1 || strings.TrimSpace(n.ActorID) == "" || n.Position == nil || seen[n.LaID] {
+		if n.LaID < 1 || strings.TrimSpace(n.ActorID) == "" || n.Position == nil || seenNodes[n.LaID] {
 			return errors.New("invalid node placement identity")
 		}
-		seen[n.LaID] = true
+		seenNodes[n.LaID] = true
 	}
 	for _, e := range r.Edges {
-		if e.LaID < 1 || strings.TrimSpace(e.EdgeID) == "" || e.LaIDSource == nil || *e.LaIDSource < 1 || e.LaIDTarget == nil || *e.LaIDTarget < 1 || seen[e.LaID] {
+		if e.LaID < 1 || strings.TrimSpace(e.EdgeID) == "" || e.LaIDSource == nil || *e.LaIDSource < 1 || e.LaIDTarget == nil || *e.LaIDTarget < 1 || seenEdges[e.LaID] {
 			return errors.New("invalid edge placement identity")
 		}
-		seen[e.LaID] = true
+		seenEdges[e.LaID] = true
 	}
 	return nil
 }

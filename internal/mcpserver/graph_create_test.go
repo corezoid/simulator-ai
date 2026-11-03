@@ -43,7 +43,7 @@ func TestGraphCreateCatalogAndPublicWorkflow(t *testing.T) {
 		case "edge/create", "edge/operation/get":
 			output = `{"id":"edge-a","edgeTypeId":3,"source":"actor-a","target":"actor-b","name":"Yes","userId":42}`
 		case "graph/layer/actors/manage", "graph/layer/operation/get":
-			output = `{"nodes":[{"laId":11,"actorId":"actor-a","position":{"x":0,"y":0}}],"edges":[{"laId":13,"edgeId":"edge-a","laIdSource":11,"laIdTarget":12}]}`
+			output = `{"nodes":[{"laId":11,"actorId":"actor-a","position":{"x":0,"y":0}}],"edges":[{"laId":11,"edgeId":"edge-a","laIdSource":11,"laIdTarget":12}]}`
 		default:
 			t.Error("unexpected public method")
 			w.WriteHeader(501)

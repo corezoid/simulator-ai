@@ -76,7 +76,7 @@ func TestGraphCreationInputs(t *testing.T) {
 }
 
 func TestNativePlacementSchemaBounds(t *testing.T) {
-	native := `{"operationId":"native-1","actorId":"layer","items":[{"action":"create","data":{"id":"block","type":"node","position":{"x":100,"y":200},"areaPicture":{"width":200,"height":100,"img":"data:image/svg+xml;base64,fixture"},"layerSettings":{"width":200,"height":100,"blockId":"actual-kind","shape":{"type":"rect","x":0,"y":0,"w":200,"h":100},"textFrame":{"x":10,"y":10,"w":180,"h":80}}}}]}`
+	native := `{"operationId":"native-1","actorId":"layer","items":[{"action":"create","data":{"id":"block","type":"node","position":{"x":100,"y":200},"areaPicture":{"width":200,"height":100,"img":"data:image/svg+xml;base64,fixture"},"layerSettings":{"width":200,"height":100,"blockId":"actual-kind","shape":{"type":"primitive","primitive":[{"kind":"rect","x":0,"y":0,"w":200,"h":100}]},"textFrame":{"x":10,"y":10,"w":180,"h":80}}}}]}`
 	if err := ValidateGraphCreateInput("graph/layer/actors/manage", []byte(native)); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestNativePlacementSchemaBounds(t *testing.T) {
 		strings.Replace(native, `"textFrame":{"x":10,`, `"textFrame":{`, 1),
 		strings.Replace(native, `"blockId":"actual-kind"`, `"blockId":"actual-kind","offset":{"top":4}`, 1),
 		strings.Replace(native, `"w":180`, `"w":-1`, 1),
-		strings.Replace(native, `"shape":{"type":"rect","x":0,"y":0,"w":200,"h":100}`, `"shape":"rectangle"`, 1),
+		strings.Replace(native, `"shape":{"type":"primitive","primitive":[{"kind":"rect","x":0,"y":0,"w":200,"h":100}]}`, `"shape":"rectangle"`, 1),
 	} {
 		if ValidateGraphCreateInput("graph/layer/actors/manage", []byte(bad)) == nil {
 			t.Fatal("invalid native placement accepted")

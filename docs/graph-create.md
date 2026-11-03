@@ -59,7 +59,8 @@ does not validate its drawing semantics. Do not substitute `{}` or invent a shap
 other layer settings are forwarded. Nongraphic nodes may snap to the backend grid; read
 returned positions instead of assuming the requested coordinates were stored unchanged.
 
-Results reject missing/duplicate placement IDs, incomplete coordinates, missing edge
+Results reject missing/duplicate placement IDs within each node/edge namespace (their
+PostgreSQL sequences are independent), incomplete coordinates, missing edge
 anchors, wrong form identity or foreign node/edge bindings. Repeated actors are allowed
 and checked as a multiset. Receipt coordinates and edge metadata are historical; later
 human moves/rewires are not overwritten on replay. Missing/deleted/replaced objects fail

@@ -103,7 +103,7 @@ func TestGraphPlacementBindingPreservesRepeatedActors(t *testing.T) {
 	r := GraphCreatedPlacements{Nodes: []GraphCreatedNode{
 		{LaID: 12, ActorID: "same-actor", Position: &GraphPoint{X: 50, Y: 100}},
 		{LaID: 11, ActorID: "same-actor", Position: &GraphPoint{}},
-	}, Edges: []GraphCreatedPlacementEdge{{LaID: 13, EdgeID: "edge", LaIDSource: &a, LaIDTarget: &b}}}
+	}, Edges: []GraphCreatedPlacementEdge{{LaID: 11, EdgeID: "edge", LaIDSource: &a, LaIDTarget: &b}}}
 	if err := validateGraphPlacements(r); err != nil {
 		t.Fatal(err)
 	}
@@ -118,6 +118,11 @@ func TestGraphPlacementBindingPreservesRepeatedActors(t *testing.T) {
 	r.Nodes[1].LaID = 12
 	if validateGraphPlacements(r) == nil {
 		t.Fatal("duplicate placement id accepted")
+	}
+	r.Nodes[1].LaID = 11
+	r.Edges = append(r.Edges, r.Edges[0])
+	if validateGraphPlacements(r) == nil {
+		t.Fatal("duplicate edge placement id accepted")
 	}
 	var position GraphPoint
 	for _, raw := range []string{`{}`, `{"x":1}`, `{"x":null,"y":0}`} {
