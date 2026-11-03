@@ -1,7 +1,7 @@
 # Native graph metadata profile
 
 Set `SIMULATOR_AI_PROFILE=graph-read` alongside the explicit origin, workspace and API-user
-key documented in the README. This profile has the three default reads plus these tools:
+key documented in the README. This profile has the three default reads plus these tools and [exact placement readback](graph-elements.md):
 
 | Tool | Public RPC | Scope | Input and output |
 | --- | --- | --- | --- |
@@ -14,7 +14,7 @@ internal RPC names and arbitrary method forwarding are rejected. Workspace acces
 scopes remain backend-enforced; the catalog uses the backend's workspace system-template
 visibility, not a new per-template permission. `graph-read` accepts no delegated token.
 `read`, `smart-forms` and `delegated-read` do not gain these tools implicitly.
-The separate [graph-create profile](graph-create.md) includes these six reads plus
+The separate [graph-create profile](graph-create.md) includes these seven reads plus
 explicit create/recovery tools.
 
 Browse defaults to 48, maximum 100, offset >= 0. Exact `blockIds` has 1–100 entries of 1–128 characters each;

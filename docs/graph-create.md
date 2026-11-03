@@ -1,7 +1,7 @@
 # Recoverable graph creation profile
 
 `SIMULATOR_AI_PROFILE=graph-create` is an explicit desktop write opt-in. It includes
-all six `graph-read` tools and six creation/recovery tools below plus the read-only [native planner](graph-planning.md) (13 total). Use the
+all seven `graph-read` tools and six creation/recovery tools below plus the read-only [native planner](graph-planning.md) (14 total). Use the
 same explicit origin/workspace/API-user key. No delegated credential, server Hermes,
 Console dispatch or server billing is added. Other profiles do not gain writes.
 

@@ -147,7 +147,7 @@ func runScriptedProfile(t *testing.T, profile string) {
 		wanted = append(wanted, "layer_actors_list")
 	}
 	if profile == "graph-read" || profile == "graph-create" {
-		wanted = append(wanted, "flowchart_blocks_search", "graph_system_form_get", "graph_edge_types_list")
+		wanted = append(wanted, "graph_elements_get", "flowchart_blocks_search", "graph_system_form_get", "graph_edge_types_list")
 	}
 	if profile == "graph-create" {
 		wanted = append(wanted, "graph_flowchart_plan", "graph_actor_create", "graph_actor_operation_get", "graph_edge_create", "graph_edge_operation_get", "graph_placements_create", "graph_placements_operation_get")

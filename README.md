@@ -10,9 +10,9 @@ see [Smart Forms setup and guarantees](docs/smart-forms.md). It is not a
 full legacy replacement or an accepted production release. Claude Code/Codex use their own
 agent; this binary launches no Hermes, model, LiteLLM or server AI billing.
 
-Native graph metadata is available through the six-tool `graph-read` profile; see
+Native graph metadata is available through the seven-tool `graph-read` profile; see
 [graph metadata and constraints](docs/graph-read.md). This prepares native flowchart
-planning. The [native planner and portable graph skill](docs/graph-planning.md) calculate creation payloads and geometry. The separate [graph-create profile](docs/graph-create.md) adds six public
+planning and [exact node/edge readback](docs/graph-elements.md). The [native planner and portable graph skill](docs/graph-planning.md) calculate creation payloads and geometry. The separate [graph-create profile](docs/graph-create.md) adds six public
 create/recovery tools with mandatory receipt keys and per-write contract preflight.
 A native generator/layout and Console execution are still pending.
 

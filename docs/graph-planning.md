@@ -1,6 +1,6 @@
 # Deterministic native flowchart planning
 
-`graph-create` adds `graph_flowchart_plan` (13 tools total). This is a read-only
+`graph-create` adds `graph_flowchart_plan` (14 tools total, including exact readback). This is a read-only
 planning tool: the only network operation is the already pinned public
 `form/flowchart-block/search` with exact blockIds. It never creates actors, assigns
 operation IDs, retains credentials, launches Hermes or retries a write. Other
@@ -34,7 +34,7 @@ reported, never removed. Cycles, joins and disconnected components are supported
 input order is the stable tie-breaker. Same ordered input and catalog content yield
 the same plan. It does not route edges, avoid all connector crossings, autosize
 labels or prove browser edit/reload behavior. Backend snapping may alter positions:
-verify persisted values rather than treating planned coordinates as receipts.
+verify persisted values with [exact readback](graph-elements.md) rather than treating planned coordinates as receipts.
 
 Save the plan and exact keyed write payloads before execution. The planner's
 catalog revision is provenance, not a CAS token; a regenerated plan must not replace

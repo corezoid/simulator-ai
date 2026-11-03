@@ -17,7 +17,9 @@ ask for configuration through the host's environment; never request secrets in c
 An access error is not proof that the object does not exist. Do not retry with another
 identity, use private API, or switch to legacy routing.
 
-For layer nodes, read one bounded page first. The backend filters deleted actors AFTER
+With graph-read/graph-create enabled, `graph_elements_get` reads a known bounded
+selection of node/edge laIds and native geometry. It is not full layer enumeration.
+For layer nodes without exact placement IDs, read one bounded page first. The backend filters deleted actors AFTER
 pagination, so a short or empty page does not prove there are no later nodes. This profile
 has no authoritative completion cursor or total. If the task needs more, use a finite page
 budget and offset += requested limit, then report incomplete enumeration; never loop until

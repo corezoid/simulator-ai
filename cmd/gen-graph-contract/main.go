@@ -50,7 +50,7 @@ func projectNames(raw []byte, selectedNames []string) ([]byte, error) {
 }
 
 func main() {
-	profile := flag.String("profile", "read", "read or create")
+	profile := flag.String("profile", "read", "read, create or elements")
 	input := flag.String("input", "", "reviewed local public OpenRPC artifact")
 	revision := flag.String("revision", "", "reviewed backend commit")
 	output := flag.String("output", "contracts/graph-openrpc.json", "projection destination")
@@ -65,6 +65,8 @@ func main() {
 	selected := names
 	if *profile == "create" {
 		selected = createNames
+	} else if *profile == "elements" {
+		selected = []string{"graph/layer/elements/list"}
 	} else if *profile != "read" {
 		fail(fmt.Errorf("unsupported profile"))
 	}

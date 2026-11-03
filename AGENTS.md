@@ -7,7 +7,7 @@ Desktop uses its host agent: do not add Hermes, LiteLLM or server billing to thi
 Default profile is three read-only metadata tools, explicit ApiKey/origin/workspace.
 The Console-only opt-in delegated-read profile exposes actor_get/form_get with an
 explicit scoped token and no API-key fallback; it does not launch or provision a runtime.
-The opt-in graph-read profile adds three read-only native graph metadata tools; it does not
+The opt-in graph-read profile adds three read-only native graph metadata tools and exact placement readback; it does not
 expose graph writes or accept delegated tokens. The separate graph-create profile adds
 six create/recovery tools and a read-only deterministic native planner, with mandatory write keys and per-write public contract preflight;
 no graph update/delete or hidden runtime is permitted.
