@@ -20,11 +20,20 @@ type GraphElementsInput struct {
 // GraphElementSettings projects e_graph.ActorLayerSettings and its native Extra keys.
 // Unrelated drawing/HTML/account configuration is deliberately omitted.
 type GraphElementSettings struct {
-	Width     *float64        `json:"width,omitempty"`
-	Height    *float64        `json:"height,omitempty"`
-	BlockID   string          `json:"blockId,omitempty"`
-	Shape     json.RawMessage `json:"shape,omitempty"`
-	TextFrame *GraphFrame     `json:"textFrame,omitempty"`
+	Width     *float64           `json:"width,omitempty"`
+	Height    *float64           `json:"height,omitempty"`
+	BlockID   string             `json:"blockId,omitempty"`
+	Shape     json.RawMessage    `json:"shape,omitempty"`
+	TextFrame *GraphElementFrame `json:"textFrame,omitempty"`
+}
+
+// GraphElementFrame preserves presence in the frontend-authored textFrame JSON.
+// Missing/null coordinates are not silently converted into stored zeroes.
+type GraphElementFrame struct {
+	X *float64 `json:"x"`
+	Y *float64 `json:"y"`
+	W *float64 `json:"w"`
+	H *float64 `json:"h"`
 }
 
 // GraphElementNode projects rpc_graph.layerNodeRes, with metadata-only Actor.
@@ -36,14 +45,22 @@ type GraphElementNode struct {
 	Actor         *Actor                `json:"actor"`
 }
 
+// GraphElementEdgeSettings follows e_graph.EdgeLayerSettings. Empty name clears
+// the override; the editor then falls back to the edge entity's name.
+type GraphElementEdgeSettings struct {
+	Name       *string `json:"name,omitempty"`
+	CurveStyle *string `json:"curveStyle,omitempty"`
+}
+
 // GraphElementEdge projects rpc_graph.layerGraphEdgeRes and graphEdgeRes.
-// It excludes user/owner enrichment and arbitrary edge layer settings.
+// It excludes user/owner enrichment and projects only visible label/style overrides.
 type GraphElementEdge struct {
-	LaID       int64             `json:"laId"`
-	ID         string            `json:"id"`
-	LaIDSource *int64            `json:"laIdSource,omitempty"`
-	LaIDTarget *int64            `json:"laIdTarget,omitempty"`
-	Edge       *GraphCreatedEdge `json:"edge"`
+	LayerSettings *GraphElementEdgeSettings `json:"layerSettings,omitempty"`
+	LaID          int64                     `json:"laId"`
+	ID            string                    `json:"id"`
+	LaIDSource    *int64                    `json:"laIdSource,omitempty"`
+	LaIDTarget    *int64                    `json:"laIdTarget,omitempty"`
+	Edge          *GraphCreatedEdge         `json:"edge"`
 }
 type GraphElements struct {
 	Nodes []GraphElementNode `json:"nodes"`
@@ -103,6 +120,12 @@ func (c *Client) GetGraphElements(ctx context.Context, p GraphElementsInput) (Gr
 		}
 		if n.Position != nil && (n.Position.X == nil || n.Position.Y == nil) {
 			return GraphElements{}, unavailable
+		}
+		if n.LayerSettings != nil && n.LayerSettings.TextFrame != nil {
+			f := n.LayerSettings.TextFrame
+			if f.X == nil || f.Y == nil || f.W == nil || f.H == nil {
+				return GraphElements{}, unavailable
+			}
 		}
 		delete(nodes, n.LaID)
 		actors[n.LaID] = n.ID

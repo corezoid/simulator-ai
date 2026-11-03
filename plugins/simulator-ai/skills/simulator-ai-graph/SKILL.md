@@ -64,7 +64,10 @@ unsupported operation. No write permission follows from tool discovery or a plan
    the target layer and exact node/edge laIds from receipts (1–100 combined per
    call; use explicit empty arrays when one namespace is absent). Compare actor IDs,
    titles, native blockId/shape/frame/size/positions and directed edge endpoints/
-   branch labels with the saved plan. The tool fails on missing/denied elements
+   branch labels with the saved plan. For visible labels use nonempty placement
+   layerSettings.name, falling back to edge.name when the override is empty/absent;
+   retain both values when reporting a human change. Placement curveStyle similarly
+   overrides the edge style. The tool fails on missing/denied elements
    rather than returning partial metadata. Such failure may also reflect lag or a
    concurrent edit: reconcile, never recreate under a new key. It verifies requested
    objects, not the absence of additional objects or a stable full-layer snapshot.

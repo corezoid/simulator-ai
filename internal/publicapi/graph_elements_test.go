@@ -43,6 +43,9 @@ func TestExactGraphReadbackProjectionAndFailures(t *testing.T) {
 	for _, bad := range []string{
 		`{"nodes":[],"edges":[]}`, `{"nodes":null,"edges":[]}`,
 		strings.Replace(elementResult, `"position":{"x":1,"y":2}`, `"position":{}`, 1),
+		strings.Replace(elementResult, `"textFrame":{"x":5,"y":5,"w":190,"h":90}`, `"textFrame":{}`, 1),
+		strings.Replace(elementResult, `"textFrame":{"x":5,"y":5,"w":190,"h":90}`, `"textFrame":{"w":10}`, 1),
+		strings.Replace(elementResult, `"textFrame":{"x":5,"y":5,"w":190,"h":90}`, `"textFrame":{"x":null,"y":5,"w":190,"h":90}`, 1),
 		strings.Replace(elementResult, `"laId":11`, `"laId":99`, 1),
 		strings.Replace(elementResult, `"actor":{`, `"accessDenied":true,"actor":{`, 1),
 		strings.Replace(elementResult, `"actor":{"id":"a"`, `"actor":{"id":"other"`, 1),
@@ -85,5 +88,35 @@ func TestExactGraphReadbackKeepsRepeatedActorsAndEdgeOnlySelection(t *testing.T)
 	response = `{"nodes":[],"edges":[{"laId":11,"id":"e","edge":{"id":"e","edgeTypeId":3,"source":"a","target":"b"}}]}`
 	if got, err := c.GetGraphElements(context.Background(), GraphElementsInput{ActorID: "layer", Nodes: []int64{}, Edges: []int64{11}}); err != nil || len(got.Edges) != 1 {
 		t.Fatal("edge-only selection rejected", err)
+	}
+}
+
+func TestExactGraphPreservesLayerLabelAndStyleOverrides(t *testing.T) {
+	response := strings.Replace(elementResult, `"laIdTarget":12,`, `"laIdTarget":12,"layerSettings":{"name":"Ні","curveStyle":"straight","linkedActorId":"secret-canary"},`, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := readSmart(t, r)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, q.ID, response)
+	}))
+	defer server.Close()
+	c, err := New(Config{Origin: server.URL, Workspace: "workspace-a", APIKey: "synthetic", Profile: "graph-read"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"Ні", ""} {
+		if name == "" {
+			response = strings.Replace(response, `"name":"Ні"`, `"name":""`, 1)
+		}
+		result, err := c.GetGraphElements(context.Background(), GraphElementsInput{ActorID: "layer", Nodes: []int64{11}, Edges: []int64{11}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		settings := result.Edges[0].LayerSettings
+		if settings == nil || settings.Name == nil || *settings.Name != name || settings.CurveStyle == nil || *settings.CurveStyle != "straight" || *result.Edges[0].Edge.Name != "Так" {
+			t.Fatal("layer override or clear was lost")
+		}
+		raw, _ := json.Marshal(result.Edges)
+		if strings.Contains(string(raw), "canary") {
+			t.Fatal("unprojected settings leaked")
+		}
 	}
 }

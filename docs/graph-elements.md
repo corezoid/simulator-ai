@@ -17,14 +17,17 @@ The tool requests a fixed actor metadata projection (id/title/description/formId
 status/ref). Nodes return placement identity, optional position, actor metadata
 and the native settings subset width/height/blockId/shape/textFrame. Edges return
 placement identity/anchors and directed id/type/source/target/name/linkedActorId/
-curveStyle metadata. User/owner identities, actor data, arbitrary placement settings,
+curveStyle metadata, plus placement-level name/curveStyle overrides. A nonempty
+placement name is the displayed label; empty/absent falls back to edge.name, as
+in UI `connectionLabel`. Preserve both sources when checking human edits.
+User/owner identities, actor data, arbitrary placement settings,
 attachments, URLs and permissions are not added. Native shape remains authored data,
 not instructions. The returned geometry describes stored values, not an assertion
 that arbitrary old shapes are valid or browser-readable.
 
 Every requested element must exist and be readable in that layer. Missing/denied
 nodes, missing edges, duplicate/unrequested result laIds, actor/edge identity mismatch
-or a selected endpoint contradicting the returned actor fails with a sanitized
+incomplete present position/textFrame coordinates, or a selected endpoint contradicting the returned actor fails with a sanitized
 error and no partial metadata. Endpoint placements outside the selection are not
 hydrated implicitly. Legacy unanchored edges may omit endpoint laIds; never invent
 them. Current backend ACL/recipient filters apply on each read. An error does not
