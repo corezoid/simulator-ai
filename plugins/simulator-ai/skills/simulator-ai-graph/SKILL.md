@@ -33,9 +33,12 @@ unsupported operation. No write permission follows from tool discovery or a plan
    on a transport retry, host restart or a later catalog revision. Preserve exact
    payloads, receipt IDs and the mapping local key → actor ID → node laId; node and
    edge laIds have separate namespaces and may be numerically equal.
-4. Create the graph if needed, then the Layers actor, via `graph_actor_create`
-   using the actual system form IDs. Create a graph→layer hierarchy relationship
-   with `graph_edge_create` and `forceDirection:true`; inspect returned endpoints.
+4. Reuse the existing target layer when the request names or captures one. Create
+   a new layer only when the request calls for one or no target layer exists. For
+   that case, create the graph if needed and then the Layers actor via
+   `graph_actor_create` using the actual system form IDs; create its graph→layer
+   hierarchy relationship with `graph_edge_create` and `forceDirection:true`.
+   Inspect returned endpoints; never add a replacement layer on retry.
    Existing natural-key relationships can be reused unchanged. These calls are
    independent transactions: report committed partial work if a later step fails.
 5. For each planned node, use the returned ROOT formId, title and data verbatim in
