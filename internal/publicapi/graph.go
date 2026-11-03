@@ -10,7 +10,9 @@ import (
 	"github.com/corezoid/simulator-ai/contracts"
 )
 
-func (c *Client) GraphReadsEnabled() bool { return c.config.Profile == "graph-read" }
+func (c *Client) GraphReadsEnabled() bool {
+	return c.config.Profile == "graph-read" || c.GraphCreatesEnabled()
+}
 
 type graphRequest[P any] struct {
 	AccID string `json:"accId"`

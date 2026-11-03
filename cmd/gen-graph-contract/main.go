@@ -9,6 +9,8 @@ import (
 	"os"
 )
 
+var createNames = []string{"actor/create", "actor/operation/get", "edge/create", "edge/operation/get", "graph/layer/actors/manage", "graph/layer/operation/get"}
+
 var names = []string{"edge_type/list", "form/flowchart-block/search", "form/system/get"}
 
 type descriptor struct {
@@ -22,7 +24,9 @@ type document struct {
 	Methods []descriptor `json:"methods"`
 }
 
-func project(raw []byte) ([]byte, error) {
+func project(raw []byte) ([]byte, error) { return projectNames(raw, names) }
+
+func projectNames(raw []byte, selectedNames []string) ([]byte, error) {
 	var source document
 	if err := json.Unmarshal(raw, &source); err != nil {
 		return nil, err
@@ -34,8 +38,8 @@ func project(raw []byte) ([]byte, error) {
 		}
 		byName[method.Name] = method
 	}
-	selected := document{Methods: make([]descriptor, 0, len(names))}
-	for _, name := range names {
+	selected := document{Methods: make([]descriptor, 0, len(selectedNames))}
+	for _, name := range selectedNames {
 		method, ok := byName[name]
 		if !ok || method.Audience != "public" || method.Scope == "" || len(method.Params) == 0 || len(method.Result) == 0 {
 			return nil, fmt.Errorf("missing or unsupported public descriptor: %s", name)
@@ -46,6 +50,7 @@ func project(raw []byte) ([]byte, error) {
 }
 
 func main() {
+	profile := flag.String("profile", "read", "read or create")
 	input := flag.String("input", "", "reviewed local public OpenRPC artifact")
 	revision := flag.String("revision", "", "reviewed backend commit")
 	output := flag.String("output", "contracts/graph-openrpc.json", "projection destination")
@@ -57,7 +62,13 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	result, err := project(raw)
+	selected := names
+	if *profile == "create" {
+		selected = createNames
+	} else if *profile != "read" {
+		fail(fmt.Errorf("unsupported profile"))
+	}
+	result, err := projectNames(raw, selected)
 	if err != nil {
 		fail(err)
 	}
@@ -65,6 +76,6 @@ func main() {
 	if err = os.WriteFile(*output, result, 0644); err != nil {
 		fail(err)
 	}
-	fmt.Printf("3 public graph-read methods; backend %s; projection sha256 %x\n", *revision, sha256.Sum256(result))
+	fmt.Printf("%d public graph-%s methods; backend %s; projection sha256 %x\n", len(selected), *profile, *revision, sha256.Sum256(result))
 }
 func fail(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }

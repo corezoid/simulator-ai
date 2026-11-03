@@ -12,7 +12,9 @@ agent; this binary launches no Hermes, model, LiteLLM or server AI billing.
 
 Native graph metadata is available through the six-tool `graph-read` profile; see
 [graph metadata and constraints](docs/graph-read.md). This prepares native flowchart
-planning; it does not yet generate graph actors, layers or placements.
+planning. The separate [graph-create profile](docs/graph-create.md) adds six public
+create/recovery tools with mandatory receipt keys and per-write contract preflight.
+A native generator/layout and Console execution are still pending.
 
 The separate [Console delegated-read profile](docs/delegated-read.md) accepts only
 manager-delivered scoped credentials and exposes `actor_get`/`form_get`. It does not
@@ -27,7 +29,7 @@ change desktop configuration, provision a runtime or enable Console routing.
 API scopes are `actors.readonly` / `forms.readonly`, plus existing workspace and object ACLs.
 The server binds one explicit origin/workspace/key per process. Tools cannot supply another
 workspace, arbitrary RPC, URL, credentials or `with` expansion. Read requests are never
-coalesced with counts. No automatic retries, paid tests or remote MCP. Writes require the explicit Smart Forms profile.
+coalesced with counts. No automatic retries, paid tests or remote MCP. Writes require the explicit `smart-forms` or `graph-create` profile.
 
 ## Local setup
 
@@ -45,8 +47,8 @@ mechanism. No default production endpoint or workspace is assumed:
 
 - `SIMULATOR_AI_ORIGIN`: explicit `https://your-simulator-origin.example` (origin only).
 - `SIMULATOR_AI_WORKSPACE`: workspace ID for the API user.
-- `SIMULATOR_AI_PROFILE`: `read` (default), `graph-read` (native graph metadata), or
-  `smart-forms` (explicit write capability). Console `delegated-read` has separate setup.
+- `SIMULATOR_AI_PROFILE`: `read` (default), `graph-read` (native graph metadata), `graph-create` (create-only graph operations), or
+  `smart-forms` (Smart Form writes). Console `delegated-read` has separate setup.
 - `SIMULATOR_AI_API_KEY`: API-user key; never paste it into chat, a tool call or committed config.
 
 Only literal loopback HTTP is accepted for local scripted development. HTTPS verifies TLS;

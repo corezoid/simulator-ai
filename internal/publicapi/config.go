@@ -31,8 +31,8 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 	return c, nil
 }
 func (c Config) validate() error {
-	if c.Profile != "" && c.Profile != "read" && c.Profile != "smart-forms" && c.Profile != "delegated-read" && c.Profile != "graph-read" {
-		return errors.New("SIMULATOR_AI_PROFILE must be read, smart-forms, graph-read or delegated-read")
+	if c.Profile != "" && c.Profile != "read" && c.Profile != "smart-forms" && c.Profile != "delegated-read" && c.Profile != "graph-read" && c.Profile != "graph-create" {
+		return errors.New("SIMULATOR_AI_PROFILE must be read, smart-forms, graph-read, graph-create or delegated-read")
 	}
 	u, e := url.Parse(c.Origin)
 	if e != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Path != "" && u.Path != "/") || u.Opaque != "" {

@@ -40,3 +40,12 @@ public projection, input/output schemas, HTTP response validation and actual sub
 stdio initialization/catalog/calls for read, delegated-read and graph-read. Graph reads
 use only scripted loopback responses; no live Graph Editor or model acceptance is claimed.
 The exact reviewed commit and xhigh verdict are recorded in the slice PR.
+
+2026-11-03 graph-create: `make test vet build` passed with bounded concurrency.
+The new opt-in inventory has 12 tools. Scripted HTTP/MCP tests exercise all six public
+create/recovery operations, per-write public-schema checks, response-loss lookup,
+wrong result bindings, repeated actor placements and invalid/delete argument denial.
+Actual subprocess stdio loads graph-create with the expected tool names/annotations.
+Native schema cases cover full explicit positions, anchored edges, shape objects,
+text-frame/dimension bounds and rejected unknown settings. No live graph write or
+Console acceptance is claimed; reviewed commit/verdict are recorded in the PR.

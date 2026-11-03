@@ -2,7 +2,9 @@
 
 Flow: host agent → stdio MCP → typed public client → POST /api/2.0/rpc.
 The default profile has three reads; optional profiles have explicit fixed public methods.
-[Graph metadata](graph-read.md) adds three reads with projected input/output schemas. There is no
+[Graph metadata](graph-read.md) adds three reads with projected input/output schemas.
+[Graph creation](graph-create.md) adds six create/recovery operations with mandatory
+receipts and a public-contract check before each write; no update/delete tools. There is no
 server orchestration, model SDK, database, shell tool or legacy fallback. Skills are packaged
 separately from MCP and do not manufacture permissions.
 

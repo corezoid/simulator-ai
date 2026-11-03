@@ -14,6 +14,8 @@ internal RPC names and arbitrary method forwarding are rejected. Workspace acces
 scopes remain backend-enforced; the catalog uses the backend's workspace system-template
 visibility, not a new per-template permission. `graph-read` accepts no delegated token.
 `read`, `smart-forms` and `delegated-read` do not gain these tools implicitly.
+The separate [graph-create profile](graph-create.md) includes these six reads plus
+explicit create/recovery tools.
 
 Browse defaults to 48, maximum 100, offset >= 0. Exact `blockIds` has 1–100 entries of 1–128 characters each;
 omit it for browsing. Duplicate requested IDs are deduplicated by the API, missing kinds

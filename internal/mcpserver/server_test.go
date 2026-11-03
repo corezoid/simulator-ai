@@ -37,7 +37,7 @@ func TestStdioChild(t *testing.T) {
 	os.Exit(0)
 }
 func TestScriptedStdioCatalogAndCalls(t *testing.T) {
-	for _, profile := range []string{"read", "delegated-read", "graph-read"} {
+	for _, profile := range []string{"read", "delegated-read", "graph-read", "graph-create"} {
 		t.Run(profile, func(t *testing.T) { runScriptedProfile(t, profile) })
 	}
 }
@@ -146,8 +146,11 @@ func runScriptedProfile(t *testing.T, profile string) {
 	if !delegated {
 		wanted = append(wanted, "layer_actors_list")
 	}
-	if profile == "graph-read" {
+	if profile == "graph-read" || profile == "graph-create" {
 		wanted = append(wanted, "flowchart_blocks_search", "graph_system_form_get", "graph_edge_types_list")
+	}
+	if profile == "graph-create" {
+		wanted = append(wanted, "graph_actor_create", "graph_actor_operation_get", "graph_edge_create", "graph_edge_operation_get", "graph_placements_create", "graph_placements_operation_get")
 	}
 	if len(result.Tools) != len(wanted) {
 		t.Fatalf("unexpected tools: %s", catalog["result"])
@@ -155,7 +158,8 @@ func runScriptedProfile(t *testing.T, profile string) {
 	seen := map[string]bool{}
 	for _, tool := range result.Tools {
 		seen[tool.Name] = true
-		if !tool.Annotations.ReadOnly || tool.Annotations.Destructive {
+		write := profile == "graph-create" && strings.HasSuffix(tool.Name, "_create")
+		if tool.Annotations.ReadOnly == write || tool.Annotations.Destructive != write {
 			t.Fatal("unsafe annotations")
 		}
 	}
@@ -191,7 +195,7 @@ func runScriptedProfile(t *testing.T, profile string) {
 		}
 	}
 	expectedCalls := int32(1)
-	if profile == "graph-read" {
+	if profile == "graph-read" || profile == "graph-create" {
 		for i, step := range []struct{ name, args string }{
 			{"flowchart_blocks_search", `{"blockIds":["process"]}`},
 			{"graph_system_form_get", `{"title":"Layers"}`},
