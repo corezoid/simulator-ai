@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -80,7 +81,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: console-smoke -bin <binary> graph|form ...")
 		os.Exit(2)
 	}
-	cmd := exec.Command(*bin)
+	// Bounded like client-smoke: the whole run, all of its scenarios, gets five minutes.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, *bin)
 	cmd.Env = append(os.Environ(), "SIMULATOR_AI_PROFILE=console")
 	cmd.Stderr = os.Stderr
 	stdin, _ := cmd.StdinPipe()
@@ -95,7 +99,7 @@ func main() {
 	if _, err := c.rpc("initialize", map[string]any{"protocolVersion": "2025-03-26", "capabilities": map[string]any{}, "clientInfo": map[string]any{"name": "console-smoke", "version": "1"}}); err != nil {
 		fail(err)
 	}
-	stamp := time.Now().Format("150405")
+	stamp := time.Now().Format("20060102_150405")
 	for _, scenario := range flag.Args() {
 		var err error
 		switch scenario {

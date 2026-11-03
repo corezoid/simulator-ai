@@ -24,11 +24,13 @@ client-smoke: build
 	GOMAXPROCS=2 go run -p=1 ./cmd/client-smoke
 
 # Live console smoke against a local sim-api stand. sim-api's ai-smoke-env target writes
-# SMOKE_ENV (origin, workspace, API key or Authorization); it is loaded only into this run.
+# SMOKE_ENV (origin, workspace, API key or Authorization); it replaces any SIMULATOR_AI_*
+# credential of the calling shell and is loaded only into this run.
 SMOKE_ENV ?= $(HOME)/.config/simulator-ai/smoke.env
 
 .PHONY: smoke
 smoke: build
 	@test -n "$(SIM_API_DIR)" || { echo "SIM_API_DIR=<sim-api checkout> required"; exit 2; }
 	$(MAKE) -C "$(SIM_API_DIR)" ai-smoke-env $(if $(WORKSPACE),WORKSPACE=$(WORKSPACE))
-	@set -a && . "$(SMOKE_ENV)" && set +a && GOMAXPROCS=2 go run -p=1 ./cmd/console-smoke -bin bin/simulator-ai graph form
+	@unset SIMULATOR_AI_API_KEY SIMULATOR_AI_AUTHORIZATION SIMULATOR_AI_DELEGATED_TOKEN SIMULATOR_AI_ACTOR SIMULATOR_AI_PROFILE && \
+		set -a && . "$(SMOKE_ENV)" && set +a && GOMAXPROCS=2 go run -p=1 ./cmd/console-smoke -bin bin/simulator-ai graph form
