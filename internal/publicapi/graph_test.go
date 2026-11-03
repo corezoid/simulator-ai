@@ -58,6 +58,11 @@ func TestGraphCatalogBindingAndMalformedResults(t *testing.T) {
 	if _, err := c.SearchGraphBlocks(context.Background(), GraphCatalogInput{BlockIDs: []string{}}); err == nil {
 		t.Fatal("empty explicit ids accepted")
 	}
+	for _, id := range []string{"", strings.Repeat("a", 129)} {
+		if _, err := c.SearchGraphBlocks(context.Background(), GraphCatalogInput{BlockIDs: []string{id}}); err == nil {
+			t.Fatal("invalid block id reached API")
+		}
+	}
 	c.config.Profile = "read"
 	if _, err := c.SearchGraphBlocks(context.Background(), GraphCatalogInput{}); err == nil {
 		t.Fatal("profile fence bypassed")

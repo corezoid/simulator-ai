@@ -15,7 +15,7 @@ scopes remain backend-enforced; the catalog uses the backend's workspace system-
 visibility, not a new per-template permission. `graph-read` accepts no delegated token.
 `read`, `smart-forms` and `delegated-read` do not gain these tools implicitly.
 
-Browse defaults to 48, maximum 100, offset >= 0. Exact `blockIds` has 1–100 entries;
+Browse defaults to 48, maximum 100, offset >= 0. Exact `blockIds` has 1–100 entries of 1–128 characters each;
 omit it for browsing. Duplicate requested IDs are deduplicated by the API, missing kinds
 are omitted, and exact lookup returns `hasMore=false`. Exact selection ignores browse
 filters and pagination after validating them. An explicit empty array is rejected by the

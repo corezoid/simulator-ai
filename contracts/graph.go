@@ -59,6 +59,8 @@ func initializeGraph() {
 			case "blockIds":
 				param.Schema["minItems"] = 1
 				param.Schema["maxItems"] = 100
+				// Backend dive,min=1,max=128 lives in x-validation-rules, not item JSON Schema.
+				param.Schema["items"] = map[string]any{"type": "string", "minLength": 1, "maxLength": 128}
 			case "title":
 				param.Schema["enum"] = []string{"Graphs", "Layers", "FlowchartBlock"}
 			}
