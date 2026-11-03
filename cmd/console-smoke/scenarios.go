@@ -193,7 +193,7 @@ func form(c *client, stamp string) error {
 	if err := c.tool("smart_form_release_get", map[string]any{"appId": created.AppID, "releaseId": rel.ReleaseID}, &again); err != nil {
 		return err
 	}
-	if !rel.Ready || !again.Ready || rel.Marker != "smart-form: "+created.AppID {
+	if !rel.Ready || !again.Ready || rel.Marker != "appId: "+created.AppID {
 		return fmt.Errorf("release %d is not ready", rel.ReleaseID)
 	}
 	fmt.Println("OK form appId", created.AppID, "release", rel.ReleaseID)

@@ -113,7 +113,7 @@ type SmartFormReleaseInput struct {
 
 // SmartFormRelease is the result contract the Console backend reads: Ready is true only when the
 // release is the active production content, so appId can be opened inline (appSettings.autorun).
-// Marker ("smart-form: <appId>", only when ready) is the line the agent ends its reply with: the
+// Marker ("appId: <appId>", only when ready) is the line the agent ends its reply with: the
 // Hermes run stream carries no tool results, so sim-api finds the form in the final Markdown.
 type SmartFormRelease struct {
 	AppID         string `json:"appId"`
@@ -273,7 +273,7 @@ func released(appID string, r Release) SmartFormRelease {
 	out := SmartFormRelease{AppID: appID, ReleaseID: r.ID, ReleaseNumber: r.ReleaseNumber, Status: r.Status,
 		Ready: r.Status == "active" && (r.PrunedByRetention == nil || !*r.PrunedByRetention)}
 	if out.Ready {
-		out.Marker = "smart-form: " + appID
+		out.Marker = "appId: " + appID
 	}
 	return out
 }

@@ -134,7 +134,7 @@ ranking) with three free cells between blocks and ranks. Like the editor, the pl
 silhouette as `areaPicture`, which makes it graphic, so sim-api keeps that position instead of snapping the centre
 to a multiple of 50 (half a cell off for even-sized blocks). Smart Form: `smart_form_create` →
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its
-`ready: true` (status `active`, snapshot kept, production env) comes with `marker: "smart-form: <appId>"`. The
+`ready: true` (status `active`, snapshot kept, production env) comes with `marker: "appId: <appId>"`. The
 agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries
 no tool results) to put `appId` into the reply reaction with `appSettings.autorun`.
 

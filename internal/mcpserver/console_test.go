@@ -148,7 +148,7 @@ func TestConsoleRequests(t *testing.T) {
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
 		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
 		{"smart_form_files_create", `{"appId":"app1","items":[{"folderId":102,"title":"locale","type":"application/json","source":"{}"}]}`, "app_file/create", `"items":[{"folderId":102`, `"id":104`},
-		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"smart-form: app1"}`},
+		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"appId: app1"}`},
 		{"smart_form_release_get", `{"appId":"app1","releaseId":9}`, "application/env/list,release/get", `"releaseId":9`, `"ready":false`},
 	}
 	for _, tc := range cases {
