@@ -12,6 +12,7 @@ import (
 type FlowchartBlocksInput struct {
 	Query    string   `json:"query,omitempty"`
 	BlockIDs []string `json:"blockIds,omitempty"`
+	Offset   int64    `json:"offset,omitempty"`
 }
 
 type flowchartSearchRequest struct {
@@ -19,6 +20,7 @@ type flowchartSearchRequest struct {
 	Query    string   `json:"query,omitempty"`
 	BlockIDs []string `json:"blockIds,omitempty"`
 	Limit    int64    `json:"limit"`
+	Offset   int64    `json:"offset,omitempty"`
 }
 
 // ListFlowchartBlocks reads the workspace's native flowchart block definitions through public
@@ -27,11 +29,11 @@ func (c *Client) ListFlowchartBlocks(ctx context.Context, in FlowchartBlocksInpu
 	if e := consoleOnly(c); e != nil {
 		return GraphCatalog{}, e
 	}
-	if len(in.BlockIDs) > 100 || utf8.RuneCountInString(in.Query) > 200 {
+	if len(in.BlockIDs) > 100 || utf8.RuneCountInString(in.Query) > 200 || in.Offset < 0 {
 		return GraphCatalog{}, errors.New("at most 100 blockIds and a query up to 200 characters")
 	}
 	wire, e := call[flowchartSearchRequest, graphCatalogWire](ctx, c, "form/flowchart-block/search", flowchartSearchRequest{AccID: c.config.Workspace,
-		Query: strings.TrimSpace(in.Query), BlockIDs: in.BlockIDs, Limit: 100})
+		Query: strings.TrimSpace(in.Query), BlockIDs: in.BlockIDs, Limit: 100, Offset: in.Offset})
 	if e != nil {
 		return GraphCatalog{}, e
 	}

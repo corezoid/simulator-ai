@@ -33,8 +33,8 @@ func addConsole(s *server.MCPServer, c *publicapi.Client) {
 }
 
 func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {
-	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(blocksOutput)), "flowchart_blocks_list", "List the workspace's native flowchart block kinds (Start / Stop, Process, Decision, ...): formId, title, blockId. With blockIds each kind also returns data and layerSettings: create the block with actor_create(formId, title, data) and place it with layer_placements_create(layerSettings) so Graph Editor draws its shape. query filters by title or blockId substring; at most 100 kinds per call, hasMore when there are more.",
-		`{"type":"object","properties":{"query":{"type":"string","maxLength":200},"blockIds":{"type":"array","items":{"type":"string","minLength":1,"maxLength":128},"minItems":1,"maxItems":100,"uniqueItems":true}},"additionalProperties":false}`, false,
+	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(blocksOutput)), "flowchart_blocks_list", "List the workspace's native flowchart block kinds (Start / Stop, Process, Decision, ...): formId, title, blockId. With blockIds each kind also returns data and layerSettings: create the block with actor_create(formId, title, data) and place it with layer_placements_create(layerSettings) so Graph Editor draws its shape. query filters by title or blockId substring; at most 100 kinds per call; hasMore means read the next offset.",
+		`{"type":"object","properties":{"query":{"type":"string","maxLength":200},"offset":{"type":"integer","minimum":0},"blockIds":{"type":"array","items":{"type":"string","minLength":1,"maxLength":128},"minItems":1,"maxItems":100,"uniqueItems":true}},"additionalProperties":false}`, false,
 		func(ctx context.Context, in publicapi.FlowchartBlocksInput) (graphplan.Blocks, error) {
 			catalog, e := c.ListFlowchartBlocks(ctx, in)
 			if e != nil {

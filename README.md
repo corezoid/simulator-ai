@@ -121,7 +121,7 @@ step needs.
 | `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
-| `smart_form_release_get` | `release/get` | same release result |
+| `smart_form_release_get` | `application/env/list` + `release/get` | same release result |
 
 Flowchart: `flowchart_blocks_list` → `actor_create(formId, title, data)` per block → `layer_placements_create`
 nodes with the block's `layerSettings` → `edge_create` (`name` is the label) → `layer_placements_create`

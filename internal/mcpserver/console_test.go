@@ -129,7 +129,7 @@ func TestConsoleRequests(t *testing.T) {
 	}{
 		{"actor_create", `{"formId":5,"title":"Start","color":"#17B26A","data":{"__form__6:blockId":"process"}}`, "actor/create", `"color":"#17B26A","data":{"__form__6:blockId":"process"}`, `"id":"a1"`},
 		{"actor_update", `{"actorId":"a1","title":"Renamed"}`, "actor/update", `"actorId":"a1","fields":["id","title","description","formId","status","ref"],"title":"Renamed"`, `"title":"Renamed"`},
-		{"flowchart_blocks_list", `{"query":" proc "}`, "form/flowchart-block/search", `"accId":"ws","limit":100,"query":"proc"`, `"list":[{"formId":5,"title":"Process","blockId":"process","collection":"basic"}],"hasMore":false`},
+		{"flowchart_blocks_list", `{"query":" proc ","offset":100}`, "form/flowchart-block/search", `"accId":"ws","limit":100,"offset":100,"query":"proc"`, `"list":[{"formId":5,"title":"Process","blockId":"process","collection":"basic"}],"hasMore":false`},
 		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/flowchart-block/search", `"blockIds":["process"]`, `"layerSettings":{"width":120,"height":60,"blockId":"process"`},
 		{"layer_create", `{"title":"Flow"}`, "form/system/get,actor/create", `"data":{},"fields"`, `"id":"a1"`},
 		{"edge_create", `{"source":"a1","target":"a2","name":"yes"}`, "edge_type/get,edge/create", `"edgeTypeId":3,"forceDirection":true,"name":"yes","source":"a1","target":"a2"`, `"id":"e1"`},
