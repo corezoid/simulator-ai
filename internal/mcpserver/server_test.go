@@ -37,7 +37,7 @@ func TestStdioChild(t *testing.T) {
 	os.Exit(0)
 }
 func TestScriptedStdioCatalogAndCalls(t *testing.T) {
-	for _, profile := range []string{"read", "delegated-read"} {
+	for _, profile := range []string{"read", "delegated-read", "graph-read"} {
 		t.Run(profile, func(t *testing.T) { runScriptedProfile(t, profile) })
 	}
 }
@@ -45,7 +45,10 @@ func TestScriptedStdioCatalogAndCalls(t *testing.T) {
 func runScriptedProfile(t *testing.T, profile string) {
 	delegated := profile == "delegated-read"
 	key, token, scheme := "synthetic-test-key", "", "ApiKey synthetic-test-key"
-	if delegated { key, token = "", strings.Repeat("A", 43); scheme = "Delegated " + token }
+	if delegated {
+		key, token = "", strings.Repeat("A", 43)
+		scheme = "Delegated " + token
+	}
 	var calls atomic.Int32
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
@@ -65,10 +68,19 @@ func runScriptedProfile(t *testing.T, profile string) {
 		if q.Params.AccID != "workspace-a" {
 			t.Error("workspace not pinned")
 		}
-		if q.Method != "actor/get" {
+		result := `{"id":"actor-a","title":"Fixture actor"}`
+		switch q.Method {
+		case "actor/get":
+		case "form/flowchart-block/search":
+			result = `{"list":[{"id":21,"parentId":20,"title":"Process","blockId":"process","updatedAt":1,"form":{}}],"hasMore":false}`
+		case "form/system/get":
+			result = `{"id":20,"title":"Layers","type":"system","form":{},"editToken":"private-canary"}`
+		case "edge_type/list":
+			result = `{"list":[{"id":3,"name":"interaction","isTree":false,"isSystem":true,"userId":42}]}`
+		default:
 			t.Error("unexpected method")
 		}
-		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"id":"actor-a","title":"Fixture actor"}}`, q.ID)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, q.ID, result)
 	}))
 	defer api.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -131,7 +143,12 @@ func runScriptedProfile(t *testing.T, profile string) {
 		t.Fatal(e)
 	}
 	wanted := []string{"actor_get", "form_get"}
-	if !delegated { wanted = append(wanted, "layer_actors_list") }
+	if !delegated {
+		wanted = append(wanted, "layer_actors_list")
+	}
+	if profile == "graph-read" {
+		wanted = append(wanted, "flowchart_blocks_search", "graph_system_form_get", "graph_edge_types_list")
+	}
 	if len(result.Tools) != len(wanted) {
 		t.Fatalf("unexpected tools: %s", catalog["result"])
 	}
@@ -169,9 +186,31 @@ func runScriptedProfile(t *testing.T, profile string) {
 	}
 	if delegated {
 		unknown := exchange(`{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"layer_actors_list","arguments":{"layerId":"layer-a"}}}`)
-		if unknown["error"] == nil && !strings.Contains(string(unknown["result"]), `"isError":true`) { t.Fatal("layer tool exposed to delegated profile") }
+		if unknown["error"] == nil && !strings.Contains(string(unknown["result"]), `"isError":true`) {
+			t.Fatal("layer tool exposed to delegated profile")
+		}
 	}
-	if calls.Load() != 1 {
+	expectedCalls := int32(1)
+	if profile == "graph-read" {
+		for i, step := range []struct{ name, args string }{
+			{"flowchart_blocks_search", `{"blockIds":["process"]}`},
+			{"graph_system_form_get", `{"title":"Layers"}`},
+			{"graph_edge_types_list", `{}`},
+		} {
+			reply := exchange(fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":{"name":%q,"arguments":%s}}`, 60+i, step.name, step.args))
+			if reply["error"] != nil || strings.Contains(string(reply["result"]), `"isError":true`) || strings.Contains(string(reply["result"]), "private-canary") {
+				t.Fatalf("graph read failed or leaked capability: %s", reply["result"])
+			}
+		}
+		expectedCalls += 3
+		for i, args := range []string{`{"blockIds":[]}`, `{"accId":"other"}`, `{"limit":101}`, `{"method":"actor/create"}`, `{"apiKey":"other"}`} {
+			bad := exchange(fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":{"name":"flowchart_blocks_search","arguments":%s}}`, 70+i, args))
+			if bad["error"] == nil && !strings.Contains(string(bad["result"]), `"isError":true`) {
+				t.Fatal("invalid graph arguments accepted")
+			}
+		}
+	}
+	if calls.Load() != expectedCalls {
 		t.Fatalf("invalid tools reached API; calls=%d", calls.Load())
 	}
 	if e = in.Close(); e != nil {

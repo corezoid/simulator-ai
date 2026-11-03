@@ -10,6 +10,10 @@ see [Smart Forms setup and guarantees](docs/smart-forms.md). It is not a
 full legacy replacement or an accepted production release. Claude Code/Codex use their own
 agent; this binary launches no Hermes, model, LiteLLM or server AI billing.
 
+Native graph metadata is available through the six-tool `graph-read` profile; see
+[graph metadata and constraints](docs/graph-read.md). This prepares native flowchart
+planning; it does not yet generate graph actors, layers or placements.
+
 The separate [Console delegated-read profile](docs/delegated-read.md) accepts only
 manager-delivered scoped credentials and exposes `actor_get`/`form_get`. It does not
 change desktop configuration, provision a runtime or enable Console routing.
@@ -41,7 +45,8 @@ mechanism. No default production endpoint or workspace is assumed:
 
 - `SIMULATOR_AI_ORIGIN`: explicit `https://your-simulator-origin.example` (origin only).
 - `SIMULATOR_AI_WORKSPACE`: workspace ID for the API user.
-- `SIMULATOR_AI_PROFILE`: `read` (default) or `smart-forms` (explicit write capability).
+- `SIMULATOR_AI_PROFILE`: `read` (default), `graph-read` (native graph metadata), or
+  `smart-forms` (explicit write capability). Console `delegated-read` has separate setup.
 - `SIMULATOR_AI_API_KEY`: API-user key; never paste it into chat, a tool call or committed config.
 
 Only literal loopback HTTP is accepted for local scripted development. HTTPS verifies TLS;

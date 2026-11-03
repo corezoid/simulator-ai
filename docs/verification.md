@@ -33,3 +33,10 @@ pass is claimed.
 R1.2b adds [real backend acceptance](live-backend-acceptance.md), including the actual public
 wire ID contract and ACL revoke/regrant through a persistent MCP process. Exact paired commits
 and review/check results are recorded in its PR/MR; issuer revoke is still not claimed.
+
+2026-11-03 graph-read: `make test vet build` passed with GOMAXPROCS=2 / -p=1.
+The source-size and generated-client guards passed. Tests cover the pinned three-method
+public projection, input/output schemas, HTTP response validation and actual subprocess
+stdio initialization/catalog/calls for read, delegated-read and graph-read. Graph reads
+use only scripted loopback responses; no live Graph Editor or model acceptance is claimed.
+The exact reviewed commit and xhigh verdict are recorded in the slice PR.

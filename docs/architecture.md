@@ -1,7 +1,8 @@
 # R1.1 boundary
 
 Flow: host agent → stdio MCP → typed public client → POST /api/2.0/rpc.
-The client has three exported reads and a closed internal method allowlist. There is no
+The default profile has three reads; optional profiles have explicit fixed public methods.
+[Graph metadata](graph-read.md) adds three reads with projected input/output schemas. There is no
 server orchestration, model SDK, database, shell tool or legacy fallback. Skills are packaged
 separately from MCP and do not manufacture permissions.
 

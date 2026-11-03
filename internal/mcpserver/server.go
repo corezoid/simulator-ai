@@ -64,6 +64,9 @@ func New(c *publicapi.Client) *server.MCPServer {
 	if c.SmartFormsEnabled() {
 		addSmartForms(s, c)
 	}
+	if c.GraphReadsEnabled() {
+		addGraphReads(s, c)
+	}
 	return s
 }
 func tool[T any](name, description, schema string) mcp.Tool {

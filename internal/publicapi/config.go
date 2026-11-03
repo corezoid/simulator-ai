@@ -12,15 +12,15 @@ import (
 
 // Config is supplied by the host, never by model/tool arguments.
 type Config struct {
-	Origin    string
-	Workspace string
-	Profile   string
-	APIKey    string `json:"-"`
+	Origin         string
+	Workspace      string
+	Profile        string
+	APIKey         string `json:"-"`
 	DelegatedToken string `json:"-"`
 }
 
-func (c Config) String() string { return "[Simulator AI configuration redacted]" }
-func (c Config) GoString() string { return c.String() }
+func (c Config) String() string       { return "[Simulator AI configuration redacted]" }
+func (c Config) GoString() string     { return c.String() }
 func (c Config) LogValue() slog.Value { return slog.StringValue(c.String()) }
 
 func LoadConfig(getenv func(string) string) (Config, error) {
@@ -31,8 +31,8 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 	return c, nil
 }
 func (c Config) validate() error {
-	if c.Profile != "" && c.Profile != "read" && c.Profile != "smart-forms" && c.Profile != "delegated-read" {
-		return errors.New("SIMULATOR_AI_PROFILE must be read, smart-forms or delegated-read")
+	if c.Profile != "" && c.Profile != "read" && c.Profile != "smart-forms" && c.Profile != "delegated-read" && c.Profile != "graph-read" {
+		return errors.New("SIMULATOR_AI_PROFILE must be read, smart-forms, graph-read or delegated-read")
 	}
 	u, e := url.Parse(c.Origin)
 	if e != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Path != "" && u.Path != "/") || u.Opaque != "" {
@@ -68,6 +68,8 @@ func (c Config) validate() error {
 func (c *Client) DelegatedReadEnabled() bool { return c.config.Profile == "delegated-read" }
 
 func (c Config) authorization() string {
-	if c.Profile == "delegated-read" { return "Delegated " + c.DelegatedToken }
+	if c.Profile == "delegated-read" {
+		return "Delegated " + c.DelegatedToken
+	}
 	return "ApiKey " + c.APIKey
 }

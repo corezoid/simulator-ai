@@ -7,6 +7,8 @@ Desktop uses its host agent: do not add Hermes, LiteLLM or server billing to thi
 Default profile is three read-only metadata tools, explicit ApiKey/origin/workspace.
 The Console-only opt-in delegated-read profile exposes actor_get/form_get with an
 explicit scoped token and no API-key fallback; it does not launch or provision a runtime.
+The opt-in graph-read profile adds three read-only native graph metadata tools; it does not
+expose graph writes or accept delegated tokens.
 The opt-in smart-forms profile adds thirteen typed public tools with mandatory recovery
 keys/CAS and backend contract preflight. No OAuth, remote MCP or full legacy parity claim. Capability additions require
 source schemas, named parity mapping, ACL/error/side-effect/recovery tests and docs.
