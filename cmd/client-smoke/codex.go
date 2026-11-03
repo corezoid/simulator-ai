@@ -67,6 +67,9 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 	if !e.CodexSkill {
 		return errors.New("Codex skills/list did not load installed skill")
 	}
+	if strings.HasPrefix(e.Profile, "reactions-") && !loaded["simulator-ai:simulator-ai-reactions"] {
+		return errors.New("Codex did not load reactions skill")
+	}
 	var thread struct {
 		Thread struct {
 			ID string `json:"id"`
@@ -88,13 +91,24 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 	expectedTools := 3
 	if e.Profile == "smart-forms" {
 		expectedTools = 16
+	} else if e.Profile == "reactions-read" {
+		expectedTools = 4
+	} else if e.Profile == "reactions-actor" {
+		expectedTools = 1
 	}
 	for _, s := range status.Data {
 		if s.Name == "simulator-ai" && len(s.Tools) == expectedTools {
 			_, actor := s.Tools["actor_get"]
 			_, form := s.Tools["form_get"]
 			_, layer := s.Tools["layer_actors_list"]
-			if actor && form && layer {
+			_, stats := s.Tools["reaction_stats_get"]
+			matches := actor && form && layer
+			if e.Profile == "reactions-read" {
+				matches = matches && stats
+			} else if e.Profile == "reactions-actor" {
+				matches = stats
+			}
+			if matches {
 				serverName = s.Name
 				e.CodexTools = len(s.Tools)
 			}
@@ -110,19 +124,38 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		} `json:"content"`
 		StructuredContent json.RawMessage `json:"structuredContent"`
 	}
-	if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "actor_get", "arguments": map[string]string{"actorId": "synthetic-actor"}}, &call); err != nil {
-		return err
-	}
-	encoded, _ := json.Marshal(call)
-	if call.IsError || !strings.Contains(string(encoded), "Client smoke fixture") {
-		return errors.New("Codex tool did not return fixture metadata")
+	if e.Profile != "reactions-actor" {
+		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "actor_get", "arguments": map[string]string{"actorId": "synthetic-actor"}}, &call); err != nil {
+			return err
+		}
+		encoded, _ := json.Marshal(call)
+		if call.IsError || !strings.Contains(string(encoded), "Client smoke fixture") {
+			return errors.New("Codex tool did not return fixture metadata")
+		}
 	}
 	e.CodexRead = true
+	if strings.HasPrefix(e.Profile, "reactions-") {
+		args := map[string]string{}
+		if e.Profile == "reactions-read" {
+			args["actorId"] = "synthetic-actor"
+		}
+		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "reaction_stats_get", "arguments": args}, &call); err != nil {
+			return err
+		}
+		var stats map[string]int64
+		if call.IsError || json.Unmarshal(call.StructuredContent, &stats) != nil || len(stats) != 2 || stats["comment"] != 2 {
+			return errors.New("Codex reaction counts failed")
+		}
+		if value, ok := stats["view"]; !ok || value != 0 {
+			return errors.New("Codex reaction zero count lost")
+		}
+		e.CodexReactionStats = true
+	}
 	if e.Profile == "smart-forms" {
 		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "application_create", "arguments": map[string]string{"operationId": "smoke-create-1", "ref": "smoke-app", "title": "Smoke app"}}, &call); err != nil {
 			return err
 		}
-		encoded, _ = json.Marshal(call)
+		encoded, _ := json.Marshal(call)
 		if call.IsError || !strings.Contains(string(encoded), "synthetic-app") || strings.Contains(string(encoded), "credential-canary") {
 			return errors.New("Codex Smart Form creation failed")
 		}

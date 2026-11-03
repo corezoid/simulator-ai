@@ -80,3 +80,30 @@ object ACLs and this binary. It found and fixed the string JSON-RPC ID mismatch 
 The local functional sim-api harness was inspected: it uses reusable test PostgreSQL/Redis/
 Scylla and external Single Account, including real API-user creation. This smoke deliberately
 uses no such infrastructure and does not claim its auth behavior has been exercised.
+
+## Reactions profile checks
+
+The same disposable-client workflow also accepts `-profile reactions-read` and
+`-profile reactions-actor`. After building the current binary:
+
+```sh
+GOMAXPROCS=2 go run -p=1 ./cmd/client-smoke -profile reactions-read
+GOMAXPROCS=2 go run -p=1 ./cmd/client-smoke -profile reactions-actor
+```
+
+Both require the installed `simulator-ai-reactions` skill in Codex and Claude.
+Workspace mode checks exactly four tools and directly reads metadata plus reaction
+counts via Codex app-server. Actor mode sets a synthetic host actor, checks exactly
+one tool and calls it with `{}`. Counts preserve `comment:2` and `view:0` from the
+loopback fixture. The emitted `codexReactionStats` flag records that assertion.
+Claude installation/skill/MCP connection is still distinct from model-driven tool
+execution. No paid provider calls, user configuration changes or issuer revoke
+acceptance are added by these commands. See [reaction contract](reactions-read.md)
+for real-backend functional checks and the host-binding boundary.
+
+On 2026-11-03 both commands passed with Codex CLI 0.142.5 and Claude Code
+2.1.312. Workspace mode reported four tools/two fixture reads; actor-bound mode
+reported one tool/one fixture read. Both reported installed skills, direct Codex
+reaction counts and Claude MCP connectivity. Four Claude token-count probes per
+run were rejected locally; no model request or fixture write occurred. These are
+local installation results, not hosted CI or issuer-side revocation acceptance.

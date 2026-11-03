@@ -37,7 +37,7 @@ func TestStdioChild(t *testing.T) {
 	os.Exit(0)
 }
 func TestScriptedStdioCatalogAndCalls(t *testing.T) {
-	for _, profile := range []string{"read", "delegated-read", "graph-read", "graph-create"} {
+	for _, profile := range []string{"read", "delegated-read", "graph-read", "graph-create", "reactions-read"} {
 		t.Run(profile, func(t *testing.T) { runScriptedProfile(t, profile) })
 	}
 }
@@ -77,6 +77,8 @@ func runScriptedProfile(t *testing.T, profile string) {
 			result = `{"id":20,"title":"Layers","type":"system","form":{},"editToken":"private-canary"}`
 		case "edge_type/list":
 			result = `{"list":[{"id":3,"name":"interaction","isTree":false,"isSystem":true,"userId":42}]}`
+		case "reaction/stats/get":
+			result = `{"comment":2,"view":0}`
 		default:
 			t.Error("unexpected method")
 		}
@@ -86,7 +88,7 @@ func runScriptedProfile(t *testing.T, profile string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	child := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestStdioChild$")
-	child.Env = append(os.Environ(), "SIMULATOR_AI_TEST_CHILD=1", "SIMULATOR_AI_ORIGIN="+api.URL, "SIMULATOR_AI_WORKSPACE=workspace-a", "SIMULATOR_AI_API_KEY="+key, "SIMULATOR_AI_PROFILE="+profile, "SIMULATOR_AI_DELEGATED_TOKEN="+token)
+	child.Env = append(os.Environ(), "SIMULATOR_AI_TEST_CHILD=1", "SIMULATOR_AI_ORIGIN="+api.URL, "SIMULATOR_AI_WORKSPACE=workspace-a", "SIMULATOR_AI_API_KEY="+key, "SIMULATOR_AI_PROFILE="+profile, "SIMULATOR_AI_DELEGATED_TOKEN="+token, "SIMULATOR_AI_ACTOR=")
 	in, e := child.StdinPipe()
 	if e != nil {
 		t.Fatal(e)
@@ -152,6 +154,9 @@ func runScriptedProfile(t *testing.T, profile string) {
 	if profile == "graph-create" {
 		wanted = append(wanted, "graph_flowchart_plan", "graph_actor_create", "graph_actor_operation_get", "graph_edge_create", "graph_edge_operation_get", "graph_placements_create", "graph_placements_operation_get")
 	}
+	if profile == "reactions-read" {
+		wanted = append(wanted, "reaction_stats_get")
+	}
 	if len(result.Tools) != len(wanted) {
 		t.Fatalf("unexpected tools: %s", catalog["result"])
 	}
@@ -195,6 +200,24 @@ func runScriptedProfile(t *testing.T, profile string) {
 		}
 	}
 	expectedCalls := int32(1)
+	if profile == "reactions-read" {
+		reply := exchange(`{"jsonrpc":"2.0","id":90,"method":"tools/call","params":{"name":"reaction_stats_get","arguments":{"actorId":"actor-a"}}}`)
+		if reply["error"] != nil || !strings.Contains(string(reply["result"]), `"comment":2`) || !strings.Contains(string(reply["result"]), `"view":0`) {
+			t.Fatalf("reaction stats failed: %s", reply["result"])
+		}
+		expectedCalls++
+		for i, args := range []string{`{}`, `{"actorId":null}`, `{"actorId":""}`, `{"actorId":"a","accId":"other"}`, `{"actorId":"a","method":"actor/update"}`, `{"actorId":"a","apiKey":"secret"}`} {
+			bad := exchange(fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":{"name":"reaction_stats_get","arguments":%s}}`, 100+i, args))
+			if bad["error"] == nil && !strings.Contains(string(bad["result"]), `"isError":true`) {
+				t.Fatal("invalid reaction arguments accepted")
+			}
+		}
+	} else {
+		bad := exchange(`{"jsonrpc":"2.0","id":91,"method":"tools/call","params":{"name":"reaction_stats_get","arguments":{"actorId":"actor-a"}}}`)
+		if bad["error"] == nil && !strings.Contains(string(bad["result"]), `"isError":true`) {
+			t.Fatal("reaction stats exposed outside profile")
+		}
+	}
 	if profile == "graph-read" || profile == "graph-create" {
 		for i, step := range []struct{ name, args string }{
 			{"flowchart_blocks_search", `{"blockIds":["process"]}`},

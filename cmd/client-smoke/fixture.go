@@ -48,6 +48,7 @@ func startFixture() *fixture {
 				Title       string   `json:"title"`
 				CduVersion  int      `json:"cduVersion"`
 				ActorID     string   `json:"actorId"`
+				RootActorID string   `json:"rootActorId"`
 				Fields      []string `json:"fields"`
 			} `json:"params"`
 		}
@@ -59,6 +60,11 @@ func startFixture() *fixture {
 		if request.Method == "application/create" && request.Params.OperationID == "smoke-create-1" && request.Params.Ref == "smoke-app" && request.Params.Title == "Smoke app" && request.Params.CduVersion == 2 {
 			f.creates.Add(1)
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"application":{"id":"synthetic-app","ref":"smoke-app"},"envs":[{"id":1,"actorId":"synthetic-app","title":"develop","corezoidCredentials":{"apiSecret":"credential-canary"}},{"id":2,"actorId":"synthetic-app","title":"production"}]}}`, request.ID)
+			return
+		}
+		if request.Method == "reaction/stats/get" && request.Params.RootActorID == "synthetic-actor" {
+			f.reads.Add(1)
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"comment":2,"view":0}}`, request.ID)
 			return
 		}
 		if request.Method != "actor/get" || request.Params.ActorID != "synthetic-actor" || len(request.Params.Fields) != 6 {

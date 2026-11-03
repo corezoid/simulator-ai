@@ -36,6 +36,9 @@ func claudeSmoke(ctx context.Context, env []string, dir, root, executable string
 		return errors.New("Claude did not load installed skill")
 	}
 	e.ClaudeSkill = true
+	if strings.HasPrefix(e.Profile, "reactions-") && !strings.Contains(string(details), "simulator-ai-reactions") {
+		return errors.New("Claude did not load reactions skill")
+	}
 	status, err := run(ctx, env, dir, executable, "mcp", "list")
 	if err != nil {
 		return err

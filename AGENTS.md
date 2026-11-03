@@ -14,6 +14,8 @@ no graph update/delete or hidden runtime is permitted.
 The opt-in smart-forms profile adds thirteen typed public tools with mandatory recovery
 keys/CAS and backend contract preflight. No OAuth, remote MCP or full legacy parity claim. Capability additions require
 source schemas, named parity mapping, ACL/error/side-effect/recovery tests and docs.
+The separate reactions-read profile adds reaction_stats_get to the three metadata reads;
+current root/recipient/Execute checks belong to the public backend, never a cached count.
 
 Go code/commands, pinned dependency versions, gofmt. Never hand-edit types.gen.go;
 run make generate and make gen-check. Test with GOMAXPROCS=2 and -p=1; no paid model calls

@@ -25,6 +25,7 @@ type evidence struct {
 	CodexSkill               bool   `json:"codexSkill"`
 	CodexTools               int    `json:"codexTools"`
 	CodexRead                bool   `json:"codexRead"`
+	CodexReactionStats       bool   `json:"codexReactionStats"`
 	ClaudeInstall            bool   `json:"claudeInstall"`
 	ClaudeSkill              bool   `json:"claudeSkill"`
 	ClaudeMCP                bool   `json:"claudeMCP"`
@@ -33,7 +34,7 @@ type evidence struct {
 
 func main() {
 	root := flag.String("repo", ".", "repository root containing the built bin/simulator-ai")
-	profile := flag.String("profile", "read", "read or smart-forms")
+	profile := flag.String("profile", "read", "read, smart-forms, reactions-read or reactions-actor")
 	flag.Parse()
 	result, err := smoke(*root, *profile)
 	if err != nil {
@@ -44,7 +45,7 @@ func main() {
 }
 func smoke(root, profile string) (evidence, error) {
 	var result evidence
-	if profile != "read" && profile != "smart-forms" {
+	if profile != "read" && profile != "smart-forms" && profile != "reactions-read" && profile != "reactions-actor" {
 		return result, errors.New("invalid profile")
 	}
 	result.Profile = profile
@@ -84,6 +85,9 @@ func smoke(root, profile string) (evidence, error) {
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1", "DISABLE_AUTOUPDATER=1",
 		"SIMULATOR_AI_PROFILE=" + profile, "SIMULATOR_AI_ORIGIN=" + f.server.URL, "SIMULATOR_AI_WORKSPACE=synthetic-workspace", "SIMULATOR_AI_API_KEY=synthetic-client-key",
 	}
+	if profile == "reactions-actor" {
+		env = append(env, "SIMULATOR_AI_PROFILE=reactions-read", "SIMULATOR_AI_ACTOR=synthetic-actor")
+	}
 	// Fail closed if a future smoke change accidentally attempts a model turn.
 	config := fmt.Sprintf("model = \"scripted-no-model\"\nmodel_provider = \"scripted\"\n[model_providers.scripted]\nname = \"Scripted smoke only\"\nbase_url = %q\nwire_api = \"responses\"\n", f.server.URL+"/disabled-model")
 	if err = os.WriteFile(filepath.Join(temp, "codex", "config.toml"), []byte(config), 0600); err != nil {
@@ -106,7 +110,11 @@ func smoke(root, profile string) (evidence, error) {
 		expectedCreates = 1
 	}
 	result.RejectedTokenCountProbes = f.tokenCountProbes.Load()
-	if f.unexpected.Load() != 0 || result.FixtureReads != 1 || result.FixtureCreates != expectedCreates {
+	expectedReads := int32(1)
+	if profile == "reactions-read" {
+		expectedReads = 2
+	}
+	if f.unexpected.Load() != 0 || result.FixtureReads != expectedReads || result.FixtureCreates != expectedCreates {
 		return result, errors.New("unexpected fixture calls or missing Codex read")
 	}
 	return result, nil

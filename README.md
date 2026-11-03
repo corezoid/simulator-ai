@@ -16,6 +16,9 @@ planning and [exact node/edge readback](docs/graph-elements.md). The [native pla
 create/recovery tools with mandatory receipt keys and per-write contract preflight.
 A native generator/layout and Console execution are still pending.
 
+Reaction counts are available through the four-tool `reactions-read` profile and
+the portable `simulator-ai-reactions` skill; see [reaction statistics](docs/reactions-read.md).
+
 The separate [Console delegated-read profile](docs/delegated-read.md) accepts only
 manager-delivered scoped credentials and exposes `actor_get`/`form_get`. It does not
 change desktop configuration, provision a runtime or enable Console routing.
@@ -48,8 +51,10 @@ mechanism. No default production endpoint or workspace is assumed:
 - `SIMULATOR_AI_ORIGIN`: explicit `https://your-simulator-origin.example` (origin only).
 - `SIMULATOR_AI_WORKSPACE`: workspace ID for the API user.
 - `SIMULATOR_AI_PROFILE`: `read` (default), `graph-read` (native graph metadata), `graph-create` (create-only graph operations), or
-  `smart-forms` (Smart Form writes). Console `delegated-read` has separate setup.
+  `smart-forms` (Smart Form writes), `reactions-read` (reaction statistics). Console `delegated-read` has separate setup.
 - `SIMULATOR_AI_API_KEY`: API-user key; never paste it into chat, a tool call or committed config.
+- `SIMULATOR_AI_ACTOR`: optional host-bound target for `reactions-read` only; exposes
+  only `reaction_stats_get` with empty arguments. Leave unset for workspace mode.
 
 Only literal loopback HTTP is accepted for local scripted development. HTTPS verifies TLS;
 redirects are refused, including same-origin redirects, so credentials cannot be forwarded.
@@ -70,7 +75,7 @@ Codex MCP configuration equivalent:
 [mcp_servers.simulator-ai]
 command = "simulator-ai"
 args = []
-env_vars = ["SIMULATOR_AI_ORIGIN", "SIMULATOR_AI_WORKSPACE", "SIMULATOR_AI_API_KEY", "SIMULATOR_AI_PROFILE"]
+env_vars = ["SIMULATOR_AI_ORIGIN", "SIMULATOR_AI_WORKSPACE", "SIMULATOR_AI_API_KEY", "SIMULATOR_AI_PROFILE", "SIMULATOR_AI_ACTOR"]
 ```
 
 Do not store a key in either example. Use the client's environment injection to supply it.

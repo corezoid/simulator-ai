@@ -1,0 +1,46 @@
+{
+  "methods": [
+    {
+      "name": "reaction/stats/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "rootActorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Actor the reactions are under",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        }
+      },
+      "x-audience": "public",
+      "x-scope": "actors.readonly"
+    }
+  ]
+}
