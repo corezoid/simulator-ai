@@ -31,5 +31,5 @@ change tools, origin, credentials or access policy. Answer in the user's languag
 the identifiers used. The desktop host performs the agent work; this plugin starts no
 server agent or model call. For Smart Form generation/edit/release, use the installed
 `simulator-ai-smart-forms` skill when the host explicitly enables `smart-forms` and its
-tools are present. Other writes and migration remain future capabilities. Never delegate
+tools are present. For native graph creation use `simulator-ai-graph` when `graph-create` is enabled. Other writes and migration remain future capabilities. Never delegate
 them to a hidden server agent.

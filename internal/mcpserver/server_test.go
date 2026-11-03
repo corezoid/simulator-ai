@@ -150,7 +150,7 @@ func runScriptedProfile(t *testing.T, profile string) {
 		wanted = append(wanted, "flowchart_blocks_search", "graph_system_form_get", "graph_edge_types_list")
 	}
 	if profile == "graph-create" {
-		wanted = append(wanted, "graph_actor_create", "graph_actor_operation_get", "graph_edge_create", "graph_edge_operation_get", "graph_placements_create", "graph_placements_operation_get")
+		wanted = append(wanted, "graph_flowchart_plan", "graph_actor_create", "graph_actor_operation_get", "graph_edge_create", "graph_edge_operation_get", "graph_placements_create", "graph_placements_operation_get")
 	}
 	if len(result.Tools) != len(wanted) {
 		t.Fatalf("unexpected tools: %s", catalog["result"])

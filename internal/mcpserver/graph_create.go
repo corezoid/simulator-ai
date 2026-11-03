@@ -11,6 +11,7 @@ import (
 )
 
 func addGraphCreates(s *server.MCPServer, c *publicapi.Client) {
+	addGraphPlan(s, c)
 	addGraphCreate(s, "graph_actor_create", "actor/create", "Create an actor (including graph/layer/native block) under an actual accessible form. Mandatory operationId and explicit title/data. Requires actors.management and current template/context-layer authorization. No ACL overrides. Native block data uses the real child form field keys and parsed view; do not invent identifiers. Does not place the actor. Recover unknown outcomes with graph_actor_operation_get before retrying.", true, c.CreateGraphActor)
 	addGraphCreate(s, "graph_actor_operation_get", "actor/operation/get", "Recover this principal/workspace actor creation receipt with current Modify. Result is the original snapshot, not current content. Missing can mean in-flight; expired never permits a new key. Does not recreate deleted actors.", false, c.GetGraphActorOperation)
 	addGraphCreate(s, "graph_edge_create", "edge/create", "Create or reuse a natural-key edge. Mandatory operationId; actors.management and current endpoint/linked actor View apply. Existing edge name/style may be unchanged; a reverse hierarchy edge can be returned unless forceDirection is true. Inspect resolved source/target before placing. Tree constraints still apply. Recover with graph_edge_operation_get.", true, c.CreateGraphEdge)

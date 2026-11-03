@@ -1,7 +1,7 @@
 # Recoverable graph creation profile
 
 `SIMULATOR_AI_PROFILE=graph-create` is an explicit desktop write opt-in. It includes
-all six `graph-read` tools and six creation/recovery tools below (12 total). Use the
+all six `graph-read` tools and six creation/recovery tools below plus the read-only [native planner](graph-planning.md) (13 total). Use the
 same explicit origin/workspace/API-user key. No delegated credential, server Hermes,
 Console dispatch or server billing is added. Other profiles do not gain writes.
 
@@ -83,7 +83,7 @@ JSON parsed as in the UI writer. Graph/layer relationships use the actual edge t
 
 `123` and IDs above are placeholders, not seeded IDs. Inspect the actual template fields
 and fill them for the intended workspace. A plain node placement example does not establish
-native flowchart parity. Layout, schema-aware graph generation, updates with conflict
+native flowchart parity. The deterministic planner now supplies native creation payloads and node layout. Updates with conflict
 preconditions, same-tab refresh and live Graph Editor/Console acceptance remain open.
 
 ## Source and checks

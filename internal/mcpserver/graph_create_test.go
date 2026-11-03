@@ -57,7 +57,7 @@ func TestGraphCreateCatalogAndPublicWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := New(c)
-	if len(s.ListTools()) != 12 {
+	if len(s.ListTools()) != 13 {
 		t.Fatalf("unexpected catalog size %d", len(s.ListTools()))
 	}
 	for name, tool := range s.ListTools() {

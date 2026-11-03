@@ -9,7 +9,7 @@ The Console-only opt-in delegated-read profile exposes actor_get/form_get with a
 explicit scoped token and no API-key fallback; it does not launch or provision a runtime.
 The opt-in graph-read profile adds three read-only native graph metadata tools; it does not
 expose graph writes or accept delegated tokens. The separate graph-create profile adds
-six create/recovery tools with mandatory keys and per-write public contract preflight;
+six create/recovery tools and a read-only deterministic native planner, with mandatory write keys and per-write public contract preflight;
 no graph update/delete or hidden runtime is permitted.
 The opt-in smart-forms profile adds thirteen typed public tools with mandatory recovery
 keys/CAS and backend contract preflight. No OAuth, remote MCP or full legacy parity claim. Capability additions require
