@@ -141,7 +141,7 @@ func TestConsoleRequests(t *testing.T) {
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"blockIds":["process"]`,
 			`"key":"b","blockId":"process","formId":5,"data":{"__form__6:blockId":"process"`},
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"limit":100`,
-			`"position":{"x":-25,"y":325},"layerSettings":{"width":200,"height":100,"blockId":"process"`},
+			`"position":{"x":25,"y":325},"layerSettings":{"width":200,"height":100,"blockId":"process"`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"x":150,"y":0}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":150,"y":0}}]`, `"updated":1`},
 		{"layer_get", `{"layerId":"L"}`, "graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":0,"y":0},"blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
 		{"smart_form_create", `{"ref":"leave_form","title":"Leave request","sharedWith":"allWorkspaceUsers"}`, "application/create", `"cduVersion":2,"ref":"leave_form","sharedWith":"allWorkspaceUsers"`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},

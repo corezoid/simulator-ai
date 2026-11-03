@@ -25,9 +25,15 @@ const (
 	defaultBlockColor = "#539fdf"
 )
 
-// gridLine is the grid line nearest to v.
+// gridLine is the grid line nearest to v; an exact half cell goes up, as JS Math.round does in the
+// editor's snap (Go math.Round would go away from zero and differ for negative coordinates).
 func gridLine(v float64) float64 {
-	return math.Round((v-gridPhase)/gridCell)*gridCell + gridPhase
+	return math.Floor((v-gridPhase)/gridCell+0.5)*gridCell + gridPhase
+}
+
+// gridLineAfter is the first grid line at or after v.
+func gridLineAfter(v float64) float64 {
+	return math.Ceil((v-gridPhase)/gridCell)*gridCell + gridPhase
 }
 
 // GridCenter moves a w×h box centred at p so its top-left corner is on the nearest grid line.
@@ -101,12 +107,16 @@ func xmlAttr(v string) string {
 
 // darken pulls a #rgb/#rrggbb colour toward black; anything else is returned unchanged.
 func darken(color string, amount float64) string {
-	hex := strings.TrimPrefix(color, "#")
-	if len(hex) == 3 {
+	trimmed := strings.TrimSpace(color)
+	hex := strings.TrimPrefix(trimmed, "#")
+	switch len(hex) {
+	case 3, 4:
 		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+	case 8:
+		hex = hex[:6] // the editor writes the darkened stroke opaque
 	}
 	v, err := strconv.ParseUint(hex, 16, 32)
-	if !strings.HasPrefix(color, "#") || len(hex) != 6 || err != nil {
+	if !strings.HasPrefix(trimmed, "#") || len(hex) != 6 || err != nil {
 		return color
 	}
 	keep := 1 - math.Min(1, amount)
@@ -148,6 +158,8 @@ func GridLayout(nodes []LayoutNode, edges []Edge) ([]publicapi.GraphPoint, []str
 		}
 		widths[rank[i]] += n.Width
 	}
+	// Every corner is a grid line even for block sizes that are not whole cells: advances round up
+	// to the next line, so placements keep exactly these centres.
 	out := make([]publicapi.GraphPoint, len(nodes))
 	top := gridPhase
 	for r := range rows {
@@ -159,9 +171,9 @@ func GridLayout(nodes []LayoutNode, edges []Edge) ([]publicapi.GraphPoint, []str
 			// Blocks of one rank share a centre line when the height difference allows it.
 			y := top + math.Floor((heights[r]-n.Height)/2/gridCell)*gridCell
 			out[i] = publicapi.GraphPoint{X: x + n.Width/2, Y: y + n.Height/2}
-			x += n.Width + layoutGap
+			x = gridLineAfter(x + n.Width + layoutGap)
 		}
-		top += heights[r] + layoutGap
+		top = gridLineAfter(top + heights[r] + layoutGap)
 	}
 	return out, returns
 }
