@@ -41,7 +41,8 @@ type consoleCall struct {
 	Params map[string]any
 }
 
-func consoleServer(t *testing.T) (func(body string) string, *[]consoleCall) {
+// consoleServer answers with consoleReplies; an override is a full JSON-RPC result or error member.
+func consoleServer(t *testing.T, overrides map[string]string) (func(body string) string, *[]consoleCall) {
 	calls := &[]consoleCall{}
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var q struct {
@@ -54,6 +55,10 @@ func consoleServer(t *testing.T) (func(body string) string, *[]consoleCall) {
 			t.Errorf("%s sent without the host credential or workspace", q.Method)
 		}
 		*calls = append(*calls, consoleCall{q.Method, q.Params})
+		if member, ok := overrides[q.Method]; ok {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,%s}`, q.ID, member)
+			return
+		}
 		reply, ok := consoleReplies[q.Method]
 		if !ok {
 			t.Errorf("unexpected method %s", q.Method)
@@ -80,7 +85,7 @@ func consoleServer(t *testing.T) (func(body string) string, *[]consoleCall) {
 }
 
 func TestConsoleCatalog(t *testing.T) {
-	send, _ := consoleServer(t)
+	send, _ := consoleServer(t, nil)
 	var list struct {
 		Result struct {
 			Tools []struct {
@@ -129,20 +134,20 @@ func TestConsoleRequests(t *testing.T) {
 		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/system/list,form/get", `"formId":6`, `"layerSettings":{"width":120,"height":60,"blockId":"process"`},
 		{"flowchart_blocks_list", `{"query":"decision"}`, "form/system/list", `"accId":"ws"`, `"list":[]`},
 		{"layer_create", `{"title":"Flow"}`, "form/system/get,actor/create", `"data":{},"fields"`, `"id":"a1"`},
-		{"edge_create", `{"source":"a1","target":"a2","name":"yes"}`, "edge_type/get,edge/create", `"edgeTypeId":3,"name":"yes","source":"a1","target":"a2"`, `"id":"e1"`},
+		{"edge_create", `{"source":"a1","target":"a2","name":"yes"}`, "edge_type/get,edge/create", `"edgeTypeId":3,"forceDirection":true,"name":"yes","source":"a1","target":"a2"`, `"id":"e1"`},
 		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":0,"y":0}}]}`, "graph/layer/actors/manage", `"actorId":"L","items":[{"action":"create","data":{"id":"a1","position":{"x":0,"y":0},"type":"node"}}]`, `"laId":11`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"x":150,"y":0}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":150,"y":0}}]`, `"updated":1`},
 		{"layer_get", `{"layerId":"L"}`, "graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":0,"y":0},"blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
-		{"smart_form_create", `{"ref":"leave_form","title":"Leave request"}`, "application/create", `"cduVersion":2`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},
+		{"smart_form_create", `{"ref":"leave_form","title":"Leave request","sharedWith":"allWorkspaceUsers"}`, "application/create", `"cduVersion":2,"ref":"leave_form","sharedWith":"allWorkspaceUsers"`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
 		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
 		{"smart_form_files_create", `{"appId":"app1","items":[{"folderId":102,"title":"locale","type":"application/json","source":"{}"}]}`, "app_file/create", `"items":[{"folderId":102`, `"id":104`},
 		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true}`},
-		{"smart_form_release_get", `{"appId":"app1","releaseId":9}`, "release/get", `"releaseId":9`, `"ready":false`},
+		{"smart_form_release_get", `{"appId":"app1","releaseId":9}`, "application/env/list,release/get", `"releaseId":9`, `"ready":false`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.tool, func(t *testing.T) {
-			send, calls := consoleServer(t)
+			send, calls := consoleServer(t, nil)
 			reply := send(`"method":"tools/call","params":{"name":"` + tc.tool + `","arguments":` + tc.args + `}`)
 			var r struct {
 				Result struct {
@@ -172,7 +177,7 @@ func TestConsoleRequests(t *testing.T) {
 }
 
 func TestConsoleRefusesBadArguments(t *testing.T) {
-	send, calls := consoleServer(t)
+	send, calls := consoleServer(t, nil)
 	for _, args := range []string{
 		`"name":"edge_create","arguments":{"source":"a1"}`,
 		`"name":"layer_placements_create","arguments":{"layerId":"L"}`,
@@ -185,5 +190,42 @@ func TestConsoleRefusesBadArguments(t *testing.T) {
 	}
 	if len(*calls) != 0 {
 		t.Fatal("invalid arguments reached the API:", *calls)
+	}
+}
+
+func TestConsoleFailures(t *testing.T) {
+	cases := []struct {
+		name, tool, args string
+		overrides        map[string]string
+		want             string
+	}{
+		{"server validation text reaches the agent", "smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`,
+			map[string]string{"app_file/update": `"error":{"code":-32602,"message":"invalid params: invalid CDU source in page 'index': unknown component type \"Buton\" at /tree/children/0","data":{"reason":"invalidParams"}}`},
+			`reason=invalidParams http=0): invalid params: invalid CDU source in page 'index': unknown component type`},
+		{"route issues are included", "smart_form_release", `{"appId":"app1"}`,
+			map[string]string{"release/create": `"error":{"code":1,"message":"invalid routes","data":{"reason":"invalidRoutes","reasonParams":{"issues":[{"code":"duplicatePath","pageId":"index"}]}}}`},
+			`invalid routes {"issues":[{"code":"duplicatePath","pageId":"index"}]}`},
+		{"reverse edge is not reported as the new one", "edge_create", `{"source":"a2","target":"a1","name":"retry"}`, nil, "other endpoints"},
+		{"develop release is not ready production", "smart_form_release_get", `{"appId":"app1","releaseId":9}`,
+			map[string]string{"release/get": `"result":{"id":9,"actorId":"app1","envId":1,"sourceEnvId":2,"releaseNumber":2,"status":"active"}`}, "not a production release"},
+		{"no flowchart catalog", "flowchart_blocks_list", `{}`, map[string]string{"form/system/list": `"result":{"list":[]}`}, "FlowchartBlock system template not found"},
+		{"updated actor must be the requested one", "actor_update", `{"actorId":"a9","title":"x"}`, nil, "identity mismatch"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			send, _ := consoleServer(t, tc.overrides)
+			reply := send(`"method":"tools/call","params":{"name":"` + tc.tool + `","arguments":` + tc.args + `}`)
+			var r struct {
+				Result struct {
+					IsError bool `json:"isError"`
+					Content []struct {
+						Text string `json:"text"`
+					} `json:"content"`
+				} `json:"result"`
+			}
+			if e := json.Unmarshal([]byte(reply), &r); e != nil || !r.Result.IsError || len(r.Result.Content) != 1 || !strings.Contains(r.Result.Content[0].Text, tc.want) {
+				t.Fatal(reply)
+			}
+		})
 	}
 }

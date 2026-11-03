@@ -30,6 +30,8 @@ type edgeCreateRequest struct {
 	EdgeTypeID int64  `json:"edgeTypeId"`
 	Name       string `json:"name,omitempty"`
 	CurveStyle string `json:"curveStyle,omitempty"`
+	// ForceDirection keeps a flowchart loop B->A apart from an existing hierarchy edge A->B.
+	ForceDirection bool `json:"forceDirection"`
 }
 
 // NodePlacement places an existing actor; LayerSettings is set for native flowchart blocks.
@@ -187,9 +189,9 @@ func (c *Client) CreateEdge(ctx context.Context, in EdgeCreateInput) (GraphCreat
 		return GraphCreatedEdge{}, e
 	}
 	r, e := call[edgeCreateRequest, GraphCreatedEdge](ctx, c, "edge/create", edgeCreateRequest{AccID: c.config.Workspace, Source: in.Source, Target: in.Target,
-		EdgeTypeID: t.ID, Name: in.Name, CurveStyle: in.CurveStyle})
-	if e == nil && validateGraphEdge(r) != nil {
-		return GraphCreatedEdge{}, errors.New("edge/create returned no edge identity")
+		EdgeTypeID: t.ID, Name: in.Name, CurveStyle: in.CurveStyle, ForceDirection: true})
+	if e == nil && (validateGraphEdge(r) != nil || r.Source != in.Source || r.Target != in.Target) {
+		return GraphCreatedEdge{}, errors.New("edge/create returned an edge with other endpoints")
 	}
 	return r, e
 }

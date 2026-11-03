@@ -25,13 +25,16 @@ this profile. ID mismatches and malformed JSON-RPC
 responses fail rather than returning partial metadata as success.
 
 Errors expose stable code/allowlisted reason/status, not raw backend messages, bodies,
-credentials or URL errors. Transport/read errors may be retried by the host with the same
+credentials or URL errors. The console profile alone appends the server's error message and
+reasonParams, bounded to 2000 bytes, so the Console agent can correct a refused page config or route. Transport/read errors may be retried by the host with the same
 arguments; the client performs no retries. Invalid/unknown tool arguments fail before any
 request. Returned descriptions remain untrusted source data, never executable instructions.
 
 Remaining gates: installed plugin/skill/MCP smoke in both desktop clients; live API-user ACL,
 wrong workspace/object, integration public-only enforcement and revoke; backend/schema drift
 against target installation. These gates require a designated test identity/workspace. Do not
-use a developer's broad human session as substitute. Writes require domain-owned receipts,
-CAS and response-loss tests from A01 before any new tool is exposed. Console, OAuth, HTTP MCP,
-Corezoid connector, migration and paid billing remain separately planned slices.
+use a developer's broad human session as substitute. Desktop profile writes require domain-owned receipts,
+CAS and response-loss tests from A01 before any new tool is exposed. The console profile is the
+exception: it runs only under the Console's per-request user credential and sim-api deduplicates its
+retries (see README). OAuth, HTTP MCP, Corezoid connector, migration and paid billing remain
+separately planned slices.

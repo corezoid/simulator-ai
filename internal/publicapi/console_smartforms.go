@@ -15,6 +15,7 @@ type SmartFormCreateInput struct {
 	Ref         string `json:"ref"`
 	Title       string `json:"title"`
 	Description string `json:"description,omitempty"`
+	SharedWith  string `json:"sharedWith,omitempty"`
 }
 
 type smartFormCreateRequest struct {
@@ -22,6 +23,7 @@ type smartFormCreateRequest struct {
 	Ref         string `json:"ref"`
 	Title       string `json:"title"`
 	Description string `json:"description,omitempty"`
+	SharedWith  string `json:"sharedWith,omitempty"`
 	CduVersion  int64  `json:"cduVersion"`
 }
 
@@ -180,7 +182,7 @@ func (c *Client) CreateSmartForm(ctx context.Context, in SmartFormCreateInput) (
 		return SmartForm{}, errors.New("ref ^[0-9a-zA-Z_-]{5,255}$ and a 1..255 character title required")
 	}
 	r, e := call[smartFormCreateRequest, CreatedApplication](ctx, c, "application/create", smartFormCreateRequest{AccID: c.config.Workspace, Ref: in.Ref,
-		Title: in.Title, Description: in.Description, CduVersion: 2})
+		Title: in.Title, Description: in.Description, SharedWith: in.SharedWith, CduVersion: 2})
 	if e != nil {
 		return SmartForm{}, e
 	}
@@ -239,8 +241,8 @@ func (c *Client) CreateSmartFormFiles(ctx context.Context, in SmartFormFilesCrea
 	if e := consoleOnly(c); e != nil {
 		return SmartFormWritten{}, e
 	}
-	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 50 {
-		return SmartFormWritten{}, errors.New("appId and 1..50 files required")
+	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
+		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
 	r, e := call[appFilesRequest[SmartFormFileCreate], Files](ctx, c, "app_file/create", appFilesRequest[SmartFormFileCreate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {
@@ -254,8 +256,8 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 	if e := consoleOnly(c); e != nil {
 		return SmartFormWritten{}, e
 	}
-	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 50 {
-		return SmartFormWritten{}, errors.New("appId and 1..50 files required")
+	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
+		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
 	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {
@@ -293,8 +295,12 @@ func (c *Client) GetSmartFormRelease(ctx context.Context, in SmartFormReleaseInp
 	if e := consoleOnly(c); e != nil {
 		return SmartFormRelease{}, e
 	}
-	if !validID(in.AppID) || in.ReleaseID < 1 {
+	if in.ReleaseID < 1 {
 		return SmartFormRelease{}, errors.New("appId and positive releaseId required")
+	}
+	_, prod, e := c.envs(ctx, in.AppID)
+	if e != nil {
+		return SmartFormRelease{}, e
 	}
 	r, e := call[releaseGetRequest, Release](ctx, c, "release/get", releaseGetRequest{AccID: c.config.Workspace, ActorID: in.AppID, ReleaseID: in.ReleaseID})
 	if e != nil {
@@ -302,6 +308,9 @@ func (c *Client) GetSmartFormRelease(ctx context.Context, in SmartFormReleaseInp
 	}
 	if r.ID != in.ReleaseID || r.ActorID != in.AppID {
 		return SmartFormRelease{}, errors.New("release result identity mismatch")
+	}
+	if r.EnvID != prod {
+		return SmartFormRelease{}, errors.New("release is not a production release")
 	}
 	return released(in.AppID, r), nil
 }

@@ -33,22 +33,43 @@ func New(c Config) (*Client, error) {
 	return &Client{config: c, http: &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil
 }
 
-// APIError preserves codes/reasons, never an untrusted response body or credential.
+// APIError preserves codes/reasons, never a response body or credential. Only the console profile
+// adds the server's bounded error message and reasonParams (e.g. which CDU prop or route is invalid),
+// so the agent can correct its input; that text is untrusted data, never instructions.
 type APIError struct {
 	Code       int
 	Reason     string
 	HTTPStatus int
+	Message    string
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("public API request failed (code=%d reason=%s http=%d)", e.Code, e.Reason, e.HTTPStatus)
+	s := fmt.Sprintf("public API request failed (code=%d reason=%s http=%d)", e.Code, e.Reason, e.HTTPStatus)
+	if e.Message != "" {
+		s += ": " + e.Message
+	}
+	return s
+}
+
+const maxConsoleErrorBytes = 2000
+
+func consoleErrorMessage(e *rpcError) string {
+	m := e.Message
+	if len(e.Data.ReasonParams) > 0 {
+		m += " " + string(e.Data.ReasonParams)
+	}
+	if len(m) > maxConsoleErrorBytes {
+		m = strings.ToValidUTF8(m[:maxConsoleErrorBytes], "") + "…"
+	}
+	return m
 }
 
 type rpcError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    struct {
-		Reason string `json:"reason"`
+		Reason       string          `json:"reason"`
+		ReasonParams json.RawMessage `json:"reasonParams"`
 	} `json:"data"`
 }
 type envelope struct {
@@ -98,6 +119,9 @@ func call[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 		if ctx.Err() != nil {
 			return result, ctx.Err()
 		}
+		if c.ConsoleEnabled() {
+			return result, errors.New("public API transport unavailable; outcome unknown; read the result back before retrying a write")
+		}
 		return result, errors.New("public API transport unavailable; outcome unknown; preserve original operationId and payload for recovery")
 	}
 	defer resp.Body.Close()
@@ -124,7 +148,11 @@ func call[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 		case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams", "operationConflict", "operationResultExpired", "appEnvironmentChanged", "appFileSourceMismatch", "invalidRoutes":
 			reason = env.Error.Data.Reason
 		}
-		return result, &APIError{Code: env.Error.Code, Reason: reason}
+		err := &APIError{Code: env.Error.Code, Reason: reason}
+		if c.ConsoleEnabled() {
+			err.Message = consoleErrorMessage(env.Error)
+		}
+		return result, err
 	}
 	if len(env.Result) == 0 || bytes.Equal(bytes.TrimSpace(env.Result), []byte("null")) {
 		return result, errors.New("missing public API result")

@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // FlowchartBlocksInput narrows the native flowchart block catalog by title substring or exact blockIds.
@@ -58,8 +60,8 @@ func (c *Client) ListFlowchartBlocks(ctx context.Context, in FlowchartBlocksInpu
 	if e := consoleOnly(c); e != nil {
 		return nil, e
 	}
-	if len(in.BlockIDs) > 100 || len(in.Query) > 255 {
-		return nil, errors.New("at most 100 blockIds and a query up to 255 bytes")
+	if len(in.BlockIDs) > 100 || utf8.RuneCountInString(in.Query) > 255 {
+		return nil, errors.New("at most 100 blockIds and a query up to 255 characters")
 	}
 	forms, e := call[workspaceRequest, systemFormsWire](ctx, c, "form/system/list", workspaceRequest{AccID: c.config.Workspace})
 	if e != nil {
@@ -78,8 +80,11 @@ func (c *Client) ListFlowchartBlocks(ctx context.Context, in FlowchartBlocksInpu
 	for _, id := range in.BlockIDs {
 		wanted[id] = true
 	}
+	// Lowest form id first: like sim-api, the first definition of a duplicated blockId wins.
+	sort.Slice(forms.List, func(i, j int) bool { return forms.List[i].ID < forms.List[j].ID })
 	query := strings.ToLower(in.Query)
 	blocks := []GraphBlock{}
+	seen := map[string]bool{}
 	for _, f := range forms.List {
 		if f.ParentID == nil || *f.ParentID != root || !strings.Contains(strings.ToLower(f.Title), query) {
 			continue
@@ -89,13 +94,16 @@ func (c *Client) ListFlowchartBlocks(ctx context.Context, in FlowchartBlocksInpu
 			return nil, e
 		}
 		b, ok := graphBlock(body, root)
-		if ok && (len(wanted) == 0 || wanted[b.BlockID]) {
-			blocks = append(blocks, b)
+		if !ok || seen[b.BlockID] || (len(wanted) > 0 && !wanted[b.BlockID]) {
+			continue
 		}
-		if len(blocks) == 100 {
+		seen[b.BlockID] = true
+		blocks = append(blocks, b)
+		if len(wanted) > 0 && len(blocks) == len(wanted) {
 			break
 		}
 	}
+	sort.Slice(blocks, func(i, j int) bool { return blocks[i].Title < blocks[j].Title })
 	return blocks, nil
 }
 
