@@ -65,7 +65,7 @@ func batchTool[P any](s *server.MCPServer, name, description, schema string, run
 // addFormEngines registers form_linked_get (legacy getLinkedForms) where the form reads are.
 func addFormEngines(s *server.MCPServer, c *publicapi.Client) {
 	if c.ParityAllowed("form/tree/get") {
-		addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(linkedFormsOutput)), "form_linked_get", "List one account template's linked templates (legacy getLinkedForms): direction children gives every template nested under formId (from its tree, with parentId), parents its ancestor chain, nearest first. A template you cannot view is a stub {id, parentId, accessDenied}.",
+		addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(linkedFormsOutput)), "form_linked_get", "List one account template's linked templates (legacy getLinkedForms): the template itself first, then with direction children every template nested under it (from its tree, with parentId; truncated when the tree was cut), with parents its ancestor chain, nearest first. A template you cannot view is a stub {id, parentId, accessDenied}.",
 			`{"type":"object","properties":{"formId":{"type":"integer","minimum":1},"direction":{"type":"string","enum":["children","parents"]}},"required":["formId","direction"],"additionalProperties":false}`, false,
 			func(ctx context.Context, in linkedFormsInput) (linkedForms, error) { return linkedFormsOf(ctx, c, in) })
 	}
@@ -254,11 +254,14 @@ func (f *linkedForm) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// linkedForms starts with the template itself, as legacy getChildrenForms/getParentForms did.
+// Truncated passes on form/tree/get's own flag: a very large tree is cut, so children may be missing.
 type linkedForms struct {
-	List []json.RawMessage `json:"list"`
+	List      []json.RawMessage `json:"list"`
+	Truncated bool              `json:"truncated,omitempty"`
 }
 
-const linkedFormsOutput = `{"type":"object","properties":{"list":{"type":"array","items":{"type":"object"}}},"required":["list"]}`
+const linkedFormsOutput = `{"type":"object","properties":{"list":{"type":"array","items":{"type":"object"}},"truncated":{"type":"boolean"}},"required":["list"]}`
 
 func linkedFormsOf(ctx context.Context, c *publicapi.Client, in linkedFormsInput) (linkedForms, error) {
 	id, _ := json.Marshal(in.FormID)
@@ -274,7 +277,13 @@ func linkedFormsOf(ctx context.Context, c *publicapi.Client, in linkedFormsInput
 		if err = json.Unmarshal(raw, &form); err != nil {
 			return linkedForms{}, fmt.Errorf("form/get parents: %w", err)
 		}
-		out.List = append(out.List, form.Parents...)
+		var self map[string]json.RawMessage
+		if err = json.Unmarshal(raw, &self); err != nil {
+			return linkedForms{}, fmt.Errorf("form/get: %w", err)
+		}
+		delete(self, "parents")
+		row, _ := json.Marshal(self)
+		out.List = append(append(out.List, row), form.Parents...)
 		return out, nil
 	}
 	raw, err := c.Pass(ctx, "form/tree/get", map[string]json.RawMessage{"formId": id})
@@ -282,10 +291,17 @@ func linkedFormsOf(ctx context.Context, c *publicapi.Client, in linkedFormsInput
 		return linkedForms{}, err
 	}
 	var tree struct {
-		List []linkedForm `json:"list"`
+		List      []linkedForm `json:"list"`
+		Truncated bool         `json:"truncated"`
 	}
 	if err = json.Unmarshal(raw, &tree); err != nil {
 		return linkedForms{}, fmt.Errorf("form/tree/get: %w", err)
+	}
+	out.Truncated = tree.Truncated
+	for _, f := range tree.List {
+		if f.ID == in.FormID {
+			out.List = append(out.List, f.Row)
+		}
 	}
 	// Every descendant of formId, in the order the tree lists them.
 	under := map[int64]bool{in.FormID: true}

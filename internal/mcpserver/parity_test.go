@@ -44,7 +44,7 @@ func parityServer(t *testing.T, profile string) (func(string) string, *[]parityC
 			}
 			result = `{"list":[` + strings.Join(items, ",") + `]}`
 		case "form/tree/get":
-			result = `{"list":[{"id":1},{"id":2,"parentId":1,"title":"Child"},{"id":3,"parentId":2,"title":"Grandchild"},{"id":4,"parentId":1,"accessDenied":true}]}`
+			result = `{"list":[{"id":1},{"id":2,"parentId":1,"title":"Child"},{"id":3,"parentId":2,"title":"Grandchild"},{"id":4,"parentId":1,"accessDenied":true}],"truncated":true}`
 		case "form/get":
 			result = `{"id":2,"parents":[{"id":1,"title":"Root"}]}`
 		case "edge_type/get":
@@ -223,11 +223,11 @@ func TestParityEngines(t *testing.T) {
 func TestParityLinkedForms(t *testing.T) {
 	send, calls := parityServer(t, "read")
 	children := send(`"method":"tools/call","params":{"name":"form_linked_get","arguments":{"formId":2,"direction":"children"}}`)
-	if !strings.Contains(children, "Grandchild") || strings.Contains(children, "accessDenied") || strings.Contains(children, `"Child\\"`) {
+	if !strings.Contains(children, "Grandchild") || !strings.Contains(children, `Child`) || strings.Contains(children, "accessDenied") || !strings.Contains(children, `truncated`) {
 		t.Fatal("children:", children)
 	}
 	parents := send(`"method":"tools/call","params":{"name":"form_linked_get","arguments":{"formId":2,"direction":"parents"}}`)
-	if !strings.Contains(parents, "Root") || string((*calls)[len(*calls)-1].Params["with"]) != `["parents"]` {
+	if !strings.Contains(parents, "Root") || !strings.Contains(parents, `"id":2`) && !strings.Contains(parents, `\"id\":2`) || string((*calls)[len(*calls)-1].Params["with"]) != `["parents"]` {
 		t.Fatal("parents:", parents)
 	}
 	tree := send(`"method":"tools/call","params":{"name":"forms_tree_get","arguments":{"formId":2}}`)
