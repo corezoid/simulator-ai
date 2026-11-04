@@ -19,10 +19,15 @@ finance tools. Every tool works in the host workspace.
 ## Set up
 
 1. `account_pair_create {accountName, currencyName, symbol?, precision?, type?}`, by NAME. It
-   creates the name and the currency when missing and registers the pair with you as owner.
-   Run it before opening the pair on any actor; it is safe to repeat. Refused means the pair
-   is shared and you are not among its subjects: an owner shares it with `access_rules_save
-   {objType: "account", objId: <nameId>, currencyId}` (`simulator-ai-access`).
+   finds the name and the currency, creates only the missing ones, and returns `{nameId,
+   currencyId, registered}`:
+   - a new pair is registered with you as its owner (`registered: true`);
+   - an existing shared pair stays as it is: you can post only if its rules give you `modify`,
+     and one you may not see is refused; an owner shares it with `access_rules_save {objType:
+     "account", objId: <nameId>, currencyId}` (`simulator-ai-access`);
+   - an existing pair that nobody was given access to is refused: registering it would make
+     you its only subject and hide its balances from everyone else. Use its ids as they are,
+     or, only when the user agrees, repeat with `takeOwnership: true`.
 2. `account_create {actorId, nameId, currencyId, accountType?, minLimit?, maxLimit?}` opens it
    on an actor (or `account_by_ref_create` by template and ref).
 
@@ -32,11 +37,13 @@ finance tools. Every tool works in the host workspace.
 ## Read
 
 - `account_get {actorId, nameId, currencyId}`: one pair with balances (`amount`, `holdAmount`).
-- `accounts_list {actorId, ...filters}`: every row of an actor; `from`/`to` (Unix ms) give
-  the turnover of a window; `accounts_count` counts.
+- `accounts_list {actorId, ...filters}`: an actor's `fact` rows unless `accountType` or
+  `accountTypes` asks for others, 20 per page; `from` and `to` (Unix ms) together give the
+  turnover of a window; `accounts_count` counts.
 - `transactions_list {actorId, nameId, currencyId}` explains a balance; `account_transactions_list
-  {accountId}` pages one row; `transactions_filter` searches the workspace. Windows are Unix
-  ms, at most about 12 months, this month by default.
+  {accountId}` pages one row; `transactions_filter` searches the workspace. A window needs
+  both `from` and `to` (Unix ms, at most about 12 months): one alone is ignored, and without
+  both it is this month.
 
 ## Record a transaction
 
@@ -52,8 +59,10 @@ A blocked, formula, statistical or transfer-only account refuses plain transacti
 `transfer_create {ref, from: [{accountId, amount}], to: [{accountId, amount}]}`: `from` legs are
 debit rows, `to` legs credit rows, one currency, balanced, up to 20 per side. Confirm the
 amounts and the parties with the user first; a completed transfer is not undone. With
-`type: "authorized"` it holds the value, and a second call with `transferId` and `type`
-`completed` or `canceled` settles it. After a timeout read `transfer_by_ref_get {ref}` before
+`type: "authorized"` it holds the value. To settle it, read `transfer_get {id, with:
+["legs"]}`, then call `transfer_create` again with `type` `completed` or `canceled`, the
+hold's `transferId`, and the `from` and `to` legs again, each with `parentId` (its step-1 leg
+transaction id) or `parentRef`. After a timeout read `transfer_by_ref_get {ref}` before
 retrying. Between people, find each person (`users_search`) and their twin actor
 (`actor_system_get {objType: "user", objId: <userId>}`), then their account rows.
 

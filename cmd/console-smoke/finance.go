@@ -14,13 +14,25 @@ type accountRow struct {
 // finance (console-full): a pair registered by name, opened on two actors, a transaction posted
 // and read back by its ref, a transfer between them and read back by its ref.
 func finance(c *client, stamp string) error {
+	// New names per run: the pair is new, so the run's identity owns it whoever ran before.
 	var pair struct {
 		NameID     string `json:"nameId"`
 		CurrencyID int64  `json:"currencyId"`
+		Registered bool   `json:"registered"`
 	}
-	// Fixed names: the pair is registered once per workspace and every later run reuses it.
-	if err := c.tool("account_pair_create", map[string]any{"accountName": "AI smoke balance", "currencyName": "AI smoke unit", "precision": 2}, &pair); err != nil {
+	if err := c.tool("account_pair_create", map[string]any{"accountName": "AI smoke balance " + stamp, "currencyName": "AI smoke unit " + stamp, "precision": 2}, &pair); err != nil {
 		return err
+	}
+	if !pair.Registered {
+		return fmt.Errorf("a new pair %s / %d is not registered", pair.NameID, pair.CurrencyID)
+	}
+	// A repeat finds the same pair, now shared with the owner, and registers nothing.
+	repeat := pair
+	if err := c.tool("account_pair_create", map[string]any{"accountName": "AI smoke balance " + stamp, "currencyName": "AI smoke unit " + stamp}, &repeat); err != nil {
+		return err
+	}
+	if repeat.NameID != pair.NameID || repeat.CurrencyID != pair.CurrencyID || repeat.Registered {
+		return fmt.Errorf("a repeated account_pair_create returned %+v, want %+v unregistered", repeat, pair)
 	}
 	rows := map[string]map[string]string{} // actor -> incomeType -> account row id
 	var actors []string
