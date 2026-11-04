@@ -267,7 +267,9 @@ with `hole` a placeholder edge, and `layer_get` marks `hole` and `closedHole` on
 `SIMULATOR_AI_AUTHORIZATION`. It covers two Console answers: a flowchart drawn on a layer and a released
 Smart Form opened inline in the reply. Writes are plain public calls: no receipt keys and no contract
 preflight, because sim-api deduplicates Console retries. Each tool returns only ids and what the next
-step needs.
+step needs. The run's prompt carries sim-api's "Current context" (the layer, actor and Smart Form the user has
+open): `layer_create` and `layer_placements_create` tell the agent to build on that layer unless the user names
+another, never on a new one.
 
 | MCP tool | Public RPC | Result |
 | --- | --- | --- |
