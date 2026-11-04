@@ -20,6 +20,8 @@ type parityTool struct {
 	Defaults                  map[string]any
 	// Hierarchy sets edgeTypeId to the hierarchy type when neither it nor sysLinkTypes is sent.
 	Hierarchy bool
+	// BriefUnlessNarrowed sends brief true when neither types nor kind narrows the answer.
+	BriefUnlessNarrowed bool
 }
 
 // metaFields is the actor projection a write returns unless the caller sends its own fields.
@@ -57,6 +59,9 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 			if _, ok := args[k]; !ok {
 				args[k], _ = json.Marshal(v)
 			}
+		}
+		if _, set := args["brief"]; t.BriefUnlessNarrowed && !set && args["types"] == nil && args["kind"] == nil {
+			args["brief"] = json.RawMessage("true")
 		}
 		if _, typed := args["edgeTypeId"]; t.Hierarchy && !typed && args["sysLinkTypes"] == nil {
 			id, err := c.HierarchyEdgeType(ctx)

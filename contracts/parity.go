@@ -14,20 +14,10 @@ import (
 //go:embed parity-openrpc.json
 var Parity []byte
 
-// ParitySource records where Parity was exported from (and the methods taken from MR branches).
+// ParitySource records where Parity was exported from.
 //
 //go:embed parity-source.json
 var ParitySource []byte
-
-// patchTypes corrects params the sim-api OpenRPC generator types as "object" because the Go field is
-// a json.RawMessage patch (rpc_form/form_update.go: omitted keeps, null clears). Their real values:
-// tags is a lossless legacy value: stored template bags hold an array (legacy createForm sends one).
-var patchTypes = map[string]map[string][]string{
-	"form/update": {"ref": {"string", "null"}, "description": {"string", "null"}, "color": {"string", "null"},
-		"parentId": {"integer", "null"}, "pictureObject": {"object", "null"}, "verificationRules": {"object", "null"},
-		"actorVerification": {"object", "null"}, "tags": {"array", "object", "null"}},
-	"form/create": {"tags": {"array", "object"}},
-}
 
 var parityOnce sync.Once
 var paritySchemas map[string]json.RawMessage
@@ -44,9 +34,6 @@ func loadParity() {
 		for _, p := range m.Params {
 			if p.Name == "accId" {
 				continue
-			}
-			if types, ok := patchTypes[m.Name][p.Name]; ok {
-				p.Schema["type"] = types
 			}
 			properties[p.Name] = p.Schema
 			if p.Required {

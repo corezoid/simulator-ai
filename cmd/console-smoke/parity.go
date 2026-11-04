@@ -39,6 +39,9 @@ func parity(c *client, stamp string) error {
 		{"forms_list", map[string]any{"query": stamp, "limit": 5}},
 		{"forms_count", map[string]any{"query": stamp}},
 		{"form_accounts_list", map[string]any{"formId": form.ID}},
+		{"forms_tree_get", map[string]any{"formId": form.ID}},
+		{"form_linked_get", map[string]any{"formId": form.ID, "direction": "children"}},
+		{"form_linked_get", map[string]any{"formId": form.ID, "direction": "parents"}},
 	} {
 		if err := c.tool(step.tool, step.args, &ignored); err != nil {
 			return err
@@ -78,6 +81,7 @@ func parity(c *client, stamp string) error {
 		{"actors_filter", map[string]any{"formId": form.ID, "limit": 5}},
 		{"actors_filter_count", map[string]any{"formId": form.ID}},
 		{"search_all", map[string]any{"query": "Smoke actor", "filters": []string{"users", "actors"}, "limit": 3}},
+		{"actor_corezoid_processes_list", map[string]any{"actorId": actors[0]}},
 	} {
 		if err := c.tool(step.tool, step.args, &ignored); err != nil {
 			return err
@@ -91,7 +95,8 @@ func parity(c *client, stamp string) error {
 		return err
 	}
 	var gotEdge struct {
-		Name string `json:"name"`
+		Name       string `json:"name"`
+		EdgeTypeID int64  `json:"edgeTypeId"`
 	}
 	if err := c.tool("edge_update", map[string]any{"edgeId": edge.ID, "name": "renamed"}, &ignored); err != nil {
 		return err
@@ -117,6 +122,12 @@ func parity(c *client, stamp string) error {
 	var all struct {
 		Count int `json:"count"`
 	}
+	var systemTypes, found struct {
+		List []struct {
+			ID       any  `json:"id"`
+			IsSystem bool `json:"isSystem"`
+		} `json:"list"`
+	}
 	var pruned struct {
 		Scanned int `json:"scanned"`
 		Deleted int `json:"deleted"`
@@ -138,13 +149,22 @@ func parity(c *client, stamp string) error {
 		{"layer_placements_all", map[string]any{"layerId": layer.ID}, &all},
 		{"graph_list", map[string]any{"actorId": actors[0], "type": "children"}, &ignored},
 		{"graph_get", map[string]any{"actorId": actors[0]}, &ignored},
-		{"edge_types_list", map[string]any{"limit": 5}, &ignored},
+		{"edge_types_list", map[string]any{"limit": 5, "isSystem": true}, &systemTypes},
+		{"edge_exist", map[string]any{"source": actors[0], "target": actors[1], "edgeTypeId": gotEdge.EdgeTypeID}, &found},
 		{"layer_prune_long_edges", map[string]any{"layerId": layer.ID, "maxDistance": 100, "preserveParentEdges": false, "dryRun": true}, &pruned},
 		{"layer_compact", map[string]any{"layerId": layer.ID}, &ignored},
 	} {
 		if err := c.tool(step.tool, step.args, step.out); err != nil {
 			return err
 		}
+	}
+	for _, t := range systemTypes.List {
+		if !t.IsSystem {
+			return fmt.Errorf("edge_types_list isSystem returned a workspace edge type")
+		}
+	}
+	if len(found.List) != 1 {
+		return fmt.Errorf("edge_exist found %d edges between the linked actors, want 1", len(found.List))
 	}
 	if all.Count != 2 {
 		return fmt.Errorf("layer_placements_all counted %d placements, want 2", all.Count)

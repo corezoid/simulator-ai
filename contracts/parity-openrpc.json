@@ -1735,8 +1735,7 @@
             "type": "string"
            },
            "autocomplete": {
-            "description": "Autocomplete settings (opaque, passed through as stored)",
-            "type": "object"
+            "description": "Autocomplete settings (opaque, passed through as stored)"
            },
            "class": {
             "description": "Field kind: edit, select, multiSelect, radio, check, calendar, upload, label, button, image, link",
@@ -1786,8 +1785,7 @@
             "type": "string"
            },
            "schema": {
-            "description": "JSON schema of a structured value (opaque, passed through as stored)",
-            "type": "object"
+            "description": "JSON schema of a structured value (opaque, passed through as stored)"
            },
            "title": {
             "description": "Field label",
@@ -1813,8 +1811,7 @@
          "type": "array"
         },
         "loop": {
-         "description": "Repeating-section settings (opaque, passed through as stored)",
-         "type": "object"
+         "description": "Repeating-section settings (opaque, passed through as stored)"
         },
         "title": {
          "description": "Section heading",
@@ -1839,7 +1836,7 @@
      "required": false,
      "schema": {
       "description": "Lossless legacy account template tags",
-      "type": "object"
+      "type": "array"
      }
     },
     {
@@ -1855,7 +1852,10 @@
      "required": false,
      "schema": {
       "description": "Legacy account template actor picture object",
-      "type": "object"
+      "type": [
+       "object",
+       "null"
+      ]
      }
     },
     {
@@ -1863,7 +1863,10 @@
      "required": false,
      "schema": {
       "description": "Legacy actor verification rules",
-      "type": "object"
+      "type": [
+       "object",
+       "null"
+      ]
      }
     },
     {
@@ -1871,7 +1874,10 @@
      "required": false,
      "schema": {
       "description": "Legacy actor verification payload",
-      "type": "object"
+      "type": [
+       "object",
+       "null"
+      ]
      }
     }
    ],
@@ -1903,7 +1909,10 @@
      "required": false,
      "schema": {
       "description": "Reference patch: omitted keeps, null clears",
-      "type": "object"
+      "type": [
+       "string",
+       "null"
+      ]
      }
     },
     {
@@ -1920,7 +1929,10 @@
      "required": false,
      "schema": {
       "description": "Description patch: omitted keeps, null clears",
-      "type": "object"
+      "type": [
+       "string",
+       "null"
+      ]
      }
     },
     {
@@ -1928,7 +1940,10 @@
      "required": false,
      "schema": {
       "description": "Color patch: omitted keeps, null clears",
-      "type": "object"
+      "type": [
+       "string",
+       "null"
+      ]
      }
     },
     {
@@ -1947,8 +1962,7 @@
             "type": "string"
            },
            "autocomplete": {
-            "description": "Autocomplete settings (opaque, passed through as stored)",
-            "type": "object"
+            "description": "Autocomplete settings (opaque, passed through as stored)"
            },
            "class": {
             "description": "Field kind: edit, select, multiSelect, radio, check, calendar, upload, label, button, image, link",
@@ -1998,8 +2012,7 @@
             "type": "string"
            },
            "schema": {
-            "description": "JSON schema of a structured value (opaque, passed through as stored)",
-            "type": "object"
+            "description": "JSON schema of a structured value (opaque, passed through as stored)"
            },
            "title": {
             "description": "Field label",
@@ -2025,8 +2038,7 @@
          "type": "array"
         },
         "loop": {
-         "description": "Repeating-section settings (opaque, passed through as stored)",
-         "type": "object"
+         "description": "Repeating-section settings (opaque, passed through as stored)"
         },
         "title": {
          "description": "Section heading",
@@ -2051,7 +2063,7 @@
      "required": false,
      "schema": {
       "description": "Lossless legacy account template tags",
-      "type": "object"
+      "type": "array"
      }
     },
     {
@@ -2059,7 +2071,10 @@
      "required": false,
      "schema": {
       "description": "Legacy account template actor picture object patch",
-      "type": "object"
+      "type": [
+       "object",
+       "null"
+      ]
      }
     },
     {
@@ -2067,7 +2082,10 @@
      "required": false,
      "schema": {
       "description": "Legacy actor verification rules patch",
-      "type": "object"
+      "type": [
+       "object",
+       "null"
+      ]
      }
     },
     {
@@ -2075,7 +2093,10 @@
      "required": false,
      "schema": {
       "description": "Legacy actor verification payload patch",
-      "type": "object"
+      "type": [
+       "object",
+       "null"
+      ]
      }
     },
     {
@@ -2083,7 +2104,10 @@
      "required": false,
      "schema": {
       "description": "Parent account template patch: omitted keeps it, null detaches it, integer attaches it",
-      "type": "object"
+      "type": [
+       "integer",
+       "null"
+      ]
      }
     },
     {
@@ -3903,6 +3927,84 @@
     }
    ],
    "summary": "Finds the edge of a type between two actors, addressed by its endpoints instead of its id"
+  },
+  {
+   "name": "actor/corezoid/process/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Lists the Corezoid processes an actor can call: those of the API keys it is shared with"
+  },
+  {
+   "name": "cdu/catalog/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "schemaVersion",
+     "required": false,
+     "schema": {
+      "description": "The page schemaVersion to read the catalog of; absent: the newest supported protocol",
+      "type": "string"
+     }
+    },
+    {
+     "name": "types",
+     "required": false,
+     "schema": {
+      "description": "Exact component types to return (case-sensitive); absent: all of them",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "kind",
+     "required": false,
+     "schema": {
+      "description": "Only primitives (inputs, layout, display) or only blocks (platform widgets)",
+      "enum": [
+       "primitive",
+       "block"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "brief",
+     "required": false,
+     "schema": {
+      "description": "Names only: type, kind, category and label, without the JSON Schemas",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Reads the CDU component catalog a page config is validated against: each component type with its props, events, state and api"
   }
  ]
 }

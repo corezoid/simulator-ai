@@ -1,10 +1,5 @@
 {
- "source": "sim-api feature/ai-console-wave2 6e7b0864, served /api/2.0/doc/public on the local stand",
- "documentSha256": "0b4a40dc13ef7160f02f21a467a9f32c9279bc24254f463e0072f2e4e92d87a9",
- "methods": 41,
- "overrides": {
-  "form/tree/get": "sim-api feature/ai-parity-forms b7752d0c (MR !461) internal/server/testdata/public-openrpc.json",
-  "edge/by-node/get": "sim-api feature/ai-parity-edges d7f8f7d0 (MR !462)",
-  "edge_type/list": "sim-api feature/ai-parity-edges d7f8f7d0 (MR !462, adds isSystem)"
- }
+ "source": "sim-api feature/simulator-ai 908569b8, internal/server/testdata/public-openrpc.json",
+ "documentSha256": "a61f98065f256c60572415b28c704017f8c53b92b741b1d8ce775ff763468496",
+ "methods": 43
 }

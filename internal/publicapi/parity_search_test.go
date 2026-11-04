@@ -41,3 +41,22 @@ func TestSearchAllKeepsServerTextToConsole(t *testing.T) {
 		}
 	}
 }
+
+func TestOlderBackendSaysMethodNotFound(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var q struct {
+			ID string `json:"id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&q)
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"error":{"code":-32601,"message":"method not found: actor/corezoid/process/list","data":{"reason":"methodNotFound"}}}`, q.ID)
+	}))
+	defer api.Close()
+	c, err := New(Config{Origin: api.URL, Workspace: "ws", Profile: "read", APIKey: "key"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = c.Pass(context.Background(), "actor/corezoid/process/list", map[string]json.RawMessage{"actorId": json.RawMessage(`"a1"`)})
+	if err == nil || !strings.Contains(err.Error(), "reason=methodNotFound") || strings.Contains(err.Error(), "method not found:") {
+		t.Fatal(err)
+	}
+}

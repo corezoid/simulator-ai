@@ -104,7 +104,7 @@ client loading against a scripted loopback API, without a model turn. See
 
 Actor, form and graph tools mirror the legacy `simulator-ai-plugin` tools (name in brackets) on one public
 method each, or on a few for the composite ones. Their input schemas are the pinned public params
-(`contracts/parity-openrpc.json`, source in `parity-source.json`), and the result is the backend's own
+(`contracts/parity-openrpc.json`, exported from one sim-api revision recorded in `parity-source.json`), and the result is the backend's own
 projection, shaped by `fields`/`with` where the method has them. There are no receipt keys or contract
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
@@ -113,6 +113,7 @@ preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`
 | --- | --- | :-: | :-: | :-: |
 | `actor_get` [getActor] | `actor/get` (fields, with) | ✓ | ✓ | ✓ |
 | `actor_by_ref_get` [getActorByRef] · `actor_system_get` [getSystemActor] | `actor/by-ref/get` · `actor/by-system_obj/get` | ✓ | ✓ | ✓ |
+| `actor_corezoid_processes_list` [getCorezoidProcesses] (details only for processes you see in Corezoid) | `actor/corezoid/process/list` | ✓ | ✓ | ✓ |
 | `actors_search` [searchActors] · `actors_filter` / `actors_filter_count` [filterActors] | `actor/search/list` · `actor/filter/list` / `count` | ✓ | ✓ | ✓ |
 | `search_all` [searchAll] (users and/or actors, each its own page) | one non-atomic `batch` of `user/list` + `actor/search/list` | ✓ | ✓ | ✓ |
 | `actor_create` / `actors_create` [createActor] · `actor_update` [updateActor] | `actor/create` (batch) · `actor/update` | ✓ | | |
@@ -139,11 +140,12 @@ preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`
 | `graph_get` [getActorLinks, getLinkedActors] | `graph/get` | ✓ | | ✓ |
 | `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
 
-Not covered yet, and why:
-- No public method yet: getCorezoidProcesses (sim-api adds `actor/corezoid/process/list` in a separate MR).
-  `forms_tree_get`, `form_linked_get` and `edge_exist` use methods from sim-api MR !461/!462
-  (`form/tree/get`, `edge/by-node/get`), pinned from those branches until they reach the stand.
-- pullGraphFile / pushGraphFile: a local file ↔ layer sync engine on public methods, too large for this slice.
+These tools need sim-api `feature/simulator-ai` at 908569b8 or later (`cdu/catalog/get` !463,
+`actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
+with reason `methodNotFound`.
+
+Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
+too large for this slice. Every other actor, form and graph tool is above.
 
 ## AI Console profile
 
@@ -166,7 +168,7 @@ step needs.
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
 | `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges, `hasMore` |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
-| `smart_form_components` | none (pinned sim-api CDU 2.0 catalog, `contracts/cdu-components.json`) | component types with category; with `types` their props, events and slots |
+| `smart_form_components` | `cdu/catalog/get` | with `brief` every type's kind, category and label; with `types` the props the validator applies, events, state and api |
 | `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
