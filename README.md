@@ -200,7 +200,22 @@ claude mcp add --scope user simulator-ai -- simulator-ai   # once; then run `cla
 codex mcp add simulator-ai -- simulator-ai                 # once; add env_vars (above) incl. SIMULATOR_AI_AUTHORIZATION, then run `codex`
 ```
 
-`claude mcp list` shows `simulator-ai ... ✔ Connected`; ask either agent for `actor_get` of a known actor.
+`claude mcp list` shows `simulator-ai ... ✔ Connected`. One read call through each agent's own model, with a
+workspace API key (`make -C <sim-api> ai-smoke-env SMOKE_KIND=apikey SMOKE_OUT=~/.config/simulator-ai/r1-apikey.env`)
+loaded as above and `SIMULATOR_AI_PROFILE=read`; the MCP config is passed for this run only:
+
+```sh
+claude -p "Call the simulator-ai MCP tool forms_list with type system and limit 3, then reply with only the titles it returned, comma-separated." \
+  --mcp-config r1-mcp.json --strict-mcp-config --allowedTools mcp__simulator-ai__forms_list --max-turns 3
+# r1-mcp.json: {"mcpServers":{"simulator-ai":{"command":"/abs/path/bin/simulator-ai","args":[]}}}
+codex exec -s read-only -c approval_policy='"never"' -c 'mcp_servers.simulator-ai.command="/abs/path/bin/simulator-ai"' \
+  -c 'mcp_servers.simulator-ai.env_vars=["SIMULATOR_AI_ORIGIN","SIMULATOR_AI_WORKSPACE","SIMULATOR_AI_API_KEY","SIMULATOR_AI_PROFILE"]' \
+  "Call the simulator-ai MCP tool forms_list with type system and limit 3, then reply with only the titles it returned, comma-separated."
+```
+
+On the local stand (2026-11-04) Claude Code 2.1.312 answered `Scripts, Widgets, CompanyCategories` in 3 turns, and
+Codex 0.166 (the ChatGPT.app CLI; `mcp: simulator-ai/forms_list (completed)`) gave the same answer. An API user
+without workspace roles sees only system templates.
 
 ## Development and contracts
 
