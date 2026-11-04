@@ -12,7 +12,7 @@ import (
 // tool. Its result is an explicit passthrough: the backend's own projection, shaped by the caller's
 // documented fields/with, never re-modelled here.
 type ParityMethod struct {
-	Domain string // actor, form, graph; smartform, corezoid, task, access, reaction, attachment, user, finance (console only)
+	Domain string // actor, form, graph; smartform, corezoid, task, meeting, access, reaction, attachment, user, finance (console only)
 	Write  bool
 }
 
@@ -44,7 +44,9 @@ var ParityMethods = map[string]ParityMethod{
 	"corezoid/project/bind": {"corezoid", true}, "corezoid/stage/list": {"corezoid", false}, "corezoid/process/list": {"corezoid", false},
 	"graph/layer/edge_settings/save": {"graph", true},
 	"task/export/create":             {"task", true}, "task/import/create": {"task", true}, "task/get": {"task", false},
-	"access_rule/actor/list": {"access", false}, "access_rule/actor/share": {"access", true},
+	"public_link/create": {"meeting", true}, "public_link/get": {"meeting", false}, "public_link/revoke": {"meeting", true},
+	"meet/transcription/list": {"meeting", false},
+	"access_rule/actor/list":  {"access", false}, "access_rule/actor/share": {"access", true},
 	"access_rule/formTemplate/list": {"access", false}, "access_rule/formTemplate/share": {"access", true},
 	"access_rule/templateActors/list": {"access", false}, "access_rule/templateActors/share": {"access", true},
 	"access_rule/account/list": {"access", false}, "access_rule/account/share": {"access", true},

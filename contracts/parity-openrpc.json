@@ -11696,6 +11696,172 @@
     }
    ],
    "summary": "Reads a retained task and its result; expired history may be removed"
+  },
+  {
+   "name": "public_link/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "waitList",
+     "required": false,
+     "schema": {
+      "description": "Guests wait for an owner to confirm their access request instead of getting view access at once",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "ttl",
+     "required": false,
+     "schema": {
+      "default": 7200,
+      "description": "Lifetime in seconds; ignored when dueDate is set",
+      "maximum": 31536000,
+      "minimum": 60,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "dueDate",
+     "required": false,
+     "schema": {
+      "description": "Expiry (unix seconds); wins over ttl",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Creates (replaces) the public guest link of an actor"
+  },
+  {
+   "name": "public_link/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Returns the actor's live public link, if any"
+  },
+  {
+   "name": "public_link/revoke",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Revokes every public link of an actor"
+  },
+  {
+   "name": "meet/transcription/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "default": "ASC",
+      "description": "ASC (default): from the first line, oldest first. DESC: from the last line, newest first",
+      "enum": [
+       "ASC",
+       "DESC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "since",
+     "required": false,
+     "schema": {
+      "description": "Keep only lines with a timestamp (unix seconds) after this one; applied to the page read",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists the lines of a meeting's live transcript"
   }
  ]
 }
