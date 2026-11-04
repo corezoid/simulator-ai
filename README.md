@@ -211,7 +211,7 @@ title; text of the agent holding `{{` is written as a JSONata string literal, so
 the stand must serve `form/submit`. A submit needs View on the template, which only its creator has, so the page
 passes `appId`: `form/submit` then lets whoever may open that Smart Form (its `sharedWith`, as `smart_form_create`
 set it) submit into a template its released page names. Page writes refuse inputs with an action-less button but no Form, a Form that neither a form.submit names
-nor any action reads (`vm.<valueKey>`, e.g. a `simapi.call`), a `form/submit` without a template and a `formData`
+nor any action passes on (`vm.<valueKey>` in a `simapi.call`, `widget.call`, `bus.publish`, navigate or `copy`), a `form/submit` without a template and a `formData`
 filter reading another Form, and set its `accId` to the host workspace and its `appId` to that Smart Form; other submits (via Corezoid, other
 methods) are left as they are. Then
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its

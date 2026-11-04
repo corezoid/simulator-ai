@@ -62,7 +62,7 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 		_ = os.WriteFile(golden, append(page.Bytes(), '\n'), 0o644)
 	}
 	want, err := os.ReadFile(golden)
-	if err != nil || strings.TrimSpace(string(want)) != page.String() {
+	if err != nil || strings.TrimSpace(strings.ReplaceAll(string(want), "\r\n", "\n")) != page.String() {
 		t.Errorf("page differs from %s (go test -run DataForm -update to accept):\n%s", golden, page.String())
 	}
 }
@@ -120,7 +120,9 @@ func TestWireSubmits(t *testing.T) {
 		"Form without a submit button":     {formOnly, `Form "request" has no button with form.submit`},
 		"no data template":                 {noTemplate, "needs simapiExtraParams.formId"},
 		"a stale one of two submits":       {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}},{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.leave, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "reads vm.request, not vm.leave"},
-		"a Form only validated":            {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.validate","form":"request"},{"type":"if","cond":"vm.valid.leave = true","then":[{"type":"notify","title":"ok"}]}]}}]}}`, "no action reads vm.leave"},
+		"a Form only validated":            {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.validate","form":"request"},{"type":"if","cond":"vm.valid.leave = true","then":[{"type":"notify","title":"ok"}]}]}}]}}`, "no action sends vm.leave"},
+		"a Form read by its id":            {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"simapi.call","method":"actor/create","params":{"data":"{{ vm.request }}"}}]}}]}}`, "no action sends vm.leave"},
+		"a Form only notified":             {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"if","cond":"vm.leave.days > 3","then":[{"type":"notify","title":"{{ vm.leave.days }} days"}]}]}}]}}`, "no action sends vm.leave"},
 		"filter of a renamed Form":         {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "reads vm.request, not vm.leave"},
 	} {
 		if _, err := wireSubmits(tc.source, "ws", ""); err == nil || !strings.Contains(err.Error(), tc.err) || !strings.Contains(err.Error(), "smart_form_data_form_create") {
@@ -134,6 +136,8 @@ func TestWireSubmits(t *testing.T) {
 		"spaced filter of its Form": `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.leave , function($v){ $v != \"\" })]) }}"}}]}}]}}`,
 		"Form read by simapi.call":  `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"simapi.call","method":"actor/create","params":{"data":"{{ vm.leave }}"}}]}}]}}`,
 		"Form read by bus.publish":  `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"bus.publish","topic":"leave","payload":"{{ vm.leave.start }}"}]}}]}}`,
+		"Form sent by a binding":    `{"schemaVersion":"2.0","id":"index","bindings":[{"on":"x","do":[{"type":"simapi.call","method":"m","params":{"d":"{{ vm. leave }}"}}]}],"tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"notify","title":"t"}]}}]}}`,
+		"whole float template id":   `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5.0}}]}}]}}`,
 		"expression template":       `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":"{{ vm.templateId }}"}}]}}]}}`,
 	} {
 		out, err := wireSubmits(legit, "ws", "")

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"regexp"
 	"strings"
 )
@@ -18,7 +19,7 @@ type pageFacts struct {
 	forms       map[string]string // Form id -> the vm key holding its values
 	submitted   map[string]bool   // Form ids a form.submit names
 	filters     [][2]string       // Form id and the vm key a form/submit's formData filter reads
-	reads       []string          // strings of every action, for the vm keys they read
+	reads       []string          // strings of actions that send or pass on data, for the vm keys they read
 	inputs      int
 	idleButtons int
 	refs        bool // a $ref fragment may hold the submit
@@ -29,7 +30,8 @@ type pageFacts struct {
 // wireSubmits checks a page config before it is stored and returns the source to store. It refuses
 // what made a Console form send nothing (acceptance D7): a Form node nothing consumes, and a button
 // without any action beside inputs on a page without a Form. A Form is consumed by a form.submit that
-// names it or by any action reading vm.<its value key> (a simapi.call, a bus.publish). A form.submit
+// names it or by an action passing on vm.<its value key> (simapi.call, widget.call, bus.publish,
+// navigate, copy), wherever it sits (an actions key or a page binding). A form.submit
 // to form/submit must name its data template; its accId is set to the host workspace and its appId to
 // the Smart Form written (form/submit lets that form's audience submit). Other
 // submits (via corezoid, other methods) are the page author's and pass as they are. A generated
@@ -64,16 +66,19 @@ func wireSubmits(source, workspace, appID string) (string, error) {
 // wiring is what a form/submit of the written page is bound to.
 type wiring struct{ workspace, appID string }
 
-// collect walks the page; inActions marks the subtree of an actions key.
-func (f *pageFacts) collect(v any, w wiring, inActions bool) {
+// consumers are the client actions that send or pass on what they read.
+var consumers = map[any]bool{"simapi.call": true, "widget.call": true, "bus.publish": true, "navigate.local": true, "navigate.route": true, "copy": true}
+
+// collect walks the page; inConsumer marks the subtree of a consumer action.
+func (f *pageFacts) collect(v any, w wiring, inConsumer bool) {
 	switch t := v.(type) {
 	case string:
-		if inActions {
+		if inConsumer {
 			f.reads = append(f.reads, t)
 		}
 	case []any:
 		for _, x := range t {
-			f.collect(x, w, inActions)
+			f.collect(x, w, inConsumer)
 		}
 	case map[string]any:
 		if _, ok := t["$ref"]; ok {
@@ -98,8 +103,9 @@ func (f *pageFacts) collect(v any, w wiring, inActions bool) {
 		case "form.submit":
 			f.submit(t, w)
 		}
-		for k, x := range t {
-			f.collect(x, w, inActions || k == "actions")
+		inConsumer = inConsumer || consumers[t["type"]]
+		for _, x := range t {
+			f.collect(x, w, inConsumer)
 		}
 	}
 }
@@ -133,8 +139,8 @@ func (f *pageFacts) judge() []string {
 		problems = append(problems, "the page has inputs and a button with no actions but no Form node, so what is typed would not be sent (give a decorative button an action, or wrap the inputs in a Form with a form.submit button)")
 	}
 	for id, key := range f.forms {
-		if !f.submitted[id] && !f.refs && !f.read(key) && !f.read(id) {
-			problems = append(problems, fmt.Sprintf("Form %q has no button with form.submit and no action reads vm.%s", id, key))
+		if !f.submitted[id] && !f.refs && !f.read(key) {
+			problems = append(problems, fmt.Sprintf("Form %q has no button with form.submit and no action sends vm.%s", id, key))
 		}
 	}
 	for _, s := range f.filters {
@@ -145,12 +151,12 @@ func (f *pageFacts) judge() []string {
 	return problems
 }
 
-// read says some action reads vm.<key> (not vm.valid.<key> or vm.<key>x).
+// read says a consumer action reads vm.<key> (not vm.valid.<key> or vm.<key>x).
 func (f *pageFacts) read(key string) bool {
 	if key == "" {
 		return false
 	}
-	reads := regexp.MustCompile(`(^|[^\w.$])vm\.` + regexp.QuoteMeta(key) + `($|[^\w])`)
+	reads := regexp.MustCompile(`(^|[^\w.$])vm\.\s*` + regexp.QuoteMeta(key) + `($|[^\w])`)
 	for _, s := range f.reads {
 		if reads.MatchString(s) {
 			return true
@@ -166,6 +172,9 @@ func expression(v any) bool {
 
 func positive(v any) bool {
 	n, ok := v.(json.Number)
-	i, err := n.Int64()
-	return ok && err == nil && i >= 1
+	if i, err := n.Int64(); ok && err == nil {
+		return i >= 1
+	}
+	f, err := n.Float64() // 5.0 or 5e0 is a whole number too
+	return ok && err == nil && f >= 1 && f == math.Trunc(f)
 }
