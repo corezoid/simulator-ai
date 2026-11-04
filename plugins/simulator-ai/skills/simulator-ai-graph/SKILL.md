@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read and analyse Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours and holes — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, or count a layer ("створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
+description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours and holes — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, or count a layer ("створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
@@ -104,6 +104,29 @@ with the user first.
 An edge's look on one layer: `layer_edge_settings_save {actorId: <layerId>, laEdgeId: <its laId>,
 layerSettings: {lineStyle: solid|dashed|dotted, width, color: "#RRGGBB", curveStyle, name}}`
 (`console-full`); sent keys are merged, and the same edge on other layers keeps its own look.
+
+## Export and import (`console-full`)
+
+A graph moves between workspaces as a `.graph` archive, built and read by background tasks.
+Both need the `import_export:management` workspace permission.
+
+- **Export.** Ask what to export: graphs or actors (`actors`, ids), templates (`forms`) or the
+  whole workspace (`allWorkspace: true`), and which data travels with it (`ops`: attachments,
+  connectorsToAccounts and accountToActors are on unless turned off; transactions, balances,
+  processes, users and systemCounters are off unless turned on). Then `graph_export_create`.
+  The archive holds only what you may read; a task that hits something you may not read fails
+  and lists it.
+- **Import.** The archive's `fileName`: an export's `details.file.fileName`, or a file the user
+  gives you, uploaded with `graph_file_upload {fileName: "<name>.graph", content: <base64>}`
+  (up to 700 KiB). Ask, per kind (actors, templates, transfers, transactions, processes), what to
+  do with a ref that already exists here: `reuse` merges into it, `replace` imports a copy
+  under a prefixed ref, `error` refuses. Show those choices and get a yes, then
+  `graph_import_create {fileName, ops, users?, dataReplace?}`. Smart Forms in the archive come
+  without Corezoid credentials: bind them afterwards (`simulator-ai-smart-forms-logic`).
+- **Follow the task.** `task_get {taskId}` while `status` is `created` or `started`, a few
+  seconds apart. `completed`: an export adds `downloadUrl`, the archive's link, which opens
+  without signing in, so give it only to the user who asked; an import names its root actor in
+  `details.actor` (link it with `build_link`). `failed`: report `error`.
 
 ## Desktop profiles: `graph-read` and `graph-create`
 

@@ -66,6 +66,7 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addParity(s, c, userTools)
 		addParity(s, c, attachmentTools)
 		addParity(s, c, corezoidTools)
+		addConsoleTasks(s, c)
 		addConsoleAccess(s, c)
 		addConsoleFiles(s, c)
 		addConsoleRegistry(s, c)

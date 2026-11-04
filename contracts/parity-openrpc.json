@@ -11301,6 +11301,401 @@
     }
    ],
    "summary": "Merges layer settings into an edge on a layer"
+  },
+  {
+   "name": "task/export/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "Name to show for this export",
+      "type": "string"
+     }
+    },
+    {
+     "name": "actors",
+     "required": false,
+     "schema": {
+      "description": "Graph (or actor) identifiers to export",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "forms",
+     "required": false,
+     "schema": {
+      "description": "Account template identifiers to export",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "allWorkspace",
+     "required": false,
+     "schema": {
+      "description": "Export the whole workspace instead of the listed objects",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "ops",
+     "required": false,
+     "schema": {
+      "description": "How much of each thing travels with the graph",
+      "properties": {
+       "accountToActors": {
+        "description": "Include account-to-actor links (worker default: on)",
+        "type": "boolean"
+       },
+       "attachments": {
+        "description": "Include attachments (worker default: on)",
+        "type": "boolean"
+       },
+       "balances": {
+        "description": "Include account balances (worker default: off)",
+        "type": "boolean"
+       },
+       "connectorsToAccounts": {
+        "description": "Include connector-to-account links (worker default: on)",
+        "type": "boolean"
+       },
+       "maxRecursionLevel": {
+        "description": "Stop the traversal after this many actor levels; absent means no limit",
+        "type": "integer"
+       },
+       "processes": {
+        "description": "Include Corezoid processes (worker default: off)",
+        "type": "boolean"
+       },
+       "skipNestedGraphs": {
+        "description": "Leave graphs nested inside the exported ones out of the archive, as references",
+        "type": "boolean"
+       },
+       "systemCounters": {
+        "description": "Include system counters (worker default: off)",
+        "type": "boolean"
+       },
+       "transactions": {
+        "description": "Include transactions (worker default: off)",
+        "type": "boolean"
+       },
+       "users": {
+        "description": "Include participants and their access rules (worker default: off)",
+        "type": "boolean"
+       }
+      },
+      "type": "object"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: user",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Enqueues an export of graphs or account templates into an archive"
+  },
+  {
+   "name": "task/import/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "fileName",
+     "required": true,
+     "schema": {
+      "description": "Name of the uploaded .graph archive",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "Name to show for this import, read by the client off the archive manifest",
+      "type": "string"
+     }
+    },
+    {
+     "name": "users",
+     "required": false,
+     "schema": {
+      "description": "Maps a participant of the source workspace onto participants of this one",
+      "items": {
+       "properties": {
+        "fromId": {
+         "description": "Participant identifier inside the archive; 0 is the system user and is refused",
+         "minimum": 1,
+         "type": "integer"
+        },
+        "toIds": {
+         "description": "Participants of this workspace to map onto",
+         "items": {
+          "type": "integer"
+         },
+         "type": "array"
+        }
+       },
+       "required": [
+        "fromId",
+        "toIds"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "scripts",
+     "required": false,
+     "schema": {
+      "description": "Corezoid credentials for the Smart Forms inside the archive",
+      "items": {
+       "properties": {
+        "apiLogin": {
+         "description": "Corezoid API login; absent for a Smart Form with no bound process",
+         "minimum": 1,
+         "type": "integer"
+        },
+        "apiSecret": {
+         "description": "Corezoid API secret",
+         "type": "string"
+        },
+        "companyId": {
+         "description": "Corezoid company identifier; defaults to this workspace",
+         "type": "string"
+        },
+        "id": {
+         "description": "Smart Form actor identifier inside the archive",
+         "minimum": 1,
+         "type": "integer"
+        },
+        "procId": {
+         "description": "Corezoid process identifier; absent for a Smart Form with no bound process",
+         "minimum": 1,
+         "type": "integer"
+        }
+       },
+       "required": [
+        "id"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "ops",
+     "required": false,
+     "schema": {
+      "description": "What to do when a ref in the archive already exists here",
+      "properties": {
+       "actorRefReplacePrefix": {
+        "description": "Prefix for rewritten actor refs; generated by the worker when absent",
+        "type": "string"
+       },
+       "actorRefStrategy": {
+        "description": "reuse, replace or error",
+        "enum": [
+         "reuse",
+         "replace",
+         "error"
+        ],
+        "type": "string"
+       },
+       "formRefReplacePrefix": {
+        "description": "Prefix for rewritten account template refs",
+        "type": "string"
+       },
+       "formRefStrategy": {
+        "description": "reuse, replace or error",
+        "enum": [
+         "reuse",
+         "replace",
+         "error"
+        ],
+        "type": "string"
+       },
+       "processesRefStrategy": {
+        "description": "reuse, replace or error",
+        "enum": [
+         "reuse",
+         "replace",
+         "error"
+        ],
+        "type": "string"
+       },
+       "transactionRefReplacePrefix": {
+        "description": "Prefix for rewritten transaction refs",
+        "type": "string"
+       },
+       "transactionRefStrategy": {
+        "description": "reuse, replace or error",
+        "enum": [
+         "reuse",
+         "replace",
+         "error"
+        ],
+        "type": "string"
+       },
+       "transferRefReplacePrefix": {
+        "description": "Prefix for rewritten transfer refs",
+        "type": "string"
+       },
+       "transferRefStrategy": {
+        "description": "reuse, replace or error",
+        "enum": [
+         "reuse",
+         "replace",
+         "error"
+        ],
+        "type": "string"
+       }
+      },
+      "type": "object"
+     }
+    },
+    {
+     "name": "dataReplace",
+     "required": false,
+     "schema": {
+      "description": "Fields to replace on named actors or account templates of the archive as they are imported",
+      "items": {
+       "properties": {
+        "from": {
+         "description": "The actor or account template of the archive to rename",
+         "properties": {
+          "id": {
+           "description": "Identifier of the entity inside the archive",
+           "type": "string"
+          },
+          "ref": {
+           "description": "Ref of the entity inside the archive",
+           "type": "string"
+          },
+          "type": {
+           "description": "actor, or form for an account template",
+           "enum": [
+            "actor",
+            "form"
+           ],
+           "type": "string"
+          }
+         },
+         "required": [
+          "type"
+         ],
+         "type": "object"
+        },
+        "to": {
+         "description": "What it is imported as",
+         "properties": {
+          "color": {
+           "description": "New color (actors)",
+           "type": "string"
+          },
+          "description": {
+           "description": "New description",
+           "type": "string"
+          },
+          "picture": {
+           "description": "New picture: a storage file name (actors)",
+           "type": "string"
+          },
+          "ref": {
+           "description": "New ref",
+           "type": "string"
+          },
+          "title": {
+           "description": "New title",
+           "type": "string"
+          }
+         },
+         "type": "object"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: user",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Enqueues an import of a graph archive into this workspace"
+  },
+  {
+   "name": "task/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "taskId",
+     "required": true,
+     "schema": {
+      "description": "Task identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: user",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Reads a retained task and its result; expired history may be removed"
   }
  ]
 }
