@@ -28,6 +28,8 @@ type ActorCreateInput struct {
 	Description string          `json:"description,omitempty"`
 	Color       string          `json:"color,omitempty"`
 	Data        json.RawMessage `json:"data,omitempty"`
+	// Hole creates a placeholder for an actor not known yet; its data fields are the closing conditions.
+	Hole bool `json:"hole,omitempty"`
 }
 
 type actorCreateRequest struct {
@@ -37,6 +39,7 @@ type actorCreateRequest struct {
 	Description string          `json:"description,omitempty"`
 	Color       string          `json:"color,omitempty"`
 	Data        json.RawMessage `json:"data"`
+	Hole        bool            `json:"hole,omitempty"`
 	Fields      []string        `json:"fields"`
 }
 

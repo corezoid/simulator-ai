@@ -33,6 +33,7 @@ var consoleReplies = map[string]string{
 	"app_file/update":                     `{"files":[{"id":103,"folderId":102,"objType":"file","title":"config","type":"application/json","source":"{}","sourceHash":"h2"}]}`,
 	"app_file/create":                     `{"files":[{"id":104,"folderId":102,"objType":"file","title":"locale","type":"application/json","source":"{}","sourceHash":"h3"}]}`,
 	"release/create":                      `{"id":9,"actorId":"app1","envId":2,"sourceEnvId":1,"releaseNumber":1,"status":"active"}`,
+	"batch":                               `{"isAtomic":false,"list":[{"id":"0","result":{"id":"a1","color":"#17b26a"}}]}`,
 	"release/get":                         `{"id":9,"actorId":"app1","envId":2,"sourceEnvId":1,"releaseNumber":1,"status":"archived"}`,
 }
 
@@ -144,10 +145,10 @@ func TestConsoleRequests(t *testing.T) {
 		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":0,"y":0}}]}`, "graph/layer/actors/manage", `"actorId":"L","items":[{"action":"create","data":{"id":"a1","position":{"x":0,"y":0},"type":"node"}}]`, `"laId":11`},
 		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","color":"#539fdf","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "graph/layer/actors/manage",
 			`"data":{"areaPicture":{"height":100,"img":"data:image/svg+xml;base64,`, `"laId":11`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "graph/layer/actors/manage",
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "batch,graph/layer/actors/manage",
 			`"position":{"x":25,"y":25},"type":"node"`, `"laId":11`},
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"blockIds":["process"]`,
-			`"key":"b","blockId":"process","formId":5,"data":{"__form__6:blockId":"process"`},
+			`"key":"b","blockId":"process","formId":5,"color":"#`},
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"limit":100`,
 			`"position":{"x":25,"y":325},"layerSettings":{"width":200,"height":100,"blockId":"process"`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"x":150,"y":0}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":150,"y":0}}]`, `"updated":1`},
@@ -313,5 +314,65 @@ func TestConsoleCoreCatalog(t *testing.T) {
 	}
 	if len(names) != len(consoleCoreTools) || len(names) != 23 {
 		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
+	}
+}
+
+func inPalette(color string) bool {
+	for _, h := range publicapi.ActorHues {
+		if color == h {
+			return true
+		}
+	}
+	return false
+}
+
+func TestConsoleColorsAndHoles(t *testing.T) {
+	batch := `"result":{"isAtomic":true,"list":[{"id":"0","result":{"id":"a1","formId":5,"color":"#2970ff"}},{"id":"1","result":{"id":"h1","formId":5,"color":"#17b26a","hole":true}}]}`
+	send, calls := consoleServer(t, map[string]string{"batch": batch})
+	reply := send(`"method":"tools/call","params":{"name":"actors_create","arguments":{"actors":[{"formId":5,"title":"A"},{"formId":5,"title":"Expected","hole":true,"data":{"city":"Kyiv"}}]}}`)
+	if strings.Contains(reply, `"isError":true`) {
+		t.Fatal(reply)
+	}
+	var req struct {
+		List []struct {
+			Params struct {
+				Color string `json:"color"`
+				Hole  bool   `json:"hole"`
+			} `json:"params"`
+		} `json:"list"`
+	}
+	raw, _ := json.Marshal((*calls)[len(*calls)-1].Params)
+	if err := json.Unmarshal(raw, &req); err != nil || len(req.List) != 2 {
+		t.Fatal(string(raw))
+	}
+	for i, item := range req.List {
+		if !inPalette(item.Params.Color) {
+			t.Errorf("actor %d got colour %q outside the palette", i, item.Params.Color)
+		}
+	}
+	if req.List[0].Params.Hole || !req.List[1].Params.Hole {
+		t.Fatal("hole not passed per item:", string(raw))
+	}
+
+	send(`"method":"tools/call","params":{"name":"actor_create","arguments":{"formId":5,"title":"One"}}`)
+	if c, _ := (*calls)[len(*calls)-1].Params["color"].(string); !inPalette(c) {
+		t.Fatal("actor_create default colour:", c)
+	}
+	send(`"method":"tools/call","params":{"name":"actor_create","arguments":{"formId":5,"title":"One","color":"#000000"}}`)
+	if c, _ := (*calls)[len(*calls)-1].Params["color"].(string); c != "#000000" {
+		t.Fatal("an explicit colour was replaced:", c)
+	}
+}
+
+func TestLayerGetShowsHoles(t *testing.T) {
+	send, _ := consoleServer(t, map[string]string{
+		"graph/layer/actors/list": `"result":{"list":[{"laId":1,"id":"h1","hole":true,"position":{"x":0,"y":0},"actor":{"id":"h1","title":"Expected"}},{"laId":2,"id":"a2","position":{"x":0,"y":200},"closedHole":{"holeActorId":"h0","closingProgress":{"matched":1,"total":2}},"actor":{"id":"a2","title":"Closer"}}]}`,
+		"graph/layer/edges/list":  `"result":{"list":[{"laId":9,"id":"e1","laIdSource":2,"laIdTarget":1,"edge":{"id":"e1","edgeTypeId":3,"source":"a2","target":"h1","hole":true},"closedHole":{"holeEdgeId":"e0"}}]}`,
+	})
+	reply := strings.ReplaceAll(send(`"method":"tools/call","params":{"name":"layer_get","arguments":{"layerId":"L"}}`), `\"`, `"`)
+	for _, want := range []string{`"actorId":"h1","title":"Expected","position":{"x":0,"y":0},"hole":true`, `"closedHole":{"holeActorId":"h0","closingProgress":{"matched":1,"total":2}}`, `"target":"h1","hole":true,"closedHole":"e0"`} {
+		if !strings.Contains(reply, want) {
+			t.Errorf("layer_get lacks %s: %s", want, reply)
+		}
 	}
 }

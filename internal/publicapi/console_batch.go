@@ -18,8 +18,16 @@ type EdgesCreateInput struct {
 	Edges []EdgeCreateInput `json:"edges"`
 }
 
+// CreatedActor is a created actor's metadata with its colour, which layer_placements_create
+// paints flowchart blocks with.
+type CreatedActor struct {
+	Actor
+	Color string `json:"color,omitempty"`
+	Hole  bool   `json:"hole,omitempty"`
+}
+
 type CreatedActors struct {
-	Actors []Actor `json:"actors"`
+	Actors []CreatedActor `json:"actors"`
 }
 type CreatedEdges struct {
 	Edges []GraphCreatedEdge `json:"edges"`
@@ -94,13 +102,17 @@ func (c *Client) CreateActors(ctx context.Context, in ActorsCreateInput) (Create
 		if err != nil {
 			return CreatedActors{}, fmt.Errorf("actor %d: %w", i, err)
 		}
-		params[i] = actorCreateRequest{AccID: c.config.Workspace, FormID: a.FormID, Title: a.Title, Description: a.Description, Color: a.Color, Data: data, Fields: actorFields}
+		color := a.Color
+		if color == "" {
+			color = RandomActorColor()
+		}
+		params[i] = actorCreateRequest{AccID: c.config.Workspace, FormID: a.FormID, Title: a.Title, Description: a.Description, Color: color, Data: data, Hole: a.Hole, Fields: append(actorFields[:len(actorFields):len(actorFields)], "color", "hole")}
 	}
 	results, err := c.atomic(ctx, "actor/create", params)
 	if err != nil {
 		return CreatedActors{}, err
 	}
-	out := CreatedActors{Actors: make([]Actor, len(results))}
+	out := CreatedActors{Actors: make([]CreatedActor, len(results))}
 	for i, r := range results {
 		if json.Unmarshal(r, &out.Actors[i]) != nil || out.Actors[i].ID == nil || *out.Actors[i].ID == "" {
 			return CreatedActors{}, fmt.Errorf("actor %d: batch committed but actor/create returned no actor id; read the actors back before retrying", i)
@@ -132,7 +144,7 @@ func (c *Client) CreateEdges(ctx context.Context, in EdgesCreateInput) (CreatedE
 			}
 			id, types[name] = t.ID, t.ID
 		}
-		params[i] = edgeCreateRequest{AccID: c.config.Workspace, Source: e.Source, Target: e.Target, EdgeTypeID: id, Name: e.Name, CurveStyle: e.CurveStyle, ForceDirection: true}
+		params[i] = edgeCreateRequest{AccID: c.config.Workspace, Source: e.Source, Target: e.Target, EdgeTypeID: id, Name: e.Name, CurveStyle: e.CurveStyle, Hole: e.Hole, ForceDirection: true}
 	}
 	results, err := c.atomic(ctx, "edge/create", params)
 	if err != nil {
