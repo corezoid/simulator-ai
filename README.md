@@ -180,6 +180,8 @@ scenarios use (see "AI Console profile").
 | `agents_find` [findAgent] (members without query) · `agent_get` [getAgent] (a user's twin or any actor, with the profile) | `user/list`, or `form/system/get` (`System`) + `actor/search/list` (semantic, else text), or `actor/filter/list` of a `formId` · `actor/by-system_obj/get` or `actor/get` | ✓ | | |
 | `build_link` [buildLink] (actor, layer, form, chat, chart, … and a Smart Form route) | none: the legacy web app route table on `SIMULATOR_AI_ORIGIN`; a Smart Form's short URL from `route/build` (its production release) | ✓ | | |
 | `bbcode_tags_get` [getBbcodeTags] | none: the BBCode catalog of simulator-ui-kit `packages/utils/src/bbcode/bbcode-tags.json`, built in | ✓ | | |
+| `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, `graph/layer/actors/manage` | ✓ | | |
+| `chart_update` [updateChart] (settings, series or filter; with `laId` the placement's size) | `actor/get` + `form/system/get`, a new filter's `actor/create`, `actor/update`, `graph/layer/elements/list` + `graph/layer/actor_settings/save` | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
 These tools need sim-api `feature/simulator-ai` at cda5b60e or later (`cdu/catalog/get` !463,
@@ -190,13 +192,20 @@ An AI Console run's token reaches `rest/upload` (and no other REST route) throug
 (`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand
 serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
 retried for about 3 seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
-`simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks`, `simulator-ai-finance`, `simulator-ai-skills` and
-`simulator-ai-agents` compose these tools.
+`simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks`, `simulator-ai-finance`, `simulator-ai-skills`,
+`simulator-ai-agents` and `simulator-ai-charts` compose these tools.
 
 Skill procedures and agent profiles are descriptions users write: `skill_get` and `agent_get` return them as data, and
 their tool descriptions tell the model not to take instructions from them. `build_link` builds web app URLs on
 `SIMULATOR_AI_ORIGIN` with the 8-character workspace segment, each id escaped as one path segment; a `smartForm`
 link needs a route its released pages declare.
+
+A chart's `data.source` is built locally as legacy createChart built it: the web app wizard's JSON string, which
+sim-api's `dashboard/get` reads too. The chart is drawn as `layerSettings` `{expandType: chart, expand: true, width: 650,
+height: 450}`: legacy wrote that box as `offset` `{left, right, top, bottom}`, which sim-api types as `{x, y}` and would
+store as zeros. `chart_update` keeps every stored key it does not change and never edits an ActorFilters actor (a
+changed filter is a new one; the result names the one the chart stopped using). Legacy's account inheritance from the
+layer's graph (`/accounts/inherit`) has no public method and is not set up.
 
 Simulation is the legacy engine moved as it was (`internal/simulation`, its conformance cases included): a model
 runs in model time in memory and nothing is written to Simulator. `simulation_snapshot_get` returns the layer
@@ -218,7 +227,7 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
 `skills_find`, `skill_get` and `build_link`: 35 in all. `console-full` adds every other actor, form, graph, access,
-reaction, user, attachment, finance, registry and simulation tool (148 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+reaction, user, attachment, finance, registry, simulation and chart tool (150 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -291,9 +300,10 @@ workspace roles, `SMOKE_TTL`, `ROTATE=1`) and writes `~/.config/simulator-ai/smo
 placements read back with `layer_get`, then a Smart Form with a field, a submit button and a root route, released,
 read back as `ready` and linked with `build_link`, then a verified skill found by `skills_find`, read by `skill_get`
 and linked. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
-by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`) and the simulation one (a shop with a balance
+by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`), the simulation one (a shop with a balance
 of 100 and a supplier on a new layer; a payment model checked against `simulation_snapshot_get` and run live in two
-scenarios). Each run creates new objects in that
+scenarios) and the charts one (a manual chart read back with its source and chart placement, turned into an
+actorFilter chart with a new filter and resized, then back to manual). Each run creates new objects in that
 workspace; nothing secret is printed.
 
 The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:
