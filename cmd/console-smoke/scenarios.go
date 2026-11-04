@@ -190,12 +190,15 @@ func form(c *client, stamp string) error {
 	}
 	// The leave request of acceptance scenario 2, built only from smart_form_components types.
 	var kinds struct {
-		Components []struct {
+		List []struct {
 			Type string `json:"type"`
-		} `json:"components"`
+		} `json:"list"`
 	}
 	if err := c.tool("smart_form_components", map[string]any{"types": []string{"Stack", "Label", "DatePicker", "TextInput", "Button"}}, &kinds); err != nil {
 		return err
+	}
+	if len(kinds.List) != 5 {
+		return fmt.Errorf("smart_form_components returned %d of the 5 component types", len(kinds.List))
 	}
 	page, _ := json.Marshal(map[string]any{"schemaVersion": "2.0", "id": "index", "tree": map[string]any{"id": "root", "type": "Stack", "children": []any{
 		map[string]any{"id": "startLabel", "type": "Label", "props": map[string]any{"title": "Дата початку"}},

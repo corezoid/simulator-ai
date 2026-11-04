@@ -61,7 +61,7 @@ func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {
 }
 
 func addConsoleSmartForms(s *server.MCPServer, c *publicapi.Client) {
-	addSmartFormComponents(s)
+	addParity(s, c, smartFormTools)
 	consoleTool(s, "smart_form_create", "Create a Smart Form (CDU v2). It starts with a develop tree holding a pages/index page (config with an empty Stack), locale, viewModel and styles/index. Returns appId and env ids; edit develop with smart_form_files_get/update/create, then smart_form_release.",
 		`{"type":"object","properties":{"ref":{"type":"string","pattern":"^[0-9a-zA-Z_-]{5,255}$","description":"Short name unique among the workspace's Smart Forms"},"title":{"type":"string","minLength":1,"maxLength":255},"description":{"type":"string","maxLength":10000},"sharedWith":{"type":"string","enum":["userList","allWorkspaceUsers","allRegisteredUsers"],"description":"Who may open it; default userList (its access list). Widen only when the user asks"}},"required":["ref","title"],"additionalProperties":false}`, true, c.CreateSmartForm)
 	consoleTool(s, "smart_form_files_get", "List the develop folders and files of a Smart Form by path (pages/index/config, locale, styles/index, ...) with id, type and sourceHash; withSource adds file sources. Use folder ids for new files and file ids for updates.",

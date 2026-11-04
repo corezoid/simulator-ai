@@ -1,6 +1,0 @@
-{
- "source": "sim-api internal/cdu/catalog/contracts/2.0 (feature/ai-console-wave2 6e7b0864)",
- "manifestSha256": "01b2781d732ece9a60576596b3493a4a95c61ae21a294f705b3472661f3c946b",
- "schemaSha256": "9a6218c45bcc65c628cecb4ac9708ad5c5fe6267f5bf901b6f4cb69d6154e98e",
- "components": 97
-}

@@ -12,7 +12,7 @@ import (
 // tool. Its result is an explicit passthrough: the backend's own projection, shaped by the caller's
 // documented fields/with, never re-modelled here.
 type ParityMethod struct {
-	Domain string // actor, form or graph
+	Domain string // actor, form, graph or smartform (console only)
 	Write  bool
 }
 
@@ -21,8 +21,8 @@ var ParityMethods = map[string]ParityMethod{
 	"actor/create": {"actor", true}, "actor/get": {"actor", false}, "actor/by-ref/get": {"actor", false},
 	"actor/update": {"actor", true}, "actor/delete": {"actor", true}, "actor/status/update": {"actor", true},
 	"actor/search/list": {"actor", false}, "actor/filter/list": {"actor", false}, "actor/filter/count": {"actor", false},
-	"actor/by-system_obj/get": {"actor", false},
-	"form/get":                {"form", false}, "form/tree/get": {"form", false}, "form/list": {"form", false}, "form/count": {"form", false},
+	"actor/by-system_obj/get": {"actor", false}, "actor/corezoid/process/list": {"actor", false},
+	"form/get": {"form", false}, "form/tree/get": {"form", false}, "form/list": {"form", false}, "form/count": {"form", false},
 	"form/create": {"form", true}, "form/update": {"form", true}, "form/delete": {"form", true},
 	"form/status/update": {"form", true}, "account_form/create": {"form", true}, "account_form/list": {"form", false},
 	"account_form/delete": {"form", true},
@@ -36,6 +36,7 @@ var ParityMethods = map[string]ParityMethod{
 	"graph/layer/clean": {"graph", true}, "graph/layer/element/exist": {"graph", false},
 	"graph/layer/stats/get": {"graph", false}, "graph/layer/actors/search/list": {"graph", false},
 	"graph/list": {"graph", false}, "graph/get": {"graph", false},
+	"cdu/catalog/get": {"smartform", false},
 }
 
 // ParityAllowed says whether this profile exposes the method: console all of them; the read-only
@@ -50,9 +51,9 @@ func (c *Client) ParityAllowed(method string) bool {
 	case m.Write:
 		return false
 	case c.config.Profile == "" || c.config.Profile == "read":
-		return m.Domain != "graph"
+		return m.Domain == "actor" || m.Domain == "form"
 	case c.config.Profile == "graph-read" && c.config.ActorID == "":
-		return true
+		return m.Domain == "actor" || m.Domain == "form" || m.Domain == "graph"
 	}
 	return false
 }

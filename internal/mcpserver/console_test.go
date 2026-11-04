@@ -108,14 +108,14 @@ func TestConsoleCatalog(t *testing.T) {
 		}
 	}
 	// The exact console catalog: its own tools plus every actor, form and graph parity tool.
-	want := "actor_by_ref_get,actor_create,actor_delete,actor_get,actor_status_update,actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count,actors_search," +
+	want := "actor_by_ref_get,actor_corezoid_processes_list,actor_create,actor_delete,actor_get,actor_status_update,actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count,actors_search," +
 		"edge_create,edge_delete,edge_endpoints_update,edge_exist,edge_get,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
 		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get,form_status_update,form_update,forms_count,forms_list,forms_tree_get," +
 		"graph_get,graph_list,layer_actors_move,layer_actors_search,layer_clean,layer_compact,layer_create,layer_edges_list,layer_element_exist,layer_get,layer_placements_all," +
 		"layer_placements_create,layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_skeleton_get,layer_stats_get,search_all," +
 		"smart_form_components,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 60 {
+	if got := strings.Join(names, ","); got != want || len(names) != 61 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
@@ -273,36 +273,21 @@ func TestConsoleBatches(t *testing.T) {
 }
 
 func TestSmartFormComponents(t *testing.T) {
-	send, calls := consoleServer(t, nil)
-	text := func(args string) string {
-		var r struct {
-			Result struct {
-				Content    []struct{ Text string } `json:"content"`
-				Structured json.RawMessage         `json:"structuredContent"`
-			} `json:"result"`
-		}
-		_ = json.Unmarshal([]byte(send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":`+args+`}`)), &r)
-		if len(r.Result.Structured) > 0 {
-			return string(r.Result.Structured)
-		}
-		if len(r.Result.Content) > 0 {
-			return r.Result.Content[0].Text
-		}
-		return ""
+	send, calls := consoleServer(t, map[string]string{"cdu/catalog/get": `"result":{"schemaVersion":"2.0","list":[{"type":"TextInput","kind":"primitive","category":"Input","label":"Text Input"}]}`})
+	reply := send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":{"brief":true}}`)
+	if strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "TextInput") {
+		t.Fatal(reply)
 	}
-	list := text(`{}`)
-	if strings.Count(list, `"category":`) != 97 || strings.Contains(list, `"props"`) || !strings.Contains(list, `"type":"DatePicker"`) {
-		t.Fatal("component list:", list[:300])
+	last := (*calls)[len(*calls)-1]
+	if last.Method != "cdu/catalog/get" || last.Params["brief"] != true || last.Params["accId"] != "ws" {
+		t.Fatal("cdu/catalog/get request:", last)
 	}
-	detail := text(`{"types":["TextInput","Button"]}`)
-	if !strings.Contains(detail, `"label":{"description":"Label for the input","type":"string"}`) || !strings.Contains(detail, `"title":`) || strings.Count(detail, `"category":`) != 2 {
-		t.Fatal("component detail:", detail[:300])
+	send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":{"types":["DatePicker","Button"]}}`)
+	if types, _ := json.Marshal((*calls)[len(*calls)-1].Params["types"]); string(types) != `["DatePicker","Button"]` {
+		t.Fatal("types:", string(types))
 	}
-	if unknown := text(`{"types":["DateInput"]}`); !strings.Contains(unknown, "unknown CDU component types [DateInput]") {
-		t.Fatal(unknown)
-	}
-	if len(*calls) != 0 {
-		t.Fatal("the component reference called the API")
+	if r := send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":{"kind":"widget"}}`); !strings.Contains(r, `"isError":true`) && !strings.Contains(r, `"error"`) {
+		t.Fatal("an unknown kind reached the API:", r)
 	}
 }
 

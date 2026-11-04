@@ -7,7 +7,7 @@ import (
 	"github.com/corezoid/simulator-ai/contracts"
 )
 
-// TestParitySourcePin keeps the pinned projection, its source record and the closed method set in step.
+// TestParitySourcePin keeps the pinned projection, its one-revision source record and the closed method set in step.
 func TestParitySourcePin(t *testing.T) {
 	var doc struct {
 		Methods []struct {
@@ -28,7 +28,7 @@ func TestParitySourcePin(t *testing.T) {
 	for _, m := range doc.Methods {
 		pinned[m.Name] = true
 	}
-	if len(doc.Methods) != 41 || source.Methods != len(doc.Methods) || len(pinned) != len(doc.Methods) {
+	if len(doc.Methods) != 43 || source.Methods != len(doc.Methods) || len(pinned) != len(doc.Methods) {
 		t.Fatalf("pinned %d methods (%d distinct), source says %d", len(doc.Methods), len(pinned), source.Methods)
 	}
 	for method := range ParityMethods {
@@ -39,12 +39,7 @@ func TestParitySourcePin(t *testing.T) {
 			t.Error(err)
 		}
 	}
-	for _, method := range []string{"form/tree/get", "edge/by-node/get", "edge_type/list"} {
-		if source.Overrides[method] == "" || !pinned[method] {
-			t.Errorf("%s has no recorded source branch", method)
-		}
-	}
-	if len(source.Overrides) != 3 {
-		t.Fatalf("%d overrides recorded, want 3", len(source.Overrides))
+	if len(source.Overrides) != 0 {
+		t.Fatalf("%d methods pinned from other branches; the whole projection comes from one sim-api revision", len(source.Overrides))
 	}
 }
