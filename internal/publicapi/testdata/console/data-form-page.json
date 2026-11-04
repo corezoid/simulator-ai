@@ -131,6 +131,7 @@
                       ],
                       "simapiExtraParams": {
                         "accId": "ws",
+                        "appId": "app-1",
                         "formData": "{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" and $v != null })]) }}",
                         "formId": 77,
                         "successMessage": "Saved"

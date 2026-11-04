@@ -32,7 +32,7 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := c.CreateDataForm(context.Background(), DataFormInput{Title: "Leave request", SubmitLabel: "Send", SuccessMessage: "Saved",
+	out, err := c.CreateDataForm(context.Background(), DataFormInput{Title: "Leave request", SubmitLabel: "Send", SuccessMessage: "Saved", AppID: "app-1",
 		Fields: []DataField{{Name: "start", Label: "Start", Type: "date", Required: true}, {Name: "days", Label: "Days", Type: "number"}, {Name: "kind", Label: "Kind", Type: "select", Options: []string{"Paid", "Unpaid"}}, {Name: "comment", Label: "Comment"}}})
 	if err != nil || out.FormID != 77 {
 		t.Fatal(out, err)
@@ -44,12 +44,12 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 		}
 	}
 	for _, want := range []string{`"type":"Form"`, `"valueKey":"request"`, `"props":{"text":"Start"}`, `"path":"request.start","type":"state","value":"{{ {\"startDate\": $event.startDate, \"endDate\": $event.endDate} }}"`, `"props":{"mode":"single","value":"{{ vm.request.start }}"}`, `"props":{"error":true,"text":"{{ vm.errors.request.start }}"}`, `"label":"Days","required":false,"type":"float","value":"{{ vm.request.days }}"`,
-		`"simapiExtraParams":{"accId":"ws","formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" and $v != null })]) }}","formId":77,"successMessage":"Saved"},"simapiMethod":"form/submit","type":"form.submit","via":"simapi"`, `"title":"Send"`} {
+		`"simapiExtraParams":{"accId":"ws","appId":"app-1","formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" and $v != null })]) }}","formId":77,"successMessage":"Saved"},"simapiMethod":"form/submit","type":"form.submit","via":"simapi"`, `"title":"Send"`} {
 		if !strings.Contains(out.Page, want) {
 			t.Errorf("page lacks %s", want)
 		}
 	}
-	if wired, err := wireSubmits(out.Page, "ws"); err != nil || wired != out.Page {
+	if wired, err := wireSubmits(out.Page, "ws", "app-1"); err != nil || wired != out.Page {
 		t.Fatal("the generated page fails its own wiring check or is rewritten:", err)
 	}
 	var page bytes.Buffer
@@ -64,6 +64,20 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 	want, err := os.ReadFile(golden)
 	if err != nil || strings.TrimSpace(string(want)) != page.String() {
 		t.Errorf("page differs from %s (go test -run DataForm -update to accept):\n%s", golden, page.String())
+	}
+}
+
+// Text of the agent holding {{ stays text: the renderer resolves such strings, so it is a literal.
+func TestDataPageKeepsAgentTextLiteral(t *testing.T) {
+	page, _ := json.Marshal(dataPage(DataFormInput{Title: "T", SubmitLabel: "Go {{x}}", SuccessMessage: "Done {{y}}",
+		Fields: []DataField{{Name: "kind", Label: "Kind {{k}}", Type: "select", Options: []string{"a {{b}} c"}}, {Name: "n", Label: "Plain"}}}, 7, "ws"))
+	for _, want := range []string{`{{ \"Go \\u007b\\u007bx\\u007d\\u007d\" }}`, `{{ \"Done \\u007b\\u007by\\u007d\\u007d\" }}`, `{{ \"Kind \\u007b\\u007bk\\u007d\\u007d\" }}`, `{{ \"a \\u007b\\u007bb\\u007d\\u007d c\" }}`, `"label":"Plain"`} {
+		if !strings.Contains(string(page), want) {
+			t.Errorf("page lacks %s", want)
+		}
+	}
+	if strings.Contains(string(page), "{{x}}") || strings.Contains(string(page), "{{b}}") {
+		t.Error("agent text reaches the page as an expression:", string(page))
 	}
 }
 
@@ -91,8 +105,8 @@ func TestDataPageTitlesActorsWithoutTextField(t *testing.T) {
 	if got, _ := params(strings.Repeat("я", 300), date)["title"].(string); got != strings.Repeat("я", 255) {
 		t.Errorf("a long title is sent as %d characters, want 255", len([]rune(got)))
 	}
-	if got, ok := params("Q3 {{draft}}", date)["title"]; ok {
-		t.Errorf("title = %v, want none for a title the renderer would evaluate", got)
+	if got := params("Q3 {{draft}}", date)["title"]; got != `{{ "Q3 \u007b\u007bdraft\u007d\u007d" }}` {
+		t.Errorf("title = %v, want a literal the renderer resolves to the title itself", got)
 	}
 }
 
@@ -109,7 +123,7 @@ func TestWireSubmits(t *testing.T) {
 		"a Form only validated":            {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.validate","form":"request"},{"type":"if","cond":"vm.valid.leave = true","then":[{"type":"notify","title":"ok"}]}]}}]}}`, "no action reads vm.leave"},
 		"filter of a renamed Form":         {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "reads vm.request, not vm.leave"},
 	} {
-		if _, err := wireSubmits(tc.source, "ws"); err == nil || !strings.Contains(err.Error(), tc.err) || !strings.Contains(err.Error(), "smart_form_data_form_create") {
+		if _, err := wireSubmits(tc.source, "ws", ""); err == nil || !strings.Contains(err.Error(), tc.err) || !strings.Contains(err.Error(), "smart_form_data_form_create") {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
@@ -122,22 +136,22 @@ func TestWireSubmits(t *testing.T) {
 		"Form read by bus.publish":  `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"bus.publish","topic":"leave","payload":"{{ vm.leave.start }}"}]}}]}}`,
 		"expression template":       `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":"{{ vm.templateId }}"}}]}}]}}`,
 	} {
-		out, err := wireSubmits(legit, "ws")
+		out, err := wireSubmits(legit, "ws", "")
 		if err != nil || out != legit {
 			t.Errorf("%s: refused or rewritten: %v", name, err)
 		}
 	}
-	wired, err := wireSubmits(good, "ws")
-	if err != nil || !strings.Contains(wired, `"accId": "ws"`) || strings.Contains(wired, `"other"`) {
-		t.Fatal("accId must be the host workspace:", wired, err)
+	wired, err := wireSubmits(good, "ws", "app-1")
+	if err != nil || !strings.Contains(wired, `"accId": "ws"`) || strings.Contains(wired, `"other"`) || !strings.Contains(wired, `"appId": "app-1"`) {
+		t.Fatal("accId must be the host workspace and appId the written Smart Form:", wired, err)
 	}
 	// A template id above 2^53 survives the rewrite of accId.
 	big := strings.Replace(good, `"formId":5`, `"formId":9007199254740993`, 1)
-	if wired, err := wireSubmits(big, "ws"); err != nil || !strings.Contains(wired, `"formId": 9007199254740993`) {
+	if wired, err := wireSubmits(big, "ws", ""); err != nil || !strings.Contains(wired, `"formId": 9007199254740993`) {
 		t.Fatal("a large template id is rounded:", wired, err)
 	}
 	for _, plain := range []string{`{"startPage":"index"}`, "a { color: red }", `{"schemaVersion":"2.0","id":"x","tree":{"id":"r","type":"Stack","children":[{"id":"l","type":"Label"}]}}`, `{"schemaVersion":"2.0","id":"x","tree":{}} trailing`} {
-		if out, err := wireSubmits(plain, "ws"); err != nil || out != plain {
+		if out, err := wireSubmits(plain, "ws", ""); err != nil || out != plain {
 			t.Errorf("%q changed or refused: %v", plain, err)
 		}
 	}

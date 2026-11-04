@@ -28,6 +28,7 @@ type DataFormInput struct {
 	Fields         []DataField `json:"fields"`
 	SubmitLabel    string      `json:"submitLabel,omitempty"`
 	SuccessMessage string      `json:"successMessage,omitempty"`
+	AppID          string      `json:"appId,omitempty"` // the Smart Form whose audience may submit
 }
 
 // DataForm is the created data template and a ready page config that submits into it.
@@ -65,8 +66,8 @@ func (c *Client) CreateDataForm(ctx context.Context, in DataFormInput) (DataForm
 	if e := consoleOnly(c); e != nil {
 		return DataForm{}, e
 	}
-	if !validTitle(in.Title, false) || len(in.Fields) < 1 || len(in.Fields) > 50 || utf8.RuneCountInString(in.SuccessMessage) > 200 {
-		return DataForm{}, errors.New("a title, 1..50 fields and a success message up to 200 characters required")
+	if !validTitle(in.Title, false) || len(in.Fields) < 1 || len(in.Fields) > 50 || utf8.RuneCountInString(in.SuccessMessage) > 200 || len(in.AppID) > 255 {
+		return DataForm{}, errors.New("a title, 1..50 fields, a success message up to 200 characters and an appId up to 255 required")
 	}
 	seen := map[string]bool{}
 	fields := make([]templateField, len(in.Fields))
@@ -117,7 +118,8 @@ func dataPage(in DataFormInput, formID int64, workspace string) pageNode {
 	var rules []pageNode
 	var children []any
 	for _, f := range in.Fields {
-		rules = append(rules, pageNode{"name": f.Name, "label": f.Label, "required": f.Required})
+		label := literal(f.Label)
+		rules = append(rules, pageNode{"name": f.Name, "label": label, "required": f.Required})
 		value, path := "{{ vm."+dataFormNode+"."+f.Name+" }}", dataFormNode+"."+f.Name
 		errText := "{{ vm.errors." + dataFormNode + "." + f.Name + " }}"
 		set := func(from string) pageNode {
@@ -128,48 +130,62 @@ func dataPage(in DataFormInput, formID int64, workspace string) pageNode {
 			// A calendar field holds {startDate, endDate} in Unix seconds (legacy makeCalendarItemValue),
 			// the shape of the DatePicker value and event too. DatePicker has no label, required or
 			// helperText props: Labels carry its caption and its validation error.
-			children = append(children, pageNode{"id": f.Name + "Label", "type": "Label", "props": pageNode{"text": f.Label}},
+			children = append(children, pageNode{"id": f.Name + "Label", "type": "Label", "props": pageNode{"text": label}},
 				pageNode{"id": f.Name, "type": "DatePicker", "props": pageNode{"mode": "single", "value": value},
 					"actions": set(`{{ {"startDate": $event.startDate, "endDate": $event.endDate} }}`)},
 				pageNode{"id": f.Name + "Error", "type": "Label", "props": pageNode{"text": errText, "error": true}})
 		case "select":
 			var options []any
 			for _, o := range f.Options {
-				options = append(options, pageNode{"value": o, "label": o})
+				options = append(options, pageNode{"value": literal(o), "label": literal(o)})
 			}
-			children = append(children, pageNode{"id": f.Name, "type": "Select", "props": pageNode{"label": f.Label, "options": options, "value": value, "required": f.Required, "helperText": errText}, "actions": set("{{ $event.value }}")})
+			children = append(children, pageNode{"id": f.Name, "type": "Select", "props": pageNode{"label": label, "options": options, "value": value, "required": f.Required, "helperText": errText}, "actions": set("{{ $event.value }}")})
 		default:
-			props := pageNode{"label": f.Label, "value": value, "required": f.Required, "helperText": errText}
+			props := pageNode{"label": label, "value": value, "required": f.Required, "helperText": errText}
 			if f.Type == "number" {
 				props["type"] = "float" // the template's edit/float; TextInput's "number" is deprecated
 			}
 			children = append(children, pageNode{"id": f.Name, "type": "TextInput", "props": props, "actions": set("{{ $event.value }}")})
 		}
 	}
-	label, message := in.SubmitLabel, in.SuccessMessage
+	label := in.SubmitLabel
 	if label == "" {
 		label = "Submit"
 	}
 	// formData overrides the values the dispatcher sends (extra params are spread after them): a
-	// field left empty, or emptied by form.reset, holds "" and form/submit refuses "" for a select
-	// option or a number, so empty values are not sent at all.
+	// field left empty, or emptied by form.reset, holds "", which without the filter would be stored
+	// in a typed field of the actor, so empty values are not sent at all.
 	params := pageNode{"accId": workspace, "formId": formID,
 		"formData": "{{ $merge([{}, $sift(vm." + dataFormNode + `, function($v){ $v != "" and $v != null })]) }}`}
-	if message != "" {
-		params["successMessage"] = message
+	if in.AppID != "" {
+		params["appId"] = in.AppID // form/submit lets whoever may open this Smart Form submit
+	}
+	if in.SuccessMessage != "" {
+		params["successMessage"] = literal(in.SuccessMessage)
 	}
 	// form/submit names the actor after a text edit field; without one it would be the template
-	// name and a date, so the page names it after the template itself: within form/submit's 255
-	// characters, and not when the title would be read as an expression.
-	if title := []rune(in.Title); !hasText(in.Fields) && !strings.Contains(in.Title, "{{") {
-		params["title"] = string(title[:min(len(title), 255)])
+	// name and a date, so the page names it after the template itself, within form/submit's 255
+	// characters.
+	if title := []rune(in.Title); !hasText(in.Fields) {
+		params["title"] = literal(string(title[:min(len(title), 255)]))
 	}
 	submit := pageNode{"type": "form.submit", "formId": dataFormNode, "via": "simapi", "simapiMethod": "form/submit", "simapiExtraParams": params,
 		"onError": []any{pageNode{"type": "notify", "level": "error", "title": "Not sent", "helperText": "{{ $error.message }}"}}}
-	children = append(children, pageNode{"id": "submit", "type": "Button", "props": pageNode{"title": label, "type": "filled", "variant": "primary"},
+	children = append(children, pageNode{"id": "submit", "type": "Button", "props": pageNode{"title": literal(label), "type": "filled", "variant": "primary"},
 		"actions": pageNode{"onClick": []any{pageNode{"type": "form.validate", "form": dataFormNode}, pageNode{"type": "if", "cond": "vm.valid." + dataFormNode + " = true", "then": []any{submit}}}}})
 	return pageNode{"schemaVersion": "2.0", "id": "index", "tree": pageNode{"id": "root", "type": "Stack", "props": pageNode{"direction": "vertical"},
 		"children": []any{pageNode{"id": dataFormNode, "type": "Form", "props": pageNode{"valueKey": dataFormNode, "fields": rules}, "children": children}}}}
+}
+
+// literal keeps text of the agent's a literal: the renderer resolves every string holding {{, so
+// such text becomes a JSONata string literal with its braces escaped (one {{ … }} in all).
+func literal(s string) string {
+	if !strings.Contains(s, "{{") {
+		return s
+	}
+	quoted, _ := json.Marshal(s)
+	escaped := strings.NewReplacer("{", `\u007b`, "}", `\u007d`).Replace(string(quoted))
+	return "{{ " + escaped + " }}"
 }
 
 func hasText(fields []DataField) bool {

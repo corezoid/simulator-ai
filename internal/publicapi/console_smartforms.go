@@ -248,7 +248,7 @@ func (c *Client) CreateSmartFormFiles(ctx context.Context, in SmartFormFilesCrea
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
-	if err := wireConfigSources(in.Items, c.config.Workspace, func(it *SmartFormFileCreate) *string { return configSource(it.Title, &it.Source) }); err != nil {
+	if err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileCreate) *string { return configSource(it.Title, &it.Source) }); err != nil {
 		return SmartFormWritten{}, err
 	}
 	r, e := call[appFilesRequest[SmartFormFileCreate], Files](ctx, c, "app_file/create", appFilesRequest[SmartFormFileCreate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
@@ -259,10 +259,10 @@ func (c *Client) CreateSmartFormFiles(ctx context.Context, in SmartFormFilesCrea
 }
 
 // wireConfigSources runs wireSubmits on every page config source of items, in place.
-func wireConfigSources[T any](items []T, workspace string, source func(*T) *string) error {
+func wireConfigSources[T any](items []T, workspace, appID string, source func(*T) *string) error {
 	for i := range items {
 		if s := source(&items[i]); s != nil {
-			wired, err := wireSubmits(*s, workspace)
+			wired, err := wireSubmits(*s, workspace, appID)
 			if err != nil {
 				return fmt.Errorf("file %d: %w", i, err)
 			}
@@ -288,7 +288,7 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
-	if err := wireConfigSources(in.Items, c.config.Workspace, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) }); err != nil {
+	if err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) }); err != nil {
 		return SmartFormWritten{}, err
 	}
 	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})

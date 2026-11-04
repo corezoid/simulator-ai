@@ -208,7 +208,7 @@ func form(c *client, stamp string) error {
 		FormID int64  `json:"formId"`
 		Page   string `json:"page"`
 	}
-	if err := c.tool("smart_form_data_form_create", map[string]any{"title": "Заявки на відпустку " + stamp, "submitLabel": "Надіслати", "successMessage": "Заявку збережено",
+	if err := c.tool("smart_form_data_form_create", map[string]any{"title": "Заявки на відпустку " + stamp, "submitLabel": "Надіслати", "successMessage": "Заявку збережено", "appId": created.AppID,
 		"fields": []map[string]any{{"name": "start", "label": "Дата початку", "type": "date", "required": true}, {"name": "end", "label": "Дата кінця", "type": "date", "required": true}, {"name": "comment", "label": "Коментар"}}}, &data); err != nil {
 		return err
 	}

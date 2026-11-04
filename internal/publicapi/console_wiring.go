@@ -22,7 +22,7 @@ type pageFacts struct {
 	inputs      int
 	idleButtons int
 	refs        bool // a $ref fragment may hold the submit
-	changed     bool // an accId was set to the workspace
+	changed     bool // an accId or appId was set
 	problems    []string
 }
 
@@ -30,11 +30,12 @@ type pageFacts struct {
 // what made a Console form send nothing (acceptance D7): a Form node nothing consumes, and a button
 // without any action beside inputs on a page without a Form. A Form is consumed by a form.submit that
 // names it or by any action reading vm.<its value key> (a simapi.call, a bus.publish). A form.submit
-// to form/submit must name its data template, and its accId is set to the host workspace. Other
+// to form/submit must name its data template; its accId is set to the host workspace and its appId to
+// the Smart Form written (form/submit lets that form's audience submit). Other
 // submits (via corezoid, other methods) are the page author's and pass as they are. A generated
 // formData filter must read the values of the Form its submit names, or a renamed form would send
 // nothing. A source that is not a page config, or needs no accId, is stored byte for byte.
-func wireSubmits(source, workspace string) (string, error) {
+func wireSubmits(source, workspace, appID string) (string, error) {
 	dec := json.NewDecoder(strings.NewReader(source))
 	dec.UseNumber() // an id above 2^53 is written back as it came
 	var doc any
@@ -45,7 +46,7 @@ func wireSubmits(source, workspace string) (string, error) {
 		return source, nil
 	}
 	facts := pageFacts{forms: map[string]string{}, submitted: map[string]bool{}}
-	facts.collect(doc, workspace, false)
+	facts.collect(doc, wiring{workspace, appID}, false)
 	if problems := facts.judge(); len(problems) > 0 {
 		return "", errors.New("page submit wiring: " + strings.Join(problems, "; ") + ". Create the data template and a ready page with smart_form_data_form_create")
 	}
@@ -60,8 +61,11 @@ func wireSubmits(source, workspace string) (string, error) {
 	return strings.TrimSuffix(out.String(), "\n"), err
 }
 
+// wiring is what a form/submit of the written page is bound to.
+type wiring struct{ workspace, appID string }
+
 // collect walks the page; inActions marks the subtree of an actions key.
-func (f *pageFacts) collect(v any, workspace string, inActions bool) {
+func (f *pageFacts) collect(v any, w wiring, inActions bool) {
 	switch t := v.(type) {
 	case string:
 		if inActions {
@@ -69,7 +73,7 @@ func (f *pageFacts) collect(v any, workspace string, inActions bool) {
 		}
 	case []any:
 		for _, x := range t {
-			f.collect(x, workspace, inActions)
+			f.collect(x, w, inActions)
 		}
 	case map[string]any:
 		if _, ok := t["$ref"]; ok {
@@ -92,15 +96,15 @@ func (f *pageFacts) collect(v any, workspace string, inActions bool) {
 				f.forms[id] = key
 			}
 		case "form.submit":
-			f.submit(t, workspace)
+			f.submit(t, w)
 		}
 		for k, x := range t {
-			f.collect(x, workspace, inActions || k == "actions")
+			f.collect(x, w, inActions || k == "actions")
 		}
 	}
 }
 
-func (f *pageFacts) submit(t map[string]any, workspace string) {
+func (f *pageFacts) submit(t map[string]any, w wiring) {
 	id, _ := t["formId"].(string)
 	f.submitted[id] = true
 	if t["via"] != "simapi" || t["simapiMethod"] != "form/submit" {
@@ -111,8 +115,11 @@ func (f *pageFacts) submit(t map[string]any, workspace string) {
 		f.problems = append(f.problems, fmt.Sprintf("form.submit of %q needs simapiExtraParams.formId, the data template id", id))
 		return
 	}
-	if params["accId"] != workspace {
-		params["accId"], f.changed = workspace, true
+	if params["accId"] != w.workspace {
+		params["accId"], f.changed = w.workspace, true
+	}
+	if w.appID != "" && params["appId"] != w.appID {
+		params["appId"], f.changed = w.appID, true
 	}
 	if filter, _ := params["formData"].(string); siftedKey.MatchString(filter) {
 		f.filters = append(f.filters, [2]string{id, siftedKey.FindStringSubmatch(filter)[1]})
