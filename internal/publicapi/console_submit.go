@@ -150,9 +150,18 @@ func dataPage(in DataFormInput, formID int64, workspace string) node {
 	if label == "" {
 		label = "Submit"
 	}
-	params := node{"accId": workspace, "formId": formID}
+	// formData overrides the values the dispatcher sends (extra params are spread after them): a
+	// field left empty, or emptied by form.reset, holds "" and form/submit refuses "" for a select
+	// option or a number, so empty values are not sent at all.
+	params := node{"accId": workspace, "formId": formID,
+		"formData": "{{ $merge([{}, $sift(vm." + dataFormNode + `, function($v){ $v != "" and $v != null })]) }}`}
 	if message != "" {
 		params["successMessage"] = message
+	}
+	// form/submit names the actor after a text edit field; without one it would be the template
+	// name and a date, so the page names it after the template itself.
+	if !hasText(in.Fields) {
+		params["title"] = in.Title
 	}
 	submit := node{"type": "form.submit", "formId": dataFormNode, "via": "simapi", "simapiMethod": "form/submit", "simapiExtraParams": params,
 		"onError": []any{node{"type": "notify", "level": "error", "title": "Not sent", "helperText": "{{ $error.message }}"}}}
@@ -239,6 +248,15 @@ func wireSubmits(source, workspace string) (string, error) {
 	enc.SetIndent("", "  ")
 	err := enc.Encode(doc)
 	return strings.TrimSuffix(out.String(), "\n"), err
+}
+
+func hasText(fields []DataField) bool {
+	for _, f := range fields {
+		if f.Type == "" || f.Type == "text" {
+			return true
+		}
+	}
+	return false
 }
 
 func expression(v any) bool {

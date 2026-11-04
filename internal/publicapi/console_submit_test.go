@@ -39,13 +39,34 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 		}
 	}
 	for _, want := range []string{`"type":"Form"`, `"valueKey":"request"`, `"props":{"text":"Start"}`, `"path":"request.start","type":"state","value":"{{ {\"startDate\": $event.startDate, \"endDate\": $event.endDate} }}"`, `"props":{"mode":"single","value":"{{ vm.request.start }}"}`, `"props":{"error":true,"text":"{{ vm.errors.request.start }}"}`,
-		`"simapiExtraParams":{"accId":"ws","formId":77,"successMessage":"Saved"},"simapiMethod":"form/submit","type":"form.submit","via":"simapi"`, `"title":"Send"`} {
+		`"simapiExtraParams":{"accId":"ws","formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" and $v != null })]) }}","formId":77,"successMessage":"Saved"},"simapiMethod":"form/submit","type":"form.submit","via":"simapi"`, `"title":"Send"`} {
 		if !strings.Contains(out.Page, want) {
 			t.Errorf("page lacks %s", want)
 		}
 	}
 	if wired, err := wireSubmits(out.Page, "ws"); err != nil || wired == "" {
 		t.Fatal("the generated page fails its own wiring check:", err)
+	}
+}
+
+// Without a text edit field form/submit would name the actor "<template> <date>"; the page names it.
+func TestDataPageTitlesActorsWithoutTextField(t *testing.T) {
+	params := func(fields ...DataField) map[string]any {
+		page, _ := json.Marshal(dataPage(DataFormInput{Title: "Leave", Fields: fields}, 7, "ws"))
+		var submit struct {
+			Params map[string]any `json:"simapiExtraParams"`
+		}
+		i := strings.Index(string(page), `{"formId":"request"`)
+		if i < 0 || json.NewDecoder(strings.NewReader(string(page[i:]))).Decode(&submit) != nil {
+			t.Fatal("no form.submit in", string(page))
+		}
+		return submit.Params
+	}
+	if got := params(DataField{Name: "start", Label: "Start", Type: "date"}, DataField{Name: "days", Label: "Days", Type: "number"})["title"]; got != "Leave" {
+		t.Errorf("title = %v, want the template name", got)
+	}
+	if got, ok := params(DataField{Name: "start", Label: "Start", Type: "date"}, DataField{Name: "note", Label: "Note"})["title"]; ok {
+		t.Errorf("title = %v, want none: form/submit takes it from the text field", got)
 	}
 }
 
