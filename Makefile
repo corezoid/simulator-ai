@@ -33,5 +33,5 @@ smoke: build
 	@test -n "$(SIM_API_DIR)" || { echo "SIM_API_DIR=<sim-api checkout> required"; exit 2; }
 	$(MAKE) -C "$(SIM_API_DIR)" ai-smoke-env $(if $(WORKSPACE),WORKSPACE=$(WORKSPACE))
 	@unset SIMULATOR_AI_API_KEY SIMULATOR_AI_AUTHORIZATION SIMULATOR_AI_DELEGATED_TOKEN SIMULATOR_AI_ACTOR SIMULATOR_AI_PROFILE && \
-		set -a && . "$(SMOKE_ENV)" && set +a && GOMAXPROCS=2 go run -p=1 ./cmd/console-smoke -bin bin/simulator-ai graph form && \
-		GOMAXPROCS=2 go run -p=1 ./cmd/console-smoke -bin bin/simulator-ai -profile console-full parity people finance simulation
+		set -a && . "$(SMOKE_ENV)" && set +a && GOMAXPROCS=2 go run -p=1 ./cmd/console-smoke -bin bin/simulator-ai graph form registry && \
+		GOMAXPROCS=2 go run -p=1 ./cmd/console-smoke -bin bin/simulator-ai -profile console-full parity people finance agents simulation

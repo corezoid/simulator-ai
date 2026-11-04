@@ -109,7 +109,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 32 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 35 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -166,6 +166,10 @@ scenarios use (see "AI Console profile").
 | `atom_transaction_create` [atomCreateTransaction] | `transaction/atom/create` | ✓ | | |
 | `account_tags_list` · `account_tag_add` · `account_tags_set` · `account_actor_tags_list` / `_count` · `account_triggers_list` / `_set` · `account_actor_triggers_list` / `_set` [saveAccountActors] | `account/tags/list` · `…/create` · `…/update` · `account_actor/tags/list` / `count` · `account/triggers/*` · `account_actor/triggers/*` (every `_set` replaces the set) | ✓ | | |
 | `actor_field_triggers_list` / `_set` [getDataFieldActorsByActor, saveDataFieldActorsByActor] | `actor/field/triggers/list` / `update` | ✓ | | |
+| `skills_find` [findSkill] (verified only, no body) · `skill_get` [getSkill] (by ref or id, with the procedure) | `form/system/get` (`Skills`) + `actor/filter/list` · `actor/by-ref/get` or `actor/get` | ✓ | | |
+| `agents_find` [findAgent] (members without query) · `agent_get` [getAgent] (a user's twin or any actor, with the profile) | `user/list`, or `form/system/get` (`System`) + `actor/search/list` (semantic, else text), or `actor/filter/list` of a `formId` · `actor/by-system_obj/get` or `actor/get` | ✓ | | |
+| `build_link` [buildLink] (actor, layer, form, chat, chart, … and a Smart Form route) | none: the legacy web app route table on `SIMULATOR_AI_ORIGIN`; a Smart Form's short URL from `route/build` (its production release) | ✓ | | |
+| `bbcode_tags_get` [getBbcodeTags] | none: the BBCode catalog of simulator-ui-kit `packages/utils/src/bbcode/bbcode-tags.json`, built in | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
 These tools need sim-api `feature/simulator-ai` at cda5b60e or later (`cdu/catalog/get` !463,
@@ -176,7 +180,13 @@ An AI Console run's token reaches `rest/upload` (and no other REST route) throug
 (`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand
 serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
 retried for about 3 seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
-`simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks` and `simulator-ai-finance` compose these tools.
+`simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks`, `simulator-ai-finance`, `simulator-ai-skills` and
+`simulator-ai-agents` compose these tools.
+
+Skill procedures and agent profiles are descriptions users write: `skill_get` and `agent_get` return them as data, and
+their tool descriptions tell the model not to take instructions from them. `build_link` builds web app URLs on
+`SIMULATOR_AI_ORIGIN` with the 8-character workspace segment, each id escaped as one path segment; a `smartForm`
+link needs a route its released pages declare.
 
 Simulation is the legacy engine moved as it was (`internal/simulation`, its conformance cases included): a model
 runs in model time in memory and nothing is written to Simulator. `simulation_snapshot_get` returns the layer
@@ -195,8 +205,9 @@ Every tool schema rides in the model context on every turn, so `SIMULATOR_AI_PRO
 catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, `actor_update`, `actors_search`,
 `actor_by_ref_get`, `form_get`, `forms_list`, `graph_get`, the flowchart tools, the Smart Form tools below and,
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
-`access_rules_save`, `attachment_upload` and `attachment_read`: 32 in all. `console-full`
-adds every other actor, form, graph, access, reaction, user, attachment, finance and simulation tool (142 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+`access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
+`skills_find`, `skill_get` and `build_link`: 35 in all. `console-full` adds every other actor, form, graph, access,
+reaction, user, attachment, finance, registry and simulation tool (148 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -266,10 +277,13 @@ no tool results) to put `appId` into the reply reaction with `appSettings.autoru
 user by default (`SMOKE_KIND=session` for a Bearer session, `SMOKE_KIND=apikey` for a workspace API user without
 workspace roles, `SMOKE_TTL`, `ROTATE=1`) and writes `~/.config/simulator-ai/smoke.env` (`SIMULATOR_AI_ORIGIN`, `SIMULATOR_AI_WORKSPACE`,
 `SIMULATOR_AI_API_KEY` or `SIMULATOR_AI_AUTHORIZATION`, mode 0600). It then runs `cmd/console-smoke` over stdio with only that file's credential (five-minute bound): a layer with Start / Process / End blocks, two labelled edges and their
-placements read back with `layer_get`, then a Smart Form with a field and a submit button, released and
-read back as `ready`. With `-profile console-full` it then runs `parity people finance simulation`; `simulation` puts a
-shop with a balance of 100 and a supplier on a new layer, checks a payment model against `simulation_snapshot_get`
-and runs it live in two scenarios. Each run creates new objects in that workspace; nothing secret is printed.
+placements read back with `layer_get`, then a Smart Form with a field, a submit button and a root route, released,
+read back as `ready` and linked with `build_link`, then a verified skill found by `skills_find`, read by `skill_get`
+and linked. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
+by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`) and the simulation one (a shop with a balance
+of 100 and a supplier on a new layer; a payment model checked against `simulation_snapshot_get` and run live in two
+scenarios). Each run creates new objects in that
+workspace; nothing secret is printed.
 
 The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:
 

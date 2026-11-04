@@ -26,7 +26,7 @@ type SearchAll struct {
 
 type userListParams struct {
 	AccID  string `json:"accId"`
-	Query  string `json:"query"`
+	Query  string `json:"query,omitempty"`
 	Limit  int64  `json:"limit,omitempty"`
 	Offset int64  `json:"offset,omitempty"`
 }
@@ -36,6 +36,7 @@ type actorSearchParams struct {
 	SearchType string   `json:"searchType,omitempty"`
 	FormID     int64    `json:"formId,omitempty"`
 	Fields     []string `json:"fields,omitempty"`
+	With       []string `json:"with,omitempty"`
 	Limit      int64    `json:"limit,omitempty"`
 	Offset     int64    `json:"offset,omitempty"`
 }

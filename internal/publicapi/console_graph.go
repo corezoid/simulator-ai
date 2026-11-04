@@ -205,14 +205,11 @@ func (c *Client) CreateLayer(ctx context.Context, in LayerCreateInput) (Actor, e
 	if e := consoleOnly(c); e != nil {
 		return Actor{}, e
 	}
-	f, e := call[systemFormRequest, GraphSystemForm](ctx, c, "form/system/get", systemFormRequest{AccID: c.config.Workspace, Title: "Layers"})
+	formID, e := c.systemFormID(ctx, "Layers")
 	if e != nil {
 		return Actor{}, e
 	}
-	if f.ID < 1 {
-		return Actor{}, errors.New("Layers system template not found")
-	}
-	return c.CreateActor(ctx, ActorCreateInput{FormID: f.ID, Title: in.Title, Description: in.Description})
+	return c.CreateActor(ctx, ActorCreateInput{FormID: formID, Title: in.Title, Description: in.Description})
 }
 
 // CreateEdge links two actors with an edge of the named type (default hierarchy).
