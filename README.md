@@ -99,6 +99,48 @@ Run `make client-smoke` to install into disposable Codex/Claude Code profiles an
 client loading against a scripted loopback API, without a model turn. See
 [client acceptance](docs/client-acceptance.md) for evidence and remaining live ACL/revoke gates.
 
+## Tools by profile
+
+Actor, form and graph tools mirror the legacy `simulator-ai-plugin` tools (name in brackets) on one public
+method each, or on a few for the composite ones. Their input schemas are the pinned public params
+(`contracts/parity-openrpc.json`, source in `parity-source.json`), and the result is the backend's own
+projection, shaped by `fields`/`with` where the method has them. There are no receipt keys or contract
+preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
+`delegated-read` keep their own catalogs.
+
+| Tool [legacy] | Public method | console | read | graph-read |
+| --- | --- | :-: | :-: | :-: |
+| `actor_get` [getActor] | `actor/get` (fields, with) | ✓ | ✓ | ✓ |
+| `actor_by_ref_get` [getActorByRef] · `actor_system_get` [getSystemActor] | `actor/by-ref/get` · `actor/by-system_obj/get` | ✓ | ✓ | ✓ |
+| `actors_search` [searchActors] · `actors_filter` / `actors_filter_count` [filterActors] | `actor/search/list` · `actor/filter/list` / `count` | ✓ | ✓ | ✓ |
+| `actor_create` / `actors_create` [createActor] · `actor_update` [updateActor] | `actor/create` (batch) · `actor/update` | ✓ | | |
+| `actor_status_update` [setActorStatus] · `actor_delete` [deleteActor] | `actor/status/update` · `actor/delete` | ✓ | | |
+| `form_get` [getForm] (body, editToken with `editor`) | `form/get` | ✓ | ✓ | ✓ |
+| `forms_list` / `forms_count` [getForms, searchForms] | `form/list` / `form/count` | ✓ | ✓ | ✓ |
+| `form_create` · `form_update` · `form_status_update` · `form_delete` [createForm, updateForm, setFormStatus, deleteForm] | `form/create` · `form/update` · `form/status/update` · `form/delete` | ✓ | | |
+| `form_accounts_list` [getFormAccounts] | `account_form/list` | ✓ | ✓ | ✓ |
+| `form_account_create` · `form_account_delete` [createFormAccount, removeFormAccount] | `account_form/create` · `account_form/delete` | ✓ | | |
+| `edge_create` / `edges_create` [createLink, massLink] | `edge/create` (batch) | ✓ | | |
+| `edge_get` [getEdge] | `edge/get` | ✓ | | ✓ |
+| `edge_update` · `edge_endpoints_update` · `edge_delete` [updateEdge, deleteEdge] | `edge/update` · `edge/endpoints/update` · `edge/delete` | ✓ | | |
+| `edges_by_nodes_delete` [deleteEdgesByNodes] | `batch` of `edge/by-node/delete` | ✓ | | |
+| `edge_types_list` [getEdgeTypes] | `edge_type/list` | ✓ | | `graph_edge_types_list` |
+| `layer_placements_list` · `layer_edges_list` [getLayerActorsPaginated] | `graph/layer/actors/list` · `graph/layer/edges/list` | ✓ | | ✓ |
+| `layer_placements_all` [getAllLayerPlacements] | `graph/layer/actors/list`, every page | ✓ | | ✓ |
+| `layer_skeleton_get` [getLayerActors] | `graph/layer/skeleton/get` | ✓ | | ✓ |
+| `layer_placements_manage` [manageLayerActors] (`layer_placements_create` for flowchart blocks) | `graph/layer/actors/manage` | ✓ | | |
+| `layer_positions_update` [updateLayerPositions] · `layer_actors_move` [moveActors] · `layer_clean` [cleanGraphLayer] | `…/positions/update` · `…/actors/move` · `graph/layer/clean` | ✓ | | |
+| `layer_element_exist` [existLayerElement] · `layer_actors_search` [searchLayerActors] | `graph/layer/element/exist` · `graph/layer/actors/search/list` | ✓ | | ✓ |
+| `layer_stats_get` [layerStats] | `graph/layer/stats/get` | ✓ | | `graph_layer_stats_get` |
+| `graph_list` [getRelatedActors, getLinkedActors] (hierarchy by default) | `graph/list` | ✓ | | ✓ |
+| `graph_get` [getActorLinks] | `graph/get` | ✓ | | ✓ |
+| `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
+
+Not covered yet, and why:
+- No public method: getCorezoidProcesses, searchAll, existLink (all ❌); getFormsTree (`form/tree/get`) and
+  getLinkedForms (`graph/forms/list`) are internal only (🔒). The gap list has been sent to the backend.
+- pullGraphFile / pushGraphFile: a local file ↔ layer sync engine on public methods, too large for this slice.
+
 ## AI Console profile
 
 `SIMULATOR_AI_PROFILE=console` is what Hermes runs per AI Console request under the initiator's own

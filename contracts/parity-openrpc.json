@@ -1,0 +1,3826 @@
+{
+ "methods": [
+  {
+   "name": "actor/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "Title of the object",
+      "type": "string"
+     }
+    },
+    {
+     "name": "description",
+     "required": false,
+     "schema": {
+      "description": "Description of the object",
+      "type": "string"
+     }
+    },
+    {
+     "name": "picture",
+     "required": false,
+     "schema": {
+      "description": "Picture/image URL",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": true,
+     "schema": {
+      "description": "JSON data payload",
+      "type": "object"
+     }
+    },
+    {
+     "name": "systemObjId",
+     "required": false,
+     "schema": {
+      "description": "System object identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "systemObjType",
+     "required": false,
+     "schema": {
+      "description": "System object type",
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Reference identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "status",
+     "required": false,
+     "schema": {
+      "description": "Status of the object",
+      "type": "string"
+     }
+    },
+    {
+     "name": "color",
+     "required": false,
+     "schema": {
+      "description": "Color code (hex format)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "pictureObject",
+     "required": false,
+     "schema": {
+      "description": "Picture object configuration",
+      "type": "object"
+     }
+    },
+    {
+     "name": "readonly",
+     "required": false,
+     "schema": {
+      "description": "Whether element is read-only",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "cardActorId",
+     "required": false,
+     "schema": {
+      "description": "Card actor identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "appId",
+     "required": false,
+     "schema": {
+      "description": "Smart Form identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "appSettings",
+     "required": false,
+     "schema": {
+      "description": "Settings for the actor's Smart Form",
+      "type": "object"
+     }
+    },
+    {
+     "name": "freeze",
+     "required": false,
+     "schema": {
+      "description": "Whether object is frozen",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isPublic",
+     "required": false,
+     "schema": {
+      "description": "Whether object is publicly visible",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "viewData",
+     "required": false,
+     "schema": {
+      "description": "View-specific data configuration",
+      "type": "object"
+     }
+    },
+    {
+     "name": "layerPicture",
+     "required": false,
+     "schema": {
+      "description": "Layer picture URL",
+      "type": "string"
+     }
+    },
+    {
+     "name": "hole",
+     "required": false,
+     "schema": {
+      "description": "Create the actor as a graph hole placeholder",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "geoPosition",
+     "required": false,
+     "schema": {
+      "description": "Actor location coordinates",
+      "properties": {
+       "lat": {
+        "description": "Latitude in decimal degrees (-90 to 90)",
+        "type": "number"
+       },
+       "lon": {
+        "description": "Longitude in decimal degrees; values wrap to [-180, 180]",
+        "type": "number"
+       }
+      },
+      "required": [
+       "lat",
+       "lon"
+      ],
+      "type": "object"
+     }
+    },
+    {
+     "name": "geoName",
+     "required": false,
+     "schema": {
+      "description": "Actor location name",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formOrder",
+     "required": false,
+     "schema": {
+      "description": "Ordered account template identifiers. A complete order starts with formId; additional-only legacy orders have formId prepended",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "contextLayerId",
+     "required": false,
+     "schema": {
+      "description": "Graph layer this actor is created for — only sets the default 'Actor N' title",
+      "type": "string"
+     }
+    },
+    {
+     "name": "addToRecent",
+     "required": false,
+     "schema": {
+      "description": "Record the new actor in the caller's recent list (default true)",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "startDate",
+     "required": false,
+     "schema": {
+      "description": "Start date",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "endDate",
+     "required": false,
+     "schema": {
+      "description": "End date",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection: keep only these keys; data.<key> keeps one template field",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related data to add: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting, forms",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Creates a new actor from an account template"
+  },
+  {
+   "name": "actor/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection: keep only these keys; data.<key> keeps one template field",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related data to add: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting, forms, avatar",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Retrieves details of a specific actor by ID"
+  },
+  {
+   "name": "actor/by-ref/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ref",
+     "required": true,
+     "schema": {
+      "description": "Reference identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection: keep only these keys; data.<key> keeps one template field",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related data to add: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Retrieves an actor identified by account template and reference"
+  },
+  {
+   "name": "actor/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "replaceEmpty",
+     "required": false,
+     "schema": {
+      "description": "Whether to replace empty fields",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "Title of the object",
+      "type": "string"
+     }
+    },
+    {
+     "name": "description",
+     "required": false,
+     "schema": {
+      "description": "Description of the object",
+      "type": "string"
+     }
+    },
+    {
+     "name": "picture",
+     "required": false,
+     "schema": {
+      "description": "Picture/image URL",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "JSON data payload",
+      "type": "object"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Reference identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "status",
+     "required": false,
+     "schema": {
+      "description": "Status of the object",
+      "type": "string"
+     }
+    },
+    {
+     "name": "color",
+     "required": false,
+     "schema": {
+      "description": "Color code (hex format)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "pictureObject",
+     "required": false,
+     "schema": {
+      "description": "Picture object configuration",
+      "type": "object"
+     }
+    },
+    {
+     "name": "readonly",
+     "required": false,
+     "schema": {
+      "description": "Whether element is read-only",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "cardActorId",
+     "required": false,
+     "schema": {
+      "description": "Card actor identifier. An empty string clears the reference; omitted/null leaves it unchanged",
+      "type": "string"
+     }
+    },
+    {
+     "name": "appId",
+     "required": false,
+     "schema": {
+      "description": "Smart Form identifier. An empty string clears the reference; omitted/null leaves it unchanged",
+      "type": "string"
+     }
+    },
+    {
+     "name": "appSettings",
+     "required": false,
+     "schema": {
+      "description": "Settings for the actor's Smart Form",
+      "type": "object"
+     }
+    },
+    {
+     "name": "freeze",
+     "required": false,
+     "schema": {
+      "description": "Whether object is frozen",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "viewData",
+     "required": false,
+     "schema": {
+      "description": "View-specific data configuration",
+      "type": "object"
+     }
+    },
+    {
+     "name": "layerPicture",
+     "required": false,
+     "schema": {
+      "description": "Layer picture URL",
+      "type": "string"
+     }
+    },
+    {
+     "name": "hole",
+     "required": false,
+     "schema": {
+      "description": "Whether the actor is a graph hole placeholder",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "geoPosition",
+     "required": false,
+     "schema": {
+      "description": "Actor location coordinates; omitted keeps the current value",
+      "properties": {
+       "lat": {
+        "description": "Latitude in decimal degrees (-90 to 90)",
+        "type": "number"
+       },
+       "lon": {
+        "description": "Longitude in decimal degrees; values wrap to [-180, 180]",
+        "type": "number"
+       }
+      },
+      "required": [
+       "lat",
+       "lon"
+      ],
+      "type": "object"
+     }
+    },
+    {
+     "name": "geoName",
+     "required": false,
+     "schema": {
+      "description": "Actor location name; omitted keeps the current value",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "clearGeoPosition",
+     "required": false,
+     "schema": {
+      "description": "Clear the actor location coordinates",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "clearGeoName",
+     "required": false,
+     "schema": {
+      "description": "Clear the actor location name",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "formId",
+     "required": false,
+     "schema": {
+      "description": "New primary account template. May replace only a current default template; requires formOrder and must equal its first item",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "formOrder",
+     "required": false,
+     "schema": {
+      "description": "Ordered account template set. A complete order starts with formId; omitted keeps the set unchanged, while an empty array keeps only the current primary",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection: keep only these keys; data.<key> keeps one template field",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related data to add: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting, forms",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Updates an existing actor's data"
+  },
+  {
+   "name": "actor/delete",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Deletes an actor and all associated data"
+  },
+  {
+   "name": "actor/status/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "status",
+     "required": true,
+     "schema": {
+      "description": "Status of the object",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Updates the status of an actor"
+  },
+  {
+   "name": "actor/search/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": false,
+     "schema": {
+      "description": "Account template identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "query",
+     "required": true,
+     "schema": {
+      "description": "Search query string",
+      "maxLength": 1000,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "searchType",
+     "required": false,
+     "schema": {
+      "description": "Search engine: text (Postgres full-text) or semantic (vectorizer). Default: semantic where the vectorizer is configured, text otherwise",
+      "enum": [
+       "text",
+       "semantic"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection: keep only these keys; data.<key> keeps one template field",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related data to add to each actor: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting, formTitle, avatar",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Searches for actors using a search query"
+  },
+  {
+   "name": "actor/filter/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": false,
+     "schema": {
+      "description": "Optional account template identifier; omitted uses the saved filter's template when filterActorId is set, otherwise the whole workspace",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "filterActorId",
+     "required": false,
+     "schema": {
+      "description": "Saved actor-filter identifier; the server reads its stored query in place of queryData, which must then be omitted, and fills the owner, statuses, amount bounds, account, ordering and formId the request leaves unset",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "stream",
+     "required": false,
+     "schema": {
+      "description": "Event or chat stream to list: a system stream id (all, sign, ds, execute, starred, meetings, globalLive, liveMeetings, persistentMeetings, graphComments, chats, p2p, group) or a custom stream actor id. Its predicate is ANDed with the request's own conditions; formId and ordering stay the caller's",
+      "maxLength": 64,
+      "type": "string"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection: keep only these keys; data.<key> keeps one template field",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related data to add to each actor: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting, formTitle, avatar",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "queryData",
+     "required": false,
+     "schema": {
+      "description": "Condition on actor data (template field values) in MongoDB-like syntax: {\"status\": \"paid\", \"amount\": {\"$gte\": 1000}}; operators $eq $ne $gt $gte $lt $lte $in $nin $all $exists $empty, combinators $and $or $not",
+      "type": "object"
+     }
+    },
+    {
+     "name": "forms",
+     "required": false,
+     "schema": {
+      "description": "Additional account template ids the actor must also carry (see formsOperator)",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "formsOperator",
+     "required": false,
+     "schema": {
+      "description": "How account templates combine: \"and\" requires every listed template, anything else requires at least one",
+      "type": "string"
+     }
+    },
+    {
+     "name": "reactionName",
+     "required": false,
+     "schema": {
+      "description": "Only actors awaiting this action from the caller: the caller holds the privilege and has not yet reacted (or rejected)",
+      "enum": [
+       "view",
+       "sign",
+       "ds",
+       "execute"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "starred",
+     "required": false,
+     "schema": {
+      "description": "Only actors the caller has starred",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Lower bound (exclusive, Unix seconds) on the time column orderBy selects: createdAt, updatedAt or reactedAt; createdAt for other orders",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Upper bound (inclusive, Unix seconds) on the same time column as from",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ownerIds",
+     "required": false,
+     "schema": {
+      "description": "Only actors created by one of these user ids (matches the creator, userId)",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "sysObjTypes",
+     "required": false,
+     "schema": {
+      "description": "Only actors linked to a system object of one of these types, e.g. \"user\"",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "linkedToActorId",
+     "required": false,
+     "schema": {
+      "description": "Only actors connected to this actor by a hierarchy edge, in either direction",
+      "type": "string"
+     }
+    },
+    {
+     "name": "members",
+     "required": false,
+     "schema": {
+      "description": "Only actors on which every one of these users holds all the listed privileges (an empty access list: any privilege)",
+      "items": {
+       "properties": {
+        "access": {
+         "description": "Privileges the user must hold: view, modify, remove, sign, execute, ds; an empty list keeps the user whatever privilege they hold",
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        "userId": {
+         "description": "User or group id",
+         "type": "integer"
+        }
+       },
+       "required": [
+        "userId",
+        "access"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "description": "Sort column, createdAt when omitted; balance needs accountNameId and currencyId, otherwise falls back to createdAt. Omitted (not createdAt) is what lets a saved filter's own sort apply",
+      "enum": [
+       "createdAt",
+       "updatedAt",
+       "title",
+       "owner",
+       "balance",
+       "reactedAt"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "description": "Sort direction, DESC when omitted",
+      "enum": [
+       "DESC",
+       "ASC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderByKey",
+     "required": false,
+     "schema": {
+      "description": "Sort by this data key (template field) instead of orderBy (dots address nested keys, e.g. \"address.city\")",
+      "maxLength": 256,
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderWithStarred",
+     "required": false,
+     "schema": {
+      "description": "Put the caller's starred actors first, before the regular order",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "accountNameId",
+     "required": false,
+     "schema": {
+      "description": "Account name to sort by when orderBy is balance",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": false,
+     "schema": {
+      "description": "Currency of the account to sort by when orderBy is balance",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Sort by one side of the account; omitted sorts by the signed balance (credit minus debit)",
+      "enum": [
+       "credit",
+       "debit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "search",
+     "required": false,
+     "schema": {
+      "description": "Full-text search within the filtered set (prefix match on each word)",
+      "maxLength": 1000,
+      "type": "string"
+     }
+    },
+    {
+     "name": "activeMeeting",
+     "required": false,
+     "schema": {
+      "description": "Only actors with a meeting running now",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of actors to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of actors to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists actors with advanced filtering options"
+  },
+  {
+   "name": "actor/filter/count",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": false,
+     "schema": {
+      "description": "Optional account template identifier; omitted uses the saved filter's template when filterActorId is set, otherwise the whole workspace",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "filterActorId",
+     "required": false,
+     "schema": {
+      "description": "Saved actor-filter identifier; the server reads its stored query in place of queryData, which must then be omitted, and fills the owner, statuses, amount bounds, account, ordering and formId the request leaves unset",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "stream",
+     "required": false,
+     "schema": {
+      "description": "Event or chat stream to list: a system stream id (all, sign, ds, execute, starred, meetings, globalLive, liveMeetings, persistentMeetings, graphComments, chats, p2p, group) or a custom stream actor id. Its predicate is ANDed with the request's own conditions; formId and ordering stay the caller's",
+      "maxLength": 64,
+      "type": "string"
+     }
+    },
+    {
+     "name": "cap",
+     "required": false,
+     "schema": {
+      "description": "Optional upper bound for the count (1..1000). The server stops counting after cap+1 matching actors, so the cost is bounded however large the selection is: count is then at most cap and capped=true says there are more. Omit for the exact count (the default)",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "queryData",
+     "required": false,
+     "schema": {
+      "description": "Condition on actor data (template field values) in MongoDB-like syntax: {\"status\": \"paid\", \"amount\": {\"$gte\": 1000}}; operators $eq $ne $gt $gte $lt $lte $in $nin $all $exists $empty, combinators $and $or $not",
+      "type": "object"
+     }
+    },
+    {
+     "name": "forms",
+     "required": false,
+     "schema": {
+      "description": "Additional account template ids the actor must also carry (see formsOperator)",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "formsOperator",
+     "required": false,
+     "schema": {
+      "description": "How account templates combine: \"and\" requires every listed template, anything else requires at least one",
+      "type": "string"
+     }
+    },
+    {
+     "name": "reactionName",
+     "required": false,
+     "schema": {
+      "description": "Only actors awaiting this action from the caller: the caller holds the privilege and has not yet reacted (or rejected)",
+      "enum": [
+       "view",
+       "sign",
+       "ds",
+       "execute"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "starred",
+     "required": false,
+     "schema": {
+      "description": "Only actors the caller has starred",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Lower bound (exclusive, Unix seconds) on the time column orderBy selects: createdAt, updatedAt or reactedAt; createdAt for other orders",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Upper bound (inclusive, Unix seconds) on the same time column as from",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ownerIds",
+     "required": false,
+     "schema": {
+      "description": "Only actors created by one of these user ids (matches the creator, userId)",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "sysObjTypes",
+     "required": false,
+     "schema": {
+      "description": "Only actors linked to a system object of one of these types, e.g. \"user\"",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "linkedToActorId",
+     "required": false,
+     "schema": {
+      "description": "Only actors connected to this actor by a hierarchy edge, in either direction",
+      "type": "string"
+     }
+    },
+    {
+     "name": "members",
+     "required": false,
+     "schema": {
+      "description": "Only actors on which every one of these users holds all the listed privileges (an empty access list: any privilege)",
+      "items": {
+       "properties": {
+        "access": {
+         "description": "Privileges the user must hold: view, modify, remove, sign, execute, ds; an empty list keeps the user whatever privilege they hold",
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        "userId": {
+         "description": "User or group id",
+         "type": "integer"
+        }
+       },
+       "required": [
+        "userId",
+        "access"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "description": "Sort column, createdAt when omitted; balance needs accountNameId and currencyId, otherwise falls back to createdAt. Omitted (not createdAt) is what lets a saved filter's own sort apply",
+      "enum": [
+       "createdAt",
+       "updatedAt",
+       "title",
+       "owner",
+       "balance",
+       "reactedAt"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "description": "Sort direction, DESC when omitted",
+      "enum": [
+       "DESC",
+       "ASC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderByKey",
+     "required": false,
+     "schema": {
+      "description": "Sort by this data key (template field) instead of orderBy (dots address nested keys, e.g. \"address.city\")",
+      "maxLength": 256,
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderWithStarred",
+     "required": false,
+     "schema": {
+      "description": "Put the caller's starred actors first, before the regular order",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "accountNameId",
+     "required": false,
+     "schema": {
+      "description": "Account name to sort by when orderBy is balance",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": false,
+     "schema": {
+      "description": "Currency of the account to sort by when orderBy is balance",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Sort by one side of the account; omitted sorts by the signed balance (credit minus debit)",
+      "enum": [
+       "credit",
+       "debit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "search",
+     "required": false,
+     "schema": {
+      "description": "Full-text search within the filtered set (prefix match on each word)",
+      "maxLength": 1000,
+      "type": "string"
+     }
+    },
+    {
+     "name": "activeMeeting",
+     "required": false,
+     "schema": {
+      "description": "Only actors with a meeting running now",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of actors to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of actors to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Counts actors matching advanced filtering options"
+  },
+  {
+   "name": "actor/by-system_obj/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "objType",
+     "required": true,
+     "schema": {
+      "description": "System object type, e.g. user, group or workspace",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "objId",
+     "required": true,
+     "schema": {
+      "description": "System object id, e.g. the user id for objType user",
+      "type": "string"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection: keep only these keys; data.<key> keeps one template field",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related data to add: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Retrieves an actor by system object reference"
+  },
+  {
+   "name": "form/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Optional includes. Supported: 'editor' (write capability/token), 'parents' (full ancestor chain)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Retrieves details of a specific account template"
+  },
+  {
+   "name": "form/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "maxLength": 64,
+      "minLength": 3,
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Search query: a case-insensitive substring of the title, ref or description; a positive integer also matches the account template id exactly",
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "default": "custom",
+      "description": "Kind of account template to list: custom (user-authored), system, connector, or all",
+      "enum": [
+       "custom",
+       "system",
+       "connector",
+       "all"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "withDefault",
+     "required": false,
+     "schema": {
+      "default": true,
+      "description": "Include default account templates (is_default) the caller can see; false takes them out",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "order",
+     "required": false,
+     "schema": {
+      "default": "id",
+      "description": "Field to sort by",
+      "enum": [
+       "id",
+       "title",
+       "createdAt",
+       "updatedAt"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "dir",
+     "required": false,
+     "schema": {
+      "default": "asc",
+      "description": "Sort direction",
+      "enum": [
+       "asc",
+       "desc"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "status",
+     "required": false,
+     "schema": {
+      "description": "Keep account templates whose status is one of these",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "ownerIds",
+     "required": false,
+     "schema": {
+      "description": "Keep account templates owned by one of these users",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "createdFrom",
+     "required": false,
+     "schema": {
+      "description": "Lower bound of createdAt, inclusive, unix seconds",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "createdTo",
+     "required": false,
+     "schema": {
+      "description": "Upper bound of createdAt, inclusive, unix seconds",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists all account templates with pagination"
+  },
+  {
+   "name": "form/count",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "maxLength": 64,
+      "minLength": 3,
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Search query: a case-insensitive substring of the title, ref or description; a positive integer also matches the account template id exactly",
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "default": "custom",
+      "description": "Kind of account template to count: custom (user-authored), system, connector, or all",
+      "enum": [
+       "custom",
+       "system",
+       "connector",
+       "all"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "withDefault",
+     "required": false,
+     "schema": {
+      "default": true,
+      "description": "Include default account templates (is_default) the caller can see; false takes them out",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "status",
+     "required": false,
+     "schema": {
+      "description": "Keep account templates whose status is one of these",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "ownerIds",
+     "required": false,
+     "schema": {
+      "description": "Keep account templates owned by one of these users",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "createdFrom",
+     "required": false,
+     "schema": {
+      "description": "Lower bound of createdAt, inclusive, unix seconds",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "createdTo",
+     "required": false,
+     "schema": {
+      "description": "Upper bound of createdAt, inclusive, unix seconds",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Counts account templates with optional filtering"
+  },
+  {
+   "name": "form/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "parentId",
+     "required": false,
+     "schema": {
+      "description": "Parent account template to nest the new one under",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Your own key for the account template, unique within the workspace; generated (formRef_<uuid>) when omitted",
+      "type": "string"
+     }
+    },
+    {
+     "name": "isTemplate",
+     "required": false,
+     "schema": {
+      "description": "Whether the account template is live (default true)",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "title",
+     "required": true,
+     "schema": {
+      "description": "Account template title",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "description",
+     "required": false,
+     "schema": {
+      "description": "Account template description",
+      "type": "string"
+     }
+    },
+    {
+     "name": "color",
+     "required": false,
+     "schema": {
+      "description": "Color code (hex format)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "sections",
+     "required": false,
+     "schema": {
+      "description": "Field layout: sections, each with its fields; field ids must be unique and contain no '.', '[' or ']'",
+      "items": {
+       "properties": {
+        "content": {
+         "description": "Fields of the section, in display order",
+         "items": {
+          "properties": {
+           "align": {
+            "description": "Text alignment of the field",
+            "type": "string"
+           },
+           "autocomplete": {
+            "description": "Autocomplete settings (opaque, passed through as stored)",
+            "type": "object"
+           },
+           "class": {
+            "description": "Field kind: edit, select, multiSelect, radio, check, calendar, upload, label, button, image, link",
+            "type": "string"
+           },
+           "description": {
+            "description": "Help text under the field",
+            "type": "string"
+           },
+           "errorMsg": {
+            "description": "Message shown when regexp does not match",
+            "type": "string"
+           },
+           "extra": {
+            "description": "Kind-specific options, e.g. optionsSource, multiline, time, dateRange (object, or a template string)",
+            "type": [
+             "object",
+             "string"
+            ]
+           },
+           "id": {
+            "description": "Field id: the key under which actors store this field's value in data",
+            "type": "string"
+           },
+           "idNotChanged": {
+            "description": "Editor flag: the field id was generated and never renamed",
+            "type": "boolean"
+           },
+           "key": {
+            "description": "Editor-internal stable key of the field",
+            "type": "string"
+           },
+           "options": {
+            "description": "Choices of a select, multiSelect, radio or check field: [{\"title\", \"value\", \"color\"}]",
+            "type": "array"
+           },
+           "regexp": {
+            "description": "Regular expression the value must match",
+            "type": "string"
+           },
+           "required": {
+            "description": "Whether actors must fill the field in",
+            "type": "boolean"
+           },
+           "row": {
+            "description": "Editor row the field is laid out in",
+            "type": "string"
+           },
+           "schema": {
+            "description": "JSON schema of a structured value (opaque, passed through as stored)",
+            "type": "object"
+           },
+           "title": {
+            "description": "Field label",
+            "type": "string"
+           },
+           "type": {
+            "description": "Input type of an edit field, e.g. text, int, float, password",
+            "type": "string"
+           },
+           "value": {
+            "description": "Default value (or static content for label, link and image fields)"
+           },
+           "visibility": {
+            "description": "Display mode, e.g. visible or disabled",
+            "type": "string"
+           },
+           "w": {
+            "description": "Width of the field in the editor grid"
+           }
+          },
+          "type": "object"
+         },
+         "type": "array"
+        },
+        "loop": {
+         "description": "Repeating-section settings (opaque, passed through as stored)",
+         "type": "object"
+        },
+        "title": {
+         "description": "Section heading",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "settings",
+     "required": false,
+     "schema": {
+      "description": "Lossless legacy account template settings",
+      "type": "object"
+     }
+    },
+    {
+     "name": "tags",
+     "required": false,
+     "schema": {
+      "description": "Lossless legacy account template tags",
+      "type": "object"
+     }
+    },
+    {
+     "name": "form",
+     "required": false,
+     "schema": {
+      "description": "Complete lossless legacy account template payload",
+      "type": "object"
+     }
+    },
+    {
+     "name": "pictureObject",
+     "required": false,
+     "schema": {
+      "description": "Legacy account template actor picture object",
+      "type": "object"
+     }
+    },
+    {
+     "name": "verificationRules",
+     "required": false,
+     "schema": {
+      "description": "Legacy actor verification rules",
+      "type": "object"
+     }
+    },
+    {
+     "name": "actorVerification",
+     "required": false,
+     "schema": {
+      "description": "Legacy actor verification payload",
+      "type": "object"
+     }
+    }
+   ],
+   "summary": "Creates a new account template"
+  },
+  {
+   "name": "form/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Reference patch: omitted keeps, null clears",
+      "type": "object"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "New account template title",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "description",
+     "required": false,
+     "schema": {
+      "description": "Description patch: omitted keeps, null clears",
+      "type": "object"
+     }
+    },
+    {
+     "name": "color",
+     "required": false,
+     "schema": {
+      "description": "Color patch: omitted keeps, null clears",
+      "type": "object"
+     }
+    },
+    {
+     "name": "sections",
+     "required": false,
+     "schema": {
+      "description": "New field layout; replaces all sections",
+      "items": {
+       "properties": {
+        "content": {
+         "description": "Fields of the section, in display order",
+         "items": {
+          "properties": {
+           "align": {
+            "description": "Text alignment of the field",
+            "type": "string"
+           },
+           "autocomplete": {
+            "description": "Autocomplete settings (opaque, passed through as stored)",
+            "type": "object"
+           },
+           "class": {
+            "description": "Field kind: edit, select, multiSelect, radio, check, calendar, upload, label, button, image, link",
+            "type": "string"
+           },
+           "description": {
+            "description": "Help text under the field",
+            "type": "string"
+           },
+           "errorMsg": {
+            "description": "Message shown when regexp does not match",
+            "type": "string"
+           },
+           "extra": {
+            "description": "Kind-specific options, e.g. optionsSource, multiline, time, dateRange (object, or a template string)",
+            "type": [
+             "object",
+             "string"
+            ]
+           },
+           "id": {
+            "description": "Field id: the key under which actors store this field's value in data",
+            "type": "string"
+           },
+           "idNotChanged": {
+            "description": "Editor flag: the field id was generated and never renamed",
+            "type": "boolean"
+           },
+           "key": {
+            "description": "Editor-internal stable key of the field",
+            "type": "string"
+           },
+           "options": {
+            "description": "Choices of a select, multiSelect, radio or check field: [{\"title\", \"value\", \"color\"}]",
+            "type": "array"
+           },
+           "regexp": {
+            "description": "Regular expression the value must match",
+            "type": "string"
+           },
+           "required": {
+            "description": "Whether actors must fill the field in",
+            "type": "boolean"
+           },
+           "row": {
+            "description": "Editor row the field is laid out in",
+            "type": "string"
+           },
+           "schema": {
+            "description": "JSON schema of a structured value (opaque, passed through as stored)",
+            "type": "object"
+           },
+           "title": {
+            "description": "Field label",
+            "type": "string"
+           },
+           "type": {
+            "description": "Input type of an edit field, e.g. text, int, float, password",
+            "type": "string"
+           },
+           "value": {
+            "description": "Default value (or static content for label, link and image fields)"
+           },
+           "visibility": {
+            "description": "Display mode, e.g. visible or disabled",
+            "type": "string"
+           },
+           "w": {
+            "description": "Width of the field in the editor grid"
+           }
+          },
+          "type": "object"
+         },
+         "type": "array"
+        },
+        "loop": {
+         "description": "Repeating-section settings (opaque, passed through as stored)",
+         "type": "object"
+        },
+        "title": {
+         "description": "Section heading",
+         "type": "string"
+        }
+       },
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "settings",
+     "required": false,
+     "schema": {
+      "description": "Lossless legacy account template settings",
+      "type": "object"
+     }
+    },
+    {
+     "name": "tags",
+     "required": false,
+     "schema": {
+      "description": "Lossless legacy account template tags",
+      "type": "object"
+     }
+    },
+    {
+     "name": "pictureObject",
+     "required": false,
+     "schema": {
+      "description": "Legacy account template actor picture object patch",
+      "type": "object"
+     }
+    },
+    {
+     "name": "verificationRules",
+     "required": false,
+     "schema": {
+      "description": "Legacy actor verification rules patch",
+      "type": "object"
+     }
+    },
+    {
+     "name": "actorVerification",
+     "required": false,
+     "schema": {
+      "description": "Legacy actor verification payload patch",
+      "type": "object"
+     }
+    },
+    {
+     "name": "parentId",
+     "required": false,
+     "schema": {
+      "description": "Parent account template patch: omitted keeps it, null detaches it, integer attaches it",
+      "type": "object"
+     }
+    },
+    {
+     "name": "expectedEditToken",
+     "required": true,
+     "schema": {
+      "description": "Opaque edit token returned by form/get or the latest conflict",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Updates an existing account template"
+  },
+  {
+   "name": "form/delete",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Deletes an account template"
+  },
+  {
+   "name": "form/status/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "status",
+     "required": false,
+     "schema": {
+      "description": "New status: verified, rejected or pending; null or omitted clears it",
+      "enum": [
+       "verified",
+       "rejected",
+       "pending"
+      ],
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Updates the status of an account template"
+  },
+  {
+   "name": "account_form/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "default": "fact",
+      "description": "Account type (fact, plan)",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "search",
+     "required": false,
+     "schema": {
+      "description": "Whether search is enabled",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "minLimit",
+     "required": false,
+     "schema": {
+      "description": "Minimum limit",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "maxLimit",
+     "required": false,
+     "schema": {
+      "description": "Maximum limit",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Creates a new account definition within an account template"
+  },
+  {
+   "name": "account_form/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "description": "Filter by account type (fact, plan); omitted includes both",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": false,
+     "schema": {
+      "description": "Account name identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": false,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists all account definitions in an account template"
+  },
+  {
+   "name": "account_form/delete",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Template account identifier (the binding row on the account template)",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Deletes an account definition from an account template"
+  },
+  {
+   "name": "edge/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "source",
+     "required": true,
+     "schema": {
+      "description": "Actor the edge starts from (for hierarchy, the parent)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "target",
+     "required": true,
+     "schema": {
+      "description": "Actor the edge points to (for hierarchy, the child)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeTypeId",
+     "required": true,
+     "schema": {
+      "description": "Edge type id (see edge_type/list)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "name",
+     "required": false,
+     "schema": {
+      "description": "Edge label",
+      "type": "string"
+     }
+    },
+    {
+     "name": "linkedActorId",
+     "required": false,
+     "schema": {
+      "description": "Actor to attach to the edge; part of the edge's identity",
+      "type": "string"
+     }
+    },
+    {
+     "name": "curveStyle",
+     "required": false,
+     "schema": {
+      "description": "How the edge is drawn",
+      "enum": [
+       "curved",
+       "rounded",
+       "roundedDownward",
+       "straight"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "weight",
+     "required": false,
+     "schema": {
+      "description": "Edge weight; 0 leaves it unset",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "forceDirection",
+     "required": false,
+     "schema": {
+      "description": "Hierarchy only: keep the given direction even when the reverse edge (target to source) already exists",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "hole",
+     "required": false,
+     "schema": {
+      "description": "Create the edge as a graph hole placeholder",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "pinned",
+     "required": false,
+     "schema": {
+      "description": "Create the edge pinned (an event's attached form actor). Applies only when the edge is new; an existing edge is returned unchanged — use edge/update to pin it",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Creates a relationship edge between two actors"
+  },
+  {
+   "name": "edge/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeId",
+     "required": true,
+     "schema": {
+      "description": "Edge/relationship identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Retrieves details of a specific edge"
+  },
+  {
+   "name": "edge/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeId",
+     "required": true,
+     "schema": {
+      "description": "Edge/relationship identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "name",
+     "required": false,
+     "schema": {
+      "description": "Edge label; omitted clears it",
+      "type": "string"
+     }
+    },
+    {
+     "name": "linkedActorId",
+     "required": false,
+     "schema": {
+      "description": "Actor attached to the edge; omitted detaches it",
+      "type": "string"
+     }
+    },
+    {
+     "name": "curveStyle",
+     "required": false,
+     "schema": {
+      "description": "How the edge is drawn; omitted clears it",
+      "enum": [
+       "curved",
+       "rounded",
+       "roundedDownward",
+       "straight"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "pinned",
+     "required": false,
+     "schema": {
+      "description": "Whether the edge is pinned; omit to keep the stored value",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "hole",
+     "required": false,
+     "schema": {
+      "description": "Whether the edge is a graph hole placeholder",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Updates an existing relationship edge"
+  },
+  {
+   "name": "edge/endpoints/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeId",
+     "required": true,
+     "schema": {
+      "description": "Edge/relationship identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "source",
+     "required": false,
+     "schema": {
+      "description": "New source actor identifier; omit to keep the current source",
+      "type": "string"
+     }
+    },
+    {
+     "name": "target",
+     "required": false,
+     "schema": {
+      "description": "New target actor identifier; omit to keep the current target",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Rewires an edge to a new source and/or target, keeping its id"
+  },
+  {
+   "name": "edge/delete",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeId",
+     "required": true,
+     "schema": {
+      "description": "Edge/relationship identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Deletes a specific relationship edge"
+  },
+  {
+   "name": "edge/by-node/delete",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "source",
+     "required": true,
+     "schema": {
+      "description": "Actor the edge starts from",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "target",
+     "required": true,
+     "schema": {
+      "description": "Actor the edge points to",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeTypeId",
+     "required": true,
+     "schema": {
+      "description": "Edge type identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "bidirected",
+     "required": false,
+     "schema": {
+      "description": "Also delete the edge of this type running from target back to source",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Deletes the edge of a type between two actors, addressed by its endpoints instead of its id"
+  },
+  {
+   "name": "edge_type/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 200,
+      "description": "Maximum number of items to return",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists all edge types in the workspace"
+  },
+  {
+   "name": "graph/layer/actors/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 50,
+      "description": "Maximum number of items to return",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection of each placement's actor, as in actor/get",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include in node responses (formTitle adds each node's account template title, avatar its avatar sources)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Lists actor placements of a layer with pagination"
+  },
+  {
+   "name": "graph/layer/edges/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 50,
+      "description": "Maximum number of items to return",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists edge placements of a layer with pagination"
+  },
+  {
+   "name": "graph/layer/skeleton/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "x1",
+     "required": false,
+     "schema": {
+      "description": "Left zone boundary in graph units (x1, y1, x2, y2: all four or none)",
+      "type": "number"
+     }
+    },
+    {
+     "name": "y1",
+     "required": false,
+     "schema": {
+      "description": "Top zone boundary in graph units",
+      "type": "number"
+     }
+    },
+    {
+     "name": "x2",
+     "required": false,
+     "schema": {
+      "description": "Right zone boundary in graph units",
+      "type": "number"
+     }
+    },
+    {
+     "name": "y2",
+     "required": false,
+     "schema": {
+      "description": "Bottom zone boundary in graph units",
+      "type": "number"
+     }
+    },
+    {
+     "name": "cx1",
+     "required": false,
+     "schema": {
+      "description": "Left zone boundary as a cell column, e.g. A, B2, -D (cx1, cy1, cx2, cy2: all four or none; wins over x1..y2)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "cy1",
+     "required": false,
+     "schema": {
+      "description": "Top zone boundary as a cell row",
+      "type": "number"
+     }
+    },
+    {
+     "name": "cx2",
+     "required": false,
+     "schema": {
+      "description": "Right zone boundary as a cell column",
+      "type": "string"
+     }
+    },
+    {
+     "name": "cy2",
+     "required": false,
+     "schema": {
+      "description": "Bottom zone boundary as a cell row",
+      "type": "number"
+     }
+    }
+   ],
+   "summary": "Returns the layer placements with minimal information, optionally limited to a zone in graph (x1..y2) or cell (cx1..cy2) coordinates"
+  },
+  {
+   "name": "graph/layer/actors/manage",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer identifier (the id of the layer actor)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "contextGraphId",
+     "required": false,
+     "schema": {
+      "description": "Accepted for compatibility with legacy clients; ignored",
+      "type": "string"
+     }
+    },
+    {
+     "name": "items",
+     "required": true,
+     "schema": {
+      "description": "Create/delete operations (1-500), applied in one transaction; deletes take effect before creates",
+      "items": {
+       "properties": {
+        "action": {
+         "description": "create places the element on the layer, delete removes its placement",
+         "enum": [
+          "create",
+          "delete"
+         ],
+         "type": "string"
+        },
+        "data": {
+         "description": "What to place or remove",
+         "properties": {
+          "areaPicture": {
+           "description": "Picture stretched over an area (create node); makes the placement graphic: free position, no grid cell",
+           "properties": {
+            "height": {
+             "description": "Picture height in graph units",
+             "type": "number"
+            },
+            "img": {
+             "description": "Picture URL",
+             "minLength": 1,
+             "type": "string"
+            },
+            "width": {
+             "description": "Picture width in graph units",
+             "type": "number"
+            }
+           },
+           "required": [
+            "width",
+            "height",
+            "img"
+           ],
+           "type": "object"
+          },
+          "id": {
+           "description": "Actor id (type node) or edge id (type edge); the actor or edge must already exist",
+           "minLength": 1,
+           "type": "string"
+          },
+          "laId": {
+           "description": "Placement id to delete (delete only). Without it, a delete removes every placement of the actor or edge on this layer",
+           "type": "integer"
+          },
+          "laIdSource": {
+           "description": "Placement id (laId) of the edge's source actor on this layer (create edge). Send both ends: an edge placement without them is not drawn by the current graph editor",
+           "type": "integer"
+          },
+          "laIdTarget": {
+           "description": "Placement id (laId) of the edge's target actor on this layer (create edge)",
+           "type": "integer"
+          },
+          "layerSettings": {
+           "description": "Placement display settings, stored as sent (create node); the keys are listed on graph/layer/actor_settings/save",
+           "properties": {
+            "anisotropy": {
+             "description": "Whether anisotropic texture filtering is enabled",
+             "type": "boolean"
+            },
+            "expand": {
+             "description": "Whether the node is open in place, showing the content named by expandType",
+             "type": "boolean"
+            },
+            "expandType": {
+             "description": "What an expanded node shows: cardView, chart, layer, profile, script (a Smart Form), actor (an actor page) or text",
+             "enum": [
+              "cardView",
+              "chart",
+              "layer",
+              "profile",
+              "script",
+              "actor",
+              "text"
+             ],
+             "type": "string"
+            },
+            "flaskView": {
+             "description": "Whether the node is rendered as a flask",
+             "type": "boolean"
+            },
+            "fullScreen": {
+             "description": "Whether the expanded node is in full screen",
+             "type": "boolean"
+            },
+            "height": {
+             "description": "Box height in graph units; same meaning as width",
+             "type": "number"
+            },
+            "image": {
+             "description": "Image framing of this placement",
+             "properties": {
+              "crop": {
+               "description": "Visible window into the source image",
+               "properties": {
+                "h": {
+                 "description": "Height as a fraction of the source height",
+                 "type": "number"
+                },
+                "w": {
+                 "description": "Width as a fraction of the source width",
+                 "type": "number"
+                },
+                "x": {
+                 "description": "Left edge as a fraction of the source width",
+                 "type": "number"
+                },
+                "y": {
+                 "description": "Top edge as a fraction of the source height",
+                 "type": "number"
+                }
+               },
+               "type": "object"
+              },
+              "fit": {
+               "description": "How the bitmap fills its box (contain, cover, fill)",
+               "enum": [
+                "contain",
+                "cover",
+                "fill"
+               ],
+               "type": "string"
+              },
+              "naturalHeight": {
+               "description": "Intrinsic height of the source image in pixels",
+               "type": "number"
+              },
+              "naturalWidth": {
+               "description": "Intrinsic width of the source image in pixels",
+               "type": "number"
+              }
+             },
+             "type": "object"
+            },
+            "isCardView": {
+             "description": "Whether the node is rendered as a card",
+             "type": "boolean"
+            },
+            "isTextNode": {
+             "description": "Whether the node is a text node",
+             "type": "boolean"
+            },
+            "labelStyle": {
+             "description": "Text-node typography override",
+             "properties": {
+              "align": {
+               "description": "Horizontal alignment",
+               "enum": [
+                "left",
+                "center",
+                "right"
+               ],
+               "type": "string"
+              },
+              "bold": {
+               "description": "Bold weight",
+               "type": "boolean"
+              },
+              "color": {
+               "description": "Ink color, #RRGGBB",
+               "type": "string"
+              },
+              "fontSize": {
+               "description": "Font size, graph units",
+               "type": "number"
+              },
+              "italic": {
+               "description": "Italic style",
+               "type": "boolean"
+              }
+             },
+             "type": "object"
+            },
+            "offset": {
+             "description": "How far an expanded node reaches past its cell. Typed here as {x, y}, while legacy clients and the graph editor store {top, right, bottom, left}: such a value reads back as {x: 0, y: 0}, and one sent here is stored as {x: 0, y: 0}. Do not send it",
+             "properties": {
+              "x": {
+               "description": "X coordinate on the layer",
+               "type": "number"
+              },
+              "y": {
+               "description": "Y coordinate on the layer",
+               "type": "number"
+              }
+             },
+             "type": "object"
+            },
+            "opacity": {
+             "description": "Placement opacity (0..1)",
+             "type": "number"
+            },
+            "pin": {
+             "description": "Whether the node is pinned to this layer (cannot be dragged)",
+             "type": "boolean"
+            },
+            "profile": {
+             "description": "Whether the profile view is shown",
+             "type": "boolean"
+            },
+            "rotation": {
+             "description": "Clockwise rotation of an image placement, degrees",
+             "type": "number"
+            },
+            "sizeGrade": {
+             "description": "Node size grade: S1 (one cell, the default), S2 or S3",
+             "type": "string"
+            },
+            "textFrame": {
+             "description": "Text frame geometry (front-end managed)",
+             "type": "object"
+            },
+            "textHeight": {
+             "description": "Text-node box height, graph units",
+             "type": "number"
+            },
+            "textNodeScale": {
+             "description": "Text-node font scale multiplier",
+             "type": "number"
+            },
+            "textSizing": {
+             "description": "Text box sizing mode",
+             "enum": [
+              "auto",
+              "fixedWidth",
+              "fixed"
+             ],
+             "type": "string"
+            },
+            "textWidth": {
+             "description": "Text-node box width, graph units",
+             "type": "number"
+            },
+            "userId": {
+             "description": "Author shown on a comment node: user id",
+             "type": "integer"
+            },
+            "userNick": {
+             "description": "Author shown on a comment node: display name",
+             "type": "string"
+            },
+            "width": {
+             "description": "Box width in graph units: of a resizable placement (text, image), or of an actor's expanded content",
+             "type": "number"
+            },
+            "zIndex": {
+             "description": "Stacking order: a higher value is drawn on top",
+             "type": "integer"
+            }
+           },
+           "type": "object"
+          },
+          "polygon": {
+           "description": "Outline as [x, y] points in graph units (create node); makes the placement graphic",
+           "items": {
+            "type": "array"
+           },
+           "type": "array"
+          },
+          "position": {
+           "description": "Position on the layer (create node); snapped to the 50-unit grid unless the placement is graphic; defaults to 0,0",
+           "properties": {
+            "x": {
+             "description": "X coordinate in graph units (grows to the right)",
+             "type": "number"
+            },
+            "y": {
+             "description": "Y coordinate in graph units (grows downward)",
+             "type": "number"
+            }
+           },
+           "type": "object"
+          },
+          "type": {
+           "description": "node places an actor, edge places an existing edge between two placed actors",
+           "enum": [
+            "node",
+            "edge"
+           ],
+           "type": "string"
+          }
+         },
+         "required": [
+          "id",
+          "type"
+         ],
+         "type": "object"
+        }
+       },
+       "required": [
+        "action"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Adds and removes actors/edges on a layer"
+  },
+  {
+   "name": "graph/layer/actors/positions/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer identifier (the id of the layer actor)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "items",
+     "required": true,
+     "schema": {
+      "description": "New positions (1-500), applied together or not at all",
+      "items": {
+       "properties": {
+        "laActorId": {
+         "description": "Placement id (laId) on this layer",
+         "type": "integer"
+        },
+        "position": {
+         "description": "New position; snapped to the 50-unit grid unless the placement is graphic",
+         "properties": {
+          "x": {
+           "description": "X coordinate in graph units (grows to the right)",
+           "type": "number"
+          },
+          "y": {
+           "description": "Y coordinate in graph units (grows downward)",
+           "type": "number"
+          }
+         },
+         "type": "object"
+        }
+       },
+       "required": [
+        "laActorId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Updates the positions of actors on a layer"
+  },
+  {
+   "name": "graph/layer/actors/move",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "sourceActorId",
+     "required": true,
+     "schema": {
+      "description": "Layer the actors are moved off",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "targetActorId",
+     "required": true,
+     "schema": {
+      "description": "Layer the actors are moved onto",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "items",
+     "required": true,
+     "schema": {
+      "description": "Actors to move (1-10)",
+      "items": {
+       "properties": {
+        "actorId": {
+         "description": "Actor to move",
+         "minLength": 1,
+         "type": "string"
+        },
+        "laId": {
+         "description": "Move only this placement of the actor (default: every placement of it on the source layer)",
+         "type": "integer"
+        },
+        "position": {
+         "description": "Position on the target layer, snapped to the grid (default: the position it had on the source layer)",
+         "properties": {
+          "x": {
+           "description": "X coordinate in graph units (grows to the right)",
+           "type": "number"
+          },
+          "y": {
+           "description": "Y coordinate in graph units (grows downward)",
+           "type": "number"
+          }
+         },
+         "type": "object"
+        }
+       },
+       "required": [
+        "actorId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "sourceContextGraphId",
+     "required": false,
+     "schema": {
+      "description": "Accepted for compatibility with legacy clients; ignored",
+      "type": "string"
+     }
+    },
+    {
+     "name": "targetContextGraphId",
+     "required": false,
+     "schema": {
+      "description": "Accepted for compatibility with legacy clients; ignored",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Moves actors from one layer to another"
+  },
+  {
+   "name": "graph/layer/clean",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer identifier (the id of the layer actor)",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Removes all actors and edges placed on a layer"
+  },
+  {
+   "name": "graph/layer/element/exist",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Actor (type node) or edge (type edge) to look for",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": true,
+     "schema": {
+      "description": "Element type: node or edge",
+      "enum": [
+       "node",
+       "edge"
+      ],
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Checks whether an actor or edge is placed on a layer"
+  },
+  {
+   "name": "graph/layer/stats/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Returns the six element counters of a layer"
+  },
+  {
+   "name": "graph/layer/actors/search/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": true,
+     "schema": {
+      "description": "Words to find in the actors' title and description, or an exact ref",
+      "maxLength": 1000,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection of each placement's actor, as in actor/get",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include in node responses (formTitle adds each node's account template title, avatar its avatar sources)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Searches the actors placed on a layer by title or ref"
+  },
+  {
+   "name": "graph/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor whose neighbors to list",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection of each actor, as in actor/get",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to add to each actor, as in actor/get",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "type",
+     "required": true,
+     "schema": {
+      "description": "Relation type: parents, children or linked",
+      "enum": [
+       "parents",
+       "children",
+       "linked"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeTypeId",
+     "required": false,
+     "schema": {
+      "description": "Edge type identifier (not needed with sysLinkTypes)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "formId",
+     "required": false,
+     "schema": {
+      "description": "Keep only neighbors of this account template",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "exceptFormId",
+     "required": false,
+     "schema": {
+      "description": "Drop neighbors of this account template",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "search",
+     "required": false,
+     "schema": {
+      "description": "Full-text search query",
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Created-at lower bound (unixtime)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Created-at upper bound (unixtime)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "default": "created_at",
+      "description": "Sort field",
+      "enum": [
+       "created_at",
+       "updated_at",
+       "owner"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "default": "DESC",
+      "description": "Sort direction",
+      "enum": [
+       "ASC",
+       "DESC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "pinned",
+     "required": false,
+     "schema": {
+      "description": "Filter edges by pinned flag",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "sysLinkTypes",
+     "required": false,
+     "schema": {
+      "description": "Synthetic system relations to return instead of stored edges",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Lists actors linked to an actor (children/parents/linked) one level deep"
+  },
+  {
+   "name": "graph/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor to read the graph around",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeTypeIds",
+     "required": false,
+     "schema": {
+      "description": "Keep only edges of these types; every type when omitted",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "pinned",
+     "required": false,
+     "schema": {
+      "description": "Filter edges by pinned flag",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 200,
+      "description": "Maximum number of stored edges to return",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of edges to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Projection of each node, as in actor/get",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include in node responses (formTitle adds each node's account template title, avatar its avatar sources)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "sysLinkTypes",
+     "required": false,
+     "schema": {
+      "description": "Synthetic system relations to add: workspace, creator, owner, layers, layerActors, layerActorsStats, actorsOwner",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "sysLinkLimit",
+     "required": false,
+     "schema": {
+      "default": 5,
+      "description": "Maximum items per collection relation (layers, layerActors, actorsOwner)",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "sysLinkOffset",
+     "required": false,
+     "schema": {
+      "description": "Items to skip per collection relation (layers, layerActors, actorsOwner)",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Returns the graph (connected actors + edges) around an actor"
+  }
+ ]
+}

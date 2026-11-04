@@ -34,22 +34,6 @@ type actorCreateRequest struct {
 	Fields      []string        `json:"fields"`
 }
 
-// ActorUpdateInput is the console subset of public actor/update: only the sent keys change and
-// data is merged key by key into the current values.
-type ActorUpdateInput struct {
-	ActorID     string          `json:"actorId"`
-	Title       *string         `json:"title,omitempty"`
-	Description *string         `json:"description,omitempty"`
-	Color       string          `json:"color,omitempty"`
-	Data        json.RawMessage `json:"data,omitempty"`
-}
-
-type actorUpdateRequest struct {
-	AccID string `json:"accId"`
-	ActorUpdateInput
-	Fields []string `json:"fields"`
-}
-
 func consoleOnly(c *Client) error {
 	if !c.ConsoleEnabled() {
 		return errors.New("console profile is disabled")
@@ -94,26 +78,6 @@ func (c *Client) CreateActor(ctx context.Context, in ActorCreateInput) (Actor, e
 		Title: in.Title, Description: in.Description, Color: in.Color, Data: data, Fields: actorFields})
 	if e == nil && (a.ID == nil || *a.ID == "") {
 		return Actor{}, errors.New("actor/create returned no actor id")
-	}
-	return a, e
-}
-
-// UpdateActor changes the sent keys of one actor and returns its metadata projection.
-func (c *Client) UpdateActor(ctx context.Context, in ActorUpdateInput) (Actor, error) {
-	if e := consoleOnly(c); e != nil {
-		return Actor{}, e
-	}
-	if !validID(in.ActorID) || (in.Title != nil && !validTitle(*in.Title, false)) || (in.Description != nil && utf8.RuneCountInString(*in.Description) > 10000) {
-		return Actor{}, errors.New("actorId and, when sent, a 1..1000 character title required")
-	}
-	data, e := objectData(in.Data, true)
-	if e != nil {
-		return Actor{}, e
-	}
-	in.Data = data
-	a, e := call[actorUpdateRequest, Actor](ctx, c, "actor/update", actorUpdateRequest{AccID: c.config.Workspace, ActorUpdateInput: in, Fields: actorFields})
-	if e == nil && (a.ID == nil || *a.ID != in.ActorID) {
-		return Actor{}, errors.New("actor result identity mismatch")
 	}
 	return a, e
 }

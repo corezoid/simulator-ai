@@ -38,26 +38,37 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addLayerStats(s, c)
 		return s
 	}
-	s.AddTool(tool[publicapi.Actor]("actor_get", "Read actor metadata in the configured workspace. Returns id/title/description/formId/status/ref only; no data fields or related objects. Public actor/get; actors.readonly scope and actor View required.", `{"type":"object","properties":{"actorId":{"type":"string","minLength":1,"maxLength":255}},"required":["actorId"],"additionalProperties":false}`), func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		a, e := decode[ActorArgs](r)
-		if e != nil {
-			return failure(e), nil
-		}
-		v, e := c.GetActor(ctx, a.ActorID)
-		return result(v, e), nil
-	})
+	if c.ParityAllowed("actor/get") {
+		addParity(s, c, actorTools)
+	} else {
+		s.AddTool(tool[publicapi.Actor]("actor_get", "Read actor metadata in the configured workspace. Returns id/title/description/formId/status/ref only; no data fields or related objects. Public actor/get; actors.readonly scope and actor View required.", `{"type":"object","properties":{"actorId":{"type":"string","minLength":1,"maxLength":255}},"required":["actorId"],"additionalProperties":false}`), func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			a, e := decode[ActorArgs](r)
+			if e != nil {
+				return failure(e), nil
+			}
+			v, e := c.GetActor(ctx, a.ActorID)
+			return result(v, e), nil
+		})
+	}
 	if c.ConsoleEnabled() {
 		addConsole(s, c)
+		addParity(s, c, formTools)
+		addParity(s, c, graphTools)
+		addGraphEngines(s, c)
 		return s
 	}
-	s.AddTool(tool[publicapi.Form]("form_get", "Read account template metadata in the configured workspace. Returns id/title/description/type/parentId only, NOT the form field schema or editor token. Public form/get; forms.readonly scope and template View required.", `{"type":"object","properties":{"formId":{"type":"integer","minimum":1}},"required":["formId"],"additionalProperties":false}`), func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		a, e := decode[FormArgs](r)
-		if e != nil {
-			return failure(e), nil
-		}
-		v, e := c.GetForm(ctx, a.FormID)
-		return result(v, e), nil
-	})
+	if c.ParityAllowed("form/get") {
+		addParity(s, c, formTools)
+	} else {
+		s.AddTool(tool[publicapi.Form]("form_get", "Read account template metadata in the configured workspace. Returns id/title/description/type/parentId only, NOT the form field schema or editor token. Public form/get; forms.readonly scope and template View required.", `{"type":"object","properties":{"formId":{"type":"integer","minimum":1}},"required":["formId"],"additionalProperties":false}`), func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			a, e := decode[FormArgs](r)
+			if e != nil {
+				return failure(e), nil
+			}
+			v, e := c.GetForm(ctx, a.FormID)
+			return result(v, e), nil
+		})
+	}
 	if c.DelegatedReadEnabled() {
 		return s
 	}
@@ -81,6 +92,9 @@ func New(c *publicapi.Client) *server.MCPServer {
 	}
 	if c.GraphReadsEnabled() {
 		addGraphReads(s, c)
+		// graph_edge_types_list and graph_layer_stats_get already cover these two here.
+		addParity(s, c, without(graphTools, "edge_types_list", "layer_stats_get"))
+		addGraphEngines(s, c)
 	}
 	if c.ReactionReadsEnabled() {
 		addReactionReads(s, c)
@@ -119,4 +133,18 @@ func result[T any](v T, e error) *mcp.CallToolResult {
 		return failure(e)
 	}
 	return mcp.NewToolResultStructuredOnly(v)
+}
+
+func without(tools []parityTool, names ...string) []parityTool {
+	out := []parityTool{}
+	for _, t := range tools {
+		skip := false
+		for _, n := range names {
+			skip = skip || t.Name == n
+		}
+		if !skip {
+			out = append(out, t)
+		}
+	}
+	return out
 }

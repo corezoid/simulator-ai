@@ -4,7 +4,10 @@ New public plugin, separate from simulator-ai-plugin. Domain tools call only doc
 public sim-api JSON-RPC at /api/2.0/rpc. Never use /papi, private RPC, SQL or internal HTTP.
 Desktop uses its host agent: do not add Hermes, LiteLLM or server billing to this path.
 
-Default profile is three read-only metadata tools, explicit ApiKey/origin/workspace.
+Default profile is read-only, explicit ApiKey/origin/workspace: full actor_get/form_get, layer_actors_list
+and the read-only actor and form parity tools (README "Tools by profile"; one pinned public method per
+legacy tool, contracts/parity-openrpc.json). graph-read adds the read-only graph parity tools; console has
+every parity tool, writes included. Parity tools carry no receipts or preflight.
 The Console-only opt-in delegated-read profile exposes actor_get/form_get with an
 explicit scoped token and no API-key fallback; it does not launch or provision a runtime.
 The opt-in graph-read profile adds three read-only native graph metadata tools and exact placement readback; it does not

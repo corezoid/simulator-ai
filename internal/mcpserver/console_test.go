@@ -106,9 +106,11 @@ func TestConsoleCatalog(t *testing.T) {
 			t.Errorf("%s output schema types open JSON as bytes", tool.Name)
 		}
 	}
-	want := "actor_create,actor_get,actor_update,actors_create,edge_create,edges_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_components,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
-	if strings.Join(names, ",") != want {
-		t.Fatal("console tools:", names)
+	// The console's own tools; the actor, form and graph parity tools are TestParityCatalogs'.
+	for _, name := range strings.Split("actor_create,actor_get,actor_update,actors_create,edge_create,edges_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_components,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get", ",") {
+		if _, ok := reads[name]; !ok {
+			t.Error("console lacks", name, names)
+		}
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
 		if !reads[name] {
@@ -128,7 +130,7 @@ func TestConsoleRequests(t *testing.T) {
 		out        string // substring of the structured result
 	}{
 		{"actor_create", `{"formId":5,"title":"Start","color":"#17B26A","data":{"__form__6:blockId":"process"}}`, "actor/create", `"color":"#17B26A","data":{"__form__6:blockId":"process"}`, `"id":"a1"`},
-		{"actor_update", `{"actorId":"a1","title":"Renamed"}`, "actor/update", `"actorId":"a1","fields":["id","title","description","formId","status","ref"],"title":"Renamed"`, `"title":"Renamed"`},
+		{"actor_update", `{"actorId":"a1","title":"Renamed"}`, "actor/update", `"actorId":"a1","fields":["id","title","description","formId","status","ref","color"],"title":"Renamed"`, `"title":"Renamed"`},
 		{"flowchart_blocks_list", `{"query":" proc ","offset":100}`, "form/flowchart-block/search", `"accId":"ws","limit":100,"offset":100,"query":"proc"`, `"list":[{"formId":5,"title":"Process","blockId":"process","collection":"basic"}],"hasMore":false`},
 		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/flowchart-block/search", `"blockIds":["process"]`, `"layerSettings":{"width":200,"height":100,"blockId":"process"`},
 		{"layer_create", `{"title":"Flow"}`, "form/system/get,actor/create", `"data":{},"fields"`, `"id":"a1"`},
@@ -215,7 +217,6 @@ func TestConsoleFailures(t *testing.T) {
 		{"develop release is not ready production", "smart_form_release_get", `{"appId":"app1","releaseId":9}`,
 			map[string]string{"release/get": `"result":{"id":9,"actorId":"app1","envId":1,"sourceEnvId":2,"releaseNumber":2,"status":"active"}`}, "not a production release"},
 		{"catalog page must be well formed", "flowchart_blocks_list", `{}`, map[string]string{"form/flowchart-block/search": `"result":{"list":[]}`}, "invalid native block catalog page"},
-		{"updated actor must be the requested one", "actor_update", `{"actorId":"a9","title":"x"}`, nil, "identity mismatch"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

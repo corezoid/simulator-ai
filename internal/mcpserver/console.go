@@ -23,13 +23,9 @@ const (
 	blocksOutput = `{"type":"object","properties":{"list":{"type":"array","items":{"type":"object","properties":{"formId":{"type":"integer"},"title":{"type":"string"},"blockId":{"type":"string"},"collection":{"type":"string"},"data":{"type":"object"},"layerSettings":` + nativeLayout + `},"required":["formId","title","blockId"]}},"hasMore":{"type":"boolean"}},"required":["list","hasMore"]}`
 )
 
-// addConsole registers the console catalog: plain public writes for a flowchart on a layer and a
-// released Smart Form. actor_get is registered by New.
+// addConsole registers the console's own tools: a grid-aligned flowchart on a layer and a released
+// Smart Form. New adds the actor, form and graph parity tools around them.
 func addConsole(s *server.MCPServer, c *publicapi.Client) {
-	consoleTool(s, "actor_create", "Create ONE actor; for two or more use actors_create (one call). Create one actor from an account template (form) in the configured workspace. Returns id/title/description/formId/status/ref. data holds form field values by field key; omit it for none. For a flowchart block pass formId and data from flowchart_blocks_list. Does not place the actor on a layer.",
-		`{"type":"object","properties":{"formId":{"type":"integer","minimum":1},"title":{"type":"string","minLength":1,"maxLength":1000},"description":{"type":"string","maxLength":10000},"color":{"type":"string","maxLength":32},"data":{"type":"object"}},"required":["formId","title"],"additionalProperties":false}`, true, c.CreateActor)
-	consoleTool(s, "actor_update", "Change one actor: only the sent keys change; data is merged key by key into the current field values. Needs modify access. Returns id/title/description/formId/status/ref.",
-		`{"type":"object","properties":{"actorId":{"type":"string","minLength":1,"maxLength":255},"title":{"type":"string","minLength":1,"maxLength":1000},"description":{"type":"string","maxLength":10000},"color":{"type":"string","maxLength":32},"data":{"type":"object"}},"required":["actorId"],"additionalProperties":false}`, true, c.UpdateActor)
 	addConsoleGraph(s, c)
 	addConsoleSmartForms(s, c)
 }
