@@ -90,15 +90,17 @@ func (c *Client) CreateAccountPair(ctx context.Context, in AccountPairInput) (Ac
 	}
 	pair := AccountPair{NameID: nameID, CurrencyID: currencyID, Registered: !existed}
 	if existed {
+		// sim-api answers notFound for a pair with no rules, and accessDenied for a shared one the
+		// caller is not a subject of.
 		rules, err := call[map[string]any, accessList](ctx, c, "access_rule/account/list", map[string]any{"accId": ws, "nameId": nameID, "currencyId": currencyID})
-		if err != nil {
-			return AccountPair{}, err
-		}
+		var api *APIError
 		switch {
-		case len(rules.List) > 0:
+		case err != nil && !(errors.As(err, &api) && api.Reason == "notFound"):
+			return AccountPair{}, err
+		case err == nil && len(rules.List) > 0:
 			return pair, nil // already shared: registering it again changes nothing
 		case !in.TakeOwnership:
-			return AccountPair{}, fmt.Errorf("the pair %s / %s exists and nobody was given access to it, so its balances follow each actor's access; registering it would make you its only subject and hide it from everyone else. Use its ids (nameId %s, currencyId %d) as they are, or repeat with takeOwnership true once the user agrees", in.AccountName, in.CurrencyName, nameID, currencyID)
+			return AccountPair{}, fmt.Errorf("the pair %s / %s exists and nobody was given access to it: its balances can only be read through each actor (nameId %s, currencyId %d with account_get or accounts_list), and nothing can be posted to it. Registering it makes you its only subject and hides it from everyone else: repeat with takeOwnership true only once the user agrees", in.AccountName, in.CurrencyName, nameID, currencyID)
 		}
 		pair.Registered = true
 	}
@@ -112,23 +114,26 @@ type named struct {
 	ID any `json:"id"`
 }
 
-// lookup finds a dictionary entry (account name or currency) by its exact name, ignoring case; the
-// zero id means there is none.
+// lookup finds a dictionary entry (account name or currency) by its name: the exact one, else one
+// that differs only in case (names are unique per workspace with case); the zero id means none.
 func lookup[ID comparable](ctx context.Context, c *Client, method, name string) (ID, error) {
-	var none ID
+	var none, folded ID
 	for offset := 0; offset < 1000; offset += 100 {
 		page, err := call[map[string]any, dictionaryEntry[ID]](ctx, c, method, map[string]any{"accId": c.config.Workspace, "query": name, "limit": 100, "offset": offset})
 		if err != nil {
 			return none, err
 		}
 		for _, e := range page.List {
-			if strings.EqualFold(e.Name, name) {
+			switch {
+			case e.Name == name:
 				return e.ID, nil
+			case folded == none && strings.EqualFold(e.Name, name):
+				folded = e.ID
 			}
 		}
 		if len(page.List) < 100 {
-			return none, nil
+			break
 		}
 	}
-	return none, nil
+	return folded, nil
 }

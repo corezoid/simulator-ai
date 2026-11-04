@@ -25,9 +25,10 @@ finance tools. Every tool works in the host workspace.
    - an existing shared pair stays as it is: you can post only if its rules give you `modify`,
      and one you may not see is refused; an owner shares it with `access_rules_save {objType:
      "account", objId: <nameId>, currencyId}` (`simulator-ai-access`);
-   - an existing pair that nobody was given access to is refused: registering it would make
-     you its only subject and hide its balances from everyone else. Use its ids as they are,
-     or, only when the user agrees, repeat with `takeOwnership: true`.
+   - an existing pair that nobody was given access to is refused: its balances can only be
+     read through each actor (`account_get`, `accounts_list`) and nothing can be posted to it.
+     Registering it makes you its only subject and hides it from everyone else, so repeat with
+     `takeOwnership: true` only when the user agrees.
 2. `account_create {actorId, nameId, currencyId, accountType?, minLimit?, maxLimit?}` opens it
    on an actor (or `account_by_ref_create` by template and ref).
 
