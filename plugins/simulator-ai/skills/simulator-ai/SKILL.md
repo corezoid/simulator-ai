@@ -65,8 +65,10 @@ Workspace
 - "Visualize it in the chat" (візуалізуй): ask first how — a Smart Form showing a layer in a
   `GraphEditor` block (a flowchart, or plain actors on the layer: `simulator-ai-graph`) or
   plain text. Never draw ASCII diagrams.
-- In AI Console the request may carry the user's UI context (`activeActor`, `activeLayer`,
-  page): use it for "this actor" / "here" instead of asking.
+- In AI Console the request carries a "Current context" block (the layer, actor and Smart Form
+  the user has open, with route and page): "here", "this" and "the current" mean those, so use
+  them instead of asking. New actors, links and placements go on the current layer unless the
+  user names another; never create a new layer for them.
 - "Show me" on the layer the user has open: `layer_viewport` moves their own view (pan to a
   cell, zoom, fit, focus an actor, 2D/3D, open a layer); `openTabs: 0` means it is not open.
 - Name a place on a layer by its Graph Editor cell, `"C, 7"` (column, row as on the rulers),

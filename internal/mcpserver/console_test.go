@@ -439,6 +439,7 @@ func TestConsoleRulesInDescriptions(t *testing.T) {
 		"smart_form_data_form_create": "only when the user asked to keep what is submitted",
 		"smart_form_release":          "offer the user Corezoid processes for its business logic",
 		"layer_create":                "never draw ASCII diagrams",
+		"layer_placements_create":     "layerId is the current layer of the request's Current context",
 		"reaction_create":             "is actor_attach, not a reaction",
 	} {
 		if tool := tools[name]; tool == nil || !strings.Contains(tool.Tool.Description, want) {
