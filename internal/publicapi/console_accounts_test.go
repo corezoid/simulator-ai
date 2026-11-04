@@ -9,7 +9,7 @@ import (
 
 const (
 	pairShared = `{"list":[{"userId":1,"privs":{"view":true}}]}`
-	factRows = `{"id":"1","result":{"list":[{"id":"c1","incomeType":"credit"},{"id":"d1","incomeType":"debit"}]}}`
+	factRows   = `{"id":"1","result":{"list":[{"id":"c1","incomeType":"credit"},{"id":"d1","incomeType":"debit"}]}}`
 )
 
 func batchOf(items ...string) string {
