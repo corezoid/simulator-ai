@@ -2,6 +2,7 @@ package graphplan
 
 import (
 	"encoding/json"
+	"regexp"
 
 	"github.com/corezoid/simulator-ai/internal/publicapi"
 )
@@ -48,8 +49,10 @@ func formColor(form json.RawMessage) string {
 	var bag struct {
 		Color string `json:"color"`
 	}
-	if json.Unmarshal(form, &bag) != nil || len(bag.Color) > 32 {
-		return ""
+	if json.Unmarshal(form, &bag) != nil || !hexColor.MatchString(bag.Color) {
+		return "" // like the editor's isHexColor: anything else gets a palette hue
 	}
 	return bag.Color
 }
+
+var hexColor = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
