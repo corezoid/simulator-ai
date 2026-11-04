@@ -104,7 +104,7 @@ func catalog(t *testing.T, send func(string) string) map[string]bool {
 // allParityTools is every parity tool list the console registers.
 func allParityTools() []parityTool {
 	var all []parityTool
-	for _, list := range [][]parityTool{actorTools, formTools, graphTools, reactionTools, userTools, attachmentTools, accessRequestTools, accountTools, ledgerTools} {
+	for _, list := range [][]parityTool{actorTools, formTools, graphTools, reactionTools, userTools, attachmentTools, accessRequestTools, accountTools, ledgerTools, accountExtraTools} {
 		all = append(all, list...)
 	}
 	return all
@@ -183,6 +183,9 @@ func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
 		{"edge_exist", `{"source":"a","target":"b","edgeTypeId":3,"bidirected":true}`, "edge/by-node/get", `"bidirected":true,"edgeTypeId":3`},
 		{"transaction_create", `{"accountId":"r1","amount":10,"ref":"t1"}`, "transaction/create", `"accountId":"r1","amount":10,"ref":"t1"`},
 		{"transfer_create", `{"ref":"t2","from":[{"accountId":"d1","amount":5}],"to":[{"accountId":"c1","amount":5}]}`, "transfer/create", `"from":[{"accountId":"d1","amount":5}],"ref":"t2","to":[{"accountId":"c1","amount":5}]`},
+		{"atom_transaction_create", `{"transactions":[{"accountId":"d1","amount":1,"ref":"a"},{"accountId":"c1","amount":1,"ref":"b"}]}`, "transaction/atom/create", `"transactions":[{"accountId":"d1","amount":1,"ref":"a"},{"accountId":"c1","amount":1,"ref":"b"}]`},
+		{"account_tags_set", `{"nameId":"n1","currencyId":3,"tags":["t1"]}`, "account/tags/update", `"currencyId":3,"nameId":"n1","tags":["t1"]`},
+		{"account_create", `{"actorId":"a1","nameId":"n1","currencyId":3,"counterType":"counter","ignoreIfExist":true}`, "account_actor/create", `"counterType":"counter","currencyId":3,"ignoreIfExist":true`},
 		{"counter_increment", `{"formId":5,"actorRef":"car","accountName":"Mileage","currency":"km","incomeType":"debit","amount":12}`, "counter/increment", `"accountName":"Mileage","actorRef":"car","amount":12`},
 	}
 	for _, tc := range cases {

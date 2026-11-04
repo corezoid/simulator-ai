@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-finance
-description: Manage Simulator accounts, balances, transactions, transfers, currencies, account names and counters with the public Simulator AI tools (profile console-full). Use when the user wants to open an account on an actor, read a balance or its history, record a transaction, move value between actors, add a currency or category, or track a counter ("баланс рахунку", "запиши транзакцію", "переказ коштів", "лічильник", "баланс счёта", "перевод средств").
+description: Manage Simulator accounts, balances, transactions, transfers, currencies, account names and counters with the public Simulator AI tools (profile console-full). Use when the user wants to open an account on an actor, read a balance or its history, record a transaction, move value between actors, add a currency or category, track a counter, set a balance, write a formula, or tag accounts and bind triggers ("баланс рахунку", "запиши транзакцію", "переказ коштів", "лічильник", "баланс счёта", "перевод средств").
 ---
 
 Use the installed `simulator-ai` catalog with profile `console-full`; plain `console` has no
@@ -85,8 +85,56 @@ strings: the actor's template (`formId`) and `actorRef`, `accountName` and `curr
 id}` deletes a row with its transactions and `account_pair_unregister` drops the pair's access
 rules. Confirm every delete with the user.
 
-## Not available yet
+## Counter accounts
 
-Reading an account by its id alone, child actors' accounts, counter-type accounts, direct balance
-adjustment, formulas, atomic multi-account transactions, and account tags and triggers wait for
-public sim-api methods. Say so rather than composing them from other tools.
+`account_create` with `counterType` `counter`, `uniqCounter` or `systemCounter` opens an account
+whose balance is read from that counter (fed by `counter_increment`); a transaction posted on it
+does not show in its balance. `ignoreIfExist: true` answers a pair the actor already has
+(`existed: true`) instead of failing.
+
+## By account id
+
+`account_by_id_get {accountId}` reads one row when you hold its id (from a transaction, a formula
+source, a trigger); `from`/`to` (Unix ms) as in `accounts_list`.
+
+## Set a balance
+
+`account_amount_set {id, amount}` sets a row's balance by recording the difference as a
+transaction: permanent and in its history. Confirm with the user first; undo by setting the old
+value back. Formula and statistical accounts are refused. A target past the account's limits is
+stored as declined and a counter account's balance does not move, so read the row back with
+`account_by_id_get` before reporting the new balance.
+
+## Formulas
+
+A formula computes an account's balance from other accounts, named by their row ids (bare
+lowercase UUIDs), with numbers, `+ - * /`, parentheses and `sum`, `mean`, `min`, `max`, `abs`,
+`round(x[, n])`, e.g. `<accountId> * 2`. Always
+`account_formula_preview {id, formula}` first (`ok`, the value, or the first error), then
+`account_formula_set`; an empty formula clears it. An account with transactions cannot take a
+formula, and one with a formula takes no transactions. `account_formula_get` shows the text,
+sources and current value.
+
+## Several transactions at once
+
+`atom_transaction_create {transactions: [...]}` posts 1..20 transactions all-or-nothing (each as
+in `transaction_create`, with its own `ref`): any refusal stores none. Confirm with the user
+first.
+
+## Tags and triggers
+
+- Tags file a pair: `account_tag_add {nameId, currencyId, title}` adds one by title;
+  `account_tags_list` reads them; `account_tags_set` replaces the whole set. An actor's folders:
+  `account_actor_tags_list` (a folder's `actorId` is the `tag` filter of `accounts_list`).
+- Triggers are actors of the AccountTriggers template: pair-level (`account_triggers_list` /
+  `_set`), one actor's own account (`account_actor_triggers_list` / `_set`), or a data field of
+  an actor (`actor_field_triggers_list` / `_set`, data kind).
+- Every `_set` REPLACES the whole set, others' bindings included: read the list first and send
+  every id to keep.
+
+## Not available
+
+Child actors' accounts (legacy getChildAccounts) are not carried over: account trees were removed
+from the platform. To total a subtree, walk it (`graph_list` with type children) and read each
+child's accounts (`accounts_list`). Triggers by template field (for every actor of a template)
+are out of scope.

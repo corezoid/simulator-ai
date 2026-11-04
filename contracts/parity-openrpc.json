@@ -6191,6 +6191,28 @@
      }
     },
     {
+     "name": "counterType",
+     "required": false,
+     "schema": {
+      "description": "Where the balance comes from: amount (default) — the ledger, posted with transactions; counter, uniqCounter, systemCounter — the analytic counter of that kind, fed by counter/* methods. A statistical account (min, max, avg) is amount only",
+      "enum": [
+       "amount",
+       "counter",
+       "uniqCounter",
+       "systemCounter"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "ignoreIfExist",
+     "required": false,
+     "schema": {
+      "description": "When the actor already has this pair, answer it (existed: true) instead of failing with alreadyExists",
+      "type": "boolean"
+     }
+    },
+    {
      "name": "with",
      "required": false,
      "schema": {
@@ -9639,6 +9661,702 @@
     }
    ],
    "summary": "Counts transfers matching a filter"
+  },
+  {
+   "name": "account_actor/amount/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Account identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "amount",
+     "required": true,
+     "schema": {
+      "description": "Target balance value",
+      "type": "number"
+     }
+    }
+   ],
+   "summary": "Sets the account's balance to a fixed value by recording the difference as a ledger transaction (B7)"
+  },
+  {
+   "name": "account_actor/formula/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Account identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Reads an account's formula: the stored text, its source accounts with their balances, and the value it evaluates to now"
+  },
+  {
+   "name": "account_actor/formula/preview",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Account the formula would be written on",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formula",
+     "required": true,
+     "schema": {
+      "description": "Formula text to check (account UUIDs, mathjs function names)",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Dry-runs a formula on an account: the same validation formula/update enforces and the value it would produce, without writing anything"
+  },
+  {
+   "name": "account_actor/formula/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Account identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formula",
+     "required": false,
+     "schema": {
+      "description": "Formula text (account UUIDs, mathjs function names); null or empty clears the formula",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Sets, changes or clears an account's formula (legacy POST /accounts/formula/:accountId)"
+  },
+  {
+   "name": "transaction/atom/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "transactions",
+     "required": true,
+     "schema": {
+      "description": "Legs, applied in order",
+      "items": {
+       "properties": {
+        "accountId": {
+         "description": "Account identifier",
+         "minLength": 1,
+         "type": "string"
+        },
+        "amount": {
+         "description": "Signed amount; required unless type is canceled, reversed or declined",
+         "type": "number"
+        },
+        "comment": {
+         "description": "Free-text comment",
+         "type": "string"
+        },
+        "data": {
+         "description": "Caller data stored with the record",
+         "type": "object"
+        },
+        "disableAccountLimits": {
+         "description": "Skip the account limit check for this leg",
+         "type": "boolean"
+        },
+        "expiration": {
+         "description": "Hold expiration (unix seconds; authorized only)",
+         "type": "integer"
+        },
+        "originalDate": {
+         "description": "Business date override (Unix milliseconds); defaults to the creation time",
+         "type": "integer"
+        },
+        "parentId": {
+         "description": "Parent transaction id (two-stage close)",
+         "type": "integer"
+        },
+        "parentRef": {
+         "description": "Parent transaction ref (two-stage close)",
+         "type": "string"
+        },
+        "ref": {
+         "description": "Your reference, unique per account; a repeat is rejected with trs005",
+         "type": "string"
+        },
+        "type": {
+         "description": "Two-stage type: authorized (hold), completed/canceled/reversed (close the hold named by parentId or parentRef) or declined; omit for a plain completed transaction",
+         "enum": [
+          "authorized",
+          "declined",
+          "completed",
+          "canceled",
+          "reversed"
+         ],
+         "type": "string"
+        }
+       },
+       "required": [
+        "accountId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "noRetry",
+     "required": false,
+     "schema": {
+      "description": "Fail at once when another write holds an account instead of retrying",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Creates 1..20 ledger transactions atomically: one PG transaction, one lock set, all-or-nothing"
+  },
+  {
+   "name": "account_actor/by-id/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountId",
+     "required": true,
+     "schema": {
+      "description": "Account identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Balance window start, unix MILLISECONDS: with it the amount is the turnover from then; omitted, the balance is the running total",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Balance window end, unix MILLISECONDS. Alone it means the balance AS AT that moment",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: meta (account name and currency labels), triggers, tags",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Retrieves one account by its id, with its balance or its turnover over a period (legacy GET /accounts/single/:accountId)"
+  },
+  {
+   "name": "account/tags/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "title",
+     "required": true,
+     "schema": {
+      "description": "Tag title, trimmed; must contain a letter or digit; an existing tag with the same canonical (camel-cased) name is reused",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Files an account pair under a tag by title, creating the tag when the workspace has none of that name"
+  },
+  {
+   "name": "account/tags/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists the tags an account pair (name + currency) is filed under"
+  },
+  {
+   "name": "account/tags/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "tags",
+     "required": false,
+     "schema": {
+      "description": "Tag actor ids (actors of the workspace's Tags system template) the pair is filed under after the call; empty removes every tag",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Replaces the set of tags an account pair (name + currency) is filed under"
+  },
+  {
+   "name": "account/triggers/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists the triggers bound to an account pair (name + currency)"
+  },
+  {
+   "name": "account/triggers/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "triggers",
+     "required": false,
+     "schema": {
+      "description": "Trigger actor ids (actors of the workspace's AccountTriggers system template) bound to the pair after the call; empty unbinds every pair-level trigger",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Replaces the set of triggers bound to an account pair (name + currency)"
+  },
+  {
+   "name": "account_actor/triggers/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor that owns the account",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists the triggers bound to one actor's own account of a pair (name + currency)"
+  },
+  {
+   "name": "account_actor/triggers/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor that owns the account",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "triggers",
+     "required": false,
+     "schema": {
+      "description": "Trigger actor ids (amount or count triggers of the workspace's AccountTriggers system template) bound to the account after the call; empty unbinds every account-level trigger",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Replaces the set of triggers bound to one actor's own account of a pair (name + currency)"
+  },
+  {
+   "name": "account_actor/tags/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists the tag folders an actor's accounts are filed under, plus the untagged bucket"
+  },
+  {
+   "name": "account_actor/tags/count",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Counts the tag folders an actor's accounts are filed under"
+  },
+  {
+   "name": "actor/field/triggers/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor whose data field is watched",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "dataField",
+     "required": true,
+     "schema": {
+      "description": "Data field key (actor data key)",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Lists the data triggers bound to one data field of an actor"
+  },
+  {
+   "name": "actor/field/triggers/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor whose data field is watched",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "dataField",
+     "required": true,
+     "schema": {
+      "description": "Data field key (actor data key)",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "triggers",
+     "required": false,
+     "schema": {
+      "description": "Trigger actor ids (data triggers of the workspace's AccountTriggers system template) bound to the field after the call; empty unbinds every trigger of the field",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Replaces the set of data triggers bound to one data field of an actor"
   }
  ]
 }

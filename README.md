@@ -161,8 +161,13 @@ scenarios use (see "AI Console profile").
 | `transaction_create` [createTransaction, finalizeTransaction] · `transaction_by_actor_ref_create` | `transaction/create` (type, parentId) · `transaction/by-actor_ref/create` | ✓ | | |
 | `transaction_get` · `transaction_by_ref_get` [getTransactionByRef] · `transactions_list` [getTransactions] · `account_transactions_list` [getAccountTransactions] · `transactions_filter` / `_count` · `transaction_children_list` | `transaction/get` · `…/by-ref/get` · `…/list` · `…/account/list` · `…/filter` / `count` · `…/children/list` | ✓ | | |
 | `transfer_create` [createTransfer, createTransferTwoStep] · `transfer_get` [getTransfer] · `transfer_by_ref_get` [getTransferByRef] · `transfers_filter` [filterTransfers] / `_count` | `transfer/create` · `…/get` · `…/by-ref/get` · `…/filter` / `count` | ✓ | | |
+| `account_by_id_get` [getAccount] · `account_amount_set` [setAccountAmount] | `account_actor/by-id/get` · `account_actor/amount/update` | ✓ | | |
+| `account_formula_get` [getAccountFormula] · `account_formula_preview` · `account_formula_set` [setAccountFormula] | `account_actor/formula/get` · `…/preview` · `…/update` | ✓ | | |
+| `atom_transaction_create` [atomCreateTransaction] | `transaction/atom/create` | ✓ | | |
+| `account_tags_list` · `account_tag_add` · `account_tags_set` · `account_actor_tags_list` / `_count` · `account_triggers_list` / `_set` · `account_actor_triggers_list` / `_set` [saveAccountActors] | `account/tags/list` · `…/create` · `…/update` · `account_actor/tags/list` / `count` · `account/triggers/*` · `account_actor/triggers/*` (every `_set` replaces the set) | ✓ | | |
+| `actor_field_triggers_list` / `_set` [getDataFieldActorsByActor, saveDataFieldActorsByActor] | `actor/field/triggers/list` / `update` | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at 2d7dc016 or later (`cdu/catalog/get` !463,
+These tools need sim-api `feature/simulator-ai` at cda5b60e or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
 with reason `methodNotFound`.
 
@@ -173,10 +178,8 @@ retried for about 3 seconds and then reports "no such file, or its antivirus sca
 `simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks` and `simulator-ai-finance` compose these tools.
 
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
-too large for this slice; getAccount by id, getChildAccounts and counter-type accounts (counterType,
-treeCalculation), which need new or extended sim-api methods; setAccountAmount, set/getAccountFormula,
-atomCreateTransaction, account tags and triggers (saveAccountActors) and data-field triggers by actor, whose
-sim-api methods are internal. Out of scope by the owner's decision: pinned reactions, uploadBase64 and data-field actors
+too large for this slice; getChildAccounts, since account trees were removed from the platform (walk the
+children with `graph_list` and read their `accounts_list`). Out of scope by the owner's decision: pinned reactions, uploadBase64 and data-field actors
 by form.
 
 ## AI Console profile
@@ -186,7 +189,7 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 `actor_by_ref_get`, `form_get`, `forms_list`, `graph_get`, the flowchart tools, the Smart Form tools below and,
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
 `access_rules_save`, `attachment_upload` and `attachment_read`: 32 in all. `console-full`
-adds every other actor, form, graph, access, reaction, user, attachment and finance tool (122 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+adds every other actor, form, graph, access, reaction, user, attachment and finance tool (139 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of

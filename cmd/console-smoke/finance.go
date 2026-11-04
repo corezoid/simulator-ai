@@ -101,6 +101,9 @@ func finance(c *client, stamp string) error {
 	if err := unsharedPair(c, stamp); err != nil {
 		return err
 	}
+	if err := financeExtra(c, stamp, pair.NameID, pair.CurrencyID, actors, rows); err != nil {
+		return err
+	}
 	fmt.Println("OK finance pair", pair.NameID, pair.CurrencyID, "actors", actors[0], actors[1])
 	return nil
 }
