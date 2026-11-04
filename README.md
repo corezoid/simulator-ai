@@ -140,6 +140,10 @@ preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`
 | `graph_get` [getActorLinks, getLinkedActors] | `graph/get` | ✓ | | ✓ |
 | `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
 
+These tools need sim-api `feature/simulator-ai` at 908569b8 or later (`cdu/catalog/get` !463,
+`actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
+with reason `methodNotFound`.
+
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
 too large for this slice. Every other actor, form and graph tool is above.
 

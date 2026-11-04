@@ -274,7 +274,7 @@ func TestConsoleBatches(t *testing.T) {
 
 func TestSmartFormComponents(t *testing.T) {
 	send, calls := consoleServer(t, map[string]string{"cdu/catalog/get": `"result":{"schemaVersion":"2.0","list":[{"type":"TextInput","kind":"primitive","category":"Input","label":"Text Input"}]}`})
-	reply := send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":{"brief":true}}`)
+	reply := send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":{}}`)
 	if strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "TextInput") {
 		t.Fatal(reply)
 	}
@@ -283,8 +283,8 @@ func TestSmartFormComponents(t *testing.T) {
 		t.Fatal("cdu/catalog/get request:", last)
 	}
 	send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":{"types":["DatePicker","Button"]}}`)
-	if types, _ := json.Marshal((*calls)[len(*calls)-1].Params["types"]); string(types) != `["DatePicker","Button"]` {
-		t.Fatal("types:", string(types))
+	if p := (*calls)[len(*calls)-1].Params; p["brief"] != nil || fmt.Sprint(p["types"]) != "[DatePicker Button]" {
+		t.Fatal("a types request must not be brief:", p)
 	}
 	if r := send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":{"kind":"widget"}}`); !strings.Contains(r, `"isError":true`) && !strings.Contains(r, `"error"`) {
 		t.Fatal("an unknown kind reached the API:", r)
