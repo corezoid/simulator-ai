@@ -60,7 +60,8 @@ another identity or guess the data. In plain `console` tell the user whom to ask
    already it is refused.
 2. Retry the blocked step only after the user says it was granted.
 
-Requests exist for actors only; for a template or an account, tell the user who to ask.
+Requests exist for actors of the host workspace only; for a template, an account or another
+workspace, tell the user whom to ask.
 
 ## Answering requests (you manage the actor; `console-full` only)
 

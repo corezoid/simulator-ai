@@ -267,3 +267,11 @@ func TestParitySearchAllDefaultsAndErrors(t *testing.T) {
 		t.Fatal("search_all must search text by default:", list)
 	}
 }
+
+// strip drops only its path: every other value, a large id or a decimal among them, stays as written.
+func TestStripKeepsOtherValues(t *testing.T) {
+	got, _ := strip(json.RawMessage(`{"invite":{"id":12345678901234567890,"hash":"secret","amount":1.50},"event":{"id":"e1"}}`), []string{"invite.hash", "missing.key"})
+	if string(got) != `{"event":{"id":"e1"},"invite":{"amount":1.50,"id":12345678901234567890}}` {
+		t.Fatal(string(got))
+	}
+}
