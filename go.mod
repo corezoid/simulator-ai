@@ -5,6 +5,7 @@ go 1.27.2
 require (
 	github.com/mark3labs/mcp-go v1.3.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

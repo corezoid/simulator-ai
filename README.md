@@ -166,6 +166,7 @@ scenarios use (see "AI Console profile").
 | `atom_transaction_create` [atomCreateTransaction] | `transaction/atom/create` | ✓ | | |
 | `account_tags_list` · `account_tag_add` · `account_tags_set` · `account_actor_tags_list` / `_count` · `account_triggers_list` / `_set` · `account_actor_triggers_list` / `_set` [saveAccountActors] | `account/tags/list` · `…/create` · `…/update` · `account_actor/tags/list` / `count` · `account/triggers/*` · `account_actor/triggers/*` (every `_set` replaces the set) | ✓ | | |
 | `actor_field_triggers_list` / `_set` [getDataFieldActorsByActor, saveDataFieldActorsByActor] | `actor/field/triggers/list` / `update` | ✓ | | |
+| `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
 These tools need sim-api `feature/simulator-ai` at cda5b60e or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
@@ -176,6 +177,12 @@ An AI Console run's token reaches `rest/upload` (and no other REST route) throug
 serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
 retried for about 3 seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
 `simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks` and `simulator-ai-finance` compose these tools.
+
+Simulation is the legacy engine moved as it was (`internal/simulation`, its conformance cases included): a model
+runs in model time in memory and nothing is written to Simulator. `simulation_snapshot_get` returns the layer
+YAML instead of writing `<layerId>.sim.yaml`, and `simulation_check` / `simulation_run` take it back as `graph`
+(there are no file paths); a formula account keeps its formula next to its current value, which a run does not
+recompute. The skill `simulator-ai-simulate` (with the model format in its `references/`) composes them.
 
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
 too large for this slice; getChildAccounts, since account trees were removed from the platform (walk the
@@ -189,7 +196,7 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 `actor_by_ref_get`, `form_get`, `forms_list`, `graph_get`, the flowchart tools, the Smart Form tools below and,
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
 `access_rules_save`, `attachment_upload` and `attachment_read`: 32 in all. `console-full`
-adds every other actor, form, graph, access, reaction, user, attachment and finance tool (139 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+adds every other actor, form, graph, access, reaction, user, attachment, finance and simulation tool (142 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -260,7 +267,9 @@ user by default (`SMOKE_KIND=session` for a Bearer session, `SMOKE_KIND=apikey` 
 workspace roles, `SMOKE_TTL`, `ROTATE=1`) and writes `~/.config/simulator-ai/smoke.env` (`SIMULATOR_AI_ORIGIN`, `SIMULATOR_AI_WORKSPACE`,
 `SIMULATOR_AI_API_KEY` or `SIMULATOR_AI_AUTHORIZATION`, mode 0600). It then runs `cmd/console-smoke` over stdio with only that file's credential (five-minute bound): a layer with Start / Process / End blocks, two labelled edges and their
 placements read back with `layer_get`, then a Smart Form with a field and a submit button, released and
-read back as `ready`. Each run creates new objects in that workspace; nothing secret is printed.
+read back as `ready`. With `-profile console-full` it then runs `parity people finance simulation`; `simulation` puts a
+shop with a balance of 100 and a supplier on a new layer, checks a payment model against `simulation_snapshot_get`
+and runs it live in two scenarios. Each run creates new objects in that workspace; nothing secret is printed.
 
 The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:
 

@@ -67,6 +67,7 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addParity(s, c, attachmentTools)
 		addConsoleAccess(s, c)
 		addConsoleFiles(s, c)
+		addSimulation(s, c)
 		if c.ConsoleCore() {
 			keepConsoleCore(s)
 		}
