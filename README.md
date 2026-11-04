@@ -114,6 +114,7 @@ preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`
 | `actor_get` [getActor] | `actor/get` (fields, with) | ✓ | ✓ | ✓ |
 | `actor_by_ref_get` [getActorByRef] · `actor_system_get` [getSystemActor] | `actor/by-ref/get` · `actor/by-system_obj/get` | ✓ | ✓ | ✓ |
 | `actors_search` [searchActors] · `actors_filter` / `actors_filter_count` [filterActors] | `actor/search/list` · `actor/filter/list` / `count` | ✓ | ✓ | ✓ |
+| `search_all` [searchAll] (users and/or actors, each its own page) | one non-atomic `batch` of `user/list` + `actor/search/list` | ✓ | ✓ | ✓ |
 | `actor_create` / `actors_create` [createActor] · `actor_update` [updateActor] | `actor/create` (batch) · `actor/update` | ✓ | | |
 | `actor_status_update` [setActorStatus] · `actor_delete` [deleteActor] | `actor/status/update` · `actor/delete` | ✓ | | |
 | `form_get` [getForm] (body, editToken with `editor`) | `form/get` | ✓ | ✓ | ✓ |
@@ -139,7 +140,7 @@ preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`
 | `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
 
 Not covered yet, and why:
-- No public method yet: getCorezoidProcesses and searchAll (sim-api adds them in separate MRs).
+- No public method yet: getCorezoidProcesses (sim-api adds `actor/corezoid/process/list` in a separate MR).
   `forms_tree_get`, `form_linked_get` and `edge_exist` use methods from sim-api MR !461/!462
   (`form/tree/get`, `edge/by-node/get`), pinned from those branches until they reach the stand.
 - pullGraphFile / pushGraphFile: a local file ↔ layer sync engine on public methods, too large for this slice.

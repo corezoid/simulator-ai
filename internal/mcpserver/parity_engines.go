@@ -62,6 +62,23 @@ func batchTool[P any](s *server.MCPServer, name, description, schema string, run
 	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(batchOutput)), name, description, schema, true, run)
 }
 
+const searchOutput = `{"type":"object","properties":{"users":{"type":"object"},"actors":{"type":"object"},"errors":{"type":"object","additionalProperties":{"type":"string"}}}}`
+
+// addActorEngines registers search_all (legacy searchAll) where the actor reads are.
+func addActorEngines(s *server.MCPServer, c *publicapi.Client) {
+	if !c.ParityAllowed("actor/search/list") {
+		return
+	}
+	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(searchOutput)), "search_all", "Search the workspace for users and/or actors in one call (legacy searchAll): filters users, actors, fullTextActor (actors in text mode). Each part is its own page (limit/offset), with no shared ranking: users from user/list, actors from actor/search/list (fields projects them, default id,title,formId; searchType text or semantic; formId narrows to one template). A failed part is in errors and the other still answers.",
+		`{"type":"object","properties":{"query":{"type":"string","minLength":2,"maxLength":1000},"filters":{"type":"array","minItems":1,"maxItems":3,"uniqueItems":true,"items":{"type":"string","enum":["users","actors","fullTextActor"]}},"searchType":{"type":"string","enum":["text","semantic"]},"formId":{"type":"integer","minimum":1},"fields":{"type":"array","items":{"type":"string","minLength":1}},"limit":{"type":"integer","minimum":1,"maximum":100},"offset":{"type":"integer","minimum":0}},"required":["query","filters"],"additionalProperties":false}`, false,
+		func(ctx context.Context, in publicapi.SearchAllInput) (publicapi.SearchAll, error) {
+			if in.Fields == nil {
+				in.Fields = []string{"id", "title", "formId"}
+			}
+			return c.SearchAll(ctx, in)
+		})
+}
+
 // addFormEngines registers form_linked_get (legacy getLinkedForms) where the form reads are.
 func addFormEngines(s *server.MCPServer, c *publicapi.Client) {
 	if c.ParityAllowed("form/tree/get") {

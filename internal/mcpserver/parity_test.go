@@ -235,3 +235,26 @@ func TestParityLinkedForms(t *testing.T) {
 		t.Fatal("tree:", tree)
 	}
 }
+
+func TestParitySearchAll(t *testing.T) {
+	send, calls := parityServer(t, "read")
+	reply := send(`"method":"tools/call","params":{"name":"search_all","arguments":{"query":"acme","filters":["users","fullTextActor"],"limit":5}}`)
+	if strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "users") || !strings.Contains(reply, "actors") {
+		t.Fatal(reply)
+	}
+	last := (*calls)[len(*calls)-1]
+	list := string(last.Params["list"])
+	if last.Method != "batch" || string(last.Params["isAtomic"]) == "true" || !strings.Contains(list, `"method":"user/list","params":{"accId":"ws","query":"acme","limit":5}`) ||
+		!strings.Contains(list, `"method":"actor/search/list","params":{"accId":"ws","query":"acme","searchType":"text","fields":["id","title","formId"],"limit":5}`) {
+		t.Fatal("search batch:", list)
+	}
+	*calls = nil
+	for _, args := range []string{`{"query":"a","filters":["users"]}`, `{"query":"acme","filters":[]}`, `{"query":"acme","filters":["forms"]}`} {
+		if r := send(`"method":"tools/call","params":{"name":"search_all","arguments":` + args + `}}`); !strings.Contains(r, `"isError":true`) && !strings.Contains(r, `"error"`) {
+			t.Error("accepted", args)
+		}
+	}
+	if len(*calls) != 0 {
+		t.Fatal("invalid search reached the API")
+	}
+}

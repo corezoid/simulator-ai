@@ -77,6 +77,7 @@ func parity(c *client, stamp string) error {
 		{"actors_search", map[string]any{"query": "Smoke actor", "formId": form.ID, "limit": 5}},
 		{"actors_filter", map[string]any{"formId": form.ID, "limit": 5}},
 		{"actors_filter_count", map[string]any{"formId": form.ID}},
+		{"search_all", map[string]any{"query": "Smoke actor", "filters": []string{"users", "actors"}, "limit": 3}},
 	} {
 		if err := c.tool(step.tool, step.args, &ignored); err != nil {
 			return err
