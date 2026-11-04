@@ -56,8 +56,17 @@ func (c *Client) GetTask(ctx context.Context, in TaskGetInput) (json.RawMessage,
 		return raw, nil
 	}
 	doc := rawObject(raw)
-	setJSON(doc, "downloadUrl", strings.TrimRight(c.config.Origin, "/")+"/api/1.0/download/"+url.PathEscape(key))
+	setJSON(doc, "downloadUrl", strings.TrimRight(c.config.Origin, "/")+"/api/1.0/download/"+downloadPath(key))
 	return json.Marshal(doc)
+}
+
+// downloadPath escapes each segment of a storage key, keeping its slashes (legacy encodeDownloadPath).
+func downloadPath(key string) string {
+	segments := strings.Split(key, "/")
+	for i, s := range segments {
+		segments[i] = url.PathEscape(s)
+	}
+	return strings.Join(segments, "/")
 }
 
 // GraphFileInput is legacy uploadGraphFile: a .graph archive's bytes (base64).
