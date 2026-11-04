@@ -107,10 +107,11 @@ func (f *pageFacts) collect(v any, w wiring, inConsumer bool) {
 			f.submit(t, w)
 		}
 		kind, _ := t["type"].(string) // a props schema may hold "type": [...]
-		inConsumer = inConsumer || consumers[kind]
+		consumer := consumers[kind]
 		for k, x := range t {
-			// A consumer's own follow-up chains (onError, a copy's notify) do not send what they read.
-			f.collect(x, w, inConsumer && !followUps[k])
+			// A consumer's own follow-up chains (onError, a copy's notify) do not send what they
+			// read; deeper keys of that name are its payload.
+			f.collect(x, w, consumer && !followUps[k] || !consumer && inConsumer)
 		}
 	}
 }
@@ -181,5 +182,5 @@ func positive(v any) bool {
 		return i >= 1
 	}
 	f, err := n.Float64() // 5.0 or 5e0 is a whole number too
-	return ok && err == nil && f >= 1 && f <= math.MaxInt64 && f == math.Trunc(f)
+	return ok && err == nil && f >= 1 && f < math.MaxInt64 && f == math.Trunc(f)
 }
