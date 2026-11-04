@@ -67,7 +67,10 @@ func wireSubmits(source, workspace, appID string) (string, error) {
 type wiring struct{ workspace, appID string }
 
 // consumers are the client actions that send or pass on what they read.
-var consumers = map[any]bool{"simapi.call": true, "widget.call": true, "bus.publish": true, "navigate.local": true, "navigate.route": true, "copy": true}
+var consumers = map[string]bool{"simapi.call": true, "widget.call": true, "bus.publish": true, "navigate.local": true, "navigate.route": true, "copy": true}
+
+// followUps are the keys of a consumer action that hold further actions or a message, not its payload.
+var followUps = map[string]bool{"onError": true, "onSuccess": true, "then": true, "else": true, "notify": true}
 
 // collect walks the page; inConsumer marks the subtree of a consumer action.
 func (f *pageFacts) collect(v any, w wiring, inConsumer bool) {
@@ -103,9 +106,11 @@ func (f *pageFacts) collect(v any, w wiring, inConsumer bool) {
 		case "form.submit":
 			f.submit(t, w)
 		}
-		inConsumer = inConsumer || consumers[t["type"]]
-		for _, x := range t {
-			f.collect(x, w, inConsumer)
+		kind, _ := t["type"].(string) // a props schema may hold "type": [...]
+		inConsumer = inConsumer || consumers[kind]
+		for k, x := range t {
+			// A consumer's own follow-up chains (onError, a copy's notify) do not send what they read.
+			f.collect(x, w, inConsumer && !followUps[k])
 		}
 	}
 }
@@ -176,5 +181,5 @@ func positive(v any) bool {
 		return i >= 1
 	}
 	f, err := n.Float64() // 5.0 or 5e0 is a whole number too
-	return ok && err == nil && f >= 1 && f == math.Trunc(f)
+	return ok && err == nil && f >= 1 && f <= math.MaxInt64 && f == math.Trunc(f)
 }

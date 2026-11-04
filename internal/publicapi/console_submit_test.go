@@ -123,6 +123,9 @@ func TestWireSubmits(t *testing.T) {
 		"a Form only validated":            {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.validate","form":"request"},{"type":"if","cond":"vm.valid.leave = true","then":[{"type":"notify","title":"ok"}]}]}}]}}`, "no action sends vm.leave"},
 		"a Form read by its id":            {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"simapi.call","method":"actor/create","params":{"data":"{{ vm.request }}"}}]}}]}}`, "no action sends vm.leave"},
 		"a Form only notified":             {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"if","cond":"vm.leave.days > 3","then":[{"type":"notify","title":"{{ vm.leave.days }} days"}]}]}}]}}`, "no action sends vm.leave"},
+		"a Form read in onError only":      {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"simapi.call","method":"actor/list","onError":[{"type":"notify","title":"{{ vm.leave.x }}"}]}]}}]}}`, "no action sends vm.leave"},
+		"a Form in a copy notify":          {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"copy","value":"{{ vm.other }}","notify":{"level":"info","title":"{{ vm.leave.x }}"}}]}}]}}`, "no action sends vm.leave"},
+		"an id out of int64 range":         {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":1e19}}]}}]}}`, "needs simapiExtraParams.formId"},
 		"filter of a renamed Form":         {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "reads vm.request, not vm.leave"},
 	} {
 		if _, err := wireSubmits(tc.source, "ws", ""); err == nil || !strings.Contains(err.Error(), tc.err) || !strings.Contains(err.Error(), "smart_form_data_form_create") {
@@ -153,6 +156,12 @@ func TestWireSubmits(t *testing.T) {
 	big := strings.Replace(good, `"formId":5`, `"formId":9007199254740993`, 1)
 	if wired, err := wireSubmits(big, "ws", ""); err != nil || !strings.Contains(wired, `"formId": 9007199254740993`) {
 		t.Fatal("a large template id is rounded:", wired, err)
+	}
+	// A props schema or a mistaken node type holding an array or object is data, not a crash.
+	for _, odd := range []string{`{"schemaVersion":"2.0","id":"index","tree":{"id":"r","type":"Stack","props":{"schema":{"type":["string","null"]}}}}`, `{"schemaVersion":"2.0","id":"index","tree":{"id":"r","type":{"x":1}}}`} {
+		if out, err := wireSubmits(odd, "ws", ""); err != nil || out != odd {
+			t.Errorf("%s: %v", odd, err)
+		}
 	}
 	for _, plain := range []string{`{"startPage":"index"}`, "a { color: red }", `{"schemaVersion":"2.0","id":"x","tree":{"id":"r","type":"Stack","children":[{"id":"l","type":"Label"}]}}`, `{"schemaVersion":"2.0","id":"x","tree":{}} trailing`} {
 		if out, err := wireSubmits(plain, "ws", ""); err != nil || out != plain {
