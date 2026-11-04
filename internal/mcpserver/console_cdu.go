@@ -42,7 +42,7 @@ func addSmartFormComponents(s *server.MCPServer) {
 	for _, c := range catalog.Components {
 		byType[c.Type] = c
 	}
-	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(componentsOutput)), "smart_form_components", "The CDU component types a Smart Form page config may use (schemaVersion 2.0). Without types: every type with its category and label. With types: those types with their props (type, enum, description), events and slots. Use ONLY these types and props: sim-api refuses an unknown type or prop when the page is saved. A field caption is TextInput label; DatePicker and Select have no label prop, so put a Label before them.",
+	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(componentsOutput)), "smart_form_components", "The CDU component types a Smart Form page config may use (schemaVersion 2.0). Without types: every type with its category and label. With types: those types with their props (type, enum, description), events and slots. Use ONLY these types and props: sim-api refuses an unknown type or prop when the page is saved. A field caption is the label prop of TextInput or Select; DatePicker has none, so put a Label before it.",
 		`{"type":"object","properties":{"types":{"type":"array","minItems":1,"maxItems":20,"items":{"type":"string","minLength":1,"maxLength":64}}},"additionalProperties":false}`, false,
 		func(_ context.Context, in componentsInput) (cduCatalog, error) {
 			out := cduCatalog{SchemaVersion: catalog.SchemaVersion, Components: []cduComponent{}}

@@ -7,8 +7,12 @@ import (
 	"strings"
 )
 
-// maxLayerPages bounds a whole-layer read: 20 pages of 1000 placements.
-const maxLayerPages = 20
+// A whole-layer read takes pages of 200 (flowchart placements carry a shape and an SVG, so a page of
+// 1000 could near the 4 MiB response cap) and at most 20000 placements.
+const (
+	layerPage     = 200
+	maxLayerPages = 100
+)
 
 // LayerPlacement is one node placement of a whole-layer read (legacy getAllLayerPlacements).
 type LayerPlacement struct {
@@ -29,14 +33,17 @@ func (c *Client) AllNodePlacements(ctx context.Context, layerID string) ([]Layer
 		return nil, errors.New("layerId required")
 	}
 	out := []LayerPlacement{}
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Limit: 1000, Fields: []string{"id", "title", "formId"}}
-	for page := 0; page < maxLayerPages; page++ {
+	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Limit: layerPage, Fields: []string{"id", "title", "formId"}}
+	for page := 0; page <= maxLayerPages; page++ {
 		nodes, err := call[layerPageRequest, layerNodesWire](ctx, c, "graph/layer/actors/list", q)
 		if err != nil {
 			return nil, err
 		}
 		if len(nodes.List) == 0 {
 			return out, nil
+		}
+		if page == maxLayerPages {
+			break
 		}
 		for _, n := range nodes.List {
 			if n.LaID < 1 || strings.TrimSpace(n.ID) == "" {
@@ -50,7 +57,7 @@ func (c *Client) AllNodePlacements(ctx context.Context, layerID string) ([]Layer
 		}
 		q.Offset += q.Limit
 	}
-	return nil, fmt.Errorf("layer has more than %d node placements", maxLayerPages*1000)
+	return nil, fmt.Errorf("layer has more than %d node placements", maxLayerPages*layerPage)
 }
 
 // AllEdgePlacements reads every edge placement of a layer, like AllNodePlacements.
@@ -62,14 +69,17 @@ func (c *Client) AllEdgePlacements(ctx context.Context, layerID string) ([]Layer
 		return nil, errors.New("layerId required")
 	}
 	out := []LayerViewEdge{}
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Limit: 1000}
-	for page := 0; page < maxLayerPages; page++ {
+	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Limit: layerPage}
+	for page := 0; page <= maxLayerPages; page++ {
 		edges, err := call[layerPageRequest, layerEdgesWire](ctx, c, "graph/layer/edges/list", q)
 		if err != nil {
 			return nil, err
 		}
 		if len(edges.List) == 0 {
 			return out, nil
+		}
+		if page == maxLayerPages {
+			break
 		}
 		for _, p := range edges.List {
 			if p.LaID < 1 || strings.TrimSpace(p.ID) == "" {
@@ -83,7 +93,7 @@ func (c *Client) AllEdgePlacements(ctx context.Context, layerID string) ([]Layer
 		}
 		q.Offset += q.Limit
 	}
-	return nil, fmt.Errorf("layer has more than %d edge placements", maxLayerPages*1000)
+	return nil, fmt.Errorf("layer has more than %d edge placements", maxLayerPages*layerPage)
 }
 
 // HierarchyEdgeType is the workspace's hierarchy edge type id: the relation graph walks follow when

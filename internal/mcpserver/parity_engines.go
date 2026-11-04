@@ -62,6 +62,15 @@ func batchTool[P any](s *server.MCPServer, name, description, schema string, run
 	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(batchOutput)), name, description, schema, true, run)
 }
 
+// addFormEngines registers form_linked_get (legacy getLinkedForms) where the form reads are.
+func addFormEngines(s *server.MCPServer, c *publicapi.Client) {
+	if c.ParityAllowed("form/tree/get") {
+		addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(linkedFormsOutput)), "form_linked_get", "List one account template's linked templates (legacy getLinkedForms): direction children gives every template nested under formId (from its tree, with parentId), parents its ancestor chain, nearest first. A template you cannot view is a stub {id, parentId, accessDenied}.",
+			`{"type":"object","properties":{"formId":{"type":"integer","minimum":1},"direction":{"type":"string","enum":["children","parents"]}},"required":["formId","direction"],"additionalProperties":false}`, false,
+			func(ctx context.Context, in linkedFormsInput) (linkedForms, error) { return linkedFormsOf(ctx, c, in) })
+	}
+}
+
 func addGraphEngines(s *server.MCPServer, c *publicapi.Client) {
 	if c.ParityAllowed("edge/by-node/delete") {
 		batchTool(s, "edges_by_nodes_delete", "Delete edges by their ends (legacy deleteEdgesByNodes): each link {source, target, edgeTypeId, bidirected?} removes the edge of that type between the two actors (both directions with bidirected) and its placements. Up to 100 links, not atomic: items reports each one. Destructive: confirm with the user first.",
@@ -83,7 +92,7 @@ func addGraphEngines(s *server.MCPServer, c *publicapi.Client) {
 			})
 	}
 	if c.ParityAllowed("graph/layer/actors/positions/update") {
-		consoleTool(s, "layer_compact", "Auto-layout a layer into a tight domain-clustered grid (legacy compactGraphLayout): actors with at least bucketThreshold (default 3) incoming edges become cluster headers, their linked actors a grid below them (nodesPerRow, nodeDX/nodeDY), clusters a super-grid (clustersPerRow), the rest a Misc zone. Moves placements with graph/layer/actors/positions/update; returns counters. Changes the layout: confirm with the user first.",
+		consoleTool(s, "layer_compact", "Auto-layout a layer into a tight domain-clustered grid (legacy compactGraphLayout): actors with at least bucketThreshold (default 3) incoming edges become cluster headers, their linked actors a grid below them (nodesPerRow, nodeDX/nodeDY), clusters a super-grid (clustersPerRow), the rest a Misc zone. Moves placements with graph/layer/actors/positions/update; returns counters. Positions are legacy 50-unit cells for plain actors: do not run it on a flowchart drawn with flowchart_layout (blocks would leave the grid and overlap). Changes the layout: confirm with the user first.",
 			`{"type":"object","properties":{`+layerArg+`,"bucketThreshold":{"type":"integer","minimum":1},"clustersPerRow":{"type":"integer","minimum":1,"maximum":50},"nodesPerRow":{"type":"integer","minimum":1,"maximum":50},"nodeDX":{"type":"number","minimum":50,"maximum":2000},"nodeDY":{"type":"number","minimum":50,"maximum":2000}},"required":["layerId"],"additionalProperties":false}`,
 			true, func(ctx context.Context, in compactInput) (graphplan.CompactStats, error) { return compact(ctx, c, in) })
 	}
@@ -137,9 +146,15 @@ func layerGraph(ctx context.Context, c *publicapi.Client, layerID string) ([]gra
 		}
 		nodes = append(nodes, n)
 	}
+	// Legacy edge placements may lack endpoint laIds: then the ends are the actors' last placements,
+	// as legacy measured them.
+	last := map[string]int64{}
+	for _, n := range nodes {
+		last[n.ActorID] = n.LaID
+	}
 	links := make([]graphplan.LayerLink, 0, len(edges))
 	for _, e := range edges {
-		l := graphplan.LayerLink{EdgeID: e.EdgeID, Source: e.Source, Target: e.Target}
+		l := graphplan.LayerLink{EdgeID: e.EdgeID, Source: e.Source, Target: e.Target, LaIDSource: last[e.Source], LaIDTarget: last[e.Target]}
 		if e.LaIDSource != nil {
 			l.LaIDSource = *e.LaIDSource
 		}
@@ -200,7 +215,10 @@ func prune(ctx context.Context, c *publicapi.Client, in pruneInput) (graphplan.P
 		}
 		results, err := c.PassEach(ctx, "edge/delete", items)
 		if err != nil {
-			return graphplan.PruneStats{}, err
+			// Earlier chunks are already deleted: report them, and this chunk as not deleted.
+			stats.Deleted -= len(ids) - start
+			stats.Errors = append(stats.Errors, fmt.Sprintf("%d edges not deleted: %v", len(ids)-start, err))
+			return stats, nil
 		}
 		for _, r := range results {
 			if r.Error != "" {
@@ -210,4 +228,75 @@ func prune(ctx context.Context, c *publicapi.Client, in pruneInput) (graphplan.P
 		}
 	}
 	return stats, nil
+}
+
+type linkedFormsInput struct {
+	FormID    int64  `json:"formId"`
+	Direction string `json:"direction"`
+}
+
+// linkedForm is one template row of form/tree/get or of form/get parents.
+type linkedForm struct {
+	ID       int64  `json:"id"`
+	ParentID *int64 `json:"parentId,omitempty"`
+	Row      json.RawMessage
+}
+
+func (f *linkedForm) UnmarshalJSON(b []byte) error {
+	var head struct {
+		ID       int64  `json:"id"`
+		ParentID *int64 `json:"parentId"`
+	}
+	if err := json.Unmarshal(b, &head); err != nil {
+		return err
+	}
+	f.ID, f.ParentID, f.Row = head.ID, head.ParentID, append(json.RawMessage(nil), b...)
+	return nil
+}
+
+type linkedForms struct {
+	List []json.RawMessage `json:"list"`
+}
+
+const linkedFormsOutput = `{"type":"object","properties":{"list":{"type":"array","items":{"type":"object"}}},"required":["list"]}`
+
+func linkedFormsOf(ctx context.Context, c *publicapi.Client, in linkedFormsInput) (linkedForms, error) {
+	id, _ := json.Marshal(in.FormID)
+	out := linkedForms{List: []json.RawMessage{}}
+	if in.Direction == "parents" {
+		raw, err := c.Pass(ctx, "form/get", map[string]json.RawMessage{"formId": id, "with": json.RawMessage(`["parents"]`)})
+		if err != nil {
+			return linkedForms{}, err
+		}
+		var form struct {
+			Parents []json.RawMessage `json:"parents"`
+		}
+		if err = json.Unmarshal(raw, &form); err != nil {
+			return linkedForms{}, fmt.Errorf("form/get parents: %w", err)
+		}
+		out.List = append(out.List, form.Parents...)
+		return out, nil
+	}
+	raw, err := c.Pass(ctx, "form/tree/get", map[string]json.RawMessage{"formId": id})
+	if err != nil {
+		return linkedForms{}, err
+	}
+	var tree struct {
+		List []linkedForm `json:"list"`
+	}
+	if err = json.Unmarshal(raw, &tree); err != nil {
+		return linkedForms{}, fmt.Errorf("form/tree/get: %w", err)
+	}
+	// Every descendant of formId, in the order the tree lists them.
+	under := map[int64]bool{in.FormID: true}
+	for changed := true; changed; {
+		changed = false
+		for _, f := range tree.List {
+			if f.ParentID != nil && under[*f.ParentID] && !under[f.ID] {
+				under[f.ID], changed = true, true
+				out.List = append(out.List, f.Row)
+			}
+		}
+	}
+	return out, nil
 }

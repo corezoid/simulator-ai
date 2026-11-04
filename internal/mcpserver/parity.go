@@ -39,7 +39,8 @@ func addParity(s *server.MCPServer, c *publicapi.Client, tools []parityTool) {
 			panic(err) // pinned build artifact, never remote input
 		}
 		m := publicapi.ParityMethods[t.Method]
-		destructive := strings.HasSuffix(t.Method, "/delete") || t.Method == "graph/layer/clean"
+		// manage takes delete items and move takes placements off the source layer.
+		destructive := strings.HasSuffix(t.Method, "/delete") || t.Method == "graph/layer/clean" || t.Method == "graph/layer/actors/manage" || t.Method == "graph/layer/actors/move"
 		tool := mcp.NewTool(t.Name, mcp.WithDescription(t.Description+" Public "+t.Method+"."), mcp.WithRawInputSchema(schema),
 			mcp.WithReadOnlyHintAnnotation(!m.Write), mcp.WithDestructiveHintAnnotation(destructive), mcp.WithIdempotentHintAnnotation(!m.Write))
 		s.AddTool(tool, parityHandler(c, t))

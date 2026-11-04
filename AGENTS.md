@@ -10,7 +10,7 @@ legacy tool, contracts/parity-openrpc.json). graph-read adds the read-only graph
 every parity tool, writes included. Parity tools carry no receipts or preflight.
 The Console-only opt-in delegated-read profile exposes actor_get/form_get with an
 explicit scoped token and no API-key fallback; it does not launch or provision a runtime.
-The opt-in graph-read profile adds three read-only native graph metadata tools and exact placement readback; it does not
+The opt-in graph-read profile adds read-only native graph metadata tools, exact placement readback and the graph parity reads; it does not
 expose graph writes or accept delegated tokens. The separate graph-create profile adds
 six create/recovery tools and a read-only deterministic native planner, with mandatory write keys and per-write public contract preflight;
 no graph update/delete or hidden runtime is permitted.

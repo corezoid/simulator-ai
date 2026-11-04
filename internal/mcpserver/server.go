@@ -53,12 +53,14 @@ func New(c *publicapi.Client) *server.MCPServer {
 	if c.ConsoleEnabled() {
 		addConsole(s, c)
 		addParity(s, c, formTools)
+		addFormEngines(s, c)
 		addParity(s, c, graphTools)
 		addGraphEngines(s, c)
 		return s
 	}
 	if c.ParityAllowed("form/get") {
 		addParity(s, c, formTools)
+		addFormEngines(s, c)
 	} else {
 		s.AddTool(tool[publicapi.Form]("form_get", "Read account template metadata in the configured workspace. Returns id/title/description/type/parentId only, NOT the form field schema or editor token. Public form/get; forms.readonly scope and template View required.", `{"type":"object","properties":{"formId":{"type":"integer","minimum":1}},"required":["formId"],"additionalProperties":false}`), func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			a, e := decode[FormArgs](r)

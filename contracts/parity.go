@@ -16,10 +16,12 @@ var Parity []byte
 
 // patchTypes corrects params the sim-api OpenRPC generator types as "object" because the Go field is
 // a json.RawMessage patch (rpc_form/form_update.go: omitted keeps, null clears). Their real values:
+// tags is a lossless legacy value: stored template bags hold an array (legacy createForm sends one).
 var patchTypes = map[string]map[string][]string{
 	"form/update": {"ref": {"string", "null"}, "description": {"string", "null"}, "color": {"string", "null"},
 		"parentId": {"integer", "null"}, "pictureObject": {"object", "null"}, "verificationRules": {"object", "null"},
-		"actorVerification": {"object", "null"}},
+		"actorVerification": {"object", "null"}, "tags": {"array", "object", "null"}},
+	"form/create": {"tags": {"array", "object"}},
 }
 
 var parityOnce sync.Once

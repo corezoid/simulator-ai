@@ -10,6 +10,9 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// destructiveTools delete what they touch; clients may ask for confirmation on this hint.
+var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true}
+
 // maxConsoleInput keeps one tool call, and so its request, under sim-api's 1 MiB JSON-RPC body
 // limit; Smart Form file batches are the largest inputs.
 const maxConsoleInput = 960 << 10
@@ -79,7 +82,7 @@ func consoleTool[P, R any](s *server.MCPServer, name, description, schema string
 
 func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, description, schema string, write bool, run func(context.Context, P) (R, error)) {
 	t := mcp.NewTool(name, mcp.WithDescription(description), mcp.WithRawInputSchema(json.RawMessage(schema)), output,
-		mcp.WithReadOnlyHintAnnotation(!write), mcp.WithDestructiveHintAnnotation(false), mcp.WithIdempotentHintAnnotation(!write))
+		mcp.WithReadOnlyHintAnnotation(!write), mcp.WithDestructiveHintAnnotation(destructiveTools[name]), mcp.WithIdempotentHintAnnotation(!write))
 	s.AddTool(t, func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		a, e := decodeLimit[P](r, maxConsoleInput)
 		if e != nil {

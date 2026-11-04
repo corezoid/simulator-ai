@@ -4,6 +4,7 @@ package mcpserver
 // deleteForm, setFormStatus, createFormAccount, getFormAccounts, removeFormAccount) on public methods.
 var formTools = []parityTool{
 	{Name: "form_get", Method: "form/get", Description: "Read an account template (form) with its full body: sections and every field (a field id is its key in actor data). with editor adds canModify and the editToken form_update needs; with parents adds the ancestor chain. Needs view access."},
+	{Name: "forms_tree_get", Method: "form/tree/get", Description: "Read the whole nesting tree of account templates that formId belongs to (root and every descendant), with parentId per node; a template you cannot view comes back as a stub {id, parentId, accessDenied}. This is getFormsTree; form_linked_get gives one template's children or parents."},
 	{Name: "forms_list", Method: "form/list", Description: "List account templates one page at a time (limit up to 100): custom by default, type system/connector/all to switch; query matches title, ref or description (a number also matches the id); filter by status, owners, dates; sort with order/dir. Rows have no body; read one with form_get. The total is forms_count."},
 	{Name: "forms_count", Method: "form/count", Description: "Count the templates forms_list would return for the same filters."},
 	{Name: "form_create", Method: "form/create", Description: "Create an account template: title, sections with fields, optional parentId (inheritance), ref, color, settings, tags. isTemplate false makes a private draft that lists do not return; keep its id."},

@@ -2665,6 +2665,14 @@
      }
     },
     {
+     "name": "isSystem",
+     "required": false,
+     "schema": {
+      "description": "true: only the platform's system edge types (hierarchy and the like); false: only the workspace's own; absent: both",
+      "type": "boolean"
+     }
+    },
+    {
      "name": "limit",
      "required": false,
      "schema": {
@@ -3821,6 +3829,80 @@
     }
    ],
    "summary": "Returns the graph (connected actors + edges) around an actor"
+  },
+  {
+   "name": "form/tree/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier; the tree returned is the one this template belongs to",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Retrieves the whole nesting tree of account templates (root and all descendants) that an account template belongs to"
+  },
+  {
+   "name": "edge/by-node/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "source",
+     "required": true,
+     "schema": {
+      "description": "Actor the edge starts from",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "target",
+     "required": true,
+     "schema": {
+      "description": "Actor the edge points to",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeTypeId",
+     "required": true,
+     "schema": {
+      "description": "Edge type identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "bidirected",
+     "required": false,
+     "schema": {
+      "description": "Also look for the edge of this type running from target back to source",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Finds the edge of a type between two actors, addressed by its endpoints instead of its id"
   }
  ]
 }

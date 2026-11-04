@@ -31,7 +31,8 @@ change desktop configuration, provision a runtime or enable Console routing.
 
 API scopes are `actors.readonly` / `forms.readonly`, plus existing workspace and object ACLs.
 The server binds one explicit origin/workspace/key per process. Tools cannot supply another
-workspace, arbitrary RPC, URL, credentials or `with` expansion. Read requests are never
+workspace, arbitrary RPC, URL or credentials; `fields`/`with` exist only on the parity tools whose public
+method documents them. Read requests are never
 coalesced with counts. No automatic retries, paid tests or remote MCP. Writes require the explicit `smart-forms`, `graph-create` or `console` profile.
 
 ## Local setup
@@ -118,13 +119,14 @@ preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`
 | `form_get` [getForm] (body, editToken with `editor`) | `form/get` | ✓ | ✓ | ✓ |
 | `forms_list` / `forms_count` [getForms, searchForms] | `form/list` / `form/count` | ✓ | ✓ | ✓ |
 | `form_create` · `form_update` · `form_status_update` · `form_delete` [createForm, updateForm, setFormStatus, deleteForm] | `form/create` · `form/update` · `form/status/update` · `form/delete` | ✓ | | |
+| `forms_tree_get` [getFormsTree] · `form_linked_get` [getLinkedForms] | `form/tree/get` · its subtree, or `form/get` with `parents` | ✓ | ✓ | ✓ |
 | `form_accounts_list` [getFormAccounts] | `account_form/list` | ✓ | ✓ | ✓ |
 | `form_account_create` · `form_account_delete` [createFormAccount, removeFormAccount] | `account_form/create` · `account_form/delete` | ✓ | | |
 | `edge_create` / `edges_create` [createLink, massLink] | `edge/create` (batch) | ✓ | | |
-| `edge_get` [getEdge] | `edge/get` | ✓ | | ✓ |
+| `edge_get` [getEdge] · `edge_exist` [existLink] | `edge/get` · `edge/by-node/get` | ✓ | | ✓ |
 | `edge_update` · `edge_endpoints_update` · `edge_delete` [updateEdge, deleteEdge] | `edge/update` · `edge/endpoints/update` · `edge/delete` | ✓ | | |
 | `edges_by_nodes_delete` [deleteEdgesByNodes] | `batch` of `edge/by-node/delete` | ✓ | | |
-| `edge_types_list` [getEdgeTypes] | `edge_type/list` | ✓ | | `graph_edge_types_list` |
+| `edge_types_list` [getEdgeTypes] | `edge_type/list` (isSystem) | ✓ | | `graph_edge_types_list` |
 | `layer_placements_list` · `layer_edges_list` [getLayerActorsPaginated] | `graph/layer/actors/list` · `graph/layer/edges/list` | ✓ | | ✓ |
 | `layer_placements_all` [getAllLayerPlacements] | `graph/layer/actors/list`, every page | ✓ | | ✓ |
 | `layer_skeleton_get` [getLayerActors] | `graph/layer/skeleton/get` | ✓ | | ✓ |
@@ -132,13 +134,14 @@ preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`
 | `layer_positions_update` [updateLayerPositions] · `layer_actors_move` [moveActors] · `layer_clean` [cleanGraphLayer] | `…/positions/update` · `…/actors/move` · `graph/layer/clean` | ✓ | | |
 | `layer_element_exist` [existLayerElement] · `layer_actors_search` [searchLayerActors] | `graph/layer/element/exist` · `graph/layer/actors/search/list` | ✓ | | ✓ |
 | `layer_stats_get` [layerStats] | `graph/layer/stats/get` | ✓ | | `graph_layer_stats_get` |
-| `graph_list` [getRelatedActors, getLinkedActors] (hierarchy by default) | `graph/list` | ✓ | | ✓ |
-| `graph_get` [getActorLinks] | `graph/get` | ✓ | | ✓ |
+| `graph_list` [getRelatedActors] (hierarchy by default) | `graph/list` | ✓ | | ✓ |
+| `graph_get` [getActorLinks, getLinkedActors] | `graph/get` | ✓ | | ✓ |
 | `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
 
 Not covered yet, and why:
-- No public method: getCorezoidProcesses, searchAll, existLink (all ❌); getFormsTree (`form/tree/get`) and
-  getLinkedForms (`graph/forms/list`) are internal only (🔒). The gap list has been sent to the backend.
+- No public method yet: getCorezoidProcesses and searchAll (sim-api adds them in separate MRs).
+  `forms_tree_get`, `form_linked_get` and `edge_exist` use methods from sim-api MR !461/!462
+  (`form/tree/get`, `edge/by-node/get`), pinned from those branches until they reach the stand.
 - pullGraphFile / pushGraphFile: a local file ↔ layer sync engine on public methods, too large for this slice.
 
 ## AI Console profile
