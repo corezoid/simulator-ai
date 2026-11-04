@@ -149,6 +149,7 @@ type layerPageRequest struct {
 	Limit   int64    `json:"limit"`
 	Offset  int64    `json:"offset"`
 	Fields  []string `json:"fields,omitempty"`
+	With    []string `json:"with,omitempty"`
 }
 type layerNodeWire struct {
 	LaID          int64     `json:"laId"`

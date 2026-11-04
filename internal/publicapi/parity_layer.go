@@ -23,77 +23,79 @@ type LayerPlacement struct {
 	Position *Position `json:"position,omitempty"`
 }
 
-// AllNodePlacements reads every node placement of a layer. A page shorter than the limit is not the
-// last (sim-api drops deleted actors after paging), so it reads until an empty page.
+// AllNodePlacements reads every node placement of a layer.
 func (c *Client) AllNodePlacements(ctx context.Context, layerID string) ([]LayerPlacement, error) {
-	if !c.ParityAllowed("graph/layer/actors/list") {
-		return nil, errors.New("graph/layer/actors/list is not available in this profile")
+	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Fields: []string{"id", "title", "formId"}}
+	nodes, err := allLayerPages[layerNodeWire](ctx, c, "graph/layer/actors/list", "node", q)
+	if err != nil {
+		return nil, err
 	}
-	if !validID(layerID) {
-		return nil, errors.New("layerId required")
+	out := make([]LayerPlacement, 0, len(nodes))
+	for _, n := range nodes {
+		if n.LaID < 1 || strings.TrimSpace(n.ID) == "" {
+			return nil, errors.New("invalid node placement identity")
+		}
+		p := LayerPlacement{LaID: n.LaID, ActorID: n.ID, Position: n.Position}
+		if n.Actor != nil && !n.AccessDenied {
+			p.Title, p.FormID = n.Actor.Title, n.Actor.FormID
+		}
+		out = append(out, p)
 	}
-	out := []LayerPlacement{}
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Limit: layerPage, Fields: []string{"id", "title", "formId"}}
-	for page := 0; page <= maxLayerPages; page++ {
-		nodes, err := call[layerPageRequest, layerNodesWire](ctx, c, "graph/layer/actors/list", q)
-		if err != nil {
-			return nil, err
-		}
-		if len(nodes.List) == 0 {
-			return out, nil
-		}
-		if page == maxLayerPages {
-			break
-		}
-		for _, n := range nodes.List {
-			if n.LaID < 1 || strings.TrimSpace(n.ID) == "" {
-				return nil, errors.New("invalid node placement identity")
-			}
-			p := LayerPlacement{LaID: n.LaID, ActorID: n.ID, Position: n.Position}
-			if n.Actor != nil && !n.AccessDenied {
-				p.Title, p.FormID = n.Actor.Title, n.Actor.FormID
-			}
-			out = append(out, p)
-		}
-		q.Offset += q.Limit
-	}
-	return nil, fmt.Errorf("layer has more than %d node placements", maxLayerPages*layerPage)
+	return out, nil
 }
 
 // AllEdgePlacements reads every edge placement of a layer, like AllNodePlacements.
 func (c *Client) AllEdgePlacements(ctx context.Context, layerID string) ([]LayerViewEdge, error) {
-	if !c.ParityAllowed("graph/layer/edges/list") {
-		return nil, errors.New("graph/layer/edges/list is not available in this profile")
+	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID}
+	edges, err := allLayerPages[layerEdgeWire](ctx, c, "graph/layer/edges/list", "edge", q)
+	if err != nil {
+		return nil, err
 	}
-	if !validID(layerID) {
+	out := make([]LayerViewEdge, 0, len(edges))
+	for _, p := range edges {
+		if p.LaID < 1 || strings.TrimSpace(p.ID) == "" {
+			return nil, errors.New("invalid edge placement identity")
+		}
+		e := LayerViewEdge{LaID: p.LaID, EdgeID: p.ID, LaIDSource: p.LaIDSource, LaIDTarget: p.LaIDTarget}
+		if p.Edge != nil {
+			e.Source, e.Target, e.Name = p.Edge.Source, p.Edge.Target, p.Edge.Name
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+// allLayerPages reads every page of a layer's node or edge placements. A page shorter than the limit
+// is not the last (sim-api drops deleted actors after paging), so it reads until an empty page.
+func allLayerPages[T any](ctx context.Context, c *Client, method, kind string, q layerPageRequest) ([]T, error) {
+	if !c.ParityAllowed(method) {
+		return nil, fmt.Errorf("%s is not available in this profile", method)
+	}
+	if !validID(q.ActorID) {
 		return nil, errors.New("layerId required")
 	}
-	out := []LayerViewEdge{}
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Limit: layerPage}
+	out := []T{}
+	q.Limit = layerPage
 	for page := 0; page <= maxLayerPages; page++ {
-		edges, err := call[layerPageRequest, layerEdgesWire](ctx, c, "graph/layer/edges/list", q)
+		rows, err := call[layerPageRequest, listWire[T]](ctx, c, method, q)
 		if err != nil {
 			return nil, err
 		}
-		if len(edges.List) == 0 {
+		if len(rows.List) == 0 {
 			return out, nil
 		}
 		if page == maxLayerPages {
 			break
 		}
-		for _, p := range edges.List {
-			if p.LaID < 1 || strings.TrimSpace(p.ID) == "" {
-				return nil, errors.New("invalid edge placement identity")
-			}
-			e := LayerViewEdge{LaID: p.LaID, EdgeID: p.ID, LaIDSource: p.LaIDSource, LaIDTarget: p.LaIDTarget}
-			if p.Edge != nil {
-				e.Source, e.Target, e.Name = p.Edge.Source, p.Edge.Target, p.Edge.Name
-			}
-			out = append(out, e)
-		}
+		out = append(out, rows.List...)
 		q.Offset += q.Limit
 	}
-	return nil, fmt.Errorf("layer has more than %d edge placements", maxLayerPages*layerPage)
+	return nil, fmt.Errorf("layer has more than %d %s placements", maxLayerPages*layerPage, kind)
+}
+
+// listWire is a public method's {list: [...]} page.
+type listWire[T any] struct {
+	List []T `json:"list"`
 }
 
 // HierarchyEdgeType is the workspace's hierarchy edge type id: the relation graph walks follow when

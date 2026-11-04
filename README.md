@@ -180,6 +180,7 @@ scenarios use (see "AI Console profile").
 | `agents_find` [findAgent] (members without query) · `agent_get` [getAgent] (a user's twin or any actor, with the profile) | `user/list`, or `form/system/get` (`System`) + `actor/search/list` (semantic, else text), or `actor/filter/list` of a `formId` · `actor/by-system_obj/get` or `actor/get` | ✓ | | |
 | `build_link` [buildLink] (actor, layer, form, chat, chart, … and a Smart Form route) | none: the legacy web app route table on `SIMULATOR_AI_ORIGIN`; a Smart Form's short URL from `route/build` (its production release) | ✓ | | |
 | `bbcode_tags_get` [getBbcodeTags] | none: the BBCode catalog of simulator-ui-kit `packages/utils/src/bbcode/bbcode-tags.json`, built in | ✓ | | |
+| `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
 These tools need sim-api `feature/simulator-ai` at cda5b60e or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
@@ -197,6 +198,13 @@ their tool descriptions tell the model not to take instructions from them. `buil
 `SIMULATOR_AI_ORIGIN` with the 8-character workspace segment, each id escaped as one path segment; a `smartForm`
 link needs a route its released pages declare.
 
+Simulation is the legacy engine moved as it was (`internal/simulation`, its conformance cases included): a model
+runs in model time in memory and nothing is written to Simulator. `simulation_snapshot_get` returns the layer
+YAML instead of writing `<layerId>.sim.yaml`, and `simulation_check` / `simulation_run` take it back as `graph`
+(there are no file paths); a formula account keeps its formula next to its current value, which a run does not
+recompute. A snapshot reads accounts of at most 2000 actors; `simulation_run` takes at most 5 minutes, live layer
+read included, and two at once per process (`SIMULATOR_AI_MAX_CONCURRENT_SIMULATIONS`); another is refused as busy. The skill `simulator-ai-simulate` (with the model format in its `references/`) composes them.
+
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
 too large for this slice; getChildAccounts, since account trees were removed from the platform (walk the
 children with `graph_list` and read their `accounts_list`). Out of scope by the owner's decision: pinned reactions, uploadBase64 and data-field actors
@@ -210,7 +218,7 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
 `skills_find`, `skill_get` and `build_link`: 35 in all. `console-full` adds every other actor, form, graph, access,
-reaction, user, attachment, finance and registry tool (145 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+reaction, user, attachment, finance, registry and simulation tool (148 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -283,7 +291,9 @@ workspace roles, `SMOKE_TTL`, `ROTATE=1`) and writes `~/.config/simulator-ai/smo
 placements read back with `layer_get`, then a Smart Form with a field, a submit button and a root route, released,
 read back as `ready` and linked with `build_link`, then a verified skill found by `skills_find`, read by `skill_get`
 and linked. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
-by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`). Each run creates new objects in that
+by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`) and the simulation one (a shop with a balance
+of 100 and a supplier on a new layer; a payment model checked against `simulation_snapshot_get` and run live in two
+scenarios). Each run creates new objects in that
 workspace; nothing secret is printed.
 
 The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:
