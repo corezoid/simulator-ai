@@ -14,9 +14,10 @@ actors and reactions, and `fileName` (its storage key, not its title) reads it b
 - `content` is the file's bytes in standard base64, up to 700 KiB of file. Larger files are
   uploaded from the Simulator UI.
 - `fileName` becomes the title; `contentType` defaults from its extension.
-- `actorId` attaches it right away to an actor; for a reaction pass the reaction as `actorId`
-  and its actor as `rootActorId`.
-- The result is `{id, title, type, size, fileName}`.
+- `actorId` then attaches it to an actor (needs modify); for a reaction pass the reaction as
+  `actorId` and its actor as `rootActorId`. A refused attach is an error naming the uploaded
+  `id`: attach it later with `attachment_attach` rather than uploading again.
+- The result is `{id, title, type, size, fileName, attachedTo}`.
 
 The antivirus scans every file before it can be read. A refusal names its reason: a file over
 the stand's limit, or a stand that does not accept uploads from this run.

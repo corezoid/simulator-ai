@@ -69,17 +69,18 @@ func TestAccessRulesDispatchByObjectKind(t *testing.T) {
 func TestSaveAccessRulesMergeAndReplace(t *testing.T) {
 	c, calls := rpcBackend(t, func(method string) string {
 		if strings.HasSuffix(method, "/list") {
-			return `{"list":[{"userId":1},{"userId":7},{"userId":9}]}`
+			return `{"list":[{"userId":1,"userType":"user","privs":{"view":true}},{"userId":7,"userType":"user","privs":{"view":true}},{"userId":9,"userType":"group","privs":{"view":true,"execute":true}},` +
+				`{"userId":3,"userType":"user","privs":{"view":true,"modify":true}},{"userId":0,"userType":"system","privs":{"view":true}},{"userId":5,"userType":"anonymous","privs":{"view":true}}]}`
 		}
 		return `{"list":[]}`
 	})
 	view := json.RawMessage(`{"view":true}`)
-	in := AccessRulesSaveInput{AccessObject: AccessObject{ObjType: "actor", ObjID: "a-1"}, Rules: []AccessRule{{UserID: 7, Privs: view}}, Remove: []int64{8}, IsNotify: true}
+	in := AccessRulesSaveInput{AccessObject: AccessObject{ObjType: "actor", ObjID: "a-1"}, Rules: []AccessRule{{UserID: 7, Privs: json.RawMessage(`{"execute":true}`)}}, Remove: []int64{8}, IsNotify: true}
 	if _, err := c.SaveAccessRules(context.Background(), in); err != nil {
 		t.Fatal(err)
 	}
 	merged, _ := json.Marshal((*calls)[0])
-	if len(*calls) != 1 || !strings.Contains(string(merged), `"actions":[{"action":"create","privs":{"view":true},"userId":7},{"action":"delete","userId":8}]`) || !strings.Contains(string(merged), `"isNotify":true`) {
+	if len(*calls) != 1 || !strings.Contains(string(merged), `"actions":[{"action":"create","privs":{"execute":true,"view":true},"userId":7},{"action":"delete","userId":8}]`) || !strings.Contains(string(merged), `"isNotify":true`) || strings.Contains(string(merged), "isRecursive") {
 		t.Fatalf("merge sent %s", merged)
 	}
 	*calls = nil
@@ -88,7 +89,8 @@ func TestSaveAccessRulesMergeAndReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 	replaced, _ := json.Marshal((*calls)[1])
-	if len(*calls) != 2 || (*calls)[0].Method != "access_rule/actor/list" || !strings.Contains(string(replaced), `{"action":"delete","userId":8},{"action":"delete","userId":1},{"action":"delete","userId":9}]`) {
+	// 3 may modify (the caller may be one of those), 0 is the system owner, 5 a public-link guest: kept.
+	if len(*calls) != 2 || (*calls)[0].Method != "access_rule/actor/list" || !strings.Contains(string(replaced), `{"action":"delete","userId":8},{"action":"delete","userId":1},{"action":"delete","userId":9}],"actorId"`) || !strings.Contains(string(replaced), `"filterIncorrect":true`) {
 		t.Fatalf("replace sent %v %s", (*calls)[0].Method, replaced)
 	}
 	for name, bad := range map[string]AccessRulesSaveInput{
@@ -96,6 +98,7 @@ func TestSaveAccessRulesMergeAndReplace(t *testing.T) {
 		"a subject twice":  {AccessObject: in.AccessObject, Rules: []AccessRule{{UserID: 7, Privs: view}}, Remove: []int64{7}},
 		"no privs":         {AccessObject: in.AccessObject, Rules: []AccessRule{{UserID: 7}}},
 		"unknown mode":     {AccessObject: in.AccessObject, Remove: []int64{7}, Mode: "set"},
+		"privs not flags":  {AccessObject: in.AccessObject, Rules: []AccessRule{{UserID: 7, Privs: json.RawMessage(`{"view":"yes"}`)}}},
 	} {
 		if _, err := c.SaveAccessRules(context.Background(), bad); err == nil {
 			t.Errorf("%s accepted", name)
@@ -106,7 +109,23 @@ func TestSaveAccessRulesMergeAndReplace(t *testing.T) {
 func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 	var form map[string]string
 	var auth, fileType, fileName string
+	var attached map[string]any
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/2.0/rpc" {
+			var q struct {
+				ID     string         `json:"id"`
+				Method string         `json:"method"`
+				Params map[string]any `json:"params"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&q)
+			if q.Params["actorId"] == "read-only" {
+				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"error":{"code":-32003,"message":"actor is read-only","data":{"reason":"accessDenied"}}}`, q.ID)
+				return
+			}
+			attached = q.Params
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{}}`, q.ID)
+			return
+		}
 		auth = r.Header.Get("Authorization")
 		if r.URL.Path != "/api/2.0/rest/upload" || r.ParseMultipartForm(1<<20) != nil {
 			http.Error(w, "bad", http.StatusBadRequest)
@@ -127,12 +146,22 @@ func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 	}))
 	defer api.Close()
 	c, _ := New(Config{Origin: api.URL, Workspace: "ws", Profile: "console", Authorization: "Simulator run"})
-	a, err := c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: base64.StdEncoding.EncodeToString([]byte("hello")), ActorID: "a-1"})
-	if err != nil || a.ID != 42 || a.FileName != "k1" {
+	a, err := c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: base64.StdEncoding.EncodeToString([]byte("hello")), ActorID: "r-1", RootActorID: "a-1"})
+	if err != nil || a.ID != 42 || a.FileName != "k1" || a.AttachedTo != "r-1" {
 		t.Fatal(a, err)
 	}
-	if auth != "Simulator run" || form["accId"] != "ws" || form["actorId"] != "a-1" || form["rootActorId"] != "" || !strings.HasPrefix(fileType, "text/plain") || fileName != "notes.txt" {
+	// The route only logs a failed attach, so the tool attaches with public attachment/attach.
+	if sent, _ := json.Marshal(attached); string(sent) != `{"accId":"ws","actorId":"r-1","attachmentIds":[42],"rootActorId":"a-1"}` {
+		t.Fatal("attach sent", string(sent))
+	}
+	if auth != "Simulator run" || len(form) != 1 || form["accId"] != "ws" || !strings.HasPrefix(fileType, "text/plain") || fileName != "notes.txt" {
 		t.Fatalf("sent auth %q form %v type %q name %q", auth, form, fileType, fileName)
+	}
+	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ContentType: "text/plain\r\n"}); err != nil || fileType != "text/plain" {
+		t.Fatalf("a padded contentType is sent as %q: %v", fileType, err)
+	}
+	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ActorID: "read-only"}); err == nil || !strings.Contains(err.Error(), "uploaded as attachment 42 but not attached") {
+		t.Fatal("a refused attach must be reported:", err)
 	}
 	for name, bad := range map[string]AttachmentUploadInput{
 		"not base64":          {FileName: "a.txt", Content: "%%%"},

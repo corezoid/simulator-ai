@@ -26,14 +26,16 @@ say who (a user, a group or an API user, each by its `userId`) may do what (`vie
    `access_rules_get {objType, objId}`.
 3. Change them with one `access_rules_save` call:
    - `rules: [{userId, privs: {view, modify, remove, sign?, ds?, execute?}}]` grants or replaces
-     each subject's privileges. Any privilege implies `view`; all false removes the rule.
+     each subject's privileges. The tool adds `view` to any other privilege; all false removes
+     the rule.
    - `remove: [userId]` revokes.
    - `mode: "merge"` (default) leaves everyone not named as is. `mode: "replace"` also revokes
-     everyone not named; the owner always keeps access.
+     everyone not named who only views, signs or carries the object out; whoever may modify it
+     (you among them), the system owner and public-link guests stay unless `remove` names them.
    - `reactionOrders: {sign, ds, execute}` orders approval stages (1 first; the same number
      acts in parallel). Send it only to set a sequence.
-   - `isNotify: true` tells the subjects (default quiet); `isRecursive: true` also changes the
-     actors on a layer.
+   - `isNotify: true` tells the subjects (default quiet). An actor change cascades to its layers
+     unless `isRecursive: false`.
 4. Report what changed from the result, by name.
 
 Sharing notifies people only with `isNotify`; still confirm with the user before giving

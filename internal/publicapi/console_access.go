@@ -31,7 +31,7 @@ type AccessRulesSaveInput struct {
 	Remove          []int64      `json:"remove,omitempty"`
 	Mode            string       `json:"mode,omitempty"` // merge (default) or replace
 	IsNotify        bool         `json:"isNotify,omitempty"`
-	IsRecursive     bool         `json:"isRecursive,omitempty"`
+	IsRecursive     *bool        `json:"isRecursive,omitempty"` // absent: sim-api's default (an actor share cascades)
 	FilterIncorrect bool         `json:"filterIncorrect,omitempty"`
 }
 
@@ -85,13 +85,32 @@ func (c *Client) AccessRules(ctx context.Context, o AccessObject) (json.RawMessa
 
 type accessList struct {
 	List []struct {
-		UserID int64 `json:"userId"`
+		UserID   int64           `json:"userId"`
+		UserType string          `json:"userType"`
+		Privs    map[string]bool `json:"privs"`
 	} `json:"list"`
 }
 
+// withView adds view to privileges that grant anything: sim-api stores privs as sent and checks
+// view alone, so an executor or approver without it could not even open the object.
+func withView(privs json.RawMessage) (json.RawMessage, error) {
+	var p map[string]bool
+	if err := json.Unmarshal(privs, &p); err != nil {
+		return nil, errors.New("privs must be an object of booleans")
+	}
+	for _, granted := range p {
+		if granted && !p["view"] {
+			p["view"] = true
+			return json.Marshal(p)
+		}
+	}
+	return privs, nil
+}
+
 // SaveAccessRules grants, changes or revokes access in one share call. merge leaves the subjects
-// the call does not name as they are; replace also removes every other subject's rule (sim-api
-// keeps the owner's).
+// the call does not name as they are. replace also revokes the people, groups and API users that
+// only view, sign or carry out the object; whoever may modify it (the caller among them), the
+// system owner and public-link guests stay unless remove names them.
 func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (json.RawMessage, error) {
 	if e := consoleOnly(c); e != nil {
 		return nil, e
@@ -104,7 +123,7 @@ func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (
 		return nil, errors.New("mode is merge or replace")
 	}
 	if n := len(in.Rules) + len(in.Remove); n > 200 || n == 0 && in.Mode != "replace" {
-		return nil, errors.New("1..200 rules and removals required (replace with none removes everyone but the owner)")
+		return nil, errors.New("1..200 rules and removals required (replace with none revokes everyone who only views, signs or carries it out)")
 	}
 	named := map[int64]bool{}
 	var actions []accessAction
@@ -113,7 +132,11 @@ func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (
 			return nil, fmt.Errorf("rules[%d]: a userId named once and privs required", i)
 		}
 		named[r.UserID] = true
-		actions = append(actions, accessAction{Action: "create", UserID: r.UserID, Privs: r.Privs, ReactionOrders: r.ReactionOrders})
+		privs, err := withView(r.Privs)
+		if err != nil {
+			return nil, fmt.Errorf("rules[%d]: %w", i, err)
+		}
+		actions = append(actions, accessAction{Action: "create", UserID: r.UserID, Privs: privs, ReactionOrders: r.ReactionOrders})
 	}
 	for i, id := range in.Remove {
 		if id < 1 || named[id] {
@@ -128,15 +151,20 @@ func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (
 			return nil, err
 		}
 		for _, r := range current.List {
-			if !named[r.UserID] {
+			kept := r.Privs["modify"] || r.UserID < 1 || r.UserType == "system" || r.UserType == "anonymous"
+			if !named[r.UserID] && !kept {
 				named[r.UserID] = true
 				actions = append(actions, accessAction{Action: "delete", UserID: r.UserID})
 			}
 		}
+		in.FilterIncorrect = true // a listed subject may no longer exist
 	}
 	if len(actions) == 0 {
 		return json.RawMessage(`{"list":[]}`), nil
 	}
-	params["actions"], params["isNotify"], params["isRecursive"], params["filterIncorrect"] = actions, in.IsNotify, in.IsRecursive, in.FilterIncorrect
+	params["actions"], params["isNotify"], params["filterIncorrect"] = actions, in.IsNotify, in.FilterIncorrect
+	if in.IsRecursive != nil {
+		params["isRecursive"] = *in.IsRecursive
+	}
 	return call[map[string]any, json.RawMessage](ctx, c, family+"/share", params)
 }

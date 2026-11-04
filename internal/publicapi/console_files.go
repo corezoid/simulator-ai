@@ -46,13 +46,14 @@ type AttachmentUploadInput struct {
 }
 
 // Attachment is an uploaded file: id for attachment/attach and reaction attachmentIds, fileName
-// for the download.
+// for the download; attachedTo is the actor (or reaction) it now hangs on.
 type Attachment struct {
-	ID       int64  `json:"id"`
-	Title    string `json:"title"`
-	Type     string `json:"type"`
-	Size     int64  `json:"size"`
-	FileName string `json:"fileName"`
+	ID         int64  `json:"id"`
+	Title      string `json:"title"`
+	Type       string `json:"type"`
+	Size       int64  `json:"size"`
+	FileName   string `json:"fileName"`
+	AttachedTo string `json:"attachedTo,omitempty"`
 }
 
 // UploadAttachment stores one file in the workspace, optionally attached to an actor or reaction.
@@ -78,12 +79,15 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if kind == "" {
 		kind = "application/octet-stream"
 	}
-	if _, _, err = mime.ParseMediaType(kind); err != nil {
+	media, mediaParams, err := mime.ParseMediaType(kind)
+	if kind = mime.FormatMediaType(media, mediaParams); err != nil || kind == "" {
 		return Attachment{}, errors.New("contentType must be a media type such as text/plain")
 	}
 	var body bytes.Buffer
 	form := multipart.NewWriter(&body)
-	fields := [][2]string{{"accId", c.config.Workspace}, {"actorId", in.ActorID}, {"rootActorId", in.RootActorID}}
+	// The upload route only logs a failed attach and still answers 200, so the file is attached
+	// afterwards with public attachment/attach, whose refusal reaches the caller.
+	fields := [][2]string{{"accId", c.config.Workspace}}
 	if in.TTL > 0 {
 		fields = append(fields, [2]string{"ttl", strconv.FormatInt(in.TTL, 10)})
 	}
@@ -122,6 +126,17 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if json.Unmarshal(b, &a) != nil || a.ID < 1 || a.FileName == "" {
 		return Attachment{}, errors.New("upload returned no attachment")
 	}
+	if in.ActorID == "" {
+		return a, nil
+	}
+	attach := map[string]any{"accId": c.config.Workspace, "actorId": in.ActorID, "attachmentIds": []int64{a.ID}}
+	if in.RootActorID != "" {
+		attach["rootActorId"] = in.RootActorID
+	}
+	if _, err = call[map[string]any, json.RawMessage](ctx, c, "attachment/attach", attach); err != nil {
+		return Attachment{}, fmt.Errorf("uploaded as attachment %d but not attached to %s (attach it with attachment_attach): %w", a.ID, in.ActorID, err)
+	}
+	a.AttachedTo = in.ActorID
 	return a, nil
 }
 
@@ -134,6 +149,7 @@ type AttachmentContent struct {
 	FileName    string `json:"fileName"`
 	ContentType string `json:"contentType"`
 	Size        int64  `json:"size"`
+	SizeAtLeast bool   `json:"sizeAtLeast,omitempty"` // the file is larger than size
 	Text        string `json:"text,omitempty"`
 	Truncated   bool   `json:"truncated,omitempty"`
 	Binary      bool   `json:"binary,omitempty"`
@@ -186,19 +202,29 @@ func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (At
 }
 
 func readContent(name string, resp *http.Response) (AttachmentContent, error) {
-	out := AttachmentContent{FileName: name, ContentType: resp.Header.Get("Content-Type")}
+	out := AttachmentContent{FileName: name, ContentType: resp.Header.Get("Content-Type"), Size: resp.ContentLength}
+	if !textual(out.ContentType) {
+		out.Binary = true
+		if out.Size < 0 { // no Content-Length: count, up to the bound
+			n, err := io.Copy(io.Discard, io.LimitReader(resp.Body, maxDownloadBytes+1))
+			if err != nil {
+				return AttachmentContent{}, errors.New("cannot read the file")
+			}
+			out.Size, out.SizeAtLeast = min(n, maxDownloadBytes), n > maxDownloadBytes
+		}
+		return out, nil
+	}
 	head, err := io.ReadAll(io.LimitReader(resp.Body, maxReadText+1))
 	if err != nil {
 		return AttachmentContent{}, errors.New("cannot read the file")
 	}
-	rest, err := io.Copy(io.Discard, io.LimitReader(resp.Body, maxDownloadBytes))
-	if err != nil {
-		return AttachmentContent{}, errors.New("cannot read the file")
-	}
-	out.Size = int64(len(head)) + rest
-	if !textual(out.ContentType) {
-		out.Binary = true
-		return out, nil
+	if out.Size < 0 {
+		rest, err := io.Copy(io.Discard, io.LimitReader(resp.Body, maxDownloadBytes+1))
+		if err != nil {
+			return AttachmentContent{}, errors.New("cannot read the file")
+		}
+		n := int64(len(head)) + rest
+		out.Size, out.SizeAtLeast = min(n, maxDownloadBytes), n > maxDownloadBytes
 	}
 	if len(head) > maxReadText {
 		head, out.Truncated = head[:maxReadText], true
