@@ -18,7 +18,8 @@ func TestUploadActorPicture(t *testing.T) {
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/2.0/rest/upload" {
 			_ = r.ParseMultipartForm(1 << 20)
-			steps = append(steps, "upload actorId="+r.FormValue("actorId"))
+			_, h, _ := r.FormFile("file")
+			steps = append(steps, "upload actorId="+r.FormValue("actorId")+" "+h.Header.Get("Content-Type"))
 			fmt.Fprint(w, `{"id":7,"title":"face.png","type":"image/png","size":3,"fileName":"2026/11/face-k1.png"}`)
 			return
 		}
@@ -41,7 +42,7 @@ func TestUploadActorPicture(t *testing.T) {
 	if err != nil || p != (ActorPicture{ActorID: "a1", Picture: "2026/11/face-k1.png", FileID: 7}) {
 		t.Fatal(p, err)
 	}
-	if strings.Join(steps, ",") != "upload actorId=,actor/update" || update["picture"] != "2026/11/face-k1.png" || update["actorId"] != "a1" {
+	if strings.Join(steps, ",") != "upload actorId= image/png,actor/update" || update["picture"] != "2026/11/face-k1.png" || update["actorId"] != "a1" {
 		t.Fatal(steps, update)
 	}
 	fail = true
@@ -49,7 +50,10 @@ func TestUploadActorPicture(t *testing.T) {
 		t.Fatal("a refused update must name the uploaded file:", err)
 	}
 	steps = nil
-	if _, err = c.UploadActorPicture(context.Background(), ActorPictureInput{ActorID: "a1", FileName: "notes.txt", Content: "AQID"}); err == nil || len(steps) != 0 {
-		t.Fatal("a non-image reached the API:", steps, err)
+	for _, in := range []ActorPictureInput{{ActorID: "a1", FileName: "notes.txt", Content: "AQID"}, {ActorID: "a1", FileName: "logo.svg", Content: "AQID"},
+		{ActorID: "a1", FileName: "face.png", Content: "AQID", ContentType: "image/jpeg"}} {
+		if _, err = c.UploadActorPicture(context.Background(), in); err == nil || len(steps) != 0 {
+			t.Fatal("refused picture reached the API:", in, steps, err)
+		}
 	}
 }

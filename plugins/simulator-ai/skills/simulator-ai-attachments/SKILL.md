@@ -51,7 +51,7 @@ takes files off an actor; the files stay in the workspace. Confirm before detach
 ## An actor's picture
 
 The picture (avatar) an actor shows is not an attachment: `actor_picture_upload {actorId,
-fileName, content}` (`console-full`; an image .png, .jpg, .jpeg, .gif, .webp or .svg in
-base64, up to 700 KiB) uploads it and sets it as the actor's `picture`. It replaces the
+fileName, content}` (`console-full`; a .png, .jpg, .jpeg, .gif or .webp image in base64, up
+to 700 KiB; no SVG, which the web app refuses as a picture) uploads it and sets it as the actor's `picture`. It replaces the
 current picture: confirm when the actor already has one (`actor_get {actorId, fields:
 ["picture"]}`).

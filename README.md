@@ -190,13 +190,13 @@ scenarios use (see "AI Console profile").
 | `corezoid_projects_list` · `corezoid_stages_list` · `corezoid_processes_list` · `corezoid_project_get` | `corezoid/project/list` · `corezoid/stage/list` · `corezoid/process/list` · `corezoid/project/get` | ✓ | | |
 | `corezoid_project_bind` · `corezoid_project_create` (bind a Smart Form's envs to processes, or give it a project) | `corezoid/project/bind` · `corezoid/project/create` | ✓ | | |
 | `layer_edge_settings_save` (an edge's line style, width, colour, label on one layer) | `graph/layer/edge_settings/save` | ✓ | | |
-| `actor_picture_upload` [uploadActorPicture] | HTTP `POST /api/2.0/rest/upload` (attached to nothing) + `actor/update` `picture` = its fileName, as the web app writes | ✓ | | |
+| `actor_picture_upload` [uploadActorPicture] (PNG, JPEG, GIF or WebP; no SVG) | HTTP `POST /api/2.0/rest/upload` (attached to nothing) + `actor/update` `picture` = its fileName, as the web app writes | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
 These tools need sim-api `feature/simulator-ai` at 831fe0a9 or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`, the Smart Form history, trash, page and
-Corezoid methods); on an older backend they fail with reason `methodNotFound`. The rollback, restore and Corezoid
-bind/create tools are hinted destructive.
+Corezoid methods); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit and
+Corezoid bind/create tools are hinted destructive; page render is not read-only either (it runs the page's `/get`).
 
 An AI Console run's token reaches `rest/upload` (and no other REST route) through sim-api !481
 (`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand

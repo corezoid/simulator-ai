@@ -39,7 +39,7 @@ var ParityMethods = map[string]ParityMethod{
 	"cdu/catalog/get": {"smartform", false}, "app_folder/create": {"smartform", true},
 	"release/list": {"smartform", false}, "release/diff": {"smartform", false}, "release/rollback": {"smartform", true},
 	"file_version/list": {"smartform", false}, "file_version/get": {"smartform", false}, "file/rollback": {"smartform", true},
-	"trash/list": {"smartform", false}, "trash/restore": {"smartform", true}, "page/render": {"smartform", false}, "page/submit": {"smartform", true},
+	"trash/list": {"smartform", false}, "trash/restore": {"smartform", true}, "page/render": {"smartform", true}, "page/submit": {"smartform", true},
 	"corezoid/project/list": {"corezoid", false}, "corezoid/project/get": {"corezoid", false}, "corezoid/project/create": {"corezoid", true},
 	"corezoid/project/bind": {"corezoid", true}, "corezoid/stage/list": {"corezoid", false}, "corezoid/process/list": {"corezoid", false},
 	"graph/layer/edge_settings/save": {"graph", true},

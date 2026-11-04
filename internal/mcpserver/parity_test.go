@@ -172,7 +172,7 @@ func TestParityCatalogs(t *testing.T) {
 			if tc.profile == "console-full" {
 				hints := destructiveHints(t, send)
 				for _, name := range []string{"account_amount_set", "account_formula_set", "atom_transaction_create", "account_tags_set", "account_triggers_set", "account_actor_triggers_set", "actor_field_triggers_set",
-					"smart_form_release_rollback", "smart_form_file_rollback", "smart_form_trash_restore", "corezoid_project_create", "corezoid_project_bind"} {
+					"smart_form_release_rollback", "smart_form_file_rollback", "smart_form_trash_restore", "smart_form_page_submit", "corezoid_project_create", "corezoid_project_bind"} {
 					if !hints[name] {
 						t.Errorf("%s is not hinted destructive", name)
 					}

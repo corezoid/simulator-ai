@@ -1,6 +1,7 @@
 package mcpserver
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -24,5 +25,36 @@ func TestReleaseGetActive(t *testing.T) {
 	send, _ = consoleServer(t, nil)
 	if reply = callTool(send, "smart_form_files_get", `{"appId":"app1"}`); !strings.Contains(reply, `"developEnvId":1,"productionEnvId":2`) {
 		t.Fatal("env ids:", reply)
+	}
+}
+
+// The page tools address a page by ref and envTitle: sim-api refuses target next to accId, which
+// every call carries, so their schemas do not offer it.
+func TestPageToolsHaveNoTarget(t *testing.T) {
+	send, _ := consoleServer(t, nil)
+	var list struct {
+		Result struct {
+			Tools []struct {
+				Name   string          `json:"name"`
+				Input  json.RawMessage `json:"inputSchema"`
+				Annots map[string]any  `json:"annotations"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(send(`"method":"tools/list"`)), &list); err != nil {
+		t.Fatal(err)
+	}
+	seen := 0
+	for _, tool := range list.Result.Tools {
+		if tool.Name != "smart_form_page_render" && tool.Name != "smart_form_page_submit" {
+			continue
+		}
+		seen++
+		if strings.Contains(string(tool.Input), `"target"`) || !strings.Contains(string(tool.Input), `"envTitle"`) || tool.Annots["readOnlyHint"] != false {
+			t.Errorf("%s: %s %v", tool.Name, tool.Input, tool.Annots)
+		}
+	}
+	if seen != 2 {
+		t.Fatal("page tools listed:", seen)
 	}
 }

@@ -24,7 +24,9 @@ type ActorPicture struct {
 	FileID  int64  `json:"fileId"`
 }
 
-var pictureExtensions = map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".svg": true}
+// pictureTypes are the image types the web app takes as a picture (simulator-ui-kit
+// ACCEPTED_PICTURE_TYPES), by extension; SVG is refused there as a live document.
+var pictureTypes = map[string]string{".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp"}
 
 type pictureUpdate struct {
 	AccID   string   `json:"accId"`
@@ -42,10 +44,14 @@ func (c *Client) UploadActorPicture(ctx context.Context, in ActorPictureInput) (
 	if !validID(in.ActorID) {
 		return ActorPicture{}, errors.New("actorId required")
 	}
-	if !pictureExtensions[strings.ToLower(path.Ext(in.FileName))] {
-		return ActorPicture{}, errors.New("fileName must name an image: .png, .jpg, .jpeg, .gif, .webp or .svg")
+	kind, ok := pictureTypes[strings.ToLower(path.Ext(in.FileName))]
+	if !ok {
+		return ActorPicture{}, errors.New("fileName must name a .png, .jpg, .jpeg, .gif or .webp image")
 	}
-	f, err := c.UploadAttachment(ctx, AttachmentUploadInput{FileName: in.FileName, Content: in.Content, ContentType: in.ContentType})
+	if in.ContentType != "" && in.ContentType != kind {
+		return ActorPicture{}, fmt.Errorf("contentType %q does not match %s: leave it out or send %s", in.ContentType, in.FileName, kind)
+	}
+	f, err := c.UploadAttachment(ctx, AttachmentUploadInput{FileName: in.FileName, Content: in.Content, ContentType: kind})
 	if err != nil {
 		return ActorPicture{}, err
 	}
