@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/corezoid/simulator-ai/contracts"
@@ -22,7 +23,12 @@ type parityTool struct {
 	Hierarchy bool
 	// BriefUnlessNarrowed sends brief true when neither types nor kind narrows the answer.
 	BriefUnlessNarrowed bool
+	// Params, when set, keeps only these params of the method (the legacy tool's own set).
+	Params []string
 }
+
+// rowFields is the compact projection of list rows and graph nodes unless the caller sends fields.
+var rowFields = map[string]any{"fields": []string{"id", "title", "formId"}}
 
 // metaFields is the actor projection a write returns unless the caller sends its own fields.
 var metaFields = map[string]any{"fields": []string{"id", "title", "description", "formId", "status", "ref", "color"}}
@@ -34,8 +40,8 @@ func addParity(s *server.MCPServer, c *publicapi.Client, tools []parityTool) {
 			continue
 		}
 		schema, err := contracts.ParityInputSchema(t.Method)
-		if err == nil && len(t.Defaults) > 0 {
-			schema, err = optional(schema, t.Defaults)
+		if err == nil && (len(t.Defaults) > 0 || len(t.Params) > 0) {
+			schema, err = narrow(schema, t.Defaults, t.Params)
 		}
 		if err != nil {
 			panic(err) // pinned build artifact, never remote input
@@ -101,22 +107,40 @@ func passResult(v json.RawMessage, err error) *mcp.CallToolResult {
 	return mcp.NewToolResultStructuredOnly(v)
 }
 
-// optional drops defaulted keys from the schema's required list: the handler fills them.
-func optional(schema json.RawMessage, defaults map[string]any) (json.RawMessage, error) {
+// narrow drops defaulted keys from the schema's required list (the handler fills them) and, with
+// params, every property outside that list.
+func narrow(schema json.RawMessage, defaults map[string]any, params []string) (json.RawMessage, error) {
 	var doc map[string]json.RawMessage
 	var required []string
+	var properties map[string]json.RawMessage
 	if err := json.Unmarshal(schema, &doc); err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal(doc["required"], &required); err != nil {
 		return nil, err
 	}
+	if err := json.Unmarshal(doc["properties"], &properties); err != nil {
+		return nil, err
+	}
+	if len(params) > 0 {
+		keep := map[string]json.RawMessage{}
+		for _, p := range params {
+			if v, ok := properties[p]; ok {
+				keep[p] = v
+			}
+		}
+		properties = keep
+	}
 	kept := []string{}
 	for _, r := range required {
-		if _, ok := defaults[r]; !ok {
+		if _, defaulted := defaults[r]; !defaulted {
+			if _, ok := properties[r]; !ok {
+				return nil, fmt.Errorf("required param %s is not kept", r)
+			}
 			kept = append(kept, r)
 		}
 	}
 	doc["required"], _ = json.Marshal(kept)
+	doc["properties"], _ = json.Marshal(properties)
 	return json.Marshal(doc)
 }

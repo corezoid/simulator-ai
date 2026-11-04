@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -35,7 +36,7 @@ func loadParity() {
 			if p.Name == "accId" {
 				continue
 			}
-			properties[p.Name] = p.Schema
+			properties[p.Name] = compact(p.Schema, 0)
 			if p.Required {
 				required = append(required, p.Name)
 			}
@@ -58,4 +59,45 @@ func ParityInputSchema(method string) (json.RawMessage, error) {
 		return nil, fmt.Errorf("parity method %s is not pinned", method)
 	}
 	return s, nil
+}
+
+// maxParamDescription bounds a parameter description: tool schemas ride in the model context on
+// every turn, so a param keeps its first sentence and nested fields keep only their types.
+const maxParamDescription = 160
+
+// compact shortens a param schema for the model: the top-level description to its first sentence,
+// nested descriptions removed. Types, enums, bounds and required keys stay exact.
+func compact(v any, depth int) any {
+	switch t := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, x := range t {
+			if k == "description" {
+				if d, ok := x.(string); ok && depth == 0 {
+					out[k] = firstSentence(d)
+				}
+				continue
+			}
+			out[k] = compact(x, depth+1)
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, x := range t {
+			out[i] = compact(x, depth+1)
+		}
+		return out
+	}
+	return v
+}
+
+func firstSentence(d string) string {
+	d = strings.Join(strings.Fields(d), " ")
+	if i := strings.Index(d, ". "); i > 0 {
+		d = d[:i+1]
+	}
+	if r := []rune(d); len(r) > maxParamDescription {
+		d = string(r[:maxParamDescription-1]) + "…"
+	}
+	return d
 }
