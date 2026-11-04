@@ -248,20 +248,36 @@ func (c *Client) CreateSmartFormFiles(ctx context.Context, in SmartFormFilesCrea
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
-	for i := range in.Items {
-		if in.Items[i].Title == "config" {
-			wired, err := wireSubmits(in.Items[i].Source, c.config.Workspace)
-			if err != nil {
-				return SmartFormWritten{}, fmt.Errorf("file %d: %w", i, err)
-			}
-			in.Items[i].Source = wired
-		}
+	if err := wireConfigSources(in.Items, c.config.Workspace, func(it *SmartFormFileCreate) *string { return configSource(it.Title, &it.Source) }); err != nil {
+		return SmartFormWritten{}, err
 	}
 	r, e := call[appFilesRequest[SmartFormFileCreate], Files](ctx, c, "app_file/create", appFilesRequest[SmartFormFileCreate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {
 		return SmartFormWritten{}, e
 	}
 	return written(in.AppID, r, len(in.Items))
+}
+
+// wireConfigSources runs wireSubmits on every page config source of items, in place.
+func wireConfigSources[T any](items []T, workspace string, source func(*T) *string) error {
+	for i := range items {
+		if s := source(&items[i]); s != nil {
+			wired, err := wireSubmits(*s, workspace)
+			if err != nil {
+				return fmt.Errorf("file %d: %w", i, err)
+			}
+			*s = wired
+		}
+	}
+	return nil
+}
+
+// configSource is the source of a page config file, nil for another file or no source.
+func configSource(title string, source *string) *string {
+	if title != "config" {
+		return nil
+	}
+	return source
 }
 
 // UpdateSmartFormFiles changes develop files in one transaction.
@@ -272,14 +288,8 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
-	for i := range in.Items {
-		if it := &in.Items[i]; it.Title == "config" && it.Source != nil {
-			wired, err := wireSubmits(*it.Source, c.config.Workspace)
-			if err != nil {
-				return SmartFormWritten{}, fmt.Errorf("file %d: %w", i, err)
-			}
-			it.Source = &wired
-		}
+	if err := wireConfigSources(in.Items, c.config.Workspace, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) }); err != nil {
+		return SmartFormWritten{}, err
 	}
 	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {

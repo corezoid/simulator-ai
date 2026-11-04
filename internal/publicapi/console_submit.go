@@ -1,7 +1,6 @@
 package publicapi
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,10 +36,7 @@ type DataForm struct {
 	Page   string `json:"page"`
 }
 
-// siftedKey finds the vm key a generated formData filter reads.
-var siftedKey = regexp.MustCompile(`\$sift\(\s*vm\.\s*([^\s,()]+)\s*,`)
-
-var fieldName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,63}$`)
+var dataFieldName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,63}$`)
 
 // dataFormNode is the Form node id of generated pages; vm.<it>.<field> holds the values.
 const dataFormNode = "request"
@@ -75,7 +71,7 @@ func (c *Client) CreateDataForm(ctx context.Context, in DataFormInput) (DataForm
 	seen := map[string]bool{}
 	fields := make([]templateField, len(in.Fields))
 	for i, f := range in.Fields {
-		if !fieldName.MatchString(f.Name) || seen[f.Name] || f.Label == "" {
+		if !dataFieldName.MatchString(f.Name) || seen[f.Name] || f.Label == "" {
 			return DataForm{}, fmt.Errorf("field %d: a unique name (letters, digits, _) and a label required", i)
 		}
 		seen[f.Name] = true
@@ -112,41 +108,42 @@ func (c *Client) CreateDataForm(ctx context.Context, in DataFormInput) (DataForm
 	return DataForm{FormID: form.ID, Page: string(page)}, err
 }
 
-type node = map[string]any
+// pageNode is one object of a generated page config.
+type pageNode = map[string]any
 
 // dataPage is a CDU 2.0 page: a Form node with one bound input per field and a button that
 // validates the form and submits it into the data template.
-func dataPage(in DataFormInput, formID int64, workspace string) node {
-	var rules []node
+func dataPage(in DataFormInput, formID int64, workspace string) pageNode {
+	var rules []pageNode
 	var children []any
 	for _, f := range in.Fields {
-		rules = append(rules, node{"name": f.Name, "label": f.Label, "required": f.Required})
+		rules = append(rules, pageNode{"name": f.Name, "label": f.Label, "required": f.Required})
 		value, path := "{{ vm."+dataFormNode+"."+f.Name+" }}", dataFormNode+"."+f.Name
 		errText := "{{ vm.errors." + dataFormNode + "." + f.Name + " }}"
-		set := func(from string) node {
-			return node{"onChange": []any{node{"type": "state", "mode": "set", "path": path, "value": from}}}
+		set := func(from string) pageNode {
+			return pageNode{"onChange": []any{pageNode{"type": "state", "mode": "set", "path": path, "value": from}}}
 		}
 		switch f.Type {
 		case "date":
 			// A calendar field holds {startDate, endDate} in Unix seconds (legacy makeCalendarItemValue),
 			// the shape of the DatePicker value and event too. DatePicker has no label, required or
 			// helperText props: Labels carry its caption and its validation error.
-			children = append(children, node{"id": f.Name + "Label", "type": "Label", "props": node{"text": f.Label}},
-				node{"id": f.Name, "type": "DatePicker", "props": node{"mode": "single", "value": value},
+			children = append(children, pageNode{"id": f.Name + "Label", "type": "Label", "props": pageNode{"text": f.Label}},
+				pageNode{"id": f.Name, "type": "DatePicker", "props": pageNode{"mode": "single", "value": value},
 					"actions": set(`{{ {"startDate": $event.startDate, "endDate": $event.endDate} }}`)},
-				node{"id": f.Name + "Error", "type": "Label", "props": node{"text": errText, "error": true}})
+				pageNode{"id": f.Name + "Error", "type": "Label", "props": pageNode{"text": errText, "error": true}})
 		case "select":
 			var options []any
 			for _, o := range f.Options {
-				options = append(options, node{"value": o, "label": o})
+				options = append(options, pageNode{"value": o, "label": o})
 			}
-			children = append(children, node{"id": f.Name, "type": "Select", "props": node{"label": f.Label, "options": options, "value": value, "required": f.Required, "helperText": errText}, "actions": set("{{ $event.value }}")})
+			children = append(children, pageNode{"id": f.Name, "type": "Select", "props": pageNode{"label": f.Label, "options": options, "value": value, "required": f.Required, "helperText": errText}, "actions": set("{{ $event.value }}")})
 		default:
-			props := node{"label": f.Label, "value": value, "required": f.Required, "helperText": errText}
+			props := pageNode{"label": f.Label, "value": value, "required": f.Required, "helperText": errText}
 			if f.Type == "number" {
-				props["type"] = "number"
+				props["type"] = "float" // the template's edit/float; TextInput's "number" is deprecated
 			}
-			children = append(children, node{"id": f.Name, "type": "TextInput", "props": props, "actions": set("{{ $event.value }}")})
+			children = append(children, pageNode{"id": f.Name, "type": "TextInput", "props": props, "actions": set("{{ $event.value }}")})
 		}
 	}
 	label, message := in.SubmitLabel, in.SuccessMessage
@@ -156,7 +153,7 @@ func dataPage(in DataFormInput, formID int64, workspace string) node {
 	// formData overrides the values the dispatcher sends (extra params are spread after them): a
 	// field left empty, or emptied by form.reset, holds "" and form/submit refuses "" for a select
 	// option or a number, so empty values are not sent at all.
-	params := node{"accId": workspace, "formId": formID,
+	params := pageNode{"accId": workspace, "formId": formID,
 		"formData": "{{ $merge([{}, $sift(vm." + dataFormNode + `, function($v){ $v != "" and $v != null })]) }}`}
 	if message != "" {
 		params["successMessage"] = message
@@ -167,106 +164,12 @@ func dataPage(in DataFormInput, formID int64, workspace string) node {
 	if title := []rune(in.Title); !hasText(in.Fields) && !strings.Contains(in.Title, "{{") {
 		params["title"] = string(title[:min(len(title), 255)])
 	}
-	submit := node{"type": "form.submit", "formId": dataFormNode, "via": "simapi", "simapiMethod": "form/submit", "simapiExtraParams": params,
-		"onError": []any{node{"type": "notify", "level": "error", "title": "Not sent", "helperText": "{{ $error.message }}"}}}
-	children = append(children, node{"id": "submit", "type": "Button", "props": node{"title": label, "type": "filled", "variant": "primary"},
-		"actions": node{"onClick": []any{node{"type": "form.validate", "form": dataFormNode}, node{"type": "if", "cond": "vm.valid." + dataFormNode + " = true", "then": []any{submit}}}}})
-	return node{"schemaVersion": "2.0", "id": "index", "tree": node{"id": "root", "type": "Stack", "props": node{"direction": "vertical"},
-		"children": []any{node{"id": dataFormNode, "type": "Form", "props": node{"valueKey": dataFormNode, "fields": rules}, "children": children}}}}
-}
-
-// wireSubmits checks a page config before it is stored and returns the source to store. It refuses
-// what made a Console form send nothing (acceptance D7): a Form node no form.submit names, and a
-// button without any action beside inputs on a page without a Form. A form.submit to form/submit must
-// name its data template, and its accId is set to the host workspace. Other submits (via corezoid,
-// other methods) are the page author's and pass as they are. A source that is not a page config, or
-// needs no accId, is stored byte for byte. A generated formData filter must read the values of the
-// Form its submit names, or a renamed form would send nothing.
-func wireSubmits(source, workspace string) (string, error) {
-	var doc any
-	if json.Unmarshal([]byte(source), &doc) != nil {
-		return source, nil
-	}
-	if page, ok := doc.(map[string]any); !ok || page["tree"] == nil || page["schemaVersion"] == nil {
-		return source, nil
-	}
-	forms, submitted := map[string]string{}, map[string]bool{}
-	var filters [][2]string // Form id and the vm key a form/submit's formData filter reads
-	inputs, idleButtons, refs, changed := 0, 0, false, false
-	var problems []string
-	var walk func(v any)
-	walk = func(v any) {
-		switch t := v.(type) {
-		case map[string]any:
-			if _, ok := t["$ref"]; ok {
-				refs = true // a fragment may hold the submit
-			}
-			switch t["type"] {
-			case "TextInput", "DatePicker", "Select", "Checkbox", "Radio", "Toggle", "Slider", "Upload":
-				inputs++
-			case "Button":
-				if actions, _ := t["actions"].(map[string]any); len(actions) == 0 {
-					idleButtons++
-				}
-			case "Form":
-				if id, ok := t["id"].(string); ok {
-					props, _ := t["props"].(map[string]any)
-					key, named := props["valueKey"].(string)
-					if !named {
-						key = id // the renderer's valueKey ?? id
-					}
-					forms[id] = key
-				}
-			case "form.submit":
-				id, _ := t["formId"].(string)
-				submitted[id] = true
-				if t["via"] == "simapi" && t["simapiMethod"] == "form/submit" {
-					params, _ := t["simapiExtraParams"].(map[string]any)
-					if params == nil || !positive(params["formId"]) && !expression(params["formId"]) {
-						problems = append(problems, fmt.Sprintf("form.submit of %q needs simapiExtraParams.formId, the data template id", id))
-					} else if params["accId"] != workspace {
-						params["accId"], changed = workspace, true
-					}
-					if filter, _ := params["formData"].(string); siftedKey.MatchString(filter) {
-						filters = append(filters, [2]string{id, siftedKey.FindStringSubmatch(filter)[1]})
-					}
-				}
-			}
-			for _, x := range t {
-				walk(x)
-			}
-		case []any:
-			for _, x := range t {
-				walk(x)
-			}
-		}
-	}
-	walk(doc)
-	if inputs > 0 && idleButtons > 0 && len(forms) == 0 {
-		problems = append(problems, "the page has inputs and a button with no actions but no Form node, so what is typed would not be sent (give a decorative button an action, or wrap the inputs in a Form with a form.submit button)")
-	}
-	for id := range forms {
-		if !submitted[id] && !refs {
-			problems = append(problems, fmt.Sprintf("Form %q has no button with form.submit", id))
-		}
-	}
-	for _, f := range filters {
-		if key, ok := forms[f[0]]; ok && f[1] != key {
-			problems = append(problems, fmt.Sprintf("simapiExtraParams.formData of a form.submit of %q reads vm.%s, not vm.%s, the values of that Form", f[0], f[1], key))
-		}
-	}
-	if len(problems) > 0 {
-		return "", errors.New("page submit wiring: " + strings.Join(problems, "; ") + ". Create the data template and a ready page with smart_form_data_form_create")
-	}
-	if !changed {
-		return source, nil
-	}
-	var out bytes.Buffer
-	enc := json.NewEncoder(&out)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	err := enc.Encode(doc)
-	return strings.TrimSuffix(out.String(), "\n"), err
+	submit := pageNode{"type": "form.submit", "formId": dataFormNode, "via": "simapi", "simapiMethod": "form/submit", "simapiExtraParams": params,
+		"onError": []any{pageNode{"type": "notify", "level": "error", "title": "Not sent", "helperText": "{{ $error.message }}"}}}
+	children = append(children, pageNode{"id": "submit", "type": "Button", "props": pageNode{"title": label, "type": "filled", "variant": "primary"},
+		"actions": pageNode{"onClick": []any{pageNode{"type": "form.validate", "form": dataFormNode}, pageNode{"type": "if", "cond": "vm.valid." + dataFormNode + " = true", "then": []any{submit}}}}})
+	return pageNode{"schemaVersion": "2.0", "id": "index", "tree": pageNode{"id": "root", "type": "Stack", "props": pageNode{"direction": "vertical"},
+		"children": []any{pageNode{"id": dataFormNode, "type": "Form", "props": pageNode{"valueKey": dataFormNode, "fields": rules}, "children": children}}}}
 }
 
 func hasText(fields []DataField) bool {
@@ -276,14 +179,4 @@ func hasText(fields []DataField) bool {
 		}
 	}
 	return false
-}
-
-func expression(v any) bool {
-	s, ok := v.(string)
-	return ok && strings.Contains(s, "{{")
-}
-
-func positive(v any) bool {
-	n, ok := v.(float64)
-	return ok && n >= 1 && n == float64(int64(n))
 }

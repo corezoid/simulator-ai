@@ -155,8 +155,8 @@ too large for this slice. Every other actor, form and graph tool is above.
 Every tool schema rides in the model context on every turn, so `SIMULATOR_AI_PROFILE=console` is the core
 catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, `actor_update`, `actors_search`,
 `form_get`, `forms_list`, `graph_get`, the flowchart tools and the Smart Form tools below, 24 in all
-(33.8 KB of tool JSON, 26.6 KB without output schemas). `console-full` adds every other actor, form and graph
-tool (62 tools, 80.4 KB). Parameter descriptions are cut to their first sentence and nested fields keep only
+(36.1 KiB of tool JSON, 28.4 KiB without output schemas). `console-full` adds every other actor, form and graph
+tool (62 tools, 81.5 KiB). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -202,9 +202,16 @@ ranking) with three free cells between blocks and ranks. Like the editor, the pl
 silhouette as `areaPicture`, which makes it graphic, so sim-api keeps that position instead of snapping the centre
 to a multiple of 50 (half a cell off for even-sized blocks). Smart Form: a form the user fills in saves what is submitted as an actor of its own data template.
 `smart_form_data_form_create` creates that template from the fields and returns a ready page (a Form node, bound
-inputs, a button that validates and calls `form/submit` via simapi with the template's formId); page writes refuse
-inputs with an action-less button but no Form, a Form no form.submit names and a `form/submit` without a template,
-and set its `accId` to the host workspace; other submits (via Corezoid, other methods) are left as they are. Then `smart_form_create` →
+inputs, a button that validates and calls `form/submit` via simapi with the template's formId). Its limits: field
+types are only text, number (an `edit/float` field and a `float` TextInput), date (a calendar holding
+`{startDate, endDate}`) and select, all in one section; empty values are left out of the submit (its `formData`
+filters the Form's `vm` values); the actor is titled by the first text field, or in a template without one by the
+template title (its first 255 characters; none when it holds `{{`); the stand must serve `form/submit`, and a
+submit needs View on the template, which only its creator has until the template is shared with the Smart Form's
+audience. Page writes refuse inputs with an action-less button but no Form, a Form that neither a form.submit names
+nor any action reads (`vm.<valueKey>`, e.g. a `simapi.call`), a `form/submit` without a template and a `formData`
+filter reading another Form, and set its `accId` to the host workspace; other submits (via Corezoid, other
+methods) are left as they are. Then `smart_form_create` →
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its
 `ready: true` (status `active`, snapshot kept, production env) comes with `marker: "appId: <appId>"`. The
 agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries
