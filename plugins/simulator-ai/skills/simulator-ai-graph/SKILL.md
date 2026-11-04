@@ -41,6 +41,14 @@ URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
 - A short page does not prove the end: follow `hasMore`/`offset` under a finite budget and say
   when the read is incomplete.
 
+## Visualize in the chat
+
+Asked to visualize something in the chat, ask first how: a Smart Form that shows a layer in a
+`GraphEditor` block (`layerId`; a flowchart below, or plain actors placed on the layer), or
+plain text. Never draw an ASCII diagram. For the Smart Form, build the layer, then a page with
+the block (`smart_form_components {types: ["GraphEditor"]}` for its props) and release it
+(`simulator-ai-smart-forms`).
+
 ## Draw a flowchart
 
 1. **Kinds:** `flowchart_blocks_list {query?}` → `{formId, title, blockId}` (e.g. `startStop`,

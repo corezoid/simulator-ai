@@ -86,9 +86,9 @@ Rules the brief must state:
    projectId, envs: [{envTitle: "develop", stageId, procId}, {envTitle: "production", stageId,
    procId}]}`: every env, once. The server sets up the API key and shares the processes, with
    no secret in the conversation; the binding replaces the current one and is not undone in
-   Corezoid. A form with no project at all can get one of its own instead:
-   `corezoid_project_create {actorId}`, then `corezoid_project_get {actorId}` until `status` is
-   `ready`. Releases ship files, never bindings.
+   Corezoid. A form with no project at all can get one of its own instead (also in `console`,
+   right after the form's first release): `corezoid_project_create {actorId}`, then
+   `corezoid_project_get {actorId}` until `status` is `ready`. Releases ship files, never bindings.
 5. Test the process with `run-task` (via the Corezoid skills) on synthetic `/get` and `/send`
    bodies; the final callback fails without a real `__callback_url`, so check that the task
    reached it with the right `viewModel` / `data`. Then release (`smart_form_release`) and let

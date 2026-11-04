@@ -119,7 +119,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 45 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 47 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -249,7 +249,8 @@ for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `u
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
 `skills_find`, `skill_get` and `build_link`, and for accounts, Account Templates, chats and cards `account_create`,
 `accounts_list`, `transfer_create`, `transaction_create`, `form_create`, `form_update`, `form_account_create`,
-`chat_open` and `actor_attach`: 45 in all (`smart_form_folders_create` is there because a form of more
+`chat_open` and `actor_attach`, and for a Smart Form's business logic `corezoid_project_create` and
+`corezoid_project_get`: 47 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page; `internal/mcpserver/console.go` says why each later one is). `console-full` adds every other actor, form, graph, access, reaction, user,
 attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
 transcript tool (179 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
