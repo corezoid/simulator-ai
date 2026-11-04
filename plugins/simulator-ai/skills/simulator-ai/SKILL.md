@@ -72,7 +72,8 @@ comments, access, files, saved skills via `skills_find`/`skill_get`, and `build_
 `console-full` adds the rest: actor status/delete/filter, template
 writes, edges and layer edits (edge style too), access requests, reactions, attachments and actor
 pictures, finance, agents, charts, simulation, Smart Form release and file history, rollback, trash
-and test runs, Corezoid binding, and `bbcode_tags_get`. Desktop
+and test runs, Corezoid binding, graph export and import, meeting guest links and transcripts, and
+`bbcode_tags_get`. Desktop
 profiles (`read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`) are narrower.
 
 ## Skills

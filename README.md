@@ -193,19 +193,22 @@ scenarios use (see "AI Console profile").
 | `actor_picture_upload` [uploadActorPicture] (PNG, JPEG, GIF or WebP; no SVG) | HTTP `POST /api/2.0/rest/upload` (attached to nothing) + `actor/update` `picture` = its fileName, as the web app writes | ✓ | | |
 | `graph_export_create` [exportGraph] · `graph_import_create` [importGraph] (no Corezoid `scripts`) | `task/export/create` · `task/import/create` | ✓ | | |
 | `task_get` [getTaskStatus] (adds `downloadUrl` for an archive) · `graph_file_upload` [uploadGraphFile] (base64, up to 700 KiB) | `task/get` · HTTP `POST /api/2.0/rest/upload` as `application/octet-stream`, attached to nothing | ✓ | | |
+| `public_link_create` [generatePublicLink] · `public_link_get` [getPublicLink] · `public_link_revoke` [revokePublicLink] | `public_link/create` · `/get` · `/revoke` (revoke takes back what the link gave) | ✓ | | |
+| `meet_transcription_list` [getTranscription] (the live transcript; empty before and after a call) | `meet/transcription/list` | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at 84ec6ff1 or later (`cdu/catalog/get` !463,
+These tools need sim-api `feature/simulator-ai` at 18d5aec2 or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`, the Smart Form history, trash, page and
-Corezoid methods, the task methods !494); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
-import and Corezoid bind/create tools are hinted destructive; page render is not read-only either (it runs the page's `/get`).
+Corezoid methods, the task methods !494, guest links !495 and the transcript !496); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
+import, guest link create/revoke and Corezoid bind/create tools are hinted destructive (a new guest link opens view to
+anyone with its URL and stops the one already handed out); page render is not read-only either (it runs the page's `/get`).
 
 An AI Console run's token reaches `rest/upload` (and no other REST route) through sim-api !481
 (`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand
 serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
 retried for about 3 seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
 `simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks`, `simulator-ai-finance`, `simulator-ai-skills`,
-`simulator-ai-agents` and `simulator-ai-charts` compose these tools.
+`simulator-ai-agents`, `simulator-ai-charts` and `simulator-ai-meetings` compose these tools.
 
 Skill procedures and agent profiles are descriptions users write: `skill_get` and `agent_get` return them as data, and
 their tool descriptions tell the model not to take instructions from them. `build_link` builds web app URLs on
@@ -244,8 +247,8 @@ for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `u
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
 `skills_find`, `skill_get` and `build_link`: 36 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page). `console-full` adds every other actor, form, graph, access, reaction, user,
-attachment, finance, registry, simulation, chart, Smart Form history, Corezoid and graph export/import tool (173 in
-all). Parameter descriptions are cut to their first sentence and nested fields keep only
+attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
+transcript tool (177 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -327,7 +330,9 @@ folder, two releases listed and compared, a rollback read back as the active rel
 file history and a rollback of its edit, the trash, a develop render, no Corezoid project yet) and the extras one
 (an edge drawn dashed, 3 wide and red, an actor's picture, the first Corezoid project's stages and processes;
 nothing is bound) and the jobs one (a layer exported, its archive downloaded by `downloadUrl`, uploaded again with
-`graph_file_upload` and imported as a copy; it needs the stand's control-tasks worker). Each run creates new objects in that
+`graph_file_upload` and imported as a copy; it needs the stand's control-tasks worker) and the meetings one (a
+meeting with a guest link created, read back, revoked and gone, and its transcript read: empty outside a call). Each run
+creates new objects in that
 workspace; nothing secret is printed.
 
 The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:

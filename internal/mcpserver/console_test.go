@@ -109,7 +109,7 @@ func TestConsoleCatalog(t *testing.T) {
 		}
 	}
 	// The exact console catalog: its own tools plus every actor, form, graph, access, reaction, user,
-	// attachment, finance, registry, chart, simulation, Corezoid and graph export/import tool.
+	// attachment, finance, registry, chart, simulation, Corezoid, graph export/import, guest link and transcript tool.
 	want := "access_request_cancel,access_request_confirm,access_request_create,access_requests_list,access_rules_get,access_rules_save,account_actor_tags_count," +
 		"account_actor_tags_list,account_actor_triggers_list,account_actor_triggers_set,account_amount_set,account_by_id_get,account_by_ref_create,account_by_ref_get," +
 		"account_create,account_delete,account_formula_get,account_formula_preview,account_formula_set,account_get,account_name_create,account_name_get," +
@@ -124,16 +124,16 @@ func TestConsoleCatalog(t *testing.T) {
 		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get,form_status_update,form_update,forms_count," +
 		"forms_list,forms_tree_get,graph_export_create,graph_file_upload,graph_get,graph_import_create,graph_list,layer_actors_move,layer_actors_search,layer_clean," +
 		"layer_compact,layer_create,layer_edge_settings_save,layer_edges_list,layer_element_exist,layer_get,layer_placements_all,layer_placements_create," +
-		"layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_skeleton_get,layer_stats_get,reaction_create,reaction_delete," +
-		"reaction_update,reactions_count,reactions_list,reactions_mark_read,search_all,simulation_check,simulation_run,simulation_snapshot_get,skill_get,skills_find," +
-		"smart_form_components,smart_form_create,smart_form_data_form_create,smart_form_file_rollback,smart_form_file_version_get,smart_form_file_versions_list," +
-		"smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_folders_create,smart_form_page_render,smart_form_page_submit,smart_form_release," +
-		"smart_form_release_diff,smart_form_release_get,smart_form_release_rollback,smart_form_releases_list,smart_form_trash_list,smart_form_trash_restore,task_get," +
-		"transaction_by_actor_ref_create,transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter," +
-		"transactions_filter_count,transactions_list,transfer_by_ref_get,transfer_create,transfer_get,transfers_filter,transfers_filter_count,user_get,users_search," +
-		"workspaces_list"
+		"layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_skeleton_get,layer_stats_get,meet_transcription_list," +
+		"public_link_create,public_link_get,public_link_revoke,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,reactions_mark_read," +
+		"search_all,simulation_check,simulation_run,simulation_snapshot_get,skill_get,skills_find,smart_form_components,smart_form_create,smart_form_data_form_create," +
+		"smart_form_file_rollback,smart_form_file_version_get,smart_form_file_versions_list,smart_form_files_create,smart_form_files_get,smart_form_files_update," +
+		"smart_form_folders_create,smart_form_page_render,smart_form_page_submit,smart_form_release,smart_form_release_diff,smart_form_release_get," +
+		"smart_form_release_rollback,smart_form_releases_list,smart_form_trash_list,smart_form_trash_restore,task_get,transaction_by_actor_ref_create," +
+		"transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter,transactions_filter_count,transactions_list," +
+		"transfer_by_ref_get,transfer_create,transfer_get,transfers_filter,transfers_filter_count,user_get,users_search,workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 173 {
+	if got := strings.Join(names, ","); got != want || len(names) != 177 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get"} {
