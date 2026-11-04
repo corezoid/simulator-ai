@@ -16,6 +16,13 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
 - A **node** is an actor **placed** on a layer: the placement has its own `laId`, a `position`
   (the block centre in graph units: x right, y down, 50-unit cells) and `layerSettings`. One
   actor can be placed on many layers, or twice on one.
+- A **cell** is where the user sees a node: the Graph Editor rulers name it `"<column>, <row>"`,
+  e.g. `"C, 7"` (column C, row 7). Columns run A…Z, then A1…Z1, A2… (not AA); rows 1, 2… go
+  down; left of and above the origin are `-A`, `-B`… and rows `-1`, `-2`…; there is no 0. The
+  cell named `A, 1` is centred on the origin, every cell 50 units. Tell the user cells, never
+  coordinates; a user's "C7" means `"C, 7"`. `layer_get`, `layer_placements_create` and
+  `flowchart_layout` answer each node's `cell`; `layer_placements_create` and
+  `layer_positions_update` take `cell` instead of a position (the cell's centre).
 - An **edge** joins two actors (`source → target`, direction kept) and has an edge type
   (`hierarchy` by default; `edge_types_list` lists them). Tree types refuse a second parent and
   cycles. An edge is drawn on a layer by its own placement between two node `laId`s. Node and
@@ -29,7 +36,7 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
 "What is on this graph/layer" means that layer's placements, never a workspace search. In a
 URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
 
-- `layer_get {layerId}`: nodes `{laId, actorId, title, formId, position, blockId, hole}` and
+- `layer_get {layerId}`: nodes `{laId, actorId, title, formId, position, cell, blockId, hole}` and
   edges `{laId, edgeId, source, target, name, hole}`, up to 500 per kind; `hasMore` → next
   `offset`.
 - `console-full`: `layer_stats_get` (counts of nodes, edges, holes; not a snapshot),
@@ -92,7 +99,7 @@ image body (`areaPicture {img, width, height}`). Use it for flowchart blocks onl
 | Change | Tool |
 | --- | --- |
 | Rename, recolour, describe a node | `actor_update` (`console`) |
-| Move nodes (edges follow) | `layer_positions_update {layerId, items: [{laId, x, y}]}` (`console`); all or none, refused when a target cell is taken |
+| Move nodes (edges follow) | `layer_positions_update {layerId, items: [{laId, x, y}]}` or `[{laId, cell: "C, 7"}]` (`console`); all or none, refused when a target cell is taken |
 | Edge label, curve, pin, linked actor | `edge_update` (an omitted `name` clears the label) |
 | Re-point an edge | `edge_endpoints_update {edgeId, source?, target?}` |
 | Take a node or edge off a layer only | `layer_placements_manage` with `delete` items |

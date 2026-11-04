@@ -83,6 +83,9 @@ func core(c *client, stamp string) error {
 	if err := c.tool("actor_attach", map[string]any{"actorId": actors[0].ID, "kind": "actor", "targetId": actors[1].ID}, &ignored); err != nil {
 		return err
 	}
+	if err := coreCells(c, actors[0].ID, actors[1].ID); err != nil {
+		return err
+	}
 	chat, err := coreChat(c, actors[0].ID)
 	if err != nil {
 		return err
@@ -139,4 +142,42 @@ func coreChat(c *client, own string) (string, error) {
 		return "", err
 	}
 	return first.ChatID, nil
+}
+
+// coreCells places an actor on a layer by its Graph Editor cell, moves it to another, and reads
+// both cells back with layer_get.
+func coreCells(c *client, layer, actor string) error {
+	var placed struct {
+		Nodes []struct {
+			LaID int64  `json:"laId"`
+			Cell string `json:"cell"`
+		} `json:"nodes"`
+	}
+	if err := c.tool("layer_placements_create", map[string]any{"layerId": layer, "nodes": []any{map[string]any{"actorId": actor, "cell": "C, 7"}}}, &placed); err != nil {
+		return err
+	}
+	if len(placed.Nodes) != 1 || placed.Nodes[0].Cell != "C, 7" {
+		return fmt.Errorf("placed by cell C, 7: %+v", placed.Nodes)
+	}
+	for _, cell := range []string{"C, 7", "-B, -1"} {
+		if cell != "C, 7" {
+			var ignored json.RawMessage
+			if err := c.tool("layer_positions_update", map[string]any{"layerId": layer, "items": []any{map[string]any{"laId": placed.Nodes[0].LaID, "cell": cell}}}, &ignored); err != nil {
+				return err
+			}
+		}
+		var view struct {
+			Nodes []struct {
+				LaID int64  `json:"laId"`
+				Cell string `json:"cell"`
+			} `json:"nodes"`
+		}
+		if err := c.tool("layer_get", map[string]any{"layerId": layer}, &view); err != nil {
+			return err
+		}
+		if len(view.Nodes) != 1 || view.Nodes[0].Cell != cell {
+			return fmt.Errorf("layer_get after moving to %s: %+v", cell, view.Nodes)
+		}
+	}
+	return nil
 }
