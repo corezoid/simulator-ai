@@ -249,7 +249,14 @@ func (c *Client) openOnExisting(ctx context.Context, in FormAccountInput, pair A
 		}
 		items := make([]map[string]json.RawMessage, len(actors.List))
 		for i, a := range actors.List {
-			items[i] = rawParams(map[string]any{"actorId": a.ID, "nameId": pair.NameID, "currencyId": pair.CurrencyID, "accountType": kind, "search": true, "ignoreIfExist": true})
+			params := map[string]any{"actorId": a.ID, "nameId": pair.NameID, "currencyId": pair.CurrencyID, "accountType": kind, "search": true, "ignoreIfExist": true}
+			if in.MinLimit != nil { // the binding's limits, as an actor created from the template gets them
+				params["minLimit"] = *in.MinLimit
+			}
+			if in.MaxLimit != nil {
+				params["maxLimit"] = *in.MaxLimit
+			}
+			items[i] = rawParams(params)
 		}
 		results, err := c.PassEach(ctx, "account_actor/create", items)
 		if err != nil {

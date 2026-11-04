@@ -49,7 +49,8 @@ func keepConsoleCore(s *server.MCPServer) {
 }
 
 // idempotentTools are console writes whose repeat returns the same result and changes nothing more.
-var idempotentTools = map[string]bool{"account_pair_create": true}
+// chat_open is not: a group chat is new on every call.
+var idempotentTools = map[string]bool{"account_pair_create": true, "account_create": true, "form_account_create": true}
 
 // destructiveTools delete what they touch; clients may ask for confirmation on this hint.
 var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true, "access_rules_save": true}

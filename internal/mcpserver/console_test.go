@@ -464,3 +464,19 @@ func TestConsoleCellsRefused(t *testing.T) {
 		t.Errorf("a refused cell reached the API: %v", *calls)
 	}
 }
+
+// A repeat of these writes answers what is there and changes nothing; chat_open is not one (a group
+// chat is new on every call).
+func TestConsoleIdempotentHints(t *testing.T) {
+	c, err := publicapi.New(publicapi.Config{Origin: "http://127.0.0.1:1", Workspace: "ws", Profile: "console", Authorization: "Bearer user"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tools := New(c).ListTools()
+	for name, want := range map[string]bool{"account_create": true, "form_account_create": true, "chat_open": false, "actor_attach": false} {
+		hint := tools[name].Tool.Annotations.IdempotentHint
+		if hint == nil || *hint != want {
+			t.Errorf("%s idempotentHint %v, want %v", name, hint, want)
+		}
+	}
+}
