@@ -44,8 +44,11 @@ Pick the narrowest profile that covers the task; a profile is chosen at start, n
    server. Claude Code inherits the shell; Codex forwards only the names in the server's
    `env_vars` list, which must include the credential variable in use.
 3. Check the connection with one cheap read of the active profile: `forms_list {type:
-   "system", limit: 3}`, or `workspaces_list` in `console-full`. System templates only, and an
-   empty custom list, mean the API user has no workspace role yet.
+   "system", limit: 3}` (`read`, `graph-read`, `console`), `workspaces_list` in `console-full`,
+   `graph_edge_types_list {limit: 1}` in `graph-create`, the single tool with `{}` when
+   `SIMULATOR_AI_ACTOR` binds it, and in `smart-forms`, `reactions-read` or `delegated-read` an
+   `actor_get` of an actor the user names. System templates only, and an empty custom list,
+   mean the API user has no workspace role yet.
 4. Report the origin, the workspace id and the profile, never the credential.
 
 ## When it fails

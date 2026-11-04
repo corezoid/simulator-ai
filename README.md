@@ -77,7 +77,7 @@ batch actors and edges, holes, layer edits; Smart Form pages, data templates, re
 reply) and keep the `graph-read`/`graph-create` and `smart-forms` profiles as their own sections.
 
 The `plugins/simulator-ai` directory includes Claude Code and Codex manifests, MCP config
-and the portable `simulator-ai-read` / `simulator-ai-smart-forms` skills. Its MCP command is the separately installed
+and the portable skills in `plugins/simulator-ai/skills/` (one folder each). Its MCP command is the separately installed
 `simulator-ai` binary. Install that plugin directory using your client's plugin mechanism,
 or configure the MCP directly (the latter does not install the skill automatically):
 

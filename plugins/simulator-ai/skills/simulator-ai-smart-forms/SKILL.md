@@ -90,7 +90,9 @@ A new page needs a new folder `pages/<page>`; `console` cannot create folders (t
 ## Release and show it
 
 `smart_form_release {appId}` deploys develop into production (it replaces production's whole
-content). A refused page or route deploys nothing. Its result `{releaseId, releaseNumber,
+content). A refused page or route deploys nothing. A form you did not create in this run may
+already be live, and there is no rollback tool: before releasing it, name the form and what
+the release changes, and get an explicit yes. Its result `{releaseId, releaseNumber,
 status, ready, marker}`: `ready: true` means production serves it. `smart_form_release_get
 {appId, releaseId}` reads a release again.
 
@@ -100,6 +102,8 @@ status, ready, marker}`: `ready: true` means production serves it. `smart_form_r
 - **In an actor or a comment:** `actor_update {actorId, appId, appSettings}` or
   `reaction_create {rootActorId, type: "comment", appId, appSettings}`; `appSettings` such as
   `{autorun, fullWidth, expired, users, groups}`.
+- **As a link:** `build_link {entity: "smartForm", ref, route, params?}`; it needs a released
+  form whose page declares that route (`routes` in the page config).
 
 Release history, rollback, file history and trash have no tool here: tell the user to use the
 Smart Form editor.

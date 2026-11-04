@@ -59,16 +59,19 @@ Workspace
   is UTC+3) and label the offset (`18:30 (UTC+3)`); otherwise label it `UTC`.
 - An actor or reaction `description` renders BBCode, not Markdown: wrap Markdown in
   `[md]…[/md]`, and keep BBCode chips such as `[actor=<id>]Label[/actor]` outside it.
+  `bbcode_tags_get` (`console-full`) lists the tags the web app renders, with examples.
 - In AI Console the request may carry the user's UI context (`activeActor`, `activeLayer`,
   page): use it for "this actor" / "here" instead of asking.
-- Cite the ids you used. There is no link-building tool: name the object rather than
-  composing a URL.
+- Cite the ids you used. To link an entity, call `build_link` (`actor`, `layer`, `graph`,
+  `form`, `chat`, `smartForm`, ...); never compose a Simulator URL yourself.
 
 ## Profiles
 
 `console` is the core AI Console catalog (actors, templates, flowcharts, Smart Forms,
-comments, access, files). `console-full` adds the rest: actor status/delete/filter, template
-writes, edges and layer edits, access requests, reactions, attachments and finance. Desktop
+comments, access, files, saved skills via `skills_find`/`skill_get`, and `build_link`).
+`console-full` adds the rest: actor status/delete/filter, template
+writes, edges and layer edits, access requests, reactions, attachments, finance, agents and
+`bbcode_tags_get`. Desktop
 profiles (`read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`) are narrower.
 
 ## Skills
@@ -91,6 +94,5 @@ profiles (`read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`)
 | Fill in or run an existing Smart Form | `simulator-ai-smart-forms-runtime` |
 | Smart Form theme | `simulator-ai-styles` |
 | A whole app from existing Corezoid processes | `simulator-ai-app-generator` |
-
-Saved workspace playbooks, digital-twin agents and charts have their own skills
-(`simulator-ai-skills`, `simulator-ai-agents`, `simulator-ai-charts`) when installed.
+| Run or save a workspace playbook (skill) | `simulator-ai-skills` |
+| Consult or delegate to an agent | `simulator-ai-agents` |
