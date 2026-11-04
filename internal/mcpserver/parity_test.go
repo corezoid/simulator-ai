@@ -110,6 +110,26 @@ func allParityTools() []parityTool {
 	return all
 }
 
+// destructiveHints reads each tool's destructiveHint from tools/list.
+func destructiveHints(t *testing.T, send func(string) string) map[string]bool {
+	var list struct {
+		Result struct {
+			Tools []struct {
+				Name        string         `json:"name"`
+				Annotations map[string]any `json:"annotations"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(send(`"method":"tools/list"`)), &list); err != nil {
+		t.Fatal(err)
+	}
+	hints := map[string]bool{}
+	for _, tool := range list.Result.Tools {
+		hints[tool.Name] = tool.Annotations["destructiveHint"] == true
+	}
+	return hints
+}
+
 func TestParityCatalogs(t *testing.T) {
 	all := allParityTools()
 	for _, tc := range []struct {
@@ -149,6 +169,14 @@ func TestParityCatalogs(t *testing.T) {
 					t.Errorf("%s in %s: %v", name, tc.profile, has)
 				}
 			}
+			if tc.profile == "console-full" {
+				hints := destructiveHints(t, send)
+				for _, name := range []string{"account_amount_set", "account_formula_set", "atom_transaction_create", "account_tags_set", "account_triggers_set", "account_actor_triggers_set", "actor_field_triggers_set"} {
+					if !hints[name] {
+						t.Errorf("%s is not hinted destructive", name)
+					}
+				}
+			}
 			if _, has := names["layer_placements_all"]; has != (tc.profile == "console-full" || tc.profile == "graph-read") {
 				t.Errorf("layer_placements_all in %s: %v", tc.profile, has)
 			}
@@ -184,6 +212,8 @@ func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
 		{"transaction_create", `{"accountId":"r1","amount":10,"ref":"t1"}`, "transaction/create", `"accountId":"r1","amount":10,"ref":"t1"`},
 		{"transfer_create", `{"ref":"t2","from":[{"accountId":"d1","amount":5}],"to":[{"accountId":"c1","amount":5}]}`, "transfer/create", `"from":[{"accountId":"d1","amount":5}],"ref":"t2","to":[{"accountId":"c1","amount":5}]`},
 		{"atom_transaction_create", `{"transactions":[{"accountId":"d1","amount":1,"ref":"a"},{"accountId":"c1","amount":1,"ref":"b"}]}`, "transaction/atom/create", `"transactions":[{"accountId":"d1","amount":1,"ref":"a"},{"accountId":"c1","amount":1,"ref":"b"}]`},
+		{"account_amount_set", `{"id":"r1","amount":7}`, "account_actor/amount/update", `"amount":7,"id":"r1"`},
+		{"actor_field_triggers_set", `{"actorId":"a1","dataField":"price","triggers":["t1"]}`, "actor/field/triggers/update", `"actorId":"a1","dataField":"price","triggers":["t1"]`},
 		{"account_tags_set", `{"nameId":"n1","currencyId":3,"tags":["t1"]}`, "account/tags/update", `"currencyId":3,"nameId":"n1","tags":["t1"]`},
 		{"account_create", `{"actorId":"a1","nameId":"n1","currencyId":3,"counterType":"counter","ignoreIfExist":true}`, "account_actor/create", `"counterType":"counter","currencyId":3,"ignoreIfExist":true`},
 		{"counter_increment", `{"formId":5,"actorRef":"car","accountName":"Mileage","currency":"km","incomeType":"debit","amount":12}`, "counter/increment", `"accountName":"Mileage","actorRef":"car","amount":12`},

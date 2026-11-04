@@ -89,6 +89,40 @@ func financeExtra(c *client, stamp, nameID string, currencyID int64, actors []st
 			return err
 		}
 	}
+	if err := counterAccount(c, stamp, nameID, currencyID); err != nil {
+		return err
+	}
 	fmt.Println("OK finance extras tags", len(keep), "formula on", target)
+	return nil
+}
+
+// counterAccount opens the pair as a counter account on a new actor and reads its counterType back.
+func counterAccount(c *client, stamp, nameID string, currencyID int64) error {
+	var actor id
+	if err := c.tool("layer_create", map[string]any{"title": "AI smoke counter " + stamp}, &actor); err != nil {
+		return err
+	}
+	var opened struct {
+		List []struct {
+			ID string `json:"id"`
+		} `json:"list"`
+	}
+	if err := c.tool("account_create", map[string]any{"actorId": actor.ID, "nameId": nameID, "currencyId": currencyID, "counterType": "counter"}, &opened); err != nil {
+		return err
+	}
+	if len(opened.List) == 0 {
+		return fmt.Errorf("account_create returned no rows for the counter account")
+	}
+	var row struct {
+		List []struct {
+			CounterType string `json:"counterType"`
+		} `json:"list"`
+	}
+	if err := c.tool("account_by_id_get", map[string]any{"accountId": opened.List[0].ID}, &row); err != nil {
+		return err
+	}
+	if len(row.List) != 1 || row.List[0].CounterType != "counter" {
+		return fmt.Errorf("the counter account reads %+v, want counterType counter", row.List)
+	}
 	return nil
 }
