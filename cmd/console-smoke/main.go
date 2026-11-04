@@ -83,7 +83,7 @@ func main() {
 	bin := flag.String("bin", "bin/simulator-ai", "simulator-ai binary")
 	flag.Parse()
 	if flag.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "usage: console-smoke -bin <binary> graph|form ...")
+		fmt.Fprintln(os.Stderr, "usage: console-smoke -bin <binary> graph|form|parity ...")
 		os.Exit(2)
 	}
 	// Bounded like client-smoke: the whole run, all of its scenarios, gets five minutes.
@@ -112,6 +112,8 @@ func main() {
 			err = graph(c, stamp)
 		case "form":
 			err = form(c, stamp)
+		case "parity":
+			err = parity(c, stamp)
 		default:
 			err = fmt.Errorf("unknown scenario %q", scenario)
 		}

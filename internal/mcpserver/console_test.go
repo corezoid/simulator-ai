@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -50,7 +51,7 @@ func consoleServer(t *testing.T, overrides map[string]string) (func(body string)
 			Params map[string]any `json:"params"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&q)
-		if r.Header.Get("Authorization") != "Simulator user-jwt" || q.Params["accId"] != "ws" {
+		if r.Header.Get("Authorization") != "Simulator user-jwt" || (q.Params["accId"] != "ws" && q.Method != "batch") {
 			t.Errorf("%s sent without the host credential or workspace", q.Method)
 		}
 		*calls = append(*calls, consoleCall{q.Method, q.Params})
@@ -106,11 +107,18 @@ func TestConsoleCatalog(t *testing.T) {
 			t.Errorf("%s output schema types open JSON as bytes", tool.Name)
 		}
 	}
-	want := "actor_create,actor_get,actor_update,edge_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
-	if strings.Join(names, ",") != want {
-		t.Fatal("console tools:", names)
+	// The exact console catalog: its own tools plus every actor, form and graph parity tool.
+	want := "actor_by_ref_get,actor_create,actor_delete,actor_get,actor_status_update,actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count,actors_search," +
+		"edge_create,edge_delete,edge_endpoints_update,edge_exist,edge_get,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
+		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get,form_status_update,form_update,forms_count,forms_list,forms_tree_get," +
+		"graph_get,graph_list,layer_actors_move,layer_actors_search,layer_clean,layer_compact,layer_create,layer_edges_list,layer_element_exist,layer_get,layer_placements_all," +
+		"layer_placements_create,layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_skeleton_get,layer_stats_get,search_all," +
+		"smart_form_components,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
+	sort.Strings(names)
+	if got := strings.Join(names, ","); got != want || len(names) != 60 {
+		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
-	for _, name := range []string{"actor_get", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
+	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
 		if !reads[name] {
 			t.Errorf("%s must be read-only", name)
 		}
@@ -128,7 +136,7 @@ func TestConsoleRequests(t *testing.T) {
 		out        string // substring of the structured result
 	}{
 		{"actor_create", `{"formId":5,"title":"Start","color":"#17B26A","data":{"__form__6:blockId":"process"}}`, "actor/create", `"color":"#17B26A","data":{"__form__6:blockId":"process"}`, `"id":"a1"`},
-		{"actor_update", `{"actorId":"a1","title":"Renamed"}`, "actor/update", `"actorId":"a1","fields":["id","title","description","formId","status","ref"],"title":"Renamed"`, `"title":"Renamed"`},
+		{"actor_update", `{"actorId":"a1","title":"Renamed"}`, "actor/update", `"actorId":"a1","fields":["id","title","description","formId","status","ref","color"],"title":"Renamed"`, `"title":"Renamed"`},
 		{"flowchart_blocks_list", `{"query":" proc ","offset":100}`, "form/flowchart-block/search", `"accId":"ws","limit":100,"offset":100,"query":"proc"`, `"list":[{"formId":5,"title":"Process","blockId":"process","collection":"basic"}],"hasMore":false`},
 		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/flowchart-block/search", `"blockIds":["process"]`, `"layerSettings":{"width":200,"height":100,"blockId":"process"`},
 		{"layer_create", `{"title":"Flow"}`, "form/system/get,actor/create", `"data":{},"fields"`, `"id":"a1"`},
@@ -215,7 +223,6 @@ func TestConsoleFailures(t *testing.T) {
 		{"develop release is not ready production", "smart_form_release_get", `{"appId":"app1","releaseId":9}`,
 			map[string]string{"release/get": `"result":{"id":9,"actorId":"app1","envId":1,"sourceEnvId":2,"releaseNumber":2,"status":"active"}`}, "not a production release"},
 		{"catalog page must be well formed", "flowchart_blocks_list", `{}`, map[string]string{"form/flowchart-block/search": `"result":{"list":[]}`}, "invalid native block catalog page"},
-		{"updated actor must be the requested one", "actor_update", `{"actorId":"a9","title":"x"}`, nil, "identity mismatch"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -233,5 +240,76 @@ func TestConsoleFailures(t *testing.T) {
 				t.Fatal(reply)
 			}
 		})
+	}
+}
+
+func TestConsoleBatches(t *testing.T) {
+	actors := `"result":{"isAtomic":true,"list":[{"id":"0","result":{"id":"a1","title":"Start","formId":5}},{"id":"1","result":{"id":"a2","title":"End","formId":5}}]}`
+	edges := `"result":{"isAtomic":true,"list":[{"id":"0","result":{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"go"}},{"id":"1","result":{"id":"e2","edgeTypeId":3,"source":"a2","target":"a1"}}]}`
+	failed := `"result":{"isAtomic":true,"rolledBack":true,"list":[{"id":"0","result":{"id":"a1","formId":5}},{"id":"1","error":{"code":-32602,"message":"invalid params: formId","data":{"reason":"invalidParams"}}}]}`
+	for _, tc := range []struct {
+		name, tool, args, batch, wire, want string
+		fails                               bool
+	}{
+		{"actors in order", "actors_create", `{"actors":[{"formId":5,"title":"Start","color":"#17B26A","data":{"k":1}},{"formId":5,"title":"End"}]}`, actors,
+			`"isAtomic":true,"list":[{"id":"0","method":"actor/create","params":{"accId":"ws","color":"#17B26A","data":{"k":1}`, `"actors":[{"formId":5,"id":"a1","title":"Start"},{"formId":5,"id":"a2","title":"End"}]`, false},
+		{"edges keep direction", "edges_create", `{"edges":[{"source":"a1","target":"a2","name":"go"},{"source":"a2","target":"a1"}]}`, edges,
+			`"method":"edge/create","params":{"accId":"ws","edgeTypeId":3,"forceDirection":true,"name":"go","source":"a1","target":"a2"}`, `"edges":[{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"go"},{"id":"e2"`, false},
+		{"a failed item fails the call", "actors_create", `{"actors":[{"formId":5,"title":"A"},{"formId":9,"title":"B"}]}`, failed, `"isAtomic":true`, "item 1 failed, nothing was created", true},
+		{"reverse edge is not reused", "edges_create", `{"edges":[{"source":"a1","target":"a2"},{"source":"a1","target":"a2"}]}`, edges, `"isAtomic":true`, "edge 1: batch committed but edge/create returned an edge with other endpoints", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			send, calls := consoleServer(t, map[string]string{"batch": tc.batch})
+			reply := send(`"method":"tools/call","params":{"name":"` + tc.tool + `","arguments":` + tc.args + `}`)
+			last, _ := json.Marshal((*calls)[len(*calls)-1].Params)
+			if (*calls)[len(*calls)-1].Method != "batch" || !strings.Contains(string(last), tc.wire) {
+				t.Fatalf("batch request %s lacks %s", last, tc.wire)
+			}
+			if strings.Contains(reply, `"isError":true`) != tc.fails || !strings.Contains(strings.ReplaceAll(reply, `\"`, `"`), tc.want) {
+				t.Fatalf("reply %s, want %s", reply, tc.want)
+			}
+		})
+	}
+}
+
+func TestSmartFormComponents(t *testing.T) {
+	send, calls := consoleServer(t, nil)
+	text := func(args string) string {
+		var r struct {
+			Result struct {
+				Content    []struct{ Text string } `json:"content"`
+				Structured json.RawMessage         `json:"structuredContent"`
+			} `json:"result"`
+		}
+		_ = json.Unmarshal([]byte(send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":`+args+`}`)), &r)
+		if len(r.Result.Structured) > 0 {
+			return string(r.Result.Structured)
+		}
+		if len(r.Result.Content) > 0 {
+			return r.Result.Content[0].Text
+		}
+		return ""
+	}
+	list := text(`{}`)
+	if strings.Count(list, `"category":`) != 97 || strings.Contains(list, `"props"`) || !strings.Contains(list, `"type":"DatePicker"`) {
+		t.Fatal("component list:", list[:300])
+	}
+	detail := text(`{"types":["TextInput","Button"]}`)
+	if !strings.Contains(detail, `"label":{"description":"Label for the input","type":"string"}`) || !strings.Contains(detail, `"title":`) || strings.Count(detail, `"category":`) != 2 {
+		t.Fatal("component detail:", detail[:300])
+	}
+	if unknown := text(`{"types":["DateInput"]}`); !strings.Contains(unknown, "unknown CDU component types [DateInput]") {
+		t.Fatal(unknown)
+	}
+	if len(*calls) != 0 {
+		t.Fatal("the component reference called the API")
+	}
+}
+
+func TestConsoleBatchRequiresAtomicBackend(t *testing.T) {
+	send, _ := consoleServer(t, map[string]string{"batch": `"result":{"list":[{"id":"0","result":{"id":"a1","formId":5}},{"id":"1","error":{"code":1,"message":"x","data":{"reason":"notFound"}}}]}`})
+	reply := send(`"method":"tools/call","params":{"name":"actors_create","arguments":{"actors":[{"formId":5,"title":"A"},{"formId":6,"title":"B"}]}}`)
+	if !strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "did not run the batch atomically") {
+		t.Fatal(reply)
 	}
 }

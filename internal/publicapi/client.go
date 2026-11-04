@@ -143,16 +143,7 @@ func call[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 		if len(env.Result) > 0 {
 			return result, errors.New("ambiguous JSON-RPC response")
 		}
-		reason := "remote_error"
-		switch env.Error.Data.Reason {
-		case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams", "operationConflict", "operationResultExpired", "appEnvironmentChanged", "appFileSourceMismatch", "invalidRoutes":
-			reason = env.Error.Data.Reason
-		}
-		err := &APIError{Code: env.Error.Code, Reason: reason}
-		if c.ConsoleEnabled() {
-			err.Message = consoleErrorMessage(env.Error)
-		}
-		return result, err
+		return result, c.apiError(env.Error)
 	}
 	if len(env.Result) == 0 || bytes.Equal(bytes.TrimSpace(env.Result), []byte("null")) {
 		return result, errors.New("missing public API result")
@@ -206,4 +197,19 @@ func (c *Client) ListLayerActors(ctx context.Context, id string, limit, offset i
 		}
 	}
 	return page, nil
+}
+
+// apiError keeps the code and an allow-listed reason; only the console profile adds the server's
+// bounded message. Batch item errors go through it too.
+func (c *Client) apiError(e *rpcError) *APIError {
+	reason := "remote_error"
+	switch e.Data.Reason {
+	case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams", "operationConflict", "operationResultExpired", "appEnvironmentChanged", "appFileSourceMismatch", "invalidRoutes":
+		reason = e.Data.Reason
+	}
+	err := &APIError{Code: e.Code, Reason: reason}
+	if c.ConsoleEnabled() {
+		err.Message = consoleErrorMessage(e)
+	}
+	return err
 }

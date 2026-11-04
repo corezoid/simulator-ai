@@ -4,10 +4,13 @@ New public plugin, separate from simulator-ai-plugin. Domain tools call only doc
 public sim-api JSON-RPC at /api/2.0/rpc. Never use /papi, private RPC, SQL or internal HTTP.
 Desktop uses its host agent: do not add Hermes, LiteLLM or server billing to this path.
 
-Default profile is three read-only metadata tools, explicit ApiKey/origin/workspace.
+Default profile is read-only, explicit ApiKey/origin/workspace: full actor_get/form_get, layer_actors_list
+and the read-only actor and form parity tools (README "Tools by profile"; one pinned public method per
+legacy tool, contracts/parity-openrpc.json). graph-read adds the read-only graph parity tools; console has
+every parity tool, writes included. Parity tools carry no receipts or preflight.
 The Console-only opt-in delegated-read profile exposes actor_get/form_get with an
 explicit scoped token and no API-key fallback; it does not launch or provision a runtime.
-The opt-in graph-read profile adds three read-only native graph metadata tools and exact placement readback; it does not
+The opt-in graph-read profile adds read-only native graph metadata tools, exact placement readback and the graph parity reads; it does not
 expose graph writes or accept delegated tokens. The separate graph-create profile adds
 six create/recovery tools and a read-only deterministic native planner, with mandatory write keys and per-write public contract preflight;
 no graph update/delete or hidden runtime is permitted.
@@ -15,7 +18,7 @@ The opt-in smart-forms profile adds thirteen typed public tools with mandatory r
 keys/CAS and backend contract preflight. No OAuth, remote MCP or full legacy parity claim. Capability additions require
 source schemas, named parity mapping, ACL/error/side-effect/recovery tests and docs.
 The console profile is run by Hermes per AI Console request under the initiator's own
-SIMULATOR_AI_AUTHORIZATION: sixteen plain public tools for a grid-aligned flowchart on a layer and a released
+SIMULATOR_AI_AUTHORIZATION: nineteen plain public tools for a grid-aligned flowchart on a layer and a released
 Smart Form (README lists them). Writes carry no receipt keys or contract preflight because sim-api
 deduplicates Console retries; errors include the server's bounded message so the agent can fix input.
 The separate reactions-read profile adds reaction_stats_get to the three metadata reads;

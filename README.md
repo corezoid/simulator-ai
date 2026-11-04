@@ -31,7 +31,8 @@ change desktop configuration, provision a runtime or enable Console routing.
 
 API scopes are `actors.readonly` / `forms.readonly`, plus existing workspace and object ACLs.
 The server binds one explicit origin/workspace/key per process. Tools cannot supply another
-workspace, arbitrary RPC, URL, credentials or `with` expansion. Read requests are never
+workspace, arbitrary RPC, URL or credentials; `fields`/`with` exist only on the parity tools whose public
+method documents them. Read requests are never
 coalesced with counts. No automatic retries, paid tests or remote MCP. Writes require the explicit `smart-forms`, `graph-create` or `console` profile.
 
 ## Local setup
@@ -99,6 +100,51 @@ Run `make client-smoke` to install into disposable Codex/Claude Code profiles an
 client loading against a scripted loopback API, without a model turn. See
 [client acceptance](docs/client-acceptance.md) for evidence and remaining live ACL/revoke gates.
 
+## Tools by profile
+
+Actor, form and graph tools mirror the legacy `simulator-ai-plugin` tools (name in brackets) on one public
+method each, or on a few for the composite ones. Their input schemas are the pinned public params
+(`contracts/parity-openrpc.json`, source in `parity-source.json`), and the result is the backend's own
+projection, shaped by `fields`/`with` where the method has them. There are no receipt keys or contract
+preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
+`delegated-read` keep their own catalogs.
+
+| Tool [legacy] | Public method | console | read | graph-read |
+| --- | --- | :-: | :-: | :-: |
+| `actor_get` [getActor] | `actor/get` (fields, with) | ✓ | ✓ | ✓ |
+| `actor_by_ref_get` [getActorByRef] · `actor_system_get` [getSystemActor] | `actor/by-ref/get` · `actor/by-system_obj/get` | ✓ | ✓ | ✓ |
+| `actors_search` [searchActors] · `actors_filter` / `actors_filter_count` [filterActors] | `actor/search/list` · `actor/filter/list` / `count` | ✓ | ✓ | ✓ |
+| `search_all` [searchAll] (users and/or actors, each its own page) | one non-atomic `batch` of `user/list` + `actor/search/list` | ✓ | ✓ | ✓ |
+| `actor_create` / `actors_create` [createActor] · `actor_update` [updateActor] | `actor/create` (batch) · `actor/update` | ✓ | | |
+| `actor_status_update` [setActorStatus] · `actor_delete` [deleteActor] | `actor/status/update` · `actor/delete` | ✓ | | |
+| `form_get` [getForm] (body, editToken with `editor`) | `form/get` | ✓ | ✓ | ✓ |
+| `forms_list` / `forms_count` [getForms, searchForms] | `form/list` / `form/count` | ✓ | ✓ | ✓ |
+| `form_create` · `form_update` · `form_status_update` · `form_delete` [createForm, updateForm, setFormStatus, deleteForm] | `form/create` · `form/update` · `form/status/update` · `form/delete` | ✓ | | |
+| `forms_tree_get` [getFormsTree] · `form_linked_get` [getLinkedForms] | `form/tree/get` · its subtree, or `form/get` with `parents` | ✓ | ✓ | ✓ |
+| `form_accounts_list` [getFormAccounts] | `account_form/list` | ✓ | ✓ | ✓ |
+| `form_account_create` · `form_account_delete` [createFormAccount, removeFormAccount] | `account_form/create` · `account_form/delete` | ✓ | | |
+| `edge_create` / `edges_create` [createLink, massLink] | `edge/create` (batch) | ✓ | | |
+| `edge_get` [getEdge] · `edge_exist` [existLink] | `edge/get` · `edge/by-node/get` | ✓ | | ✓ |
+| `edge_update` · `edge_endpoints_update` · `edge_delete` [updateEdge, deleteEdge] | `edge/update` · `edge/endpoints/update` · `edge/delete` | ✓ | | |
+| `edges_by_nodes_delete` [deleteEdgesByNodes] | `batch` of `edge/by-node/delete` | ✓ | | |
+| `edge_types_list` [getEdgeTypes] | `edge_type/list` (isSystem) | ✓ | | `graph_edge_types_list` |
+| `layer_placements_list` · `layer_edges_list` [getLayerActorsPaginated] | `graph/layer/actors/list` · `graph/layer/edges/list` | ✓ | | ✓ |
+| `layer_placements_all` [getAllLayerPlacements] | `graph/layer/actors/list`, every page | ✓ | | ✓ |
+| `layer_skeleton_get` [getLayerActors] | `graph/layer/skeleton/get` | ✓ | | ✓ |
+| `layer_placements_manage` [manageLayerActors] (`layer_placements_create` for flowchart blocks) | `graph/layer/actors/manage` | ✓ | | |
+| `layer_positions_update` [updateLayerPositions] · `layer_actors_move` [moveActors] · `layer_clean` [cleanGraphLayer] | `…/positions/update` · `…/actors/move` · `graph/layer/clean` | ✓ | | |
+| `layer_element_exist` [existLayerElement] · `layer_actors_search` [searchLayerActors] | `graph/layer/element/exist` · `graph/layer/actors/search/list` | ✓ | | ✓ |
+| `layer_stats_get` [layerStats] | `graph/layer/stats/get` | ✓ | | `graph_layer_stats_get` |
+| `graph_list` [getRelatedActors] (hierarchy by default) | `graph/list` | ✓ | | ✓ |
+| `graph_get` [getActorLinks, getLinkedActors] | `graph/get` | ✓ | | ✓ |
+| `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
+
+Not covered yet, and why:
+- No public method yet: getCorezoidProcesses (sim-api adds `actor/corezoid/process/list` in a separate MR).
+  `forms_tree_get`, `form_linked_get` and `edge_exist` use methods from sim-api MR !461/!462
+  (`form/tree/get`, `edge/by-node/get`), pinned from those branches until they reach the stand.
+- pullGraphFile / pushGraphFile: a local file ↔ layer sync engine on public methods, too large for this slice.
+
 ## AI Console profile
 
 `SIMULATOR_AI_PROFILE=console` is what Hermes runs per AI Console request under the initiator's own
@@ -111,6 +157,7 @@ step needs.
 | --- | --- | --- |
 | `actor_get` | `actor/get` | id, title, description, formId, status, ref |
 | `actor_create` / `actor_update` | `actor/create` / `actor/update` | same actor subset |
+| `actors_create` / `edges_create` | one atomic `batch` of `actor/create` / `edge/create` (edge types by name) | actors / edges in input order; one failed item fails the call with its index and creates nothing |
 | `flowchart_blocks_list` | `form/flowchart-block/search` | formId, title, blockId, `hasMore`; with `blockIds` also ready `data` and `layerSettings` |
 | `flowchart_layout` | `form/flowchart-block/search` (read-only) | per node formId, data, grid position and layerSettings; `returnEdges` |
 | `layer_create` | `form/system/get` (`Layers`) + `actor/create` | layer actor |
@@ -119,6 +166,7 @@ step needs.
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
 | `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges, `hasMore` |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
+| `smart_form_components` | none (pinned sim-api CDU 2.0 catalog, `contracts/cdu-components.json`) | component types with category; with `types` their props, events and slots |
 | `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
@@ -126,7 +174,7 @@ step needs.
 
 Flowchart: `flowchart_blocks_list` (kinds) → `flowchart_layout(nodes, edges)` → `actor_create(formId, title,
 color, data)` per node → `layer_placements_create` nodes with the layout's `position`, `layerSettings` and the same
-`color` → `edge_create` (`name` is the label) → `layer_placements_create` edges between the node `laId`s →
+`color` → one `edges_create` (`name` is the label) → `layer_placements_create` edges between the node `laId`s →
 `layer_get` to read it back. Geometry follows Graph Editor: a cell is 50 units and grid lines lie on cell
 boundaries (25 + 50k); a position is the block centre and a block's top-left corner sits on a grid line, so a
 block of whole cells fills whole cells. The layout ranks nodes top to bottom (loop-back edges excluded from
@@ -156,7 +204,22 @@ claude mcp add --scope user simulator-ai -- simulator-ai   # once; then run `cla
 codex mcp add simulator-ai -- simulator-ai                 # once; add env_vars (above) incl. SIMULATOR_AI_AUTHORIZATION, then run `codex`
 ```
 
-`claude mcp list` shows `simulator-ai ... ✔ Connected`; ask either agent for `actor_get` of a known actor.
+`claude mcp list` shows `simulator-ai ... ✔ Connected`. One read call through each agent's own model, with a
+workspace API key (`make -C <sim-api> ai-smoke-env SMOKE_KIND=apikey SMOKE_OUT=~/.config/simulator-ai/r1-apikey.env`)
+loaded as above and `SIMULATOR_AI_PROFILE=read`; the MCP config is passed for this run only:
+
+```sh
+claude -p "Call the simulator-ai MCP tool forms_list with type system and limit 3, then reply with only the titles it returned, comma-separated." \
+  --mcp-config r1-mcp.json --strict-mcp-config --allowedTools mcp__simulator-ai__forms_list --max-turns 3
+# r1-mcp.json: {"mcpServers":{"simulator-ai":{"command":"/abs/path/bin/simulator-ai","args":[]}}}
+codex exec -s read-only -c approval_policy='"never"' -c 'mcp_servers.simulator-ai.command="/abs/path/bin/simulator-ai"' \
+  -c 'mcp_servers.simulator-ai.env_vars=["SIMULATOR_AI_ORIGIN","SIMULATOR_AI_WORKSPACE","SIMULATOR_AI_API_KEY","SIMULATOR_AI_PROFILE"]' \
+  "Call the simulator-ai MCP tool forms_list with type system and limit 3, then reply with only the titles it returned, comma-separated."
+```
+
+On the local stand (2026-11-04) Claude Code 2.1.312 answered `Scripts, Widgets, CompanyCategories` in 3 turns, and
+Codex 0.166 (the ChatGPT.app CLI; `mcp: simulator-ai/forms_list (completed)`) gave the same answer. An API user
+without workspace roles sees only system templates.
 
 ## Development and contracts
 
