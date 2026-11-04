@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -125,7 +126,7 @@ func dataPage(in DataFormInput, formID int64, workspace string) node {
 		switch f.Type {
 		case "date":
 			// DatePicker has no label prop; its event is {startDate, endDate, ...} in Unix seconds.
-			children = append(children, node{"id": f.Name + "Label", "type": "Label", "props": node{"title": f.Label}},
+			children = append(children, node{"id": f.Name + "Label", "type": "Label", "props": node{"text": f.Label}},
 				node{"id": f.Name, "type": "DatePicker", "props": node{"mode": "single"}, "actions": set("{{ $event.startDate }}")})
 		case "select":
 			var options []any
@@ -157,10 +158,12 @@ func dataPage(in DataFormInput, formID int64, workspace string) node {
 		"children": []any{node{"id": dataFormNode, "type": "Form", "props": node{"valueKey": dataFormNode, "fields": rules}, "children": children}}}}
 }
 
-// wireSubmits checks a page config's submit wiring and returns the source to store: every Form node
-// needs a form.submit naming it, and a form.submit must go via simapi to form/submit with a data
-// template formId (a Console Smart Form has no Corezoid process). accId is set to the host workspace.
-// Sources that are not page configs are returned unchanged.
+// wireSubmits checks a page config before it is stored and returns the source to store. It refuses
+// what made a Console form send nothing (acceptance D7): a Form node no form.submit names, and a
+// button without any action beside inputs on a page without a Form. A form.submit to form/submit must
+// name its data template, and its accId is set to the host workspace. Other submits (via corezoid,
+// other methods) are the page author's and pass as they are. A source that is not a page config, or
+// needs no accId, is stored byte for byte.
 func wireSubmits(source, workspace string) (string, error) {
 	var doc any
 	if json.Unmarshal([]byte(source), &doc) != nil {
@@ -170,34 +173,36 @@ func wireSubmits(source, workspace string) (string, error) {
 		return source, nil
 	}
 	forms, submitted := map[string]bool{}, map[string]bool{}
-	inputs, buttons := 0, 0
+	inputs, idleButtons, refs, changed := 0, 0, false, false
 	var problems []string
 	var walk func(v any)
 	walk = func(v any) {
 		switch t := v.(type) {
 		case map[string]any:
+			if _, ok := t["$ref"]; ok {
+				refs = true // a fragment may hold the submit
+			}
 			switch t["type"] {
 			case "TextInput", "DatePicker", "Select", "Checkbox", "Radio", "Toggle", "Slider", "Upload":
 				inputs++
 			case "Button":
-				buttons++
-			}
-			if t["type"] == "Form" {
+				if actions, _ := t["actions"].(map[string]any); len(actions) == 0 {
+					idleButtons++
+				}
+			case "Form":
 				if id, ok := t["id"].(string); ok {
 					forms[id] = true
 				}
-			}
-			if t["type"] == "form.submit" {
+			case "form.submit":
 				id, _ := t["formId"].(string)
 				submitted[id] = true
-				params, _ := t["simapiExtraParams"].(map[string]any)
-				switch {
-				case t["via"] != "simapi" || t["simapiMethod"] != "form/submit":
-					problems = append(problems, fmt.Sprintf("form.submit of %q must go via simapi to form/submit", id))
-				case params == nil || !positive(params["formId"]):
-					problems = append(problems, fmt.Sprintf("form.submit of %q needs simapiExtraParams.formId, the data template id", id))
-				default:
-					params["accId"] = workspace
+				if t["via"] == "simapi" && t["simapiMethod"] == "form/submit" {
+					params, _ := t["simapiExtraParams"].(map[string]any)
+					if params == nil || !positive(params["formId"]) && !expression(params["formId"]) {
+						problems = append(problems, fmt.Sprintf("form.submit of %q needs simapiExtraParams.formId, the data template id", id))
+					} else if params["accId"] != workspace {
+						params["accId"], changed = workspace, true
+					}
 				}
 			}
 			for _, x := range t {
@@ -210,19 +215,31 @@ func wireSubmits(source, workspace string) (string, error) {
 		}
 	}
 	walk(doc)
-	if inputs > 0 && buttons > 0 && len(forms) == 0 {
-		problems = append(problems, "the page has inputs and a button but no Form node, so nothing would be sent")
+	if inputs > 0 && idleButtons > 0 && len(forms) == 0 {
+		problems = append(problems, "the page has inputs and a button with no action but no Form node, so nothing would be sent")
 	}
 	for id := range forms {
-		if !submitted[id] {
+		if !submitted[id] && !refs {
 			problems = append(problems, fmt.Sprintf("Form %q has no button with form.submit", id))
 		}
 	}
 	if len(problems) > 0 {
 		return "", errors.New("page submit wiring: " + strings.Join(problems, "; ") + ". Create the data template and a ready page with smart_form_data_form_create")
 	}
-	out, err := json.Marshal(doc)
-	return string(out), err
+	if !changed {
+		return source, nil
+	}
+	var out bytes.Buffer
+	enc := json.NewEncoder(&out)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(doc)
+	return strings.TrimSuffix(out.String(), "\n"), err
+}
+
+func expression(v any) bool {
+	s, ok := v.(string)
+	return ok && strings.Contains(s, "{{")
 }
 
 func positive(v any) bool {

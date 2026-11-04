@@ -38,7 +38,7 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 			t.Errorf("template fields lack %s: %s", want, fields)
 		}
 	}
-	for _, want := range []string{`"type":"Form"`, `"valueKey":"request"`, `"path":"request.start","type":"state","value":"{{ $event.startDate }}"`,
+	for _, want := range []string{`"type":"Form"`, `"valueKey":"request"`, `"props":{"text":"Start"}`, `"path":"request.start","type":"state","value":"{{ $event.startDate }}"`,
 		`"simapiExtraParams":{"accId":"ws","formId":77,"successMessage":"Saved"},"simapiMethod":"form/submit","type":"form.submit","via":"simapi"`, `"title":"Send"`} {
 		if !strings.Contains(out.Page, want) {
 			t.Errorf("page lacks %s", want)
@@ -52,21 +52,30 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 func TestWireSubmits(t *testing.T) {
 	d7 := `{"schemaVersion":"2.0","id":"index","tree":{"id":"root","type":"Stack","children":[{"id":"c","type":"TextInput","props":{"label":"Comment"}},{"id":"send","type":"Button","props":{"title":"Send"}}]}}`
 	formOnly := `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"c","type":"TextInput"}]}}`
-	corezoid := `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"corezoid"}]}}]}}`
 	noTemplate := `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit"}]}}]}}`
 	good := `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"if","cond":"true","then":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"other","formId":5}}]}]}}]}}`
 	for name, tc := range map[string]struct{ source, err string }{
 		"D7: inputs and a button, no Form": {d7, "no Form node"},
 		"Form without a submit button":     {formOnly, `Form "request" has no button with form.submit`},
-		"corezoid submit":                  {corezoid, "must go via simapi to form/submit"},
 		"no data template":                 {noTemplate, "needs simapiExtraParams.formId"},
 	} {
 		if _, err := wireSubmits(tc.source, "ws"); err == nil || !strings.Contains(err.Error(), tc.err) || !strings.Contains(err.Error(), "smart_form_data_form_create") {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
+	for name, legit := range map[string]string{
+		"corezoid submit":      `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"corezoid"}]}}]}}`,
+		"search with navigate": `{"schemaVersion":"2.0","id":"index","tree":{"id":"r","type":"Stack","children":[{"id":"q","type":"TextInput"},{"id":"go","type":"Button","actions":{"onClick":[{"type":"navigate","to":"results"}]}}]}}`,
+		"submit in a fragment": `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"$ref":"#/submitButton"}]}}`,
+		"expression template":  `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":"{{ vm.templateId }}"}}]}}]}}`,
+	} {
+		out, err := wireSubmits(legit, "ws")
+		if err != nil || out != legit {
+			t.Errorf("%s: refused or rewritten: %v", name, err)
+		}
+	}
 	wired, err := wireSubmits(good, "ws")
-	if err != nil || !strings.Contains(wired, `"accId":"ws"`) || strings.Contains(wired, `"other"`) {
+	if err != nil || !strings.Contains(wired, `"accId": "ws"`) || strings.Contains(wired, `"other"`) {
 		t.Fatal("accId must be the host workspace:", wired, err)
 	}
 	for _, plain := range []string{`{"startPage":"index"}`, "a { color: red }", `{"schemaVersion":"2.0","id":"x","tree":{"id":"r","type":"Stack","children":[{"id":"l","type":"Label"}]}}`} {

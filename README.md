@@ -203,8 +203,8 @@ silhouette as `areaPicture`, which makes it graphic, so sim-api keeps that posit
 to a multiple of 50 (half a cell off for even-sized blocks). Smart Form: a form the user fills in saves what is submitted as an actor of its own data template.
 `smart_form_data_form_create` creates that template from the fields and returns a ready page (a Form node, bound
 inputs, a button that validates and calls `form/submit` via simapi with the template's formId); page writes refuse
-inputs with a button but no Form, a Form without a form.submit button and a submit not going to `form/submit`
-with a template, and set its `accId` to the host workspace. Then `smart_form_create` →
+inputs with an action-less button but no Form, a Form no form.submit names and a `form/submit` without a template,
+and set its `accId` to the host workspace; other submits (via Corezoid, other methods) are left as they are. Then `smart_form_create` →
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its
 `ready: true` (status `active`, snapshot kept, production env) comes with `marker: "appId: <appId>"`. The
 agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries
