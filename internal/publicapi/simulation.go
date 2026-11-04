@@ -71,12 +71,9 @@ type edgeTypesRequest struct {
 	Limit  int64  `json:"limit"`
 	Offset int64  `json:"offset"`
 }
-type edgeTypeName struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-}
 
-// EdgeTypeNames maps the workspace's edge type ids to their names.
+// EdgeTypeNames maps the workspace's edge type ids to their names. ListGraphEdgeTypes reads the same
+// rows but only in the graph-read profile, so this shares its wire type, not its gate.
 func (c *Client) EdgeTypeNames(ctx context.Context) (map[int64]string, error) {
 	if !c.ParityAllowed("edge_type/list") {
 		return nil, errors.New("edge_type/list is not available in this profile")
@@ -84,7 +81,7 @@ func (c *Client) EdgeTypeNames(ctx context.Context) (map[int64]string, error) {
 	out := map[int64]string{}
 	q := edgeTypesRequest{AccID: c.config.Workspace, Limit: 1000}
 	for page := 0; page < maxLayerPages; page++ {
-		types, err := call[edgeTypesRequest, listWire[edgeTypeName]](ctx, c, "edge_type/list", q)
+		types, err := call[edgeTypesRequest, graphEdgeTypesWire](ctx, c, "edge_type/list", q)
 		if err != nil {
 			return nil, err
 		}

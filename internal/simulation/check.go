@@ -495,7 +495,7 @@ func Check(modelSrc []byte, graph *Graph, scenarios []*OMap) *CheckReport {
 	}
 	if textNumberSnapshot(graph) {
 		r.warnf("graph", "this snapshot was written by v2.9.0, which saved the numbers in actor data as text: "+
-			"sums concatenate and numeric filters match nothing. Re-take it with simulationSnapshot (overwrite: true)")
+			"sums concatenate and numeric filters match nothing. Re-take it with simulation_snapshot_get")
 	}
 	behaviors := getMap(d, "behaviors")
 	for _, t := range behaviors.Keys() {

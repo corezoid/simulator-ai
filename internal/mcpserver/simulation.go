@@ -48,7 +48,7 @@ func addSimulation(s *server.MCPServer, c *publicapi.Client) {
 			`"runs":{"type":"integer","minimum":1,"maximum":`+strconv.Itoa(simulation.MaxRuns)+`,"description":"Runs per scenario with different random seeds (default 1)."},`+
 			`"goals":{"type":"string","description":"Extra goals as a YAML/JSON map name -> condition over metrics, e.g. {no_leaves: 'leaves == 0'}."},`+
 			`"logEvents":{"type":"integer","minimum":0,"maximum":`+strconv.Itoa(simulation.MaxLogEvents)+`,"description":"Include the first N processed events of each scenario (single runs; default 0)."},`+
-			`"timeLimit":{"type":"string","maxLength":32,"description":"Wall-clock budget for the whole call, e.g. 30s or 5m (default 2m, at most 15m). When it runs out a single run ends with status stopped_by_time and many runs report the runs made so far."}`+
+			`"timeLimit":{"type":"string","maxLength":32,"description":"Wall-clock budget for the whole call, e.g. 30s or 5m (default 2m, at most 5m; it also bounds reading a live layer). When it runs out a single run ends with status stopped_by_time and many runs report the runs made so far."}`+
 			`},"required":["model"],"additionalProperties":false}`, false,
 		func(ctx context.Context, in simulation.RunInput) (map[string]any, error) {
 			return simulation.RunTool(ctx, c, in)
@@ -57,7 +57,7 @@ func addSimulation(s *server.MCPServer, c *publicapi.Client) {
 		"sees it: its actors (type = template title, data), links (edge type names) and account values (credit minus debit per account "+
 		"name and currency, fact accounts; a formula account keeps its formula next to its current value). Returns the layer YAML with "+
 		"sim: sections (pass it, possibly edited, as graph to simulation_check and simulation_run) and a summary. Actors or accounts the "+
-		"caller may not read are listed in source. Reads only: nothing is written to Simulator.",
+		"caller may not read are listed in source, as is a layer of more than 2000 actors, whose later actors get no accounts. Reads only: nothing is written to Simulator.",
 		`{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255,"description":"Layer actor id."},`+
 			`"period":{"type":"string","maxLength":32,"description":"Account values = turnover of this last period (e.g. 30d) instead of the balance."}},`+
 			`"required":["layerId"],"additionalProperties":false}`, false,

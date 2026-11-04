@@ -41,7 +41,7 @@ sim:
 Rules:
 - Actors keep their order from the file. Every "for each actor" in this spec uses this order.
 - A snapshot of a live layer lists actors and links sorted by id, so the result does not depend on the order the Simulator API returns them in. An actor or edge placed twice appears once.
-- A snapshot reads layer pages until an empty page (a page can be short because deleted elements are dropped from it) and account values exactly. An actor whose accounts the caller may not read stays in the graph without accounts and is listed in `source.accounts_not_readable`; a placement of an actor the caller may not view is left out and listed in `source.actors_not_readable`.
+- A snapshot reads layer pages until an empty page (a page can be short because deleted elements are dropped from it) and account values exactly. An actor whose accounts the caller may not read stays in the graph without accounts and is listed in `source.accounts_not_readable`; a placement of an actor the caller may not view is left out and listed in `source.actors_not_readable`. Accounts are read for the first 2000 actors only; past that, `source.accounts_not_read` says how many were left without them. At most 200 bare form ids are named.
 - Edge types are names (`hierarchy`, …). An account value is credit minus debit of one account name and currency (fact accounts); its value type is the currency name. A formula account keeps its current value and its formula in `sim.state._accounts`; a run does not recompute it.
 - A layer YAML without `sim:` sections is valid: types come from `formName` or `formId`, there are no accounts.
 - An edge whose source or target is not an actor in the file is dropped.
@@ -184,5 +184,6 @@ Each directory in `internal/simulation/testdata/conformance/` holds `graph.yaml`
 - Jev decisions (`jev:` blocks) are not available here: a `decide` uses its `rule`, or a uniform choice without one.
 - Publishing results to Simulator and the slow mode (a live copy updated step by step) are not available yet; `simulation_run` only reads.
 - A `graph` that names forms only by `formId` gets the form titles from Simulator where the caller may read the form, so a model can say `type: Shops` for either input.
-- `simulation_run` has a wall-clock budget (`timeLimit`, default 2 minutes, at most 15): a single run that exceeds it ends with status `stopped_by_time`, and many runs report the runs made so far with a `note`. The event log in a result is capped at 10,000 entries per scenario.
+- `simulation_run` has a wall-clock budget (`timeLimit`, default 2 minutes, at most 5; reading a live layer counts against it): a single run that exceeds it ends with status `stopped_by_time`, and many runs report the runs made so far with a `note`. The event log in a result is capped at 10,000 entries per scenario.
+- One process runs at most 2 `simulation_run` calls at once (`SIMULATOR_AI_MAX_CONCURRENT_SIMULATIONS`, 0 or less for no cap); another call is refused with "busy" rather than queued.
 - There are no files: `simulation_snapshot_get` returns the layer YAML, and an edited copy goes back as `graph`.

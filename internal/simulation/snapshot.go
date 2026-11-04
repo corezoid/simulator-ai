@@ -15,6 +15,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// A snapshot reads one account list per actor and one form per bare form id; these bound the calls.
+var (
+	maxAccountActors = 2000
+	maxFormNames     = 200
+)
+
 // systemForms are graph-of-graph placements, not domain actors.
 var systemForms = map[string]bool{"Layers": true, "Graphs": true}
 
@@ -65,7 +71,13 @@ func Snapshot(ctx context.Context, c *publicapi.Client, layerID string, period t
 		from, to = now.Add(-period).UnixMilli(), now.UnixMilli()
 	}
 	var skipped []any
-	for _, a := range append([]*Actor(nil), g.actors...) {
+	actors := append([]*Actor(nil), g.actors...)
+	if len(actors) > maxAccountActors {
+		// one account read per actor: a huge layer keeps its first actors' accounts only
+		g.Source.Set("accounts_not_read", fmt.Sprintf("truncated: accounts are read for the first %d actors, not for the other %d", maxAccountActors, len(actors)-maxAccountActors))
+		actors = actors[:maxAccountActors]
+	}
+	for _, a := range actors {
 		rows, err := c.SimulationAccounts(ctx, a.ID, from, to)
 		if err != nil {
 			if unreadable(err) {
@@ -301,11 +313,21 @@ func unnamedFormTypes(g *Graph) map[string][]*Actor {
 }
 
 // nameFormTypes replaces bare form-id types with form titles read from Simulator
-// (public form/get). Forms that cannot be read keep their id. Returns how many actors
-// got a title.
+// (public form/get), each form once and at most maxFormNames of them. Forms that cannot be
+// read keep their id. Returns how many actors got a title.
 func nameFormTypes(ctx context.Context, c *publicapi.Client, g *Graph) int {
+	unnamed := unnamedFormTypes(g)
+	ids := make([]string, 0, len(unnamed))
+	for id := range unnamed {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
 	n := 0
-	for id, actors := range unnamedFormTypes(g) {
+	for i, id := range ids {
+		if i == maxFormNames || ctx.Err() != nil {
+			break
+		}
+		actors := unnamed[id]
 		formID, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			continue

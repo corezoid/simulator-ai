@@ -42,7 +42,7 @@ const (
 	MaxRuns          = 1000
 	MaxLogEvents     = 10_000
 	DefaultTimeLimit = 2 * time.Minute
-	MaxTimeLimit     = 15 * time.Minute
+	MaxTimeLimit     = 5 * time.Minute // below an MCP client's call timeout
 )
 
 type inputs struct {
@@ -100,8 +100,23 @@ func CheckTool(ctx context.Context, c *publicapi.Client, in Input) (map[string]a
 
 // RunTool checks the model and runs the selected scenarios, once each or runs times.
 func RunTool(ctx context.Context, c *publicapi.Client, in RunInput) (map[string]any, error) {
-	ins, err := loadInputs(ctx, c, in.Input, true)
+	release, ok := acquireRunSlot()
+	if !ok {
+		return nil, errors.New("busy: the maximum number of simulations is already running; retry in a minute")
+	}
+	defer release()
+	limit, err := parseTimeLimit(in.TimeLimit)
 	if err != nil {
+		return nil, fmt.Errorf("timeLimit: %w", err)
+	}
+	// The live snapshot is read within the same budget as the runs.
+	runCtx, cancel := context.WithTimeoutCause(ctx, limit, fmt.Errorf("time limit %s reached", limit))
+	defer cancel()
+	ins, err := loadInputs(runCtx, c, in.Input, true)
+	if err != nil {
+		if cause := context.Cause(runCtx); cause != nil && ctx.Err() == nil {
+			return nil, fmt.Errorf("%w while reading the layer: %v", cause, err)
+		}
 		return nil, err
 	}
 	rep := Check(ins.modelSrc, ins.graph, ins.rawScen)
@@ -123,12 +138,6 @@ func RunTool(ctx context.Context, c *publicapi.Client, in RunInput) (map[string]
 			goals = m
 		}
 	}
-	limit, err := parseTimeLimit(in.TimeLimit)
-	if err != nil {
-		return nil, fmt.Errorf("timeLimit: %w", err)
-	}
-	runCtx, cancel := context.WithTimeoutCause(ctx, limit, fmt.Errorf("time limit %s reached", limit))
-	defer cancel()
 	out := map[string]any{"ok": true, "graph": ins.graph.summary(), "source": toJSON(ins.graph.Source)}
 	if len(rep.Warnings) > 0 {
 		out["warnings"] = rep.Warnings

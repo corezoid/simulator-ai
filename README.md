@@ -192,7 +192,8 @@ Simulation is the legacy engine moved as it was (`internal/simulation`, its conf
 runs in model time in memory and nothing is written to Simulator. `simulation_snapshot_get` returns the layer
 YAML instead of writing `<layerId>.sim.yaml`, and `simulation_check` / `simulation_run` take it back as `graph`
 (there are no file paths); a formula account keeps its formula next to its current value, which a run does not
-recompute. The skill `simulator-ai-simulate` (with the model format in its `references/`) composes them.
+recompute. A snapshot reads accounts of at most 2000 actors; `simulation_run` takes at most 5 minutes, live layer
+read included, and two at once per process (`SIMULATOR_AI_MAX_CONCURRENT_SIMULATIONS`); another is refused as busy. The skill `simulator-ai-simulate` (with the model format in its `references/`) composes them.
 
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
 too large for this slice; getChildAccounts, since account trees were removed from the platform (walk the
