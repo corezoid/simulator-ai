@@ -248,7 +248,7 @@ func inPalette(color string) bool { return palette[color] }
 // and checks the actor it creates. A stand without form/submit yet is reported, not failed.
 func submit(c *client, formID int64) error {
 	start := time.Now().Unix()
-	result, err := publicRPC("form/submit", map[string]any{"formId": formID, "formData": map[string]any{"start": start, "end": start + 5*86400, "comment": "smoke leave"}})
+	result, err := publicRPC("form/submit", map[string]any{"formId": formID, "formData": map[string]any{"start": map[string]any{"startDate": start, "endDate": start}, "end": map[string]any{"startDate": start + 5*86400, "endDate": start + 5*86400}, "comment": "smoke leave"}})
 	if err != nil {
 		if strings.Contains(err.Error(), "methodNotFound") {
 			fmt.Println("SKIP form/submit: not on this stand yet")
@@ -269,7 +269,8 @@ func submit(c *client, formID int64) error {
 	if err = c.tool("actor_get", map[string]any{"actorId": saved.ID, "fields": []string{"formId", "data"}}, &actor); err != nil {
 		return err
 	}
-	if actor.FormID != formID || actor.Data["comment"] != "smoke leave" {
+	date, _ := actor.Data["start"].(map[string]any)
+	if actor.FormID != formID || actor.Data["comment"] != "smoke leave" || date["startDate"] == nil {
 		return fmt.Errorf("submitted actor %s has form %d and data %v", saved.ID, actor.FormID, actor.Data)
 	}
 	fmt.Println("OK form/submit actor", saved.ID)

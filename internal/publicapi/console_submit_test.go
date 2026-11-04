@@ -38,7 +38,7 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 			t.Errorf("template fields lack %s: %s", want, fields)
 		}
 	}
-	for _, want := range []string{`"type":"Form"`, `"valueKey":"request"`, `"props":{"text":"Start"}`, `"path":"request.start","type":"state","value":"{{ $event.startDate }}"`,
+	for _, want := range []string{`"type":"Form"`, `"valueKey":"request"`, `"props":{"text":"Start"}`, `"path":"request.start","type":"state","value":"{{ {\"startDate\": $event.startDate, \"endDate\": $event.endDate} }}"`, `"props":{"mode":"single","value":"{{ vm.request.start }}"}`, `"props":{"error":true,"text":"{{ vm.errors.request.start }}"}`,
 		`"simapiExtraParams":{"accId":"ws","formId":77,"successMessage":"Saved"},"simapiMethod":"form/submit","type":"form.submit","via":"simapi"`, `"title":"Send"`} {
 		if !strings.Contains(out.Page, want) {
 			t.Errorf("page lacks %s", want)

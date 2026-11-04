@@ -125,9 +125,13 @@ func dataPage(in DataFormInput, formID int64, workspace string) node {
 		}
 		switch f.Type {
 		case "date":
-			// DatePicker has no label prop; its event is {startDate, endDate, ...} in Unix seconds.
+			// A calendar field holds {startDate, endDate} in Unix seconds (legacy makeCalendarItemValue),
+			// the shape of the DatePicker value and event too. DatePicker has no label, required or
+			// helperText props: Labels carry its caption and its validation error.
 			children = append(children, node{"id": f.Name + "Label", "type": "Label", "props": node{"text": f.Label}},
-				node{"id": f.Name, "type": "DatePicker", "props": node{"mode": "single"}, "actions": set("{{ $event.startDate }}")})
+				node{"id": f.Name, "type": "DatePicker", "props": node{"mode": "single", "value": value},
+					"actions": set(`{{ {"startDate": $event.startDate, "endDate": $event.endDate} }}`)},
+				node{"id": f.Name + "Error", "type": "Label", "props": node{"text": errText, "error": true}})
 		case "select":
 			var options []any
 			for _, o := range f.Options {
@@ -216,7 +220,7 @@ func wireSubmits(source, workspace string) (string, error) {
 	}
 	walk(doc)
 	if inputs > 0 && idleButtons > 0 && len(forms) == 0 {
-		problems = append(problems, "the page has inputs and a button with no action but no Form node, so nothing would be sent")
+		problems = append(problems, "the page has inputs and a button with no actions but no Form node, so what is typed would not be sent (give a decorative button an action, or wrap the inputs in a Form with a form.submit button)")
 	}
 	for id := range forms {
 		if !submitted[id] && !refs {
