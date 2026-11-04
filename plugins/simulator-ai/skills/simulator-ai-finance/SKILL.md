@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-finance
-description: Manage Simulator accounts, balances, transactions, transfers, currencies, account names and counters with the public Simulator AI tools (profile console-full). Use when the user wants to open an account on an actor, read a balance or its history, record a transaction, move value between actors, add a currency or category, or track a counter ("баланс рахунку", "запиши транзакцію", "переказ коштів", "лічильник", "баланс счёта", "перевод средств").
+description: Manage Simulator accounts, balances, transactions, transfers, currencies, account names and counters with the public Simulator AI tools (profile console-full). Use when the user wants to open an account on an actor, read a balance or its history, record a transaction, move value between actors, add a currency or category, track a counter, set a balance, write a formula, or tag accounts and bind triggers ("баланс рахунку", "запиши транзакцію", "переказ коштів", "лічильник", "баланс счёта", "перевод средств").
 ---
 
 Use the installed `simulator-ai` catalog with profile `console-full`; plain `console` has no
@@ -101,12 +101,15 @@ source, a trigger); `from`/`to` (Unix ms) as in `accounts_list`.
 
 `account_amount_set {id, amount}` sets a row's balance by recording the difference as a
 transaction: permanent and in its history. Confirm with the user first; undo by setting the old
-value back. Formula and statistical accounts are refused.
+value back. Formula and statistical accounts are refused. A target past the account's limits is
+stored as declined and a counter account's balance does not move, so read the row back with
+`account_by_id_get` before reporting the new balance.
 
 ## Formulas
 
-A formula computes an account's balance from other accounts, named by their row ids (bare UUIDs),
-with arithmetic and mathjs functions, e.g. `<accountId> * 2`. Always
+A formula computes an account's balance from other accounts, named by their row ids (bare
+lowercase UUIDs), with numbers, `+ - * /`, parentheses and `sum`, `mean`, `min`, `max`, `abs`,
+`round(x[, n])`, e.g. `<accountId> * 2`. Always
 `account_formula_preview {id, formula}` first (`ok`, the value, or the first error), then
 `account_formula_set`; an empty formula clears it. An account with transactions cannot take a
 formula, and one with a formula takes no transactions. `account_formula_get` shows the text,
