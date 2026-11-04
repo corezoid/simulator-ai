@@ -72,8 +72,10 @@ func compact(v any, depth int) any {
 	case map[string]any:
 		out := make(map[string]any, len(t))
 		for k, x := range t {
-			if k == "description" {
-				if d, ok := x.(string); ok && depth == 0 {
+			// A string description is an annotation; a "description" that is a schema is a real
+			// property (a template field has one) and stays.
+			if d, ok := x.(string); ok && k == "description" {
+				if depth == 0 {
 					out[k] = firstSentence(d)
 				}
 				continue

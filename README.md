@@ -155,8 +155,8 @@ too large for this slice. Every other actor, form and graph tool is above.
 Every tool schema rides in the model context on every turn, so `SIMULATOR_AI_PROFILE=console` is the core
 catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, `actor_update`, `actors_search`,
 `form_get`, `forms_list`, `graph_get`, the flowchart tools and the Smart Form tools below, 23 in all
-(33.7 KB of tool JSON, 26.5 KB without output schemas). `console-full` adds every other actor, form and graph
-tool (61 tools, 80.0 KB). Parameter descriptions are cut to their first sentence and nested fields keep only
+(33.8 KB of tool JSON, 26.6 KB without output schemas). `console-full` adds every other actor, form and graph
+tool (61 tools, 80.4 KB). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 `SIMULATOR_AI_PROFILE=console` is what Hermes runs per AI Console request under the initiator's own
