@@ -57,6 +57,9 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addFormEngines(s, c)
 		addParity(s, c, graphTools)
 		addGraphEngines(s, c)
+		if c.ConsoleCore() {
+			keepConsoleCore(s)
+		}
 		return s
 	}
 	if c.ParityAllowed("form/get") {

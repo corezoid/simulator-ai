@@ -81,6 +81,7 @@ func (c *client) reuse(out any) error { return json.Unmarshal(c.last, out) }
 
 func main() {
 	bin := flag.String("bin", "bin/simulator-ai", "simulator-ai binary")
+	profile := flag.String("profile", "console", "console (the core catalog Hermes runs) or console-full")
 	flag.Parse()
 	if flag.NArg() == 0 {
 		fmt.Fprintln(os.Stderr, "usage: console-smoke -bin <binary> graph|form|parity ...")
@@ -90,7 +91,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, *bin)
-	cmd.Env = append(os.Environ(), "SIMULATOR_AI_PROFILE=console")
+	cmd.Env = append(os.Environ(), "SIMULATOR_AI_PROFILE="+*profile)
 	cmd.Stderr = os.Stderr
 	stdin, _ := cmd.StdinPipe()
 	stdout, _ := cmd.StdoutPipe()

@@ -66,7 +66,7 @@ func consoleServer(t *testing.T, overrides map[string]string) (func(body string)
 		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, q.ID, reply)
 	}))
 	t.Cleanup(api.Close)
-	c, e := publicapi.New(publicapi.Config{Origin: api.URL, Workspace: "ws", Profile: "console", Authorization: "Simulator user-jwt"})
+	c, e := publicapi.New(publicapi.Config{Origin: api.URL, Workspace: "ws", Profile: "console-full", Authorization: "Simulator user-jwt"})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -296,5 +296,22 @@ func TestConsoleBatchRequiresAtomicBackend(t *testing.T) {
 	reply := send(`"method":"tools/call","params":{"name":"actors_create","arguments":{"actors":[{"formId":5,"title":"A"},{"formId":6,"title":"B"}]}}`)
 	if !strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "did not run the batch atomically") {
 		t.Fatal(reply)
+	}
+}
+
+func TestConsoleCoreCatalog(t *testing.T) {
+	c, err := publicapi.New(publicapi.Config{Origin: "http://127.0.0.1:1", Workspace: "ws", Profile: "console", Authorization: "Bearer user"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for name := range New(c).ListTools() {
+		names = append(names, name)
+		if !consoleCoreTools[name] {
+			t.Error("console has", name)
+		}
+	}
+	if len(names) != len(consoleCoreTools) || len(names) != 23 {
+		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
 	}
 }

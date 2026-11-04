@@ -17,7 +17,7 @@ no graph update/delete or hidden runtime is permitted.
 The opt-in smart-forms profile adds thirteen typed public tools with mandatory recovery
 keys/CAS and backend contract preflight. No OAuth, remote MCP or full legacy parity claim. Capability additions require
 source schemas, named parity mapping, ACL/error/side-effect/recovery tests and docs.
-The console profile is run by Hermes per AI Console request under the initiator's own
+The console profile (core catalog; console-full has every console tool) is run by Hermes per AI Console request under the initiator's own
 SIMULATOR_AI_AUTHORIZATION: plain public tools for a grid-aligned flowchart on a layer and a released
 Smart Form (README lists them). Writes carry no receipt keys or contract preflight because sim-api
 deduplicates Console retries; errors include the server's bounded message so the agent can fix input.

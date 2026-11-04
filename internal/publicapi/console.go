@@ -13,7 +13,13 @@ import (
 // released Smart Form, run per request under the initiator's own SIMULATOR_AI_AUTHORIZATION. Retries
 // are deduplicated by sim-api for the Console task, not here, so there are no receipt keys and no
 // contract preflight.
-func (c *Client) ConsoleEnabled() bool { return c.config.Profile == "console" }
+func (c *Client) ConsoleEnabled() bool {
+	return c.config.Profile == "console" || c.config.Profile == "console-full"
+}
+
+// ConsoleCore is the plain console profile: only the tools the Console scenarios use, because every
+// tool schema rides in the model context on every turn. console-full has every console tool.
+func (c *Client) ConsoleCore() bool { return c.config.Profile == "console" }
 
 // ActorCreateInput is the console subset of public actor/create.
 type ActorCreateInput struct {

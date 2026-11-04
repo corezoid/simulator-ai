@@ -10,6 +10,29 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// consoleCoreTools is the plain console catalog: what the Console scenarios (an actor answer, a
+// flowchart on a layer, a released Smart Form) use. Every schema rides in the model context on every
+// turn, so the rest of the console tools are console-full only.
+var consoleCoreTools = map[string]bool{
+	"actor_get": true, "actor_create": true, "actors_create": true, "actor_update": true, "actors_search": true,
+	"form_get": true, "forms_list": true, "graph_get": true,
+	"flowchart_blocks_list": true, "flowchart_layout": true, "layer_create": true, "layer_get": true,
+	"layer_placements_create": true, "layer_positions_update": true, "edge_create": true, "edges_create": true,
+	"smart_form_components": true, "smart_form_create": true, "smart_form_files_get": true, "smart_form_files_update": true,
+	"smart_form_files_create": true, "smart_form_release": true, "smart_form_release_get": true,
+}
+
+// keepConsoleCore drops every tool outside consoleCoreTools.
+func keepConsoleCore(s *server.MCPServer) {
+	var drop []string
+	for name := range s.ListTools() {
+		if !consoleCoreTools[name] {
+			drop = append(drop, name)
+		}
+	}
+	s.DeleteTools(drop...)
+}
+
 // destructiveTools delete what they touch; clients may ask for confirmation on this hint.
 var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true}
 

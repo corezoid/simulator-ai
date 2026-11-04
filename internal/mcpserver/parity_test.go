@@ -64,7 +64,7 @@ func parityServer(t *testing.T, profile string) (func(string) string, *[]parityC
 	}))
 	t.Cleanup(api.Close)
 	cfg := publicapi.Config{Origin: api.URL, Workspace: "ws", Profile: profile, APIKey: "key"}
-	if profile == "console" {
+	if profile == "console" || profile == "console-full" {
 		cfg.APIKey, cfg.Authorization = "", "Bearer user"
 	}
 	c, err := publicapi.New(cfg)
@@ -107,7 +107,8 @@ func TestParityCatalogs(t *testing.T) {
 		profile string
 		want    func(publicapi.ParityMethod, string) bool
 	}{
-		{"console", func(publicapi.ParityMethod, string) bool { return true }},
+		{"console-full", func(publicapi.ParityMethod, string) bool { return true }},
+		{"console", func(_ publicapi.ParityMethod, name string) bool { return consoleCoreTools[name] }},
 		{"read", func(m publicapi.ParityMethod, _ string) bool { return !m.Write && m.Domain != "graph" }},
 		{"graph-read", func(m publicapi.ParityMethod, name string) bool {
 			return !m.Write && name != "edge_types_list" && name != "layer_stats_get"
@@ -122,7 +123,7 @@ func TestParityCatalogs(t *testing.T) {
 				m := publicapi.ParityMethods[p.Method]
 				_, has := names[p.Name]
 				want := tc.want(m, p.Name)
-				if p.Name == "actor_get" || p.Name == "form_get" {
+				if (p.Name == "actor_get" || p.Name == "form_get") && tc.profile != "console" {
 					has, want = has && names[p.Name] == !m.Write, true // metadata or parity version
 				}
 				if has != want {
@@ -133,11 +134,11 @@ func TestParityCatalogs(t *testing.T) {
 				}
 			}
 			for _, name := range []string{"actors_create", "edges_create", "edges_by_nodes_delete", "layer_compact", "layer_prune_long_edges"} {
-				if _, has := names[name]; has != (tc.profile == "console") {
+				if _, has := names[name]; has != (tc.profile == "console-full" || tc.profile == "console" && consoleCoreTools[name]) {
 					t.Errorf("%s in %s: %v", name, tc.profile, has)
 				}
 			}
-			if _, has := names["layer_placements_all"]; has != (tc.profile == "console" || tc.profile == "graph-read") {
+			if _, has := names["layer_placements_all"]; has != (tc.profile == "console-full" || tc.profile == "graph-read") {
 				t.Errorf("layer_placements_all in %s: %v", tc.profile, has)
 			}
 		})
@@ -145,7 +146,7 @@ func TestParityCatalogs(t *testing.T) {
 }
 
 func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
-	send, calls := parityServer(t, "console")
+	send, calls := parityServer(t, "console-full")
 	all := append(append(append([]parityTool{}, actorTools...), formTools...), graphTools...)
 	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
 	for _, p := range all {
@@ -165,7 +166,7 @@ func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
 		{"actors_filter", `{"formId":5,"limit":10}`, "actor/filter/list", `"limit":10`},
 		{"form_update", `{"formId":5,"title":"F","expectedEditToken":"tok"}`, "form/update", `"expectedEditToken":"tok"`},
 		{"form_account_delete", `{"formId":5,"id":7}`, "account_form/delete", `"id":7`},
-		{"graph_list", `{"actorId":"a1","type":"children"}`, "graph/list", `"edgeTypeId":3,"type":"children"`},
+		{"graph_list", `{"actorId":"a1","type":"children"}`, "graph/list", `"edgeTypeId":3,"fields":["id","title","formId"],"type":"children"`},
 		{"graph_list", `{"actorId":"a1","type":"linked","edgeTypeId":9}`, "graph/list", `"edgeTypeId":9`},
 		{"layer_clean", `{"actorId":"L"}`, "graph/layer/clean", `"actorId":"L"`},
 		{"edge_exist", `{"source":"a","target":"b","edgeTypeId":3,"bidirected":true}`, "edge/by-node/get", `"bidirected":true,"edgeTypeId":3`},
@@ -198,7 +199,7 @@ func TestParityReadProfileCannotWrite(t *testing.T) {
 }
 
 func TestParityEngines(t *testing.T) {
-	send, calls := parityServer(t, "console")
+	send, calls := parityServer(t, "console-full")
 	var reply string
 	*calls = nil
 	reply = send(`"method":"tools/call","params":{"name":"layer_placements_all","arguments":{"layerId":"L"}}`)

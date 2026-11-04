@@ -109,6 +109,9 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 23 tools the Console
+scenarios use (see "AI Console profile").
+
 | Tool [legacy] | Public method | console | read | graph-read |
 | --- | --- | :-: | :-: | :-: |
 | `actor_get` [getActor] | `actor/get` (fields, with) | ✓ | ✓ | ✓ |
@@ -148,6 +151,13 @@ Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer 
 too large for this slice. Every other actor, form and graph tool is above.
 
 ## AI Console profile
+
+Every tool schema rides in the model context on every turn, so `SIMULATOR_AI_PROFILE=console` is the core
+catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, `actor_update`, `actors_search`,
+`form_get`, `forms_list`, `graph_get`, the flowchart tools and the Smart Form tools below, 23 in all
+(33.8 KB of tool JSON, 26.6 KB without output schemas). `console-full` adds every other actor, form and graph
+tool (61 tools, 80.4 KB). Parameter descriptions are cut to their first sentence and nested fields keep only
+their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 `SIMULATOR_AI_PROFILE=console` is what Hermes runs per AI Console request under the initiator's own
 `SIMULATOR_AI_AUTHORIZATION`. It covers two Console answers: a flowchart drawn on a layer and a released
