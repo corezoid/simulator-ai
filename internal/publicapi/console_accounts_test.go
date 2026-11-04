@@ -88,7 +88,8 @@ func TestBindFormAccountOpensItOnExistingActors(t *testing.T) {
 		}
 		return `{}`
 	})
-	out, err := c.BindFormAccount(context.Background(), FormAccountInput{FormID: 7, PairRef: PairRef{NameID: "n", CurrencyID: 3}})
+	low, high := int64(-5), int64(500)
+	out, err := c.BindFormAccount(context.Background(), FormAccountInput{FormID: 7, PairRef: PairRef{NameID: "n", CurrencyID: 3}, MinLimit: &low, MaxLimit: &high})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,9 +98,10 @@ func TestBindFormAccountOpensItOnExistingActors(t *testing.T) {
 	}
 	got := strings.Join(methods(*calls), "\n")
 	for _, want := range []string{
-		`"method":"account_form/create","params":{"accId":"ws","accountType":"fact","currencyId":3,"formId":7,"nameId":"n","search":true}`,
+		`"method":"account_form/create","params":{"accId":"ws","accountType":"fact","currencyId":3,"formId":7,"maxLimit":500,"minLimit":-5,"nameId":"n","search":true}`,
 		`actor/filter/list {"accId":"ws","fields":["id"],"formId":7,"limit":100,"offset":0,"orderBy":"createdAt","orderValue":"ASC"}`,
-		`"method":"account_actor/create","params":{"accId":"ws","accountType":"fact","actorId":"a3","currencyId":3,"ignoreIfExist":true,"nameId":"n","search":true}`,
+		// Existing actors get the binding's limits, as one created from the template does.
+		`"method":"account_actor/create","params":{"accId":"ws","accountType":"fact","actorId":"a3","currencyId":3,"ignoreIfExist":true,"maxLimit":500,"minLimit":-5,"nameId":"n","search":true}`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("no %s in\n%s", want, got)

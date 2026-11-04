@@ -157,7 +157,7 @@ scenarios use (see "AI Console profile").
 | `access_request_create` [requestAccess] (an actor of the host workspace) · `access_requests_list` · `access_request_confirm` · `access_request_cancel` | `access_rule/actor/request/create` · `…/list` · `…/confirm` · `…/cancel` | ✓ | | |
 | `reactions_list` [getReactions] · `reactions_count` · `reactions_mark_read` [markReactionsRead] | `reaction/list` · `reaction/count` · `reaction/read/update` | ✓ | | |
 | `reaction_create` · `reaction_update` · `reaction_delete` [createReaction, updateReaction, deleteReaction] | `reaction/create` · `reaction/update` · `reaction/delete` | ✓ | | |
-| `chat_open` (p2p reused as the web UI does, or a new group chat) | `form/system/get` (`Events`) + `actor/filter/list` (stream `p2p`) + `actor/create` + `user/get` + `actor/update` (ref, title) + `access_rule/actor/share` | ✓ | | |
+| `chat_open` (p2p reused by its exact ref as the web UI does, `selfUserId` from the request; or a new group chat) | `form/system/get` (`Events`) + `actor/by-ref/get` + `user/get`, then one atomic `batch` of `actor/create` (ref, title) + `access_rule/actor/share` (`$0.id`) | ✓ | | |
 | `actor_attach` (actor card, Smart Form or pinned form card on an actor) | `actor/update` (`cardActorId` / `appId`) · `edge_type/get` + `edge/create` (`pinned`), with a new form actor in one atomic `batch` | ✓ | | |
 | `users_search` [searchUsers, getUsers] (without query a page of members) · `user_get` [getUser] · `workspaces_list` [getWorkspaces] | `user/list` · `user/get` · `workspace/list` | ✓ | | |
 | `attachments_list` [getAttachments] · `attachments_by_actor_list` [getActorAttachments] | `attachment/list` · `attachment/by-actor/list` | ✓ | | |
@@ -332,7 +332,7 @@ workspace roles, `SMOKE_TTL`, `ROTATE=1`) and writes `~/.config/simulator-ai/smo
 `SIMULATOR_AI_API_KEY` or `SIMULATOR_AI_AUTHORIZATION`, mode 0600). It then runs `cmd/console-smoke` over stdio with only that file's credential (five-minute bound): a layer with Start / Process / End blocks, two labelled edges and their
 placements read back with `layer_get`, then a Smart Form with a field, a submit button and a root route, released,
 read back as `ready` and linked with `build_link`, then a verified skill found by `skills_find`, read by `skill_get`
-and linked, then the core scenario: an account opened by name on two actors (with its plan twin, then answered as
+and linked, then the core scenario (console): an account opened by name on two actors (with its plan twin, then answered as
 existing) and a transfer between them, an Account Template whose existing record gets its account, a form card and an
 actor card on an actor, a node placed by cell `C, 7`, moved to `-B, -1` and read back by cell, and a p2p chat with another member opened twice (reused) and a message in it. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
 by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`), the simulation one (a shop with a balance
