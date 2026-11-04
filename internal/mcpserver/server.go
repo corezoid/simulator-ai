@@ -57,6 +57,10 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addFormEngines(s, c)
 		addParity(s, c, graphTools)
 		addGraphEngines(s, c)
+		addParity(s, c, reactionTools)
+		addParity(s, c, userTools)
+		addParity(s, c, attachmentTools)
+		addConsolePeople(s, c)
 		if c.ConsoleCore() {
 			keepConsoleCore(s)
 		}

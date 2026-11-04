@@ -28,7 +28,7 @@ func TestParitySourcePin(t *testing.T) {
 	for _, m := range doc.Methods {
 		pinned[m.Name] = true
 	}
-	if len(doc.Methods) != 43 || source.Methods != len(doc.Methods) || len(pinned) != len(doc.Methods) {
+	if len(doc.Methods) != 64 || source.Methods != len(doc.Methods) || len(pinned) != len(doc.Methods) {
 		t.Fatalf("pinned %d methods (%d distinct), source says %d", len(doc.Methods), len(pinned), source.Methods)
 	}
 	for method := range ParityMethods {
