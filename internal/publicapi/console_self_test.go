@@ -123,17 +123,18 @@ func TestSelfWithoutViewUsers(t *testing.T) {
 
 // With the caller known from the credential the batch notifies at once, with no second share.
 func TestOpenChatTrustedNotifiesInTheBatch(t *testing.T) {
+	var calls *[]rpcCall
 	c, calls := jwtBackend(t, `{"sub":"45","nick":"Ivan"}`, func(method string) string {
 		switch method {
 		case "actor/by-ref/get":
 			return notFound
 		case "batch":
-			return batchOf(`{"id":"0","result":{"id":"chat-1","userId":12}}`, `{"id":"1","result":{"list":[]}}`)
+			return batchReply(calls)
 		}
 		return members(method)
 	})
 	out, err := c.OpenChat(context.Background(), ChatOpenInput{Type: "p2p", UserIDs: []int64{5}})
-	if err != nil || !out.Created || !out.Notified || out.Title != "5:p2p:Ivan" {
+	if err != nil || !out.Created || !out.Notified || out.Title != "Olena:p2p:Ivan" {
 		t.Fatal(out, err)
 	}
 	got := methods(*calls)

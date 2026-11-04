@@ -61,7 +61,7 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 		return ChatOpened{}, err
 	}
 	if in.Type == "group" {
-		out, _, err := c.createChat(ctx, events, in, in.Title, "", false)
+		out, _, err := c.createChat(ctx, events, in, in.Title, "", true, false)
 		return out, err
 	}
 	who, err := c.selfUserID(ctx, in.SelfUserID)
@@ -99,9 +99,10 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 	if err != nil {
 		return ChatOpened{}, err
 	}
-	// The web UI tells the other side of a new p2p chat. Only a caller known from the credential is
-	// notified for at once; otherwise after the creator is checked, so a wrong id notifies nobody.
-	out, owner, err := c.createChat(ctx, events, in, title, ref, who.Trusted)
+	// The web UI tells the other side of a new p2p chat. A caller known from the credential shares
+	// and notifies in the create batch. Otherwise the chat is created alone and shared after its
+	// creator is checked: sim-api notifies only a new rule, and a wrong id must reach nobody.
+	out, owner, err := c.createChat(ctx, events, in, title, ref, who.Trusted, who.Trusted)
 	if err != nil {
 		// The ref is unique within the template: a chat created meanwhile is the one to reuse.
 		if found, again := c.chatByRef(ctx, events, ref, other); again == nil && found.ChatID != "" {
@@ -116,11 +117,16 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 		}
 		return ChatOpened{}, fmt.Errorf("selfUserId %d is not you: the chat was created by user %d and removed again; pass the userId the request names", self, owner)
 	}
-	out.Notified = who.Trusted
 	if !who.Trusted {
-		_, err := call[map[string]any, json.RawMessage](ctx, c, "access_rule/actor/share", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID, "actions": []accessAction{{Action: "create", UserID: other, Privs: chatPrivs}}, "isNotify": true})
-		out.Notified = err == nil
+		if _, err := call[map[string]any, json.RawMessage](ctx, c, "access_rule/actor/share", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID, "actions": []accessAction{{Action: "create", UserID: other, Privs: chatPrivs}}, "isNotify": true}); err != nil {
+			// A chat its other side cannot open is no chat: take it back, so the next call starts clean.
+			if _, derr := call[map[string]any, json.RawMessage](ctx, c, "actor/delete", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID}); derr != nil {
+				return ChatOpened{}, fmt.Errorf("chat %s was created but not shared with user %d (%v) nor deleted (%v): share it with access_rules_save or delete it", out.ChatID, other, err, derr)
+			}
+			return ChatOpened{}, fmt.Errorf("the chat could not be shared with user %d and was removed again: %w", other, err)
+		}
 	}
+	out.Notified = true
 	return out, nil
 }
 
@@ -140,9 +146,9 @@ func (c *Client) chatByRef(ctx context.Context, events int64, ref string, other 
 	return ChatOpened{ChatID: chat.ID, Title: chat.Title, Type: "p2p", Participants: []int64{other}}, nil
 }
 
-// createChat creates the chat and shares it with the participants in one atomic batch; it answers
-// the chat and its creator.
-func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput, title, ref string, notify bool) (ChatOpened, int64, error) {
+// createChat creates the chat and, with share, shares it with the participants in the same atomic
+// batch (notify tells them); it answers the chat and its creator.
+func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput, title, ref string, share, notify bool) (ChatOpened, int64, error) {
 	now := time.Now().Unix()
 	chat := map[string]any{"accId": c.config.Workspace, "formId": events, "title": title, "data": map[string]any{"chatType": in.Type, "startDate": now, "endDate": now, "scheduleMeeting": false}, "fields": []string{"id", "userId"}}
 	if ref != "" {
@@ -152,10 +158,11 @@ func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput,
 	for i, id := range in.UserIDs {
 		actions[i] = accessAction{Action: "create", UserID: id, Privs: chatPrivs}
 	}
-	results, err := c.atomicItems(ctx, []atomicItem{
-		{Method: "actor/create", Params: chat},
-		{Method: "access_rule/actor/share", Params: map[string]any{"accId": c.config.Workspace, "actorId": "$0.id", "actions": actions, "isNotify": notify}, UseRefs: true},
-	})
+	items := []atomicItem{{Method: "actor/create", Params: chat}}
+	if share {
+		items = append(items, atomicItem{Method: "access_rule/actor/share", Params: map[string]any{"accId": c.config.Workspace, "actorId": "$0.id", "actions": actions, "isNotify": notify}, UseRefs: true})
+	}
+	results, err := c.atomicItems(ctx, items)
 	if err != nil {
 		return ChatOpened{}, 0, err
 	}

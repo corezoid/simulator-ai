@@ -17,7 +17,9 @@ is `reaction_create` in it.
    key, or a member without the viewUsers permission: a reused chat must then hold its rule). It reuses the 1:1
    chat of exactly the two of you, as the web UI does (`ref` `p2pConversation_<min id>_<max id>`),
    else creates it titled `<nick>:p2p:<nick>` and shares it with N (view, modify, remove; N is
-   notified once you are known to be its creator) in one atomic call. You own a chat you create: do not add yourself.
+   notified): at once when the credential names you, otherwise only after the new chat's creator
+   proved to be `selfUserId` (a chat made under a wrong id is removed again, and nobody hears of
+   it). You own a chat you create: do not add yourself.
 3. **Post the message.** `reaction_create {rootActorId: <chatId>, type: "comment",
    description: "<the text>"}`. A message notifies N: confirm the text with the user first
    when it speaks for them.

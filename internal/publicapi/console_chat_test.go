@@ -3,13 +3,47 @@ package publicapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
 
+// batchReply answers the last batch by its items: user/get with the nick of 5 or 12, actor/create
+// as chat-1 made by user 12, a share with no rules; atomic when it was asked to be.
+func batchReply(calls *[]rpcCall) string {
+	raw, _ := json.Marshal((*calls)[len(*calls)-1].Params)
+	var req struct {
+		IsAtomic bool `json:"isAtomic"`
+		List     []struct {
+			Method string `json:"method"`
+			Params struct {
+				UserID int64 `json:"userId"`
+			} `json:"params"`
+		} `json:"list"`
+	}
+	_ = json.Unmarshal(raw, &req)
+	items := make([]string, len(req.List))
+	for i, item := range req.List {
+		result := `{"list":[]}`
+		switch item.Method {
+		case "user/get":
+			if nick, ok := map[int64]string{5: "Olena", 12: "Ivan"}[item.Params.UserID]; ok {
+				result = fmt.Sprintf(`{"id":%d,"nick":%q}`, item.Params.UserID, nick)
+			} else {
+				result = `{}`
+			}
+		case "actor/create":
+			result = `{"id":"chat-1","userId":12}`
+		}
+		items[i] = fmt.Sprintf(`{"id":"%d","result":%s}`, i, result)
+	}
+	return fmt.Sprintf(`{"isAtomic":%v,"list":[%s]}`, req.IsAtomic, strings.Join(items, ","))
+}
+
 // chatBackend answers by-ref reads with byRef (notFound when empty) and creates chat-1 as user 12.
 func chatBackend(t *testing.T, byRef string) (*Client, *[]rpcCall) {
-	return rpcBackend(t, func(method string) string {
+	var calls *[]rpcCall
+	c, calls := rpcBackend(t, func(method string) string {
 		switch method {
 		case "form/system/get":
 			return `{"id":9,"title":"Events","type":"system"}`
@@ -20,11 +54,12 @@ func chatBackend(t *testing.T, byRef string) (*Client, *[]rpcCall) {
 			return byRef
 		case "access_rule/actor/list": // the chat of 5 and 12
 			return `{"list":[{"userId":12},{"userId":5}]}`
-		case "batch": // the nick reads fall back to ids; the create answers as user 12
-			return batchOf(`{"id":"0","result":{"id":"chat-1","userId":12}}`, `{"id":"1","result":{"list":[]}}`)
+		case "batch":
+			return batchReply(calls)
 		}
 		return `{}`
 	})
+	return c, calls
 }
 
 func TestOpenChatReusesTheExactP2PChat(t *testing.T) {
@@ -48,8 +83,32 @@ func TestOpenChatReusesTheExactP2PChat(t *testing.T) {
 	}
 }
 
-func TestOpenChatCreatesAndSharesAtomically(t *testing.T) {
-	batches := 0
+func TestOpenChatCreatesThenSharesOnceChecked(t *testing.T) {
+	c, calls := chatBackend(t, "")
+	out, err := c.OpenChat(context.Background(), ChatOpenInput{Type: "p2p", UserIDs: []int64{5}, SelfUserID: 12})
+	if err != nil || out.ChatID != "chat-1" || !out.Created || !out.Notified || out.Title != "Olena:p2p:Ivan" {
+		t.Fatal(out, err)
+	}
+	// The id came from the model, not the credential: the batch only creates the chat, and the other
+	// side gets its rule, notified, in one share after the chat's creator proved to be that id.
+	got := methods(*calls)
+	create, share := got[len(got)-2], got[len(got)-1]
+	if !strings.HasPrefix(create, "batch") || !strings.Contains(create, `"isAtomic":true`) || !strings.Contains(create, `"ref":"p2pConversation_5_12","title":"Olena:p2p:Ivan"}`) || strings.Contains(create, "access_rule") {
+		t.Fatal("the create batch:", create)
+	}
+	if share != `access_rule/actor/share {"accId":"ws","actions":[{"action":"create","privs":{"modify":true,"remove":true,"view":true},"userId":5}],"actorId":"chat-1","isNotify":true}` {
+		t.Fatal("the share after the check:", share)
+	}
+	for _, m := range got[:len(got)-1] {
+		if strings.Contains(m, "access_rule/actor/share") || strings.HasPrefix(m, "actor/update") {
+			t.Error("shared or renamed before the check:", m)
+		}
+	}
+}
+
+// A share that fails after the check takes the chat back: no chat the other side cannot open.
+func TestOpenChatShareFailureRemovesTheChat(t *testing.T) {
+	var calls *[]rpcCall
 	c, calls := rpcBackend(t, func(method string) string {
 		switch method {
 		case "form/system/get":
@@ -57,38 +116,17 @@ func TestOpenChatCreatesAndSharesAtomically(t *testing.T) {
 		case "actor/by-ref/get":
 			return notFound
 		case "batch":
-			if batches++; batches == 1 {
-				return `{"list":[{"id":"0","result":{"id":5,"nick":"Olena"}},{"id":"1","result":{"id":12,"nick":"Ivan"}}]}`
-			}
-			return batchOf(`{"id":"0","result":{"id":"chat-1","userId":12}}`, `{"id":"1","result":{"list":[]}}`)
+			return batchReply(calls)
+		case "access_rule/actor/share":
+			return `"error":{"code":1,"message":"user 5 is not a member","data":{"reason":"invalidParams"}}`
 		}
 		return `{}`
 	})
-	out, err := c.OpenChat(context.Background(), ChatOpenInput{Type: "p2p", UserIDs: []int64{5}, SelfUserID: 12})
-	if err != nil || out.ChatID != "chat-1" || !out.Created || out.Title != "Olena:p2p:Ivan" {
-		t.Fatal(out, err)
+	if _, err := c.OpenChat(context.Background(), ChatOpenInput{Type: "p2p", UserIDs: []int64{5}, SelfUserID: 12}); err == nil || !strings.Contains(err.Error(), "removed again") {
+		t.Fatal(err)
 	}
-	// The id came from the model, not the credential: the batch shares quietly, and the other side is
-	// notified only once the chat's creator proved to be that id.
-	batch, _ := json.Marshal((*calls)[len(*calls)-2].Params)
-	for _, want := range []string{
-		`"isAtomic":true`,
-		`"method":"actor/create","params":{"accId":"ws","data":{"chatType":"p2p"`,
-		`"ref":"p2pConversation_5_12","title":"Olena:p2p:Ivan"}`,
-		`"method":"access_rule/actor/share","params":{"accId":"ws","actions":[{"action":"create","privs":{"modify":true,"remove":true,"view":true},"userId":5}],"actorId":"$0.id","isNotify":false},"useRefs":true`,
-	} {
-		if !strings.Contains(string(batch), want) {
-			t.Errorf("batch lacks %s: %s", want, batch)
-		}
-	}
-	last := methods(*calls)[len(*calls)-1]
-	if last != `access_rule/actor/share {"accId":"ws","actions":[{"action":"create","privs":{"modify":true,"remove":true,"view":true},"userId":5}],"actorId":"chat-1","isNotify":true}` || !out.Notified {
-		t.Fatal("the notification after the check:", last, out.Notified)
-	}
-	for _, m := range methods(*calls) {
-		if strings.HasPrefix(m, "actor/update") {
-			t.Error("the chat is named inside the atomic batch, not after it:", m)
-		}
+	if got := methods(*calls); got[len(got)-1] != `actor/delete {"accId":"ws","actorId":"chat-1"}` {
+		t.Fatal(got)
 	}
 }
 
