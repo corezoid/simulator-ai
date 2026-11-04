@@ -34,7 +34,7 @@ func people(c *client, stamp string) error {
 		}
 	}
 	// The owner sees the actor, so sim-api refuses a request for it: the call reached the method.
-	if err := c.tool("access_request_create", map[string]any{"actorId": actor.ID}, &ignored); err == nil || !strings.Contains(err.Error(), "already has access") {
+	if err := c.tool("access_request_create", map[string]any{"actorId": actor.ID}, &ignored); err == nil || !strings.Contains(err.Error(), "reason=notAllowed") || !strings.Contains(err.Error(), "already has access") {
 		return fmt.Errorf("access_request_create on an own actor: want the already-has-access refusal, got %v", err)
 	}
 	text := "smoke file " + stamp

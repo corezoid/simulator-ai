@@ -53,7 +53,7 @@ func addParity(s *server.MCPServer, c *publicapi.Client, tools []parityTool) {
 		m := publicapi.ParityMethods[t.Method]
 		// manage takes delete items and move takes placements off the source layer.
 		destructive := strings.HasSuffix(t.Method, "/delete") || t.Method == "graph/layer/clean" || t.Method == "graph/layer/actors/manage" || t.Method == "graph/layer/actors/move" || t.Method == "attachment/detach" ||
-			t.Method == "access_rule/actor/request/confirm" // grants another user access
+			t.Method == "access_rule/actor/request/confirm" || t.Method == "access_rule/actor/request/cancel" // grant or turn down another user's access
 		tool := mcp.NewTool(t.Name, mcp.WithDescription(t.Description+" Public "+t.Method+"."), mcp.WithRawInputSchema(schema),
 			mcp.WithReadOnlyHintAnnotation(!m.Write), mcp.WithDestructiveHintAnnotation(destructive), mcp.WithIdempotentHintAnnotation(!m.Write))
 		s.AddTool(tool, parityHandler(c, t))
@@ -92,20 +92,34 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 	}
 }
 
-// strip removes dot-path keys from a result object; a path that is not there is ignored.
+// strip removes dot-path keys from a result object, keeping every other value as the backend wrote
+// it; a path that is not there changes nothing.
 func strip(v json.RawMessage, paths []string) (json.RawMessage, error) {
-	var doc map[string]any
-	if json.Unmarshal(v, &doc) != nil {
-		return v, nil
-	}
 	for _, p := range paths {
-		keys, at := strings.Split(p, "."), doc
-		for _, k := range keys[:len(keys)-1] {
-			at, _ = at[k].(map[string]any)
-		}
-		delete(at, keys[len(keys)-1])
+		v = stripPath(v, strings.Split(p, "."))
 	}
-	return json.Marshal(doc)
+	return v, nil
+}
+
+func stripPath(v json.RawMessage, keys []string) json.RawMessage {
+	var doc map[string]json.RawMessage
+	if json.Unmarshal(v, &doc) != nil {
+		return v
+	}
+	inner, ok := doc[keys[0]]
+	switch {
+	case !ok:
+		return v
+	case len(keys) == 1:
+		delete(doc, keys[0])
+	default:
+		doc[keys[0]] = stripPath(inner, keys[1:])
+	}
+	out, err := json.Marshal(doc)
+	if err != nil {
+		return v
+	}
+	return out
 }
 
 // rawArguments returns the tool arguments as raw values, bounded like every console call.
