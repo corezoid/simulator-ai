@@ -17,8 +17,8 @@ actors and reactions, and `fileName` (its storage key, not its title) reads it b
 - `actorId` attaches it to an actor (needs modify); for a reaction pass the reaction as
   `actorId` and its actor as `rootActorId`. A refused attach is an error, and the file is not
   stored.
-- `ttl` (seconds) makes the file temporary. It can be attached in the upload itself, but not
-  later with `attachment_attach` or in `reaction_create` `attachmentIds`.
+- `ttl` (seconds) makes the file temporary; a temporary file can be neither attached nor put
+  in a reaction, so leave `ttl` out of anything you attach.
 - The result is `{id, title, type, size, fileName, attachedTo}`.
 
 The antivirus scans every file before it can be read. A refusal names its reason: a file over

@@ -25,6 +25,14 @@ func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 				Params map[string]any `json:"params"`
 			}
 			_ = json.NewDecoder(r.Body).Decode(&q)
+			if q.Method == "attachment/by-actor/list" { // r-1 got the file from the route; the others did not
+				list := `[]`
+				if q.Params["actorId"] == "r-1" {
+					list = `[{"id":41},{"id":42}]`
+				}
+				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"list":%s}}`, q.ID, list)
+				return
+			}
 			if q.Params["actorId"] == "read-only" {
 				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"error":{"code":-32003,"message":"actor is read-only","data":{"reason":"accessDenied"}}}`, q.ID)
 				return
@@ -57,20 +65,25 @@ func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 	if err != nil || a.ID != 42 || a.FileName != "k1" || a.AttachedTo != "r-1" {
 		t.Fatal(a, err)
 	}
-	// The route attaches it; attaching again changes nothing there and attaches on an older stand
-	// whose route only logged a failure.
-	if sent, _ := json.Marshal(attached); string(sent) != `{"accId":"ws","actorId":"r-1","attachmentIds":[42],"rootActorId":"a-1"}` {
-		t.Fatal("attach sent", string(sent))
+	// The route attached it, which a read confirms: no second attach (it would repeat the events).
+	if attached != nil {
+		t.Fatal("attached again", attached)
 	}
-	if auth != "Simulator run" || form["accId"] != "ws" || form["actorId"] != "r-1" || form["rootActorId"] != "a-1" || form["ttl"] != "" || !strings.HasPrefix(fileType, "text/plain") || fileName != "notes.txt" {
+	if auth != "Simulator run" || form["accId"] != "ws" || form["actorId"] != "r-1" || form["rootActorId"] != "a-1" || form["ttl"] != "" || fileType != "text/plain" || fileName != "notes.txt" {
 		t.Fatalf("sent auth %q form %v type %q name %q", auth, form, fileType, fileName)
 	}
-	// A temporary file: the route attaches it, and attachment/attach would never find it.
-	attached = nil
-	if a, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ActorID: "r-1", TTL: 60}); err != nil || form["ttl"] != "60" || form["actorId"] != "r-1" || attached != nil || a.AttachedTo != "r-1" {
-		t.Fatalf("a temporary upload sent %v, attach %v: %v", form, attached, err)
+	// An older stand whose route did not attach it: the tool attaches it.
+	if a, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ActorID: "old-stand"}); err != nil || a.AttachedTo != "old-stand" {
+		t.Fatal(a, err)
 	}
-	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ContentType: "text/plain\r\n"}); err != nil || fileType != "text/plain" {
+	if sent, _ := json.Marshal(attached); string(sent) != `{"accId":"ws","actorId":"old-stand","attachmentIds":[42]}` {
+		t.Fatal("attach sent", string(sent))
+	}
+	// A temporary file goes to the route with its ttl and is attached nowhere.
+	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", TTL: 60}); err != nil || form["ttl"] != "60" || form["actorId"] != "" {
+		t.Fatalf("a temporary upload sent %v: %v", form, err)
+	}
+	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ContentType: "text/plain; charset=utf-8\r\n"}); err != nil || fileType != "text/plain" {
 		t.Fatalf("a padded contentType is sent as %q: %v", fileType, err)
 	}
 	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ActorID: "read-only"}); err == nil || !strings.Contains(err.Error(), "uploaded as attachment 42 but not attached") {
@@ -81,6 +94,7 @@ func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 		"too large":           {FileName: "a.bin", Content: base64.StdEncoding.EncodeToString(make([]byte, MaxUploadBytes+1))},
 		"a path":              {FileName: "../a.txt", Content: "aGk="},
 		"root without actor":  {FileName: "a.txt", Content: "aGk=", RootActorID: "r"},
+		"temporary attached":  {FileName: "a.txt", Content: "aGk=", ActorID: "a", TTL: 60},
 		"not a media type":    {FileName: "a.txt", Content: "aGk=", ContentType: "nope/"},
 		"a quote in the name": {FileName: `a".txt`, Content: "aGk="},
 	} {

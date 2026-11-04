@@ -36,10 +36,11 @@ const (
 // scanWait is the first wait for a file ufs is still scanning; each retry doubles it, four in all.
 var scanWait = time.Second
 
-// The media types of common files, so a file's type does not depend on the host's mime.types.
+// The media types of common files, so a file's type does not depend on the host's mime.types. They
+// are bare: a stand's allow-list (fileMimeTypes) compares the type exactly.
 func init() {
 	for ext, kind := range map[string]string{
-		".txt": "text/plain; charset=utf-8", ".md": "text/markdown; charset=utf-8", ".csv": "text/csv; charset=utf-8",
+		".txt": "text/plain", ".md": "text/markdown", ".csv": "text/csv",
 		".json": "application/json", ".yaml": "application/yaml", ".yml": "application/yaml", ".xml": "application/xml",
 		".pdf": "application/pdf", ".zip": "application/zip", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
 		".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -78,6 +79,10 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if name == "" || len(name) > 255 || strings.ContainsAny(name, "/\\\r\n\"") || len(in.ActorID) > 255 || len(in.RootActorID) > 255 || in.RootActorID != "" && in.ActorID == "" || in.TTL < 0 {
 		return Attachment{}, errors.New("a fileName without path separators or quotes, and rootActorId only with actorId, required")
 	}
+	if in.TTL > 0 && in.ActorID != "" {
+		// sim-api never finds a temporary file to attach, in the upload route or attachment/attach.
+		return Attachment{}, errors.New("a temporary file (ttl) cannot be attached: drop ttl or actorId")
+	}
 	if base64.StdEncoding.DecodedLen(len(in.Content)) > MaxUploadBytes+2 {
 		return Attachment{}, fmt.Errorf("content over %d KiB: upload larger files from the Simulator UI", MaxUploadBytes>>10)
 	}
@@ -92,8 +97,8 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if kind == "" {
 		kind = "application/octet-stream"
 	}
-	media, mediaParams, err := mime.ParseMediaType(kind)
-	if kind = mime.FormatMediaType(media, mediaParams); err != nil || kind == "" {
+	media, _, err := mime.ParseMediaType(kind)
+	if kind = mime.FormatMediaType(media, nil); err != nil || kind == "" {
 		return Attachment{}, errors.New("contentType must be a media type such as text/plain")
 	}
 	var body bytes.Buffer
@@ -142,12 +147,13 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if in.ActorID == "" {
 		return a, nil
 	}
-	if in.TTL > 0 { // the route attached it; attachment/attach never finds a temporary file
+	// The route refuses an attach it may not make; an older stand only logged it. A read-only check
+	// confirms the link, and only a missing one is attached again (a second attach would repeat the
+	// realtime event and the webhooks).
+	if attached, err := c.attachedTo(ctx, in.ActorID, a.ID); err != nil || attached {
 		a.AttachedTo = in.ActorID
 		return a, nil
 	}
-	// Attaching again changes nothing when the route attached it, and attaches it on a stand whose
-	// route only logged a failure: either way the caller learns whether the file hangs there.
 	attach := map[string]any{"accId": c.config.Workspace, "actorId": in.ActorID, "attachmentIds": []int64{a.ID}}
 	if in.RootActorID != "" {
 		attach["rootActorId"] = in.RootActorID
@@ -157,6 +163,24 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	}
 	a.AttachedTo = in.ActorID
 	return a, nil
+}
+
+// attachedTo says whether the newest files of an actor include the attachment.
+func (c *Client) attachedTo(ctx context.Context, actorID string, id int64) (bool, error) {
+	files, err := call[map[string]any, struct {
+		List []struct {
+			ID int64 `json:"id"`
+		} `json:"list"`
+	}](ctx, c, "attachment/by-actor/list", map[string]any{"accId": c.config.Workspace, "actorId": actorID, "limit": 100})
+	if err != nil {
+		return false, err
+	}
+	for _, f := range files.List {
+		if f.ID == id {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 type AttachmentReadInput struct {

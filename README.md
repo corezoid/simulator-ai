@@ -149,7 +149,7 @@ scenarios use (see "AI Console profile").
 | `users_search` [searchUsers, getUsers] (without query a page of members) · `user_get` [getUser] · `workspaces_list` [getWorkspaces] | `user/list` · `user/get` · `workspace/list` | ✓ | | |
 | `attachments_list` [getAttachments] · `attachments_by_actor_list` [getActorAttachments] | `attachment/list` · `attachment/by-actor/list` | ✓ | | |
 | `attachment_attach` · `attachment_update` · `attachment_detach` [addAttachments, updateAttachment, removeAttachments] | `attachment/attach` · `attachment/update` · `attachment/detach` | ✓ | | |
-| `attachment_upload` (file bytes as base64, up to 700 KiB; `actorId` attaches it) | HTTP `POST /api/2.0/rest/upload` (multipart, ufs limits and antivirus), then `attachment/attach` (changes nothing when the route attached it) | ✓ | | |
+| `attachment_upload` (file bytes as base64, up to 700 KiB; `actorId` attaches it) | HTTP `POST /api/2.0/rest/upload` (multipart, ufs limits and antivirus), then `attachment/by-actor/list` confirms the link (`attachment/attach` only when an older stand did not make it) | ✓ | | |
 | `attachment_read` [readAttachment] (text up to 100 KiB; binary: type and size) | HTTP `GET /api/1.0/download/<fileName>` (425, or 404 from a stand serving files from ufs while it scans, retried; 403 quarantine) | ✓ | | |
 
 These tools need sim-api `feature/simulator-ai` at a4f6d229 or later (`cdu/catalog/get` !463,
