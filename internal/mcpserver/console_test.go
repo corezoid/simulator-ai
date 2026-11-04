@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -106,11 +107,16 @@ func TestConsoleCatalog(t *testing.T) {
 			t.Errorf("%s output schema types open JSON as bytes", tool.Name)
 		}
 	}
-	// The console's own tools; the actor, form and graph parity tools are TestParityCatalogs'.
-	for _, name := range strings.Split("actor_create,actor_get,actor_update,actors_create,edge_create,edges_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_components,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get", ",") {
-		if _, ok := reads[name]; !ok {
-			t.Error("console lacks", name, names)
-		}
+	// The exact console catalog: its own tools plus every actor, form and graph parity tool.
+	want := "actor_by_ref_get,actor_create,actor_delete,actor_get,actor_status_update,actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count,actors_search," +
+		"edge_create,edge_delete,edge_endpoints_update,edge_exist,edge_get,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
+		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get,form_status_update,form_update,forms_count,forms_list,forms_tree_get," +
+		"graph_get,graph_list,layer_actors_move,layer_actors_search,layer_clean,layer_compact,layer_create,layer_edges_list,layer_element_exist,layer_get,layer_placements_all," +
+		"layer_placements_create,layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_skeleton_get,layer_stats_get,search_all," +
+		"smart_form_components,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
+	sort.Strings(names)
+	if got := strings.Join(names, ","); got != want || len(names) != 60 {
+		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
 		if !reads[name] {
@@ -250,7 +256,7 @@ func TestConsoleBatches(t *testing.T) {
 		{"edges keep direction", "edges_create", `{"edges":[{"source":"a1","target":"a2","name":"go"},{"source":"a2","target":"a1"}]}`, edges,
 			`"method":"edge/create","params":{"accId":"ws","edgeTypeId":3,"forceDirection":true,"name":"go","source":"a1","target":"a2"}`, `"edges":[{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"go"},{"id":"e2"`, false},
 		{"a failed item fails the call", "actors_create", `{"actors":[{"formId":5,"title":"A"},{"formId":9,"title":"B"}]}`, failed, `"isAtomic":true`, "item 1 failed, nothing was created", true},
-		{"reverse edge is not reused", "edges_create", `{"edges":[{"source":"a1","target":"a2"},{"source":"a1","target":"a2"}]}`, edges, `"isAtomic":true`, "edge 1: edge/create returned an edge with other endpoints", true},
+		{"reverse edge is not reused", "edges_create", `{"edges":[{"source":"a1","target":"a2"},{"source":"a1","target":"a2"}]}`, edges, `"isAtomic":true`, "edge 1: batch committed but edge/create returned an edge with other endpoints", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			send, calls := consoleServer(t, map[string]string{"batch": tc.batch})
@@ -297,5 +303,13 @@ func TestSmartFormComponents(t *testing.T) {
 	}
 	if len(*calls) != 0 {
 		t.Fatal("the component reference called the API")
+	}
+}
+
+func TestConsoleBatchRequiresAtomicBackend(t *testing.T) {
+	send, _ := consoleServer(t, map[string]string{"batch": `"result":{"list":[{"id":"0","result":{"id":"a1","formId":5}},{"id":"1","error":{"code":1,"message":"x","data":{"reason":"notFound"}}}]}`})
+	reply := send(`"method":"tools/call","params":{"name":"actors_create","arguments":{"actors":[{"formId":5,"title":"A"},{"formId":6,"title":"B"}]}}`)
+	if !strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "did not run the batch atomically") {
+		t.Fatal(reply)
 	}
 }

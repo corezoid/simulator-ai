@@ -69,7 +69,7 @@ func addActorEngines(s *server.MCPServer, c *publicapi.Client) {
 	if !c.ParityAllowed("actor/search/list") {
 		return
 	}
-	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(searchOutput)), "search_all", "Search the workspace for users and/or actors in one call (legacy searchAll): filters users, actors, fullTextActor (actors in text mode). Each part is its own page (limit/offset), with no shared ranking: users from user/list, actors from actor/search/list (fields projects them, default id,title,formId; searchType text or semantic; formId narrows to one template). A failed part is in errors and the other still answers.",
+	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(searchOutput)), "search_all", "Search the workspace for users and/or actors in one call (legacy searchAll): filters users, actors, fullTextActor (actors in text mode). Each part is its own page (limit/offset), with no shared ranking: users from user/list, actors from actor/search/list (fields projects them, default id,title,formId; searchType text (default; pages with offset) or semantic (ranked, ignores offset); formId narrows to one template). A failed part is in errors and the other still answers.",
 		`{"type":"object","properties":{"query":{"type":"string","minLength":2,"maxLength":1000},"filters":{"type":"array","minItems":1,"maxItems":3,"uniqueItems":true,"items":{"type":"string","enum":["users","actors","fullTextActor"]}},"searchType":{"type":"string","enum":["text","semantic"]},"formId":{"type":"integer","minimum":1},"fields":{"type":"array","items":{"type":"string","minLength":1}},"limit":{"type":"integer","minimum":1,"maximum":100},"offset":{"type":"integer","minimum":0}},"required":["query","filters"],"additionalProperties":false}`, false,
 		func(ctx context.Context, in publicapi.SearchAllInput) (publicapi.SearchAll, error) {
 			if in.Fields == nil {
@@ -114,7 +114,7 @@ func addGraphEngines(s *server.MCPServer, c *publicapi.Client) {
 			true, func(ctx context.Context, in compactInput) (graphplan.CompactStats, error) { return compact(ctx, c, in) })
 	}
 	if c.ParityAllowed("edge/delete") {
-		consoleTool(s, "layer_prune_long_edges", "Delete edges of a layer whose ends are further apart than maxDistance graph units, Manhattan (default 600; legacy pruneLongEdges). preserveParentEdges (default true) keeps edges touching a hierarchy bucket (an actor with at least bucketThreshold, default 3, incoming edges). dryRun only counts. Deletes the edges themselves (edge/delete), not just placements. Destructive: run dryRun first and confirm with the user.",
+		consoleTool(s, "layer_prune_long_edges", "Delete edges of a layer whose ends are further apart than maxDistance graph units, Manhattan (default 600; legacy pruneLongEdges). preserveParentEdges (default true) keeps edges touching a hierarchy bucket (an actor with at least bucketThreshold, default 3, incoming edges). dryRun only counts. Returns scanned/deleted/kept_short/kept_parent, up to 10 examples and errors for deletions that failed. Deletes the edges themselves (edge/delete), not just placements. Destructive: run dryRun first and confirm with the user.",
 			`{"type":"object","properties":{`+layerArg+`,"maxDistance":{"type":"number","exclusiveMinimum":0},"bucketThreshold":{"type":"integer","minimum":1},"preserveParentEdges":{"type":"boolean"},"dryRun":{"type":"boolean"}},"required":["layerId"],"additionalProperties":false}`,
 			true, func(ctx context.Context, in pruneInput) (graphplan.PruneStats, error) { return prune(ctx, c, in) })
 	}

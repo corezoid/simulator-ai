@@ -35,6 +35,7 @@ type atomicRequest struct {
 	List     []atomicItem `json:"list"`
 }
 type atomicWire struct {
+	IsAtomic   bool `json:"isAtomic"`
 	RolledBack bool `json:"rolledBack"`
 	List       []struct {
 		ID     string          `json:"id"`
@@ -57,13 +58,18 @@ func (c *Client) atomic(ctx context.Context, method string, params []any) ([]jso
 	if err != nil {
 		return nil, err
 	}
+	// A backend without atomic batches ignores isAtomic and keeps what succeeded: never report that
+	// as "nothing was created".
+	if !wire.IsAtomic {
+		return nil, errors.New("the backend did not run the batch atomically: some items may be created; read them back before retrying")
+	}
 	if len(wire.List) != len(params) {
-		return nil, errors.New("batch returned a different number of items; nothing is known to be created")
+		return nil, errors.New("batch returned a different number of items; read the items back before retrying")
 	}
 	out := make([]json.RawMessage, len(params))
 	for i, item := range wire.List {
 		if item.Error != nil {
-			cause := &APIError{Code: item.Error.Code, Reason: item.Error.Data.Reason, Message: consoleErrorMessage(item.Error)}
+			cause := c.apiError(item.Error)
 			return nil, fmt.Errorf("item %d failed, nothing was created: %w", i, cause)
 		}
 		out[i] = item.Result
@@ -97,7 +103,7 @@ func (c *Client) CreateActors(ctx context.Context, in ActorsCreateInput) (Create
 	out := CreatedActors{Actors: make([]Actor, len(results))}
 	for i, r := range results {
 		if json.Unmarshal(r, &out.Actors[i]) != nil || out.Actors[i].ID == nil || *out.Actors[i].ID == "" {
-			return CreatedActors{}, fmt.Errorf("actor %d: actor/create returned no actor id", i)
+			return CreatedActors{}, fmt.Errorf("actor %d: batch committed but actor/create returned no actor id; read the actors back before retrying", i)
 		}
 	}
 	return out, nil
@@ -136,7 +142,7 @@ func (c *Client) CreateEdges(ctx context.Context, in EdgesCreateInput) (CreatedE
 	for i, r := range results {
 		e := &out.Edges[i]
 		if json.Unmarshal(r, e) != nil || validateGraphEdge(*e) != nil || e.Source != in.Edges[i].Source || e.Target != in.Edges[i].Target {
-			return CreatedEdges{}, fmt.Errorf("edge %d: edge/create returned an edge with other endpoints", i)
+			return CreatedEdges{}, fmt.Errorf("edge %d: batch committed but edge/create returned an edge with other endpoints; read the edges back before retrying", i)
 		}
 	}
 	return out, nil

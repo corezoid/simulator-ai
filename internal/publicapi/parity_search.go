@@ -46,7 +46,11 @@ func (c *Client) SearchAll(ctx context.Context, in SearchAllInput) (SearchAll, e
 	if !c.ParityAllowed("actor/search/list") {
 		return SearchAll{}, errors.New("search is not available in this profile")
 	}
+	// Text by default, as legacy searchAll documented: semantic search ignores offset.
 	users, actors, searchType := false, false, in.SearchType
+	if searchType == "" {
+		searchType = "text"
+	}
 	for _, f := range in.Filters {
 		switch f {
 		case "users":
@@ -86,7 +90,7 @@ func (c *Client) SearchAll(ctx context.Context, in SearchAllInput) (SearchAll, e
 			if out.Errors == nil {
 				out.Errors = map[string]string{}
 			}
-			out.Errors[parts[i]] = (&APIError{Code: item.Error.Code, Reason: item.Error.Data.Reason, Message: consoleErrorMessage(item.Error)}).Error()
+			out.Errors[parts[i]] = c.apiError(item.Error).Error()
 			continue
 		}
 		if parts[i] == "users" {

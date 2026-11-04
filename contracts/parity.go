@@ -14,6 +14,11 @@ import (
 //go:embed parity-openrpc.json
 var Parity []byte
 
+// ParitySource records where Parity was exported from (and the methods taken from MR branches).
+//
+//go:embed parity-source.json
+var ParitySource []byte
+
 // patchTypes corrects params the sim-api OpenRPC generator types as "object" because the Go field is
 // a json.RawMessage patch (rpc_form/form_update.go: omitted keeps, null clears). Their real values:
 // tags is a lossless legacy value: stored template bags hold an array (legacy createForm sends one).

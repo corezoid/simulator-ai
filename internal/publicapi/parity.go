@@ -130,7 +130,7 @@ func (c *Client) PassEach(ctx context.Context, method string, items []map[string
 		out[i] = BatchResult{Index: i, Result: w.Result}
 		if w.Error != nil {
 			out[i].Result = nil
-			out[i].Error = (&APIError{Code: w.Error.Code, Reason: w.Error.Data.Reason, Message: consoleErrorMessage(w.Error)}).Error()
+			out[i].Error = c.apiError(w.Error).Error()
 		}
 	}
 	return out, nil

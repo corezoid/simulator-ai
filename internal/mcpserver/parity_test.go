@@ -258,3 +258,11 @@ func TestParitySearchAll(t *testing.T) {
 		t.Fatal("invalid search reached the API")
 	}
 }
+
+func TestParitySearchAllDefaultsAndErrors(t *testing.T) {
+	send, calls := parityServer(t, "read")
+	send(`"method":"tools/call","params":{"name":"search_all","arguments":{"query":"acme","filters":["actors"]}}`)
+	if list := string((*calls)[len(*calls)-1].Params["list"]); !strings.Contains(list, `"searchType":"text"`) {
+		t.Fatal("search_all must search text by default:", list)
+	}
+}
