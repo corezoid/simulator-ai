@@ -25,6 +25,8 @@ type parityTool struct {
 	BriefUnlessNarrowed bool
 	// Params, when set, keeps only these params of the method (the legacy tool's own set).
 	Params []string
+	// RandomColor sends a random editor palette colour when no color is given.
+	RandomColor bool
 }
 
 // rowFields is the compact projection of list rows and graph nodes unless the caller sends fields.
@@ -65,6 +67,9 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 			if _, ok := args[k]; !ok {
 				args[k], _ = json.Marshal(v)
 			}
+		}
+		if _, set := args["color"]; t.RandomColor && !set {
+			args["color"], _ = json.Marshal(publicapi.RandomActorColor())
 		}
 		if _, set := args["brief"]; t.BriefUnlessNarrowed && !set && args["types"] == nil && args["kind"] == nil {
 			args["brief"] = json.RawMessage("true")

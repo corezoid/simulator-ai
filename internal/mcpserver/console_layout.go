@@ -28,6 +28,7 @@ type layoutNode struct {
 	Key           string                        `json:"key"`
 	BlockID       string                        `json:"blockId"`
 	FormID        int64                         `json:"formId"`
+	Color         string                        `json:"color"`
 	Data          json.RawMessage               `json:"data"`
 	Position      publicapi.GraphPoint          `json:"position"`
 	LayerSettings publicapi.GraphNativeSettings `json:"layerSettings"`
@@ -38,11 +39,11 @@ type layout struct {
 	ReturnEdges []string     `json:"returnEdges"`
 }
 
-const layoutOutput = `{"type":"object","properties":{"nodes":{"type":"array","items":{"type":"object","properties":{"key":{"type":"string"},"blockId":{"type":"string"},"formId":{"type":"integer"},"data":{"type":"object"},"position":` + point + `,"layerSettings":` + nativeLayout + `},"required":["key","blockId","formId","data","position","layerSettings"]}},"returnEdges":{"type":"array","items":{"type":"string"}}},"required":["nodes","returnEdges"]}`
+const layoutOutput = `{"type":"object","properties":{"nodes":{"type":"array","items":{"type":"object","properties":{"key":{"type":"string"},"blockId":{"type":"string"},"formId":{"type":"integer"},"color":{"type":"string"},"data":{"type":"object"},"position":` + point + `,"layerSettings":` + nativeLayout + `},"required":["key","blockId","formId","color","data","position","layerSettings"]}},"returnEdges":{"type":"array","items":{"type":"string"}}},"required":["nodes","returnEdges"]}`
 
 // addFlowchartLayout registers the read-only grid layout of a flowchart; it writes nothing.
 func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
-	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(layoutOutput)), "flowchart_layout", "Lay out a flowchart before creating it: nodes [{key, blockId}] (kinds from flowchart_blocks_list) and directed edges [{source, target}] by key. Returns per node formId and data for actors_create (all blocks in one call), and position and layerSettings for layer_placements_create (all nodes in one call, then edges_create and the edge placements): ranks top to bottom, three free cells between blocks and ranks, every block on whole grid cells, no overlaps. returnEdges lists loop-back edges (\"source->target\"), kept but not used for ranking. Writes nothing.",
+	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(layoutOutput)), "flowchart_layout", "Lay out a flowchart before creating it: nodes [{key, blockId}] (kinds from flowchart_blocks_list) and directed edges [{source, target}] by key. Returns per node formId, color and data for actors_create (all blocks in one call), and position and layerSettings for layer_placements_create (all nodes in one call, then edges_create and the edge placements): ranks top to bottom, three free cells between blocks and ranks, every block on whole grid cells, no overlaps. returnEdges lists loop-back edges (\"source->target\"), kept but not used for ranking. Writes nothing.",
 		`{"type":"object","properties":{"nodes":{"type":"array","minItems":1,"maxItems":100,"items":{"type":"object","properties":{"key":{"type":"string","minLength":1,"maxLength":64},"blockId":{"type":"string","minLength":1,"maxLength":128}},"required":["key","blockId"],"additionalProperties":false}},"edges":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"source":{"type":"string","minLength":1,"maxLength":64},"target":{"type":"string","minLength":1,"maxLength":64}},"required":["source","target"],"additionalProperties":false}}},"required":["nodes"],"additionalProperties":false}`, false,
 		func(ctx context.Context, in layoutInput) (layout, error) {
 			keys, kinds := map[string]bool{}, []string{}
@@ -79,7 +80,11 @@ func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
 				if !ok {
 					return layout{}, fmt.Errorf("flowchart block %q is not in the workspace catalog", n.BlockID)
 				}
-				out.Nodes[i] = layoutNode{Key: n.Key, BlockID: n.BlockID, FormID: def.FormID, Data: def.Data, LayerSettings: *def.LayerSettings}
+				color := def.Color // the block's own colour, as the editor gives it; else a random palette hue
+				if color == "" {
+					color = publicapi.RandomActorColor()
+				}
+				out.Nodes[i] = layoutNode{Key: n.Key, BlockID: n.BlockID, FormID: def.FormID, Color: color, Data: def.Data, LayerSettings: *def.LayerSettings}
 				boxes[i] = graphplan.LayoutNode{Key: n.Key, Width: def.LayerSettings.Width, Height: def.LayerSettings.Height}
 			}
 			positions, returns := graphplan.GridLayout(boxes, edges)
@@ -95,6 +100,9 @@ func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
 // silhouette as areaPicture, so sim-api keeps the position instead of snapping the centre.
 func gridPlacements(c *publicapi.Client) func(context.Context, publicapi.PlacementsCreateInput) (publicapi.GraphCreatedPlacements, error) {
 	return func(ctx context.Context, in publicapi.PlacementsCreateInput) (publicapi.GraphCreatedPlacements, error) {
+		if err := fillActorColors(ctx, c, in.Nodes); err != nil {
+			return publicapi.GraphCreatedPlacements{}, err
+		}
 		for i := range in.Nodes {
 			n := &in.Nodes[i]
 			if n.LayerSettings == nil {
@@ -109,4 +117,34 @@ func gridPlacements(c *publicapi.Client) func(context.Context, publicapi.Placeme
 		}
 		return c.CreatePlacements(ctx, in)
 	}
+}
+
+// fillActorColors gives a flowchart node without a colour its actor's own, read in one batch, so the
+// stored silhouette matches the block.
+func fillActorColors(ctx context.Context, c *publicapi.Client, nodes []publicapi.NodePlacement) error {
+	var missing []int
+	var items []map[string]json.RawMessage
+	for i, n := range nodes {
+		if n.LayerSettings != nil && n.Color == "" {
+			id, _ := json.Marshal(n.ActorID)
+			missing = append(missing, i)
+			items = append(items, map[string]json.RawMessage{"actorId": id, "fields": json.RawMessage(`["id","color"]`)})
+		}
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	results, err := c.PassEach(ctx, "actor/get", items)
+	if err != nil {
+		return err
+	}
+	for k, r := range results {
+		var actor struct {
+			Color string `json:"color"`
+		}
+		if r.Error == "" && json.Unmarshal(r.Result, &actor) == nil {
+			nodes[missing[k]].Color = actor.Color
+		}
+	}
+	return nil
 }

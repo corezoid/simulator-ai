@@ -104,3 +104,11 @@ func TestAreaPictureMatchesEditorSvg(t *testing.T) {
 		t.Fatal("darken")
 	}
 }
+
+func TestFormColorIsHexOnly(t *testing.T) {
+	for form, want := range map[string]string{`{"color":"#2970ff"}`: "#2970ff", `{"color":"#abc"}`: "#abc", `{"color":"blue"}`: "", `{"color":"#1973e8ff"}`: "", `{}`: ""} {
+		if got := formColor(json.RawMessage(form)); got != want {
+			t.Errorf("%s: %q, want %q", form, got, want)
+		}
+	}
+}

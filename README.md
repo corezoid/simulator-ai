@@ -159,6 +159,13 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 tool (61 tools, 80.4 KB). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
+Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
+simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
+`flowchart_layout` gives each block its form's own colour or such a hue, and `layer_placements_create` paints a
+flowchart block with its actor's colour when the call has none. Holes: `actors_create`/`actor_create` with
+`hole` make a placeholder actor (its data fields are the conditions that close it), `edge_create`/`edges_create`
+with `hole` a placeholder edge, and `layer_get` marks `hole` and `closedHole` on nodes and edges.
+
 `SIMULATOR_AI_PROFILE=console` is what Hermes runs per AI Console request under the initiator's own
 `SIMULATOR_AI_AUTHORIZATION`. It covers two Console answers: a flowchart drawn on a layer and a released
 Smart Form opened inline in the reply. Writes are plain public calls: no receipt keys and no contract

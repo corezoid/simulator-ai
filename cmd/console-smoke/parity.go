@@ -172,6 +172,56 @@ func parity(c *client, stamp string) error {
 	if pruned.Scanned != 1 || pruned.Deleted != 1 {
 		return fmt.Errorf("prune dryRun scanned %d and would delete %d of the 200-unit edge, want 1 and 1", pruned.Scanned, pruned.Deleted)
 	}
+	// A hole: a placeholder actor with one closing condition, linked from the first actor and placed.
+	var hole struct {
+		Actors []struct {
+			ID   string `json:"id"`
+			Hole bool   `json:"hole"`
+		} `json:"actors"`
+	}
+	if err := c.tool("actors_create", map[string]any{"actors": []map[string]any{{"formId": form.ID, "title": "Expected supplier " + stamp, "hole": true}}}, &hole); err != nil {
+		return err
+	}
+	if len(hole.Actors) != 1 || !hole.Actors[0].Hole {
+		return fmt.Errorf("actors_create did not create a hole: %+v", hole.Actors)
+	}
+	var holeLink id
+	if err := c.tool("edge_create", map[string]any{"source": actors[0], "target": hole.Actors[0].ID, "name": "awaits"}, &holeLink); err != nil {
+		return err
+	}
+	var holePlaced struct {
+		Nodes []struct {
+			LaID int64 `json:"laId"`
+		} `json:"nodes"`
+	}
+	if err := c.tool("layer_placements_create", map[string]any{"layerId": layer.ID, "nodes": []map[string]any{{"actorId": hole.Actors[0].ID, "position": map[string]any{"x": 300, "y": 0}}}}, &holePlaced); err != nil {
+		return err
+	}
+	if err := c.tool("layer_placements_create", map[string]any{"layerId": layer.ID, "edges": []map[string]any{{"edgeId": holeLink.ID, "laIdSource": placed.Nodes[0].LaID, "laIdTarget": holePlaced.Nodes[0].LaID}}}, &ignored); err != nil {
+		return err
+	}
+	var withHole struct {
+		Nodes []struct {
+			ActorID string `json:"actorId"`
+			Hole    bool   `json:"hole"`
+		} `json:"nodes"`
+		Edges []struct {
+			Target string `json:"target"`
+		} `json:"edges"`
+	}
+	if err := c.tool("layer_get", map[string]any{"layerId": layer.ID}, &withHole); err != nil {
+		return err
+	}
+	holeShown, linkShown := false, false
+	for _, n := range withHole.Nodes {
+		holeShown = holeShown || n.ActorID == hole.Actors[0].ID && n.Hole
+	}
+	for _, e := range withHole.Edges {
+		linkShown = linkShown || e.Target == hole.Actors[0].ID
+	}
+	if !holeShown || !linkShown {
+		return fmt.Errorf("layer_get shows the hole %v and its link %v", holeShown, linkShown)
+	}
 	if err := c.tool("edge_delete", map[string]any{"edgeId": edge.ID}, &ignored); err != nil {
 		return err
 	}
