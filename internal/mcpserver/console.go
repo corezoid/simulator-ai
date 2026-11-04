@@ -36,10 +36,10 @@ func keepConsoleCore(s *server.MCPServer) {
 	s.DeleteTools(drop...)
 }
 
-// destructiveTools delete what they touch; clients may ask for confirmation on this hint.
 // idempotentTools are console writes whose repeat returns the same result and changes nothing more.
 var idempotentTools = map[string]bool{"account_pair_create": true}
 
+// destructiveTools delete what they touch; clients may ask for confirmation on this hint.
 var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true, "access_rules_save": true}
 
 // maxConsoleInput keeps one tool call, and so its request, under sim-api's 1 MiB JSON-RPC body
