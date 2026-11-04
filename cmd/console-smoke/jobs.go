@@ -13,9 +13,10 @@ type task struct {
 	Status      string `json:"status"`
 	DownloadURL string `json:"downloadUrl"`
 	Details     struct {
-		Actor struct {
+		// An import's root graph; details.actor is only an actor dataReplace named.
+		Graph struct {
 			ID string `json:"id"`
-		} `json:"actor"`
+		} `json:"graph"`
 		File struct {
 			FileName string `json:"fileName"`
 		} `json:"file"`
@@ -59,7 +60,10 @@ func jobs(c *client, stamp string) error {
 	if done, err = waitTask(c, imp.ID); err != nil {
 		return err
 	}
-	fmt.Println("OK jobs export", export.ID, "import", imp.ID, "root", done.Details.Actor.ID)
+	if done.Details.Graph.ID == "" {
+		return fmt.Errorf("import %d completed without its root graph: %+v", imp.ID, done)
+	}
+	fmt.Println("OK jobs export", export.ID, "import", imp.ID, "root", done.Details.Graph.ID)
 	return nil
 }
 
@@ -80,6 +84,9 @@ func waitTask(c *client, taskID int64) (task, error) {
 	return t, fmt.Errorf("task %d is still %s after two minutes (is the control-tasks worker running?)", taskID, t.Status)
 }
 
+// maxArchive bounds a downloaded archive; graph_file_upload takes far less.
+const maxArchive = 8 << 20
+
 // download reads an archive by its link, retrying while the antivirus still scans it (425).
 func download(link string) ([]byte, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -88,11 +95,13 @@ func download(link string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxArchive+1))
 		resp.Body.Close()
 		switch {
 		case err != nil:
 			return nil, err
+		case len(body) > maxArchive:
+			return nil, fmt.Errorf("the archive is larger than %d bytes", maxArchive)
 		case resp.StatusCode == http.StatusOK:
 			return body, nil
 		case resp.StatusCode != http.StatusTooEarly && resp.StatusCode != http.StatusNotFound:

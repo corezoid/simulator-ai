@@ -27,7 +27,7 @@ func TestGetTaskAddsDownloadURL(t *testing.T) {
 	c, _ := New(Config{Origin: api.URL + "/", Workspace: "ws", Profile: "console-full", Authorization: "Simulator run"})
 	for _, tc := range []struct{ result, want string }{
 		{`{"id":3,"status":"started"}`, `{"id":3,"status":"started"}`},
-		{`{"id":3,"status":"completed","details":{"file":{"fileName":"8c41 e0.graph"}}}`, `"downloadUrl":"` + api.URL + `/api/1.0/download/8c41%20e0.graph"`},
+		{`{"id":3,"status":"completed","details":{"file":{"fileName":"2026/11/8c41 e0.graph"}}}`, `"downloadUrl":"` + api.URL + `/api/1.0/download/2026/11/8c41%20e0.graph"`},
 		{`{"id":4,"name":"zip","status":"completed","details":{"fileName":"z1.zip","size":9}}`, `"downloadUrl":"` + api.URL + `/api/1.0/download/z1.zip"`},
 	} {
 		reply = tc.result

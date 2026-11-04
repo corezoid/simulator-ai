@@ -125,8 +125,9 @@ Both need the `import_export:management` workspace permission.
   without Corezoid credentials: bind them afterwards (`simulator-ai-smart-forms-logic`).
 - **Follow the task.** `task_get {taskId}` while `status` is `created` or `started`, a few
   seconds apart. `completed`: an export adds `downloadUrl`, the archive's link, which opens
-  without signing in, so give it only to the user who asked; an import names its root actor in
-  `details.actor` (link it with `build_link`). `failed`: report `error`.
+  without signing in, so give it only to the user who asked; an import names the root graph it
+  created in `details.graph` (link its `id` with `build_link`; `details.actor` is only an actor
+  `dataReplace` named). `failed`: report `error`.
 
 ## Desktop profiles: `graph-read` and `graph-create`
 
