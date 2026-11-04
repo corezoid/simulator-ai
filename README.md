@@ -119,7 +119,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 36 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 45 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -136,7 +136,7 @@ scenarios use (see "AI Console profile").
 | `form_create` · `form_update` · `form_status_update` · `form_delete` [createForm, updateForm, setFormStatus, deleteForm] | `form/create` · `form/update` · `form/status/update` · `form/delete` | ✓ | | |
 | `forms_tree_get` [getFormsTree] · `form_linked_get` [getLinkedForms] | `form/tree/get` · its subtree, or `form/get` with `parents` | ✓ | ✓ | ✓ |
 | `form_accounts_list` [getFormAccounts] | `account_form/list` | ✓ | ✓ | ✓ |
-| `form_account_create` · `form_account_delete` [createFormAccount, removeFormAccount] | `account_form/create` · `account_form/delete` | ✓ | | |
+| `form_account_create` [createFormAccount] (pair by name or ids; also opened on the template's existing actors, 500 per call) · `form_account_delete` [removeFormAccount] | `account_form/list` + atomic `batch` of `account/create` + `account_form/create`, then `actor/filter/list` + `batch` of `account_actor/create` · `account_form/delete` | ✓ | | |
 | `edge_create` / `edges_create` [createLink, massLink] | `edge/create` (batch) | ✓ | | |
 | `edge_get` [getEdge] · `edge_exist` [existLink] | `edge/get` · `edge/by-node/get` | ✓ | | ✓ |
 | `edge_update` · `edge_endpoints_update` · `edge_delete` [updateEdge, deleteEdge] | `edge/update` · `edge/endpoints/update` · `edge/delete` | ✓ | | |
@@ -157,13 +157,15 @@ scenarios use (see "AI Console profile").
 | `access_request_create` [requestAccess] (an actor of the host workspace) · `access_requests_list` · `access_request_confirm` · `access_request_cancel` | `access_rule/actor/request/create` · `…/list` · `…/confirm` · `…/cancel` | ✓ | | |
 | `reactions_list` [getReactions] · `reactions_count` · `reactions_mark_read` [markReactionsRead] | `reaction/list` · `reaction/count` · `reaction/read/update` | ✓ | | |
 | `reaction_create` · `reaction_update` · `reaction_delete` [createReaction, updateReaction, deleteReaction] | `reaction/create` · `reaction/update` · `reaction/delete` | ✓ | | |
+| `chat_open` (p2p reused as the web UI does, or a new group chat) | `form/system/get` (`Events`) + `actor/filter/list` (stream `p2p`) + `actor/create` + `user/get` + `actor/update` (ref, title) + `access_rule/actor/share` | ✓ | | |
+| `actor_attach` (actor card, Smart Form or pinned form card on an actor) | `actor/update` (`cardActorId` / `appId`) · `edge_type/get` + `edge/create` (`pinned`), with a new form actor in one atomic `batch` | ✓ | | |
 | `users_search` [searchUsers, getUsers] (without query a page of members) · `user_get` [getUser] · `workspaces_list` [getWorkspaces] | `user/list` · `user/get` · `workspace/list` | ✓ | | |
 | `attachments_list` [getAttachments] · `attachments_by_actor_list` [getActorAttachments] | `attachment/list` · `attachment/by-actor/list` | ✓ | | |
 | `attachment_attach` · `attachment_update` · `attachment_detach` [addAttachments, updateAttachment, removeAttachments] | `attachment/attach` · `attachment/update` · `attachment/detach` | ✓ | | |
 | `attachment_upload` (file bytes as base64, up to 700 KiB; `actorId` attaches it) | HTTP `POST /api/2.0/rest/upload` (multipart, ufs limits and antivirus), which attaches it to `actorId` or refuses before storing | ✓ | | |
 | `attachment_read` [readAttachment] (text up to 100 KiB; binary: type and size) | HTTP `GET /api/1.0/download/<fileName>` (425 retried for about 15 s; 404, from a stand serving files from ufs while it scans, for about 3 s; 403 quarantine) | ✓ | | |
 | `account_pair_create` [createAccountPair] (by name; creates a missing name and currency; an existing pair nobody was given access to only with `takeOwnership`) | `account_name/list`, `account_currency/list`, the missing `…/create`, `access_rule/account/list` for an existing pair, `account/create` | ✓ | | |
-| `account_create` [createAccount] · `account_by_ref_create` · `account_update` [updateAccount] · `account_status_update` · `account_delete` [deleteAccount] · `account_pair_unregister` | `account_actor/create` · `…/by-ref/create` · `…/update` · `…/status/update` · `…/delete` · `account/delete` | ✓ | | |
+| `account_create` [createAccount] (pair by account name and currency or by ids, as ui-kit's create-account; `plan` adds the plan twin) · `account_by_ref_create` · `account_update` [updateAccount] · `account_status_update` · `account_delete` [deleteAccount] · `account_pair_unregister` | atomic `batch` of `account/create` + `account_actor/create` (`ignoreIfExist`) · `account_actor/by-ref/create` · `…/update` · `…/status/update` · `…/delete` · `account/delete` | ✓ | | |
 | `accounts_list` [getAccounts] · `accounts_count` · `accounts_by_ref_list` · `account_get` [getBalance] · `account_by_ref_get` | `account_actor/list` · `…/count` · `…/by-ref/list` · `…/get` · `…/by-ref/get` | ✓ | | |
 | `currencies_list` [getCurrencies, searchCurrencies] · `currency_get` · `currency_create` [createCurrency] · `currency_update` | `account_currency/list` · `…/get` · `…/create` · `…/update` | ✓ | | |
 | `account_names_list` [getAccountNames, searchAccountNames] · `account_name_get` · `account_name_create` [createAccountName] · `account_name_update` [updateAccountName] | `account_name/list` · `…/get` · `…/create` · `…/update` | ✓ | | |
@@ -245,10 +247,12 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 `actor_by_ref_get`, `form_get`, `forms_list`, `graph_get`, the flowchart tools, the Smart Form tools below and,
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
-`skills_find`, `skill_get` and `build_link`: 36 in all (`smart_form_folders_create` is there because a form of more
-than one page needs a folder per page). `console-full` adds every other actor, form, graph, access, reaction, user,
+`skills_find`, `skill_get` and `build_link`, and for accounts, Account Templates, chats and cards `account_create`,
+`accounts_list`, `transfer_create`, `transaction_create`, `form_create`, `form_update`, `form_account_create`,
+`chat_open` and `actor_attach`: 45 in all (`smart_form_folders_create` is there because a form of more
+than one page needs a folder per page; `internal/mcpserver/console.go` says why each later one is). `console-full` adds every other actor, form, graph, access, reaction, user,
 attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
-transcript tool (177 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+transcript tool (179 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -321,7 +325,9 @@ workspace roles, `SMOKE_TTL`, `ROTATE=1`) and writes `~/.config/simulator-ai/smo
 `SIMULATOR_AI_API_KEY` or `SIMULATOR_AI_AUTHORIZATION`, mode 0600). It then runs `cmd/console-smoke` over stdio with only that file's credential (five-minute bound): a layer with Start / Process / End blocks, two labelled edges and their
 placements read back with `layer_get`, then a Smart Form with a field, a submit button and a root route, released,
 read back as `ready` and linked with `build_link`, then a verified skill found by `skills_find`, read by `skill_get`
-and linked. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
+and linked, then the core scenario: an account opened by name on two actors (with its plan twin, then answered as
+existing) and a transfer between them, an Account Template whose existing record gets its account, a form card and an
+actor card on an actor, and a p2p chat with another member opened twice (reused) and a message in it. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
 by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`), the simulation one (a shop with a balance
 of 100 and a supplier on a new layer; a payment model checked against `simulation_snapshot_get` and run live in two
 scenarios) and the charts one (a manual chart read back with its source and chart placement, turned into an

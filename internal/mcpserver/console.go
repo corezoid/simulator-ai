@@ -23,6 +23,15 @@ var consoleCoreTools = map[string]bool{
 	"smart_form_files_create": true, "smart_form_folders_create": true, "smart_form_release": true, "smart_form_release_get": true,
 	"actor_by_ref_get": true, "reactions_list": true, "reaction_create": true, "users_search": true, "access_rules_get": true, "access_rules_save": true,
 	"attachment_upload": true, "attachment_read": true, "skills_find": true, "skill_get": true, "build_link": true,
+	// Accounts on an actor by name ("open a Default USD account"), its rows and balances, and a move of
+	// value: a transfer between actors' accounts, a transaction when one account is named.
+	"account_create": true, "accounts_list": true, "transfer_create": true, "transaction_create": true,
+	// Account Templates: the template itself and the accounts every actor of it has.
+	"form_create": true, "form_update": true, "form_account_create": true,
+	// A p2p or group chat in one call (its reuse ref needs the creator's id, which no tool gives).
+	"chat_open": true,
+	// The actor, form and Smart Form cards an actor shows.
+	"actor_attach": true,
 }
 
 // keepConsoleCore drops every tool outside consoleCoreTools.
@@ -60,6 +69,8 @@ const (
 func addConsole(s *server.MCPServer, c *publicapi.Client) {
 	addConsoleGraph(s, c)
 	addConsoleSmartForms(s, c)
+	addConsoleAccounts(s, c)
+	addConsoleActors(s, c)
 }
 
 func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {

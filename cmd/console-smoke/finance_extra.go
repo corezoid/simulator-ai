@@ -6,18 +6,16 @@ import (
 )
 
 // financeExtra (console-full, sim-api cda5b60e or later): on the pair of finance, an existing pair
-// opened again with ignoreIfExist, a row read by id, a balance set, a formula previewed, set and
+// opened again (answered as it is), a row read by id, a balance set, a formula previewed, set and
 // read, two transactions posted atomically, a tag added and the set replaced as read, and the
 // trigger lists of the pair, the actor's account and a data field.
 func financeExtra(c *client, stamp, nameID string, currencyID int64, actors []string, rows map[string]map[string]string) error {
-	var reopened struct {
-		Existed bool `json:"existed"`
-	}
-	if err := c.tool("account_create", map[string]any{"actorId": actors[0], "nameId": nameID, "currencyId": currencyID, "ignoreIfExist": true}, &reopened); err != nil {
+	var reopened opened
+	if err := c.tool("account_create", map[string]any{"actorId": actors[0], "nameId": nameID, "currencyId": currencyID}, &reopened); err != nil {
 		return err
 	}
-	if !reopened.Existed {
-		return fmt.Errorf("account_create with ignoreIfExist on an open pair did not answer existed")
+	if len(reopened.Accounts) != 1 || !reopened.Accounts[0].Existed {
+		return fmt.Errorf("account_create on an open pair did not answer existed: %+v", reopened)
 	}
 	credit, source, target := rows[actors[0]]["credit"], rows[actors[0]]["debit"], rows[actors[1]]["debit"]
 	var row struct {
@@ -102,15 +100,11 @@ func counterAccount(c *client, stamp, nameID string, currencyID int64) error {
 	if err := c.tool("layer_create", map[string]any{"title": "AI smoke counter " + stamp}, &actor); err != nil {
 		return err
 	}
-	var opened struct {
-		List []struct {
-			ID string `json:"id"`
-		} `json:"list"`
-	}
-	if err := c.tool("account_create", map[string]any{"actorId": actor.ID, "nameId": nameID, "currencyId": currencyID, "counterType": "counter"}, &opened); err != nil {
+	var counter opened
+	if err := c.tool("account_create", map[string]any{"actorId": actor.ID, "nameId": nameID, "currencyId": currencyID, "counterType": "counter"}, &counter); err != nil {
 		return err
 	}
-	if len(opened.List) == 0 {
+	if len(counter.Accounts) != 1 {
 		return fmt.Errorf("account_create returned no rows for the counter account")
 	}
 	var row struct {
@@ -118,7 +112,7 @@ func counterAccount(c *client, stamp, nameID string, currencyID int64) error {
 			CounterType string `json:"counterType"`
 		} `json:"list"`
 	}
-	if err := c.tool("account_by_id_get", map[string]any{"accountId": opened.List[0].ID}, &row); err != nil {
+	if err := c.tool("account_by_id_get", map[string]any{"accountId": counter.Accounts[0].Debit}, &row); err != nil {
 		return err
 	}
 	if len(row.List) != 1 || row.List[0].CounterType != "counter" {

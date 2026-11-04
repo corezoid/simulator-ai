@@ -4,7 +4,7 @@ description: Create, read, update, search and filter Simulator actors — the re
 ---
 
 Use the installed `simulator-ai` catalog. `console` has `actor_get`, `actor_create`,
-`actors_create`, `actor_update`, `actors_search` and `actor_by_ref_get`; `actors_filter`,
+`actors_create`, `actor_update`, `actors_search`, `actor_by_ref_get` and `actor_attach`; `actors_filter`,
 `actor_status_update`, `actor_delete`, `actor_system_get` and `actor_corezoid_processes_list`
 need `console-full` (the reads are also in `read`). Template design is `simulator-ai-forms`;
 links and layers are `simulator-ai-graph`; accounts are `simulator-ai-finance`.
@@ -76,6 +76,19 @@ it. `actor_update {hole: false}` turns it into a normal actor.
   `orderBy: "balance"`, `accountNameId` and `currencyId`. Balances are real values: do not
   divide by the precision. The total is `actors_filter_count` with the same filters.
 - Turnover over a period is not a filter: read each actor's accounts (`simulator-ai-finance`).
+
+## Cards on an actor
+
+"Add an actor / a form / a Smart Form to this actor" means a card in its view, never a comment
+(reaction) or a file: `actor_attach {actorId, kind, ...}`.
+
+- `kind: "actor"`, `targetId`: the actor card it shows (one; replaces the current one).
+- `kind: "smartForm"`, `targetId`: the appId of the Smart Form it opens (one; replaces it).
+- `kind: "form"`: a form card, pinned to it by a hierarchy edge, as many as needed: a new
+  record `{formId, title, data}` of an account template, or an existing actor (`targetId`).
+  The record keeps its own access: share it with `access_rules_save` when others should open it.
+
+Detach a card or Smart Form with `actor_update {actorId, cardActorId: ""}` / `{appId: ""}`.
 
 ## Related
 

@@ -5,26 +5,17 @@ description: Message a Simulator user and open or reuse a p2p or group chat with
 
 Use the installed `simulator-ai` catalog (profile `console`). A chat is an actor of the Events
 system template with `data.chatType` `p2p` or `group`; its participants are the actor's access
-rules; its messages are `comment` reactions. There is no "send message" tool: compose it.
+rules; its messages are `comment` reactions. `chat_open` finds or creates the chat; the message
+is `reaction_create` in it.
 
 ## Message user N
 
 1. **Resolve N.** `users_search {query: "N"}` → N's `id`. Several matches: ask which one.
-2. **Resolve the Events template** (its id differs per workspace):
-   `forms_list {type: "system", query: "Events"}` → the row titled `Events`.
-3. **Build the reuse key.** It needs both userIds: N's and the sender's (ask the user or match
-   them with `users_search`; there is no "current user" tool). Sort them ascending:
-   - `ref = "p2pConversation_<min>_<max>"`, the key the web UI reuses a chat by;
-   - `title = "<nick of min>:p2p:<nick of max>"`.
-4. **Reuse before creating.** `actor_by_ref_get {formId: <Events>, ref}`. Found: use its id and
-   go to step 6.
-5. **Create the chat** only when none exists:
-   `actor_create {formId: <Events>, title, ref, data: {chatType: "p2p", startDate: <now>,
-   endDate: <now>, scheduleMeeting: false}}`. `startDate`/`endDate` are plain Unix seconds here.
-   Then add N: `access_rules_save {objType: "actor", objId: <chat id>, rules: [{userId: <N>,
-   privs: {view: true, modify: true, remove: true}}]}`. The creator is the owner already: do
-   not add yourself.
-6. **Post the message.** `reaction_create {rootActorId: <chat id>, type: "comment",
+2. **Open the chat.** `chat_open {type: "p2p", userIds: [<N>]}` reuses the 1:1 chat you
+   already have with N, as the web UI does (its `ref` is `p2pConversation_<min id>_<max id>`),
+   else creates it titled `<nick>:p2p:<nick>` and shares it with N (view, modify, remove).
+   You own a chat you create: do not add yourself.
+3. **Post the message.** `reaction_create {rootActorId: <chatId>, type: "comment",
    description: "<the text>"}`. A message notifies N: confirm the text with the user first
    when it speaks for them.
 
@@ -33,8 +24,8 @@ orderValue: "ASC"}`; `readTime` is when the other side last read it.
 
 ## Variations
 
-- **Group chat:** `data.chatType: "group"` and no `ref` (the UI does not reuse group chats),
-  then one `access_rules_save` with every participant in `rules`.
+- **Group chat:** `chat_open {type: "group", title, userIds: [...]}` always creates a new one
+  (the UI does not reuse group chats) and shares it with every participant.
 - **Reply in a thread:** `parentId` of the reaction replied to.
 - **A file in a message:** `attachment_upload` first, then `attachmentIds: [id]` in
   `reaction_create` (see `simulator-ai-attachments`).
