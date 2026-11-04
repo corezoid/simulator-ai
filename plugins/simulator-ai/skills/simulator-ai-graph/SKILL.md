@@ -65,7 +65,9 @@ the block (`smart_form_components {types: ["GraphEditor"]}` for its props) and r
 3. **Layout:** `flowchart_layout {nodes, edges}` returns per node `formId`, `color`, `data`,
    `position`, `layerSettings` (ranks top to bottom, three free cells apart, on whole grid
    cells; loop-back edges kept but not ranked). Never hand-pick coordinates for blocks.
-4. **Layer:** reuse the one the user named or is on; else `layer_create {title}`. To file it
+4. **Layer:** the one the user named, else the current layer of the request's Current context
+   (AI Console: `layer <id>`): create and change actors, links and placements there and do not
+   make a new layer. Only with neither, or when the user asks for a new one, `layer_create {title}`. To file it
    under a graph, `edge_create {source: <graphId>, target: <layerId>}`.
 5. **Actors:** one `actors_create` with each node's `formId`, `title`, `color` and `data`
    verbatim from the layout (atomic: all or none, in input order).

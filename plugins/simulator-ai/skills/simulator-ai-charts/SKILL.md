@@ -20,7 +20,8 @@ so several charts share one filter.
 
 ## Find the ids first
 
-- `layerId`: an existing layer, or `layer_create {title}`; its graph's layers via `graph_list`.
+- `layerId`: the layer the user named, else the current layer of the request's Current context;
+  `layer_create {title}` only with neither or when asked for a new one; its graph's layers via `graph_list`.
 - `nameId` / `accountNameId`: `account_names_list`; `currencyId`: `currencies_list`. Both come from
   accounts the actors really have (`accounts_list {actorId}`); `account_pair_create` registers a
   missing pair.
