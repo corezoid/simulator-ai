@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -247,6 +248,15 @@ func (c *Client) CreateSmartFormFiles(ctx context.Context, in SmartFormFilesCrea
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
+	for i := range in.Items {
+		if in.Items[i].Title == "config" {
+			wired, err := wireSubmits(in.Items[i].Source, c.config.Workspace)
+			if err != nil {
+				return SmartFormWritten{}, fmt.Errorf("file %d: %w", i, err)
+			}
+			in.Items[i].Source = wired
+		}
+	}
 	r, e := call[appFilesRequest[SmartFormFileCreate], Files](ctx, c, "app_file/create", appFilesRequest[SmartFormFileCreate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {
 		return SmartFormWritten{}, e
@@ -261,6 +271,15 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 	}
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
+	}
+	for i := range in.Items {
+		if it := &in.Items[i]; it.Title == "config" && it.Source != nil {
+			wired, err := wireSubmits(*it.Source, c.config.Workspace)
+			if err != nil {
+				return SmartFormWritten{}, fmt.Errorf("file %d: %w", i, err)
+			}
+			it.Source = &wired
+		}
 	}
 	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {

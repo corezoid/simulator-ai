@@ -6,13 +6,16 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -127,4 +130,42 @@ func main() {
 func fail(err error) {
 	fmt.Fprintln(os.Stderr, "FAIL:", err)
 	os.Exit(1)
+}
+
+// publicRPC calls one public sim-api method with the origin, workspace and credential the binary
+// gets, for steps a tool does not cover (a form submit as the page's button sends it).
+func publicRPC(method string, params map[string]any) (json.RawMessage, error) {
+	params["accId"] = os.Getenv("SIMULATOR_AI_WORKSPACE")
+	auth := os.Getenv("SIMULATOR_AI_AUTHORIZATION")
+	if auth == "" {
+		auth = "ApiKey " + os.Getenv("SIMULATOR_AI_API_KEY")
+	}
+	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": "smoke", "method": method, "params": params})
+	req, err := http.NewRequest(http.MethodPost, strings.TrimRight(os.Getenv("SIMULATOR_AI_ORIGIN"), "/")+"/api/2.0/rpc", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", auth)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var reply struct {
+		Result json.RawMessage `json:"result"`
+		Error  *struct {
+			Message string `json:"message"`
+			Data    struct {
+				Reason string `json:"reason"`
+			} `json:"data"`
+		} `json:"error"`
+	}
+	if err = json.NewDecoder(resp.Body).Decode(&reply); err != nil {
+		return nil, err
+	}
+	if reply.Error != nil {
+		return nil, fmt.Errorf("%s: %s (%s)", method, reply.Error.Message, reply.Error.Data.Reason)
+	}
+	return reply.Result, nil
 }

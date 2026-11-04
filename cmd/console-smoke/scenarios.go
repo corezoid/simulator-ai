@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
+	"time"
 )
 
 type block struct {
@@ -197,26 +199,20 @@ func form(c *client, stamp string) error {
 	if config == nil {
 		return fmt.Errorf("new Smart Form has no pages/index/config")
 	}
-	// The leave request of acceptance scenario 2, built only from smart_form_components types.
-	var kinds struct {
-		List []struct {
-			Type string `json:"type"`
-		} `json:"list"`
-	}
-	if err := c.tool("smart_form_components", map[string]any{"types": []string{"Stack", "Label", "DatePicker", "TextInput", "Button"}}, &kinds); err != nil {
+	var catalog json.RawMessage
+	if err := c.tool("smart_form_components", map[string]any{}, &catalog); err != nil {
 		return err
 	}
-	if len(kinds.List) != 5 {
-		return fmt.Errorf("smart_form_components returned %d of the 5 component types", len(kinds.List))
+	// The leave request of acceptance scenario 2 with its data template: three fields, saved by submit.
+	var data struct {
+		FormID int64  `json:"formId"`
+		Page   string `json:"page"`
 	}
-	page, _ := json.Marshal(map[string]any{"schemaVersion": "2.0", "id": "index", "tree": map[string]any{"id": "root", "type": "Stack", "children": []any{
-		map[string]any{"id": "startLabel", "type": "Label", "props": map[string]any{"title": "Дата початку"}},
-		map[string]any{"id": "start", "type": "DatePicker", "props": map[string]any{"mode": "single"}},
-		map[string]any{"id": "endLabel", "type": "Label", "props": map[string]any{"title": "Дата кінця"}},
-		map[string]any{"id": "end", "type": "DatePicker", "props": map[string]any{"mode": "single"}},
-		map[string]any{"id": "comment", "type": "TextInput", "props": map[string]any{"label": "Коментар"}},
-		map[string]any{"id": "submit", "type": "Button", "props": map[string]any{"title": "Надіслати"}},
-	}}})
+	if err := c.tool("smart_form_data_form_create", map[string]any{"title": "Заявки на відпустку " + stamp, "submitLabel": "Надіслати", "successMessage": "Заявку збережено",
+		"fields": []map[string]any{{"name": "start", "label": "Дата початку", "type": "date", "required": true}, {"name": "end", "label": "Дата кінця", "type": "date", "required": true}, {"name": "comment", "label": "Коментар"}}}, &data); err != nil {
+		return err
+	}
+	page := []byte(data.Page)
 	config["source"] = string(page)
 	var ignored json.RawMessage
 	if err := c.tool("smart_form_files_update", map[string]any{"appId": created.AppID, "items": []any{config}}, &ignored); err != nil {
@@ -236,6 +232,9 @@ func form(c *client, stamp string) error {
 	if !rel.Ready || !again.Ready || rel.Marker != "appId: "+created.AppID {
 		return fmt.Errorf("release %d is not ready", rel.ReleaseID)
 	}
+	if err := submit(c, data.FormID); err != nil {
+		return err
+	}
 	fmt.Println("OK form appId", created.AppID, "release", rel.ReleaseID)
 	return nil
 }
@@ -244,3 +243,35 @@ func form(c *client, stamp string) error {
 var palette = map[string]bool{"#875bf7": true, "#2970ff": true, "#36bffa": true, "#17b26a": true, "#66c61c": true, "#fac515": true, "#f38744": true, "#f63d68": true}
 
 func inPalette(color string) bool { return palette[color] }
+
+// submit sends what the page's button would, through public form/submit under the same credential,
+// and checks the actor it creates. A stand without form/submit yet is reported, not failed.
+func submit(c *client, formID int64) error {
+	start := time.Now().Unix()
+	result, err := publicRPC("form/submit", map[string]any{"formId": formID, "formData": map[string]any{"start": start, "end": start + 5*86400, "comment": "smoke leave"}})
+	if err != nil {
+		if strings.Contains(err.Error(), "methodNotFound") {
+			fmt.Println("SKIP form/submit: not on this stand yet")
+			return nil
+		}
+		return err
+	}
+	var saved struct {
+		ID string `json:"id"`
+	}
+	if err = json.Unmarshal(result, &saved); err != nil || saved.ID == "" {
+		return fmt.Errorf("form/submit returned no actor: %s", result)
+	}
+	var actor struct {
+		FormID int64          `json:"formId"`
+		Data   map[string]any `json:"data"`
+	}
+	if err = c.tool("actor_get", map[string]any{"actorId": saved.ID, "fields": []string{"formId", "data"}}, &actor); err != nil {
+		return err
+	}
+	if actor.FormID != formID || actor.Data["comment"] != "smoke leave" {
+		return fmt.Errorf("submitted actor %s has form %d and data %v", saved.ID, actor.FormID, actor.Data)
+	}
+	fmt.Println("OK form/submit actor", saved.ID)
+	return nil
+}
