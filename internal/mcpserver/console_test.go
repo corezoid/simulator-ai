@@ -167,9 +167,11 @@ func TestConsoleRequests(t *testing.T) {
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"blockIds":["process"]`,
 			`"key":"b","blockId":"process","formId":5,"color":"#`},
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"limit":100`,
-			`"position":{"x":25,"y":325},"layerSettings":{"width":200,"height":100,"blockId":"process"`},
+			`"position":{"x":25,"y":325},"cell":"B, 8","layerSettings":{"width":200,"height":100,"blockId":"process"`},
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","cell":"C, 7"}]}`, "graph/layer/actors/manage", `"data":{"id":"a1","position":{"x":100,"y":300},"type":"node"}`, `"cell":"`},
+		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"cell":"-B, -1"}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":-100,"y":-50}}]`, `"updated":1`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"x":150,"y":0}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":150,"y":0}}]`, `"updated":1`},
-		{"layer_get", `{"layerId":"L"}`, "graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":0,"y":0},"blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
+		{"layer_get", `{"layerId":"L"}`, "graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":0,"y":0},"cell":"A, 1","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
 		{"smart_form_create", `{"ref":"leave_form","title":"Leave request","sharedWith":"allWorkspaceUsers"}`, "application/create", `"cduVersion":2,"ref":"leave_form","sharedWith":"allWorkspaceUsers"`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
 		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
@@ -387,7 +389,7 @@ func TestLayerGetShowsHoles(t *testing.T) {
 		"graph/layer/edges/list":  `"result":{"list":[{"laId":9,"id":"e1","laIdSource":2,"laIdTarget":1,"edge":{"id":"e1","edgeTypeId":3,"source":"a2","target":"h1","hole":true},"closedHole":{"holeEdgeId":"e0"}}]}`,
 	})
 	reply := strings.ReplaceAll(send(`"method":"tools/call","params":{"name":"layer_get","arguments":{"layerId":"L"}}`), `\"`, `"`)
-	for _, want := range []string{`"actorId":"h1","title":"Expected","position":{"x":0,"y":0},"hole":true`, `"closedHole":{"holeActorId":"h0","closingProgress":{"matched":1,"total":2}}`, `"target":"h1","hole":true,"closedHole":"e0"`} {
+	for _, want := range []string{`"actorId":"h1","title":"Expected","position":{"x":0,"y":0},"cell":"A, 1","hole":true`, `"closedHole":{"holeActorId":"h0","closingProgress":{"matched":1,"total":2}}`, `"target":"h1","hole":true,"closedHole":"e0"`} {
 		if !strings.Contains(reply, want) {
 			t.Errorf("layer_get lacks %s: %s", want, reply)
 		}
@@ -442,6 +444,24 @@ func TestConsoleRulesInDescriptions(t *testing.T) {
 		if tool := tools[name]; tool == nil || !strings.Contains(tool.Tool.Description, want) {
 			t.Errorf("%s lacks %q", name, want)
 		}
+	}
+}
+
+// A cell is "<column>, <row>" as on the rulers: a bare "C7", a cell with a position, or neither is
+// refused before any request.
+func TestConsoleCellsRefused(t *testing.T) {
+	send, calls := consoleServer(t, nil)
+	for _, args := range []string{
+		`{"layerId":"L","nodes":[{"actorId":"a1","cell":"C7"}]}`,
+		`{"layerId":"L","nodes":[{"actorId":"a1","cell":"C, 7","position":{"x":50,"y":50}}]}`,
+		`{"layerId":"L","nodes":[{"actorId":"a1"}]}`,
+	} {
+		if reply := send(`"method":"tools/call","params":{"name":"layer_placements_create","arguments":` + args + `}`); !strings.Contains(reply, `"isError":true`) && !strings.Contains(reply, `"error"`) {
+			t.Errorf("%s accepted: %s", args, reply)
+		}
+	}
+	if len(*calls) != 0 {
+		t.Errorf("a refused cell reached the API: %v", *calls)
 	}
 }
 

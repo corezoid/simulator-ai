@@ -31,6 +31,7 @@ type layoutNode struct {
 	Color         string                        `json:"color"`
 	Data          json.RawMessage               `json:"data"`
 	Position      publicapi.GraphPoint          `json:"position"`
+	Cell          string                        `json:"cell"`
 	LayerSettings publicapi.GraphNativeSettings `json:"layerSettings"`
 }
 
@@ -39,7 +40,7 @@ type layout struct {
 	ReturnEdges []string     `json:"returnEdges"`
 }
 
-const layoutOutput = `{"type":"object","properties":{"nodes":{"type":"array","items":{"type":"object","properties":{"key":{"type":"string"},"blockId":{"type":"string"},"formId":{"type":"integer"},"color":{"type":"string"},"data":{"type":"object"},"position":` + point + `,"layerSettings":` + nativeLayout + `},"required":["key","blockId","formId","color","data","position","layerSettings"]}},"returnEdges":{"type":"array","items":{"type":"string"}}},"required":["nodes","returnEdges"]}`
+const layoutOutput = `{"type":"object","properties":{"nodes":{"type":"array","items":{"type":"object","properties":{"key":{"type":"string"},"blockId":{"type":"string"},"formId":{"type":"integer"},"color":{"type":"string"},"data":{"type":"object"},"position":` + point + `,"cell":{"type":"string"},"layerSettings":` + nativeLayout + `},"required":["key","blockId","formId","color","data","position","cell","layerSettings"]}},"returnEdges":{"type":"array","items":{"type":"string"}}},"required":["nodes","returnEdges"]}`
 
 // addFlowchartLayout registers the read-only grid layout of a flowchart; it writes nothing.
 func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
@@ -90,18 +91,36 @@ func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
 			positions, returns := graphplan.GridLayout(boxes, edges)
 			for i := range out.Nodes {
 				out.Nodes[i].Position = positions[i]
+				out.Nodes[i].Cell = publicapi.CellOf(graphplan.GridCenter(positions[i], out.Nodes[i].LayerSettings.Width, out.Nodes[i].LayerSettings.Height))
 			}
 			out.ReturnEdges = append(out.ReturnEdges, returns...)
 			return out, nil
 		})
 }
 
+// placedNode is a created node placement with the Graph Editor cell of its position.
+type placedNode struct {
+	publicapi.GraphCreatedNode
+	Cell string `json:"cell,omitempty"`
+}
+
+type consolePlacements struct {
+	Nodes []placedNode                          `json:"nodes"`
+	Edges []publicapi.GraphCreatedPlacementEdge `json:"edges"`
+}
+
 // gridPlacements places flowchart nodes as Graph Editor does: corner on a grid line and the block
-// silhouette as areaPicture, so sim-api keeps the position instead of snapping the centre.
-func gridPlacements(c *publicapi.Client) func(context.Context, publicapi.PlacementsCreateInput) (publicapi.GraphCreatedPlacements, error) {
-	return func(ctx context.Context, in publicapi.PlacementsCreateInput) (publicapi.GraphCreatedPlacements, error) {
+// silhouette as areaPicture, so sim-api keeps the position instead of snapping the centre. A node
+// given by its cell is placed at the cell's centre; every placed node answers its cell.
+func gridPlacements(c *publicapi.Client) func(context.Context, publicapi.PlacementsCreateInput) (consolePlacements, error) {
+	return func(ctx context.Context, in publicapi.PlacementsCreateInput) (consolePlacements, error) {
+		for i := range in.Nodes {
+			if err := in.Nodes[i].ResolveCell(); err != nil {
+				return consolePlacements{}, fmt.Errorf("node %d: %w", i, err)
+			}
+		}
 		if err := fillActorColors(ctx, c, in.Nodes); err != nil {
-			return publicapi.GraphCreatedPlacements{}, err
+			return consolePlacements{}, err
 		}
 		for i := range in.Nodes {
 			n := &in.Nodes[i]
@@ -110,12 +129,24 @@ func gridPlacements(c *publicapi.Client) func(context.Context, publicapi.Placeme
 			}
 			picture, err := graphplan.AreaPicture(*n.LayerSettings, n.Color)
 			if err != nil {
-				return publicapi.GraphCreatedPlacements{}, err
+				return consolePlacements{}, err
 			}
 			n.Position = graphplan.GridCenter(n.Position, n.LayerSettings.Width, n.LayerSettings.Height)
 			n.AreaPicture = &picture
 		}
-		return c.CreatePlacements(ctx, in)
+		placed, err := c.CreatePlacements(ctx, in)
+		if err != nil {
+			return consolePlacements{}, err
+		}
+		out := consolePlacements{Nodes: make([]placedNode, len(placed.Nodes)), Edges: placed.Edges}
+		for i, n := range placed.Nodes {
+			at := in.Nodes[i].Position // manage answers nodes in input order
+			if n.Position != nil {
+				at = *n.Position
+			}
+			out.Nodes[i] = placedNode{GraphCreatedNode: n, Cell: publicapi.CellOf(at)}
+		}
+		return out, nil
 	}
 }
 

@@ -67,6 +67,8 @@ Workspace
   plain text. Never draw ASCII diagrams.
 - In AI Console the request may carry the user's UI context (`activeActor`, `activeLayer`,
   page): use it for "this actor" / "here" instead of asking.
+- Name a place on a layer by its Graph Editor cell, `"C, 7"` (column, row as on the rulers),
+  never by coordinates (`simulator-ai-graph`).
 - Cite the ids you used. To link an entity, call `build_link` (`actor`, `layer`, `graph`,
   `form`, `chat`, `smartForm`, ...); never compose a Simulator URL yourself.
 

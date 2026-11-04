@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 )
@@ -40,8 +41,10 @@ type edgeCreateRequest struct {
 // NodePlacement places an existing actor; LayerSettings is set for native flowchart blocks, whose
 // Color paints the AreaPicture the console tool derives from the block shape (never tool input).
 type NodePlacement struct {
-	ActorID       string               `json:"actorId"`
-	Position      GraphPoint           `json:"position"`
+	ActorID  string     `json:"actorId"`
+	Position GraphPoint `json:"position"`
+	// Cell names the position as the Graph Editor rulers do ("C, 7"), in place of position.
+	Cell          string               `json:"cell,omitempty"`
 	LayerSettings *GraphNativeSettings `json:"layerSettings,omitempty"`
 	Color         string               `json:"color,omitempty"`
 	AreaPicture   *GraphAreaPicture    `json:"-"`
@@ -66,12 +69,29 @@ type layerManageRequest struct {
 	Items   []GraphPlacementItem `json:"items"`
 }
 
-// PositionUpdate moves one node placement (laId) to x/y in graph units.
+// PositionUpdate moves one node placement (laId) to x/y in graph units, or to the centre of a cell.
 type PositionUpdate struct {
 	LaID int64   `json:"laId"`
 	X    float64 `json:"x"`
 	Y    float64 `json:"y"`
+	Cell string  `json:"cell,omitempty"`
 }
+
+// atCell turns a cell into the position it names; a cell and a position together are refused.
+func atCell(cell string, p *GraphPoint) error {
+	if cell == "" {
+		return nil
+	}
+	if *p != (GraphPoint{}) {
+		return errors.New("send a position or a cell, not both")
+	}
+	at, err := CellCenter(cell)
+	*p = at
+	return err
+}
+
+// ResolveCell sets the position of a placement given by its cell.
+func (p *NodePlacement) ResolveCell() error { return atCell(p.Cell, &p.Position) }
 
 type PositionsUpdateInput struct {
 	LayerID string           `json:"layerId"`
@@ -106,6 +126,7 @@ type LayerViewNode struct {
 	Title    *string   `json:"title,omitempty"`
 	FormID   *int64    `json:"formId,omitempty"`
 	Position *Position `json:"position,omitempty"`
+	Cell     string    `json:"cell,omitempty"` // the position's Graph Editor cell, "C, 7"
 	BlockID  string    `json:"blockId,omitempty"`
 	// Hole marks a placeholder actor; ClosedHole a placement that closed one.
 	Hole       bool        `json:"hole,omitempty"`
@@ -280,7 +301,11 @@ func (c *Client) UpdatePositions(ctx context.Context, in PositionsUpdateInput) (
 		if p.LaID < 1 {
 			return PositionsUpdated{}, errors.New("positive laId required")
 		}
-		items[i] = positionItem{LaActorID: p.LaID, Position: GraphPoint{X: p.X, Y: p.Y}}
+		at := GraphPoint{X: p.X, Y: p.Y}
+		if err := atCell(p.Cell, &at); err != nil {
+			return PositionsUpdated{}, fmt.Errorf("item %d: %w", i, err)
+		}
+		items[i] = positionItem{LaActorID: p.LaID, Position: at}
 	}
 	_, e := call[positionsRequest, json.RawMessage](ctx, c, "graph/layer/actors/positions/update", positionsRequest{AccID: c.config.Workspace, ActorID: in.LayerID, Items: items})
 	if e != nil {
@@ -318,6 +343,9 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 			return LayerView{}, errors.New("invalid node placement identity")
 		}
 		node := LayerViewNode{LaID: n.LaID, ActorID: n.ID, Position: n.Position, Hole: n.Hole, ClosedHole: n.ClosedHole}
+		if n.Position != nil && n.Position.X != nil && n.Position.Y != nil {
+			node.Cell = CellOf(GraphPoint{X: *n.Position.X, Y: *n.Position.Y})
+		}
 		if n.LayerSettings != nil {
 			node.BlockID = n.LayerSettings.BlockID
 		}

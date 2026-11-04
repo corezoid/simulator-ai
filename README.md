@@ -293,7 +293,11 @@ step needs.
 Flowchart: `flowchart_blocks_list` (kinds) → `flowchart_layout(nodes, edges)` → `actor_create(formId, title,
 color, data)` per node → `layer_placements_create` nodes with the layout's `position`, `layerSettings` and the same
 `color` → one `edges_create` (`name` is the label) → `layer_placements_create` edges between the node `laId`s →
-`layer_get` to read it back. Geometry follows Graph Editor: a cell is 50 units and grid lines lie on cell
+`layer_get` to read it back. Cells follow the Graph Editor rulers (simulator-ui-kit `utils/src/graphCoordinates.ts`,
+ported as `publicapi.CellOf` / `CellCenter`): `"C, 7"` is column C, row 7; columns run A…Z, A1…Z1, A2…, `-A`… left
+of the origin, rows 1… down and `-1`… up, no 0; the cell `A, 1` is centred on the origin. `layer_get`,
+`layer_placements_create` and `flowchart_layout` answer each node's `cell`, and `layer_placements_create` /
+`layer_positions_update` take `cell` instead of a position (the cell's centre). Geometry follows Graph Editor: a cell is 50 units and grid lines lie on cell
 boundaries (25 + 50k); a position is the block centre and a block's top-left corner sits on a grid line, so a
 block of whole cells fills whole cells. The layout ranks nodes top to bottom (loop-back edges excluded from
 ranking) with three free cells between blocks and ranks. Like the editor, the placement carries the block
@@ -328,7 +332,7 @@ placements read back with `layer_get`, then a Smart Form with a field, a submit 
 read back as `ready` and linked with `build_link`, then a verified skill found by `skills_find`, read by `skill_get`
 and linked, then the core scenario (console): an account opened by name on two actors (with its plan twin, then answered as
 existing) and a transfer between them, an Account Template whose existing record gets its account, a form card and an
-actor card on an actor, and a p2p chat with another member opened twice (reused) and a message in it. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
+actor card on an actor, a node placed by cell `C, 7`, moved to `-B, -1` and read back by cell, and a p2p chat with another member opened twice (reused) and a message in it. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
 by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`), the simulation one (a shop with a balance
 of 100 and a supplier on a new layer; a payment model checked against `simulation_snapshot_get` and run live in two
 scenarios) and the charts one (a manual chart read back with its source and chart placement, turned into an
