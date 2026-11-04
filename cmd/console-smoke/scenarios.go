@@ -77,15 +77,24 @@ func graph(c *client, stamp string) error {
 	if err := c.reuse(&raw); err != nil {
 		return err
 	}
+	var batch []map[string]any
+	for i, p := range plan {
+		batch = append(batch, map[string]any{"formId": laid.Nodes[i].FormID, "title": p.title, "color": p.color, "data": laid.Nodes[i].Data})
+	}
+	var created struct {
+		Actors []id `json:"actors"`
+	}
+	if err := c.tool("actors_create", map[string]any{"actors": batch}, &created); err != nil {
+		return err
+	}
+	if len(created.Actors) != len(plan) {
+		return fmt.Errorf("actors_create returned %d actors for %d", len(created.Actors), len(plan))
+	}
 	actors, nodes := map[string]string{}, []map[string]any{}
 	for i, p := range plan {
-		var a id
 		n := laid.Nodes[i]
-		if err := c.tool("actor_create", map[string]any{"formId": n.FormID, "title": p.title, "color": p.color, "data": n.Data}, &a); err != nil {
-			return err
-		}
-		actors[p.key] = a.ID
-		nodes = append(nodes, map[string]any{"actorId": a.ID, "position": map[string]any{"x": n.Position.X, "y": n.Position.Y}, "layerSettings": raw.Nodes[i].LayerSettings, "color": p.color})
+		actors[p.key] = created.Actors[i].ID
+		nodes = append(nodes, map[string]any{"actorId": created.Actors[i].ID, "position": map[string]any{"x": n.Position.X, "y": n.Position.Y}, "layerSettings": raw.Nodes[i].LayerSettings, "color": p.color})
 	}
 	var placed struct {
 		Nodes []struct {
@@ -100,13 +109,19 @@ func graph(c *client, stamp string) error {
 	for _, n := range placed.Nodes {
 		la[n.ActorID] = n.LaID
 	}
-	var edges []map[string]any
+	var wanted []map[string]any
 	for _, l := range links {
-		var e id
-		if err := c.tool("edge_create", map[string]any{"source": actors[l.source], "target": actors[l.target], "name": l.name}, &e); err != nil {
-			return err
-		}
-		edges = append(edges, map[string]any{"edgeId": e.ID, "laIdSource": la[actors[l.source]], "laIdTarget": la[actors[l.target]]})
+		wanted = append(wanted, map[string]any{"source": actors[l.source], "target": actors[l.target], "name": l.name})
+	}
+	var linked struct {
+		Edges []id `json:"edges"`
+	}
+	if err := c.tool("edges_create", map[string]any{"edges": wanted}, &linked); err != nil {
+		return err
+	}
+	var edges []map[string]any
+	for i, l := range links {
+		edges = append(edges, map[string]any{"edgeId": linked.Edges[i].ID, "laIdSource": la[actors[l.source]], "laIdTarget": la[actors[l.target]]})
 	}
 	var ignored json.RawMessage
 	if err := c.tool("layer_placements_create", map[string]any{"layerId": layer.ID, "edges": edges}, &ignored); err != nil {

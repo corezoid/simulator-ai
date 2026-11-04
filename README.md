@@ -111,6 +111,7 @@ step needs.
 | --- | --- | --- |
 | `actor_get` | `actor/get` | id, title, description, formId, status, ref |
 | `actor_create` / `actor_update` | `actor/create` / `actor/update` | same actor subset |
+| `actors_create` / `edges_create` | one atomic `batch` of `actor/create` / `edge/create` (edge types by name) | actors / edges in input order; one failed item fails the call with its index and creates nothing |
 | `flowchart_blocks_list` | `form/flowchart-block/search` | formId, title, blockId, `hasMore`; with `blockIds` also ready `data` and `layerSettings` |
 | `flowchart_layout` | `form/flowchart-block/search` (read-only) | per node formId, data, grid position and layerSettings; `returnEdges` |
 | `layer_create` | `form/system/get` (`Layers`) + `actor/create` | layer actor |
@@ -126,7 +127,7 @@ step needs.
 
 Flowchart: `flowchart_blocks_list` (kinds) → `flowchart_layout(nodes, edges)` → `actor_create(formId, title,
 color, data)` per node → `layer_placements_create` nodes with the layout's `position`, `layerSettings` and the same
-`color` → `edge_create` (`name` is the label) → `layer_placements_create` edges between the node `laId`s →
+`color` → one `edges_create` (`name` is the label) → `layer_placements_create` edges between the node `laId`s →
 `layer_get` to read it back. Geometry follows Graph Editor: a cell is 50 units and grid lines lie on cell
 boundaries (25 + 50k); a position is the block centre and a block's top-left corner sits on a grid line, so a
 block of whole cells fills whole cells. The layout ranks nodes top to bottom (loop-back edges excluded from

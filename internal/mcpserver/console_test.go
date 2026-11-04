@@ -50,7 +50,7 @@ func consoleServer(t *testing.T, overrides map[string]string) (func(body string)
 			Params map[string]any `json:"params"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&q)
-		if r.Header.Get("Authorization") != "Simulator user-jwt" || q.Params["accId"] != "ws" {
+		if r.Header.Get("Authorization") != "Simulator user-jwt" || (q.Params["accId"] != "ws" && q.Method != "batch") {
 			t.Errorf("%s sent without the host credential or workspace", q.Method)
 		}
 		*calls = append(*calls, consoleCall{q.Method, q.Params})
@@ -106,7 +106,7 @@ func TestConsoleCatalog(t *testing.T) {
 			t.Errorf("%s output schema types open JSON as bytes", tool.Name)
 		}
 	}
-	want := "actor_create,actor_get,actor_update,edge_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
+	want := "actor_create,actor_get,actor_update,actors_create,edge_create,edges_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
 	if strings.Join(names, ",") != want {
 		t.Fatal("console tools:", names)
 	}
@@ -231,6 +231,35 @@ func TestConsoleFailures(t *testing.T) {
 			}
 			if e := json.Unmarshal([]byte(reply), &r); e != nil || !r.Result.IsError || len(r.Result.Content) != 1 || !strings.Contains(r.Result.Content[0].Text, tc.want) {
 				t.Fatal(reply)
+			}
+		})
+	}
+}
+
+func TestConsoleBatches(t *testing.T) {
+	actors := `"result":{"isAtomic":true,"list":[{"id":"0","result":{"id":"a1","title":"Start","formId":5}},{"id":"1","result":{"id":"a2","title":"End","formId":5}}]}`
+	edges := `"result":{"isAtomic":true,"list":[{"id":"0","result":{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"go"}},{"id":"1","result":{"id":"e2","edgeTypeId":3,"source":"a2","target":"a1"}}]}`
+	failed := `"result":{"isAtomic":true,"rolledBack":true,"list":[{"id":"0","result":{"id":"a1","formId":5}},{"id":"1","error":{"code":-32602,"message":"invalid params: formId","data":{"reason":"invalidParams"}}}]}`
+	for _, tc := range []struct {
+		name, tool, args, batch, wire, want string
+		fails                                bool
+	}{
+		{"actors in order", "actors_create", `{"actors":[{"formId":5,"title":"Start","color":"#17B26A","data":{"k":1}},{"formId":5,"title":"End"}]}`, actors,
+			`"isAtomic":true,"list":[{"id":"0","method":"actor/create","params":{"accId":"ws","color":"#17B26A","data":{"k":1}`, `"actors":[{"formId":5,"id":"a1","title":"Start"},{"formId":5,"id":"a2","title":"End"}]`, false},
+		{"edges keep direction", "edges_create", `{"edges":[{"source":"a1","target":"a2","name":"go"},{"source":"a2","target":"a1"}]}`, edges,
+			`"method":"edge/create","params":{"accId":"ws","edgeTypeId":3,"forceDirection":true,"name":"go","source":"a1","target":"a2"}`, `"edges":[{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"go"},{"id":"e2"`, false},
+		{"a failed item fails the call", "actors_create", `{"actors":[{"formId":5,"title":"A"},{"formId":9,"title":"B"}]}`, failed, `"isAtomic":true`, "item 1 failed, nothing was created", true},
+		{"reverse edge is not reused", "edges_create", `{"edges":[{"source":"a1","target":"a2"},{"source":"a1","target":"a2"}]}`, edges, `"isAtomic":true`, "edge 1: edge/create returned an edge with other endpoints", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			send, calls := consoleServer(t, map[string]string{"batch": tc.batch})
+			reply := send(`"method":"tools/call","params":{"name":"` + tc.tool + `","arguments":` + tc.args + `}`)
+			last, _ := json.Marshal((*calls)[len(*calls)-1].Params)
+			if (*calls)[len(*calls)-1].Method != "batch" || !strings.Contains(string(last), tc.wire) {
+				t.Fatalf("batch request %s lacks %s", last, tc.wire)
+			}
+			if strings.Contains(reply, `"isError":true`) != tc.fails || !strings.Contains(strings.ReplaceAll(reply, `\"`, `"`), tc.want) {
+				t.Fatalf("reply %s, want %s", reply, tc.want)
 			}
 		})
 	}
