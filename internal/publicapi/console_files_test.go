@@ -3,7 +3,6 @@ package publicapi
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,29 +15,16 @@ import (
 func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 	var form map[string]string
 	var auth, fileType, fileName string
-	var attached map[string]any
+	rpcCalls := 0
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/2.0/rpc" {
-			var q struct {
-				ID     string         `json:"id"`
-				Method string         `json:"method"`
-				Params map[string]any `json:"params"`
-			}
-			_ = json.NewDecoder(r.Body).Decode(&q)
-			if q.Method == "attachment/by-actor/list" { // r-1 got the file from the route; the others did not
-				list := `[]`
-				if q.Params["actorId"] == "r-1" {
-					list = `[{"id":41},{"id":42}]`
-				}
-				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"list":%s}}`, q.ID, list)
-				return
-			}
-			if q.Params["actorId"] == "read-only" {
-				fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"error":{"code":-32003,"message":"actor is read-only","data":{"reason":"accessDenied"}}}`, q.ID)
-				return
-			}
-			attached = q.Params
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{}}`, q.ID)
+			rpcCalls++
+			http.Error(w, "no JSON-RPC call is expected", http.StatusBadRequest)
+			return
+		}
+		if r.FormValue("actorId") == "read-only" { // sim-api checks the attach before storing
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"message":"actor is read-only"}`)
 			return
 		}
 		auth = r.Header.Get("Authorization")
@@ -65,19 +51,12 @@ func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 	if err != nil || a.ID != 42 || a.FileName != "k1" || a.AttachedTo != "r-1" {
 		t.Fatal(a, err)
 	}
-	// The route attached it, which a read confirms: no second attach (it would repeat the events).
-	if attached != nil {
-		t.Fatal("attached again", attached)
+	// The route attaches it, or refuses before storing the file: no JSON-RPC call follows.
+	if rpcCalls != 0 {
+		t.Fatal(rpcCalls, "JSON-RPC calls after the upload")
 	}
 	if auth != "Simulator run" || form["accId"] != "ws" || form["actorId"] != "r-1" || form["rootActorId"] != "a-1" || form["ttl"] != "" || fileType != "text/plain" || fileName != "notes.txt" {
 		t.Fatalf("sent auth %q form %v type %q name %q", auth, form, fileType, fileName)
-	}
-	// An older stand whose route did not attach it: the tool attaches it.
-	if a, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ActorID: "old-stand"}); err != nil || a.AttachedTo != "old-stand" {
-		t.Fatal(a, err)
-	}
-	if sent, _ := json.Marshal(attached); string(sent) != `{"accId":"ws","actorId":"old-stand","attachmentIds":[42]}` {
-		t.Fatal("attach sent", string(sent))
 	}
 	// A temporary file goes to the route with its ttl and is attached nowhere.
 	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", TTL: 60}); err != nil || form["ttl"] != "60" || form["actorId"] != "" {
@@ -86,7 +65,7 @@ func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ContentType: "text/plain; charset=utf-8\r\n"}); err != nil || fileType != "text/plain" {
 		t.Fatalf("a padded contentType is sent as %q: %v", fileType, err)
 	}
-	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ActorID: "read-only"}); err == nil || !strings.Contains(err.Error(), "uploaded as attachment 42 but not attached") {
+	if _, err = c.UploadAttachment(context.Background(), AttachmentUploadInput{FileName: "notes.txt", Content: "aGVsbG8=", ActorID: "read-only"}); err == nil || !strings.Contains(err.Error(), "http 400") || !strings.Contains(err.Error(), "read-only") {
 		t.Fatal("a refused attach must be reported:", err)
 	}
 	for name, bad := range map[string]AttachmentUploadInput{
@@ -160,7 +139,7 @@ func TestReadAttachment(t *testing.T) {
 	if got, err := read("scanning"); err != nil || got.Text != `{"a":1}` || got.Size != 7 || scans != 3 {
 		t.Fatal(got, err, scans)
 	}
-	scans = 3
+	scans = 3 // two 404s, then the file: within the two 404 retries
 	if got, err := read("late"); err != nil || got.Text != "ok" || scans != 6 {
 		t.Fatal("a file found after the scan:", got, err, scans)
 	}

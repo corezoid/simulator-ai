@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-access
-description: Share or unshare a Simulator object and read who has access with the public Simulator AI console tools. Use when the user wants to share with someone, grant or revoke view/modify/remove/sign/execute, make something read-only, or asks who can see or edit an actor, a template, a template's actors or an account ("поділись з", "надай доступ", "забери доступ", "хто має доступ", "дай доступ", "открой доступ").
+description: Share or unshare a Simulator object, read who has access, and request or answer access requests with the public Simulator AI console tools. Use when the user wants to share with someone, grant or revoke view/modify/remove/sign/execute, make something read-only, asks who can see or edit an actor, a template, a template's actors or an account, or is blocked by "access denied" ("поділись з", "надай доступ", "забери доступ", "хто має доступ", "запроси доступ", "немає доступу", "открой доступ", "нет доступа").
 ---
 
 Use the installed `simulator-ai` catalog (profile `console` or `console-full`). Access rules
@@ -50,5 +50,20 @@ only owners/admins may change it, only API users can be added, and only `view`/`
 ## When you cannot see an object
 
 A read that fails with an access error means you lack `view`. Say so; do not retry under
-another identity or guess the data. Requesting access from the owner needs the
-`access_request_*` tools, which arrive with a later release of this catalog.
+another identity or guess the data. Ask the actor's managers instead:
+
+1. `access_request_create {actorId, modify?}` asks for `view` (and `modify` with
+   `modify: true`). It grants nothing: tell the user the request is pending. Asking again while
+   it is pending returns the same request; with `view` already it is refused.
+2. Retry the blocked step only after the user says it was granted.
+
+Requests exist for actors only; for a template or an account, tell the user who to ask.
+
+## Answering requests (you manage the actor)
+
+- `access_requests_list {actorId}` shows the waiting room: who asked, for `modify` too, when.
+- `access_request_confirm {inviteId}` grants `view` (and `modify` if asked), never more; the
+  requester is notified. Confirm with the user before granting.
+- `access_request_cancel {inviteId}` turns a request down, or withdraws your own.
+
+Both put a `sign` or `reject` reaction on the request's event unless `mirrorSign: false`.
