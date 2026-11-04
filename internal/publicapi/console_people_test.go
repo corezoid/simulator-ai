@@ -90,7 +90,7 @@ func TestSaveAccessRulesMergeAndReplace(t *testing.T) {
 	}
 	replaced, _ := json.Marshal((*calls)[1])
 	// 3 may modify (the caller may be one of those), 0 is the system owner, 5 a public-link guest: kept.
-	if len(*calls) != 2 || (*calls)[0].Method != "access_rule/actor/list" || !strings.Contains(string(replaced), `{"action":"delete","userId":8},{"action":"delete","userId":1},{"action":"delete","userId":9}],"actorId"`) || !strings.Contains(string(replaced), `"filterIncorrect":true`) {
+	if len(*calls) != 2 || (*calls)[0].Method != "access_rule/actor/list" || !strings.Contains(string(replaced), `{"action":"delete","userId":8},{"action":"delete","userId":1},{"action":"delete","userId":9}],"actorId"`) || !strings.Contains(string(replaced), `"filterIncorrect":false`) {
 		t.Fatalf("replace sent %v %s", (*calls)[0].Method, replaced)
 	}
 	for name, bad := range map[string]AccessRulesSaveInput{
@@ -168,6 +168,7 @@ func TestUploadAttachmentSendsTheFileAsMultipart(t *testing.T) {
 		"too large":           {FileName: "a.bin", Content: base64.StdEncoding.EncodeToString(make([]byte, MaxUploadBytes+1))},
 		"a path":              {FileName: "../a.txt", Content: "aGk="},
 		"root without actor":  {FileName: "a.txt", Content: "aGk=", RootActorID: "r"},
+		"temporary attached":  {FileName: "a.txt", Content: "aGk=", ActorID: "a", TTL: 60},
 		"not a media type":    {FileName: "a.txt", Content: "aGk=", ContentType: "nope/"},
 		"a quote in the name": {FileName: `a".txt`, Content: "aGk="},
 	} {

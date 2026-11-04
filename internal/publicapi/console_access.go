@@ -157,7 +157,6 @@ func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (
 				actions = append(actions, accessAction{Action: "delete", UserID: r.UserID})
 			}
 		}
-		in.FilterIncorrect = true // a listed subject may no longer exist
 	}
 	if len(actions) == 0 {
 		return json.RawMessage(`{"list":[]}`), nil

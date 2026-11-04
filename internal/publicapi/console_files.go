@@ -65,6 +65,10 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if name == "" || len(name) > 255 || strings.ContainsAny(name, "/\\\r\n\"") || len(in.ActorID) > 255 || len(in.RootActorID) > 255 || in.RootActorID != "" && in.ActorID == "" || in.TTL < 0 {
 		return Attachment{}, errors.New("a fileName without path separators or quotes, and rootActorId only with actorId, required")
 	}
+	if in.TTL > 0 && in.ActorID != "" {
+		// sim-api never finds a temporary file to attach (attachment/attach, reaction attachmentIds).
+		return Attachment{}, errors.New("a temporary file (ttl) cannot be attached: drop ttl or actorId")
+	}
 	if base64.StdEncoding.DecodedLen(len(in.Content)) > MaxUploadBytes+2 {
 		return Attachment{}, fmt.Errorf("content over %d KiB: upload larger files from the Simulator UI", MaxUploadBytes>>10)
 	}
