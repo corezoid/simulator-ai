@@ -6033,6 +6033,38 @@
    "summary": "Cancel a pending request access invite"
   },
   {
+   "name": "account/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Creates a new account with specified name and currency"
+  },
+  {
    "name": "account/delete",
    "params": [
     {

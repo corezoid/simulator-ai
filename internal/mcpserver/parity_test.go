@@ -101,17 +101,28 @@ func catalog(t *testing.T, send func(string) string) map[string]bool {
 	return names
 }
 
+// allParityTools is every parity tool list the console registers.
+func allParityTools() []parityTool {
+	var all []parityTool
+	for _, list := range [][]parityTool{actorTools, formTools, graphTools, reactionTools, userTools, attachmentTools, accessRequestTools, accountTools, ledgerTools} {
+		all = append(all, list...)
+	}
+	return all
+}
+
 func TestParityCatalogs(t *testing.T) {
-	all := append(append(append([]parityTool{}, actorTools...), formTools...), graphTools...)
+	all := allParityTools()
 	for _, tc := range []struct {
 		profile string
 		want    func(publicapi.ParityMethod, string) bool
 	}{
 		{"console-full", func(publicapi.ParityMethod, string) bool { return true }},
 		{"console", func(_ publicapi.ParityMethod, name string) bool { return consoleCoreTools[name] }},
-		{"read", func(m publicapi.ParityMethod, _ string) bool { return !m.Write && m.Domain != "graph" }},
+		{"read", func(m publicapi.ParityMethod, _ string) bool {
+			return !m.Write && (m.Domain == "actor" || m.Domain == "form")
+		}},
 		{"graph-read", func(m publicapi.ParityMethod, name string) bool {
-			return !m.Write && name != "edge_types_list" && name != "layer_stats_get"
+			return !m.Write && (m.Domain == "actor" || m.Domain == "form" || m.Domain == "graph") && name != "edge_types_list" && name != "layer_stats_get"
 		}},
 		{"graph-create", func(publicapi.ParityMethod, string) bool { return false }},
 		{"smart-forms", func(publicapi.ParityMethod, string) bool { return false }},
@@ -147,7 +158,7 @@ func TestParityCatalogs(t *testing.T) {
 
 func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
 	send, calls := parityServer(t, "console-full")
-	all := append(append(append([]parityTool{}, actorTools...), formTools...), graphTools...)
+	all := allParityTools()
 	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
 	for _, p := range all {
 		*calls = nil
@@ -170,6 +181,9 @@ func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
 		{"graph_list", `{"actorId":"a1","type":"linked","edgeTypeId":9}`, "graph/list", `"edgeTypeId":9`},
 		{"layer_clean", `{"actorId":"L"}`, "graph/layer/clean", `"actorId":"L"`},
 		{"edge_exist", `{"source":"a","target":"b","edgeTypeId":3,"bidirected":true}`, "edge/by-node/get", `"bidirected":true,"edgeTypeId":3`},
+		{"transaction_create", `{"accountId":"r1","amount":10,"ref":"t1"}`, "transaction/create", `"accountId":"r1","amount":10,"ref":"t1"`},
+		{"transfer_create", `{"ref":"t2","from":[{"accountId":"d1","amount":5}],"to":[{"accountId":"c1","amount":5}]}`, "transfer/create", `"from":[{"accountId":"d1","amount":5}],"ref":"t2","to":[{"accountId":"c1","amount":5}]`},
+		{"counter_increment", `{"formId":5,"actorRef":"car","accountName":"Mileage","currency":"km","incomeType":"debit","amount":12}`, "counter/increment", `"accountName":"Mileage","actorRef":"car","amount":12`},
 	}
 	for _, tc := range cases {
 		*calls = nil

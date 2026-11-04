@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type accountRow struct {
@@ -94,6 +95,79 @@ func finance(c *client, stamp string) error {
 			return err
 		}
 	}
+	if err := twoStepTransfer(c, "hold-"+stamp, debit, rows[actors[1]]["credit"]); err != nil {
+		return err
+	}
+	if err := unsharedPair(c, stamp); err != nil {
+		return err
+	}
 	fmt.Println("OK finance pair", pair.NameID, pair.CurrencyID, "actors", actors[0], actors[1])
+	return nil
+}
+
+// twoStepTransfer holds 2 from one account to another and completes it, each leg naming its hold.
+func twoStepTransfer(c *client, ref, from, to string) error {
+	var hold struct {
+		Transfer struct {
+			ID string `json:"id"`
+		} `json:"transfer"`
+	}
+	if err := c.tool("transfer_create", map[string]any{"type": "authorized", "ref": ref, "from": []any{map[string]any{"accountId": from, "amount": 2}}, "to": []any{map[string]any{"accountId": to, "amount": 2}}}, &hold); err != nil {
+		return err
+	}
+	var held struct {
+		Legs []struct {
+			ID        any    `json:"id"`
+			AccountID string `json:"accountId"`
+		} `json:"legs"`
+	}
+	if err := c.tool("transfer_get", map[string]any{"id": hold.Transfer.ID, "with": []string{"legs"}}, &held); err != nil {
+		return err
+	}
+	parent := map[string]any{}
+	for _, l := range held.Legs {
+		parent[l.AccountID] = l.ID
+	}
+	if parent[from] == nil || parent[to] == nil {
+		return fmt.Errorf("hold %s has legs %v, want one on %s and on %s", hold.Transfer.ID, held.Legs, from, to)
+	}
+	var done struct {
+		Transfer struct {
+			Type string `json:"type"`
+		} `json:"transfer"`
+	}
+	if err := c.tool("transfer_create", map[string]any{"type": "completed", "transferId": hold.Transfer.ID, "from": []any{map[string]any{"accountId": from, "amount": 2, "parentId": parent[from]}}, "to": []any{map[string]any{"accountId": to, "amount": 2, "parentId": parent[to]}}}, &done); err != nil {
+		return err
+	}
+	if done.Transfer.Type != "completed" {
+		return fmt.Errorf("the hold %s settled as %q", hold.Transfer.ID, done.Transfer.Type)
+	}
+	return nil
+}
+
+// unsharedPair: a name and a currency made one by one leave a pair nobody was given access to,
+// which account_pair_create refuses to claim until takeOwnership says so.
+func unsharedPair(c *client, stamp string) error {
+	names := map[string]any{"accountName": "AI smoke unshared " + stamp, "currencyName": "AI smoke unshared unit " + stamp}
+	var ignored json.RawMessage
+	if err := c.tool("account_name_create", map[string]any{"name": names["accountName"]}, &ignored); err != nil {
+		return err
+	}
+	if err := c.tool("currency_create", map[string]any{"name": names["currencyName"]}, &ignored); err != nil {
+		return err
+	}
+	if err := c.tool("account_pair_create", names, &ignored); err == nil || !strings.Contains(err.Error(), "takeOwnership") {
+		return fmt.Errorf("account_pair_create claimed or refused an unshared pair unexpectedly: %v", err)
+	}
+	names["takeOwnership"] = true
+	var claimed struct {
+		Registered bool `json:"registered"`
+	}
+	if err := c.tool("account_pair_create", names, &claimed); err != nil {
+		return err
+	}
+	if !claimed.Registered {
+		return fmt.Errorf("takeOwnership did not register the pair")
+	}
 	return nil
 }

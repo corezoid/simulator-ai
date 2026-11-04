@@ -44,17 +44,17 @@ func (c *Client) CreateAccountPair(ctx context.Context, in AccountPairInput) (Ac
 	if e := consoleOnly(c); e != nil {
 		return AccountPair{}, e
 	}
-	if !validTitle(in.AccountName, false) || utf8.RuneCountInString(in.AccountName) > 255 || !validTitle(in.CurrencyName, false) || utf8.RuneCountInString(in.CurrencyName) > 255 {
+	if strings.TrimSpace(in.AccountName) == "" || utf8.RuneCountInString(in.AccountName) > 255 || strings.TrimSpace(in.CurrencyName) == "" || utf8.RuneCountInString(in.CurrencyName) > 255 {
 		return AccountPair{}, errors.New("an accountName and a currencyName of 1..255 characters required")
 	}
 	ws := c.config.Workspace
 	nameID, err := lookup[string](ctx, c, "account_name/list", in.AccountName)
 	if err != nil {
-		return AccountPair{}, err
+		return AccountPair{}, fmt.Errorf("account_name/list: %w", err)
 	}
 	currencyID, err := lookup[int64](ctx, c, "account_currency/list", in.CurrencyName)
 	if err != nil {
-		return AccountPair{}, err
+		return AccountPair{}, fmt.Errorf("account_currency/list: %w", err)
 	}
 	existed := nameID != "" && currencyID != 0
 	if nameID == "" {
@@ -62,7 +62,7 @@ func (c *Client) CreateAccountPair(ctx context.Context, in AccountPairInput) (Ac
 			ID string `json:"id"`
 		}](ctx, c, "account_name/create", map[string]any{"accId": ws, "name": in.AccountName})
 		if err != nil {
-			return AccountPair{}, err
+			return AccountPair{}, fmt.Errorf("account_name/create: %w", err)
 		}
 		nameID = created.ID
 	}
@@ -81,7 +81,7 @@ func (c *Client) CreateAccountPair(ctx context.Context, in AccountPairInput) (Ac
 			ID int64 `json:"id"`
 		}](ctx, c, "account_currency/create", currency)
 		if err != nil {
-			return AccountPair{}, err
+			return AccountPair{}, fmt.Errorf("account_currency/create: %w", err)
 		}
 		currencyID = created.ID
 	}
@@ -96,7 +96,7 @@ func (c *Client) CreateAccountPair(ctx context.Context, in AccountPairInput) (Ac
 		var api *APIError
 		switch {
 		case err != nil && !(errors.As(err, &api) && api.Reason == "notFound"):
-			return AccountPair{}, err
+			return AccountPair{}, fmt.Errorf("access_rule/account/list: %w", err)
 		case err == nil && len(rules.List) > 0:
 			return pair, nil // already shared: registering it again changes nothing
 		case !in.TakeOwnership:
@@ -105,7 +105,7 @@ func (c *Client) CreateAccountPair(ctx context.Context, in AccountPairInput) (Ac
 		pair.Registered = true
 	}
 	if _, err = call[map[string]any, named](ctx, c, "account/create", map[string]any{"accId": ws, "nameId": nameID, "currencyId": currencyID}); err != nil {
-		return AccountPair{}, err
+		return AccountPair{}, fmt.Errorf("account/create: %w", err)
 	}
 	return pair, nil
 }

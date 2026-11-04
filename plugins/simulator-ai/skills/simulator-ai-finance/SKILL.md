@@ -15,6 +15,9 @@ finance tools. Every tool works in the host workspace.
   or `plan`, `min`, `max`, `avg`): two rows, `credit` and `debit`, each with its own `id`, the
   `accountId` of the transaction tools.
 - Amounts are real values: `500` on a USD account is 500 USD; `precision` is display only.
+- `incomeType` is the side: post income (what the actor receives or earns) to its `credit`
+  row and spending to its `debit` row; a transfer moves value from `debit` rows to `credit`
+  rows.
 
 ## Set up
 
@@ -49,10 +52,11 @@ finance tools. Every tool works in the host workspace.
 ## Record a transaction
 
 `transaction_create {accountId, amount, ref, comment}` posts to one row and returns the
-balance after it. Always send a `ref`: after a timeout read `transaction_by_ref_get {accountId,
+balance after it. An amount past the account's limits is stored as `type: "declined"` and
+moves nothing: check the returned `type`. Always send a `ref`: after a timeout read `transaction_by_ref_get {accountId,
 ref}` before retrying, never post twice. A hold is two steps: `type: "authorized"`, then a
 second call with `type` `completed`, `canceled` or `reversed` and `parentId` (or `parentRef`).
-`transaction_by_ref_create` posts by the actor's template and ref without looking up the row.
+`transaction_by_actor_ref_create` posts by the actor's template and ref without looking up the row.
 A blocked, formula, statistical or transfer-only account refuses plain transactions.
 
 ## Move value
@@ -69,7 +73,7 @@ retrying. Between people, find each person (`users_search`) and their twin actor
 
 ## Counters
 
-`counter_increment`, `counter_set`, `counter_get`, `counter_period_get` address a counter by
+`counter_increment`, `counter_set`, `counter_get`, `counter_by_period_get` address a counter by
 strings: the actor's template (`formId`) and `actorRef`, `accountName` and `currency` by name,
 `incomeType`. Counter writes are never retried and may be buffered: after an error read
 `counter_get` before repeating.
