@@ -29,7 +29,7 @@ func TestReleaseGetActive(t *testing.T) {
 }
 
 // The page tools address a page by ref and envTitle: sim-api refuses target next to accId, which
-// every call carries, so their schemas do not offer it.
+// every call carries, so their schemas do not offer it. The import tool offers no credentials.
 func TestPageToolsHaveNoTarget(t *testing.T) {
 	send, _ := consoleServer(t, nil)
 	var list struct {
@@ -46,6 +46,10 @@ func TestPageToolsHaveNoTarget(t *testing.T) {
 	}
 	seen := 0
 	for _, tool := range list.Result.Tools {
+		// Corezoid credentials never travel in tool arguments.
+		if tool.Name == "graph_import_create" && (strings.Contains(string(tool.Input), "scripts") || strings.Contains(string(tool.Input), "apiSecret") || !strings.Contains(string(tool.Input), `"fileName"`)) {
+			t.Errorf("graph_import_create: %s", tool.Input)
+		}
 		if tool.Name != "smart_form_page_render" && tool.Name != "smart_form_page_submit" {
 			continue
 		}

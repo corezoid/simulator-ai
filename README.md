@@ -191,12 +191,14 @@ scenarios use (see "AI Console profile").
 | `corezoid_project_bind` · `corezoid_project_create` (bind a Smart Form's envs to processes, or give it a project) | `corezoid/project/bind` · `corezoid/project/create` | ✓ | | |
 | `layer_edge_settings_save` (an edge's line style, width, colour, label on one layer) | `graph/layer/edge_settings/save` | ✓ | | |
 | `actor_picture_upload` [uploadActorPicture] (PNG, JPEG, GIF or WebP; no SVG) | HTTP `POST /api/2.0/rest/upload` (attached to nothing) + `actor/update` `picture` = its fileName, as the web app writes | ✓ | | |
+| `graph_export_create` [exportGraph] · `graph_import_create` [importGraph] (no Corezoid `scripts`) | `task/export/create` · `task/import/create` | ✓ | | |
+| `task_get` [getTaskStatus] (adds `downloadUrl` for an archive) · `graph_file_upload` [uploadGraphFile] (base64, up to 700 KiB) | `task/get` · HTTP `POST /api/2.0/rest/upload` as `application/octet-stream`, attached to nothing | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at 831fe0a9 or later (`cdu/catalog/get` !463,
+These tools need sim-api `feature/simulator-ai` at 84ec6ff1 or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`, the Smart Form history, trash, page and
-Corezoid methods); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit and
-Corezoid bind/create tools are hinted destructive; page render is not read-only either (it runs the page's `/get`).
+Corezoid methods, the task methods !494); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
+import and Corezoid bind/create tools are hinted destructive; page render is not read-only either (it runs the page's `/get`).
 
 An AI Console run's token reaches `rest/upload` (and no other REST route) through sim-api !481
 (`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand
@@ -224,6 +226,10 @@ YAML instead of writing `<layerId>.sim.yaml`, and `simulation_check` / `simulati
 recompute. A snapshot reads accounts of at most 2000 actors; `simulation_run` takes at most 5 minutes, live layer
 read included, and two at once per process (`SIMULATOR_AI_MAX_CONCURRENT_SIMULATIONS`); another is refused as busy. The skill `simulator-ai-simulate` (with the model format in its `references/`) composes them.
 
+`graph_import_create` leaves out `scripts`: Corezoid API secrets never travel in tool arguments, so an imported
+Smart Form is bound afterwards with `corezoid_project_bind`. Legacy `uploadGraphFile` also fetched a `fileUrl`; here the
+archive comes as base64 only, and the plugin fetches no URL.
+
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
 too large for this slice; getChildAccounts, since account trees were removed from the platform (walk the
 children with `graph_list` and read their `accounts_list`). Out of scope by the owner's decision: pinned reactions, uploadBase64 and data-field actors
@@ -238,7 +244,8 @@ for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `u
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
 `skills_find`, `skill_get` and `build_link`: 36 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page). `console-full` adds every other actor, form, graph, access, reaction, user,
-attachment, finance, registry, simulation, chart, Smart Form history and Corezoid tool (169 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+attachment, finance, registry, simulation, chart, Smart Form history, Corezoid and graph export/import tool (173 in
+all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -319,7 +326,8 @@ actorFilter chart with a new filter and resized, then back to manual), the formo
 folder, two releases listed and compared, a rollback read back as the active release without its id, the page's
 file history and a rollback of its edit, the trash, a develop render, no Corezoid project yet) and the extras one
 (an edge drawn dashed, 3 wide and red, an actor's picture, the first Corezoid project's stages and processes;
-nothing is bound). Each run creates new objects in that
+nothing is bound) and the jobs one (a layer exported, its archive downloaded by `downloadUrl`, uploaded again with
+`graph_file_upload` and imported as a copy; it needs the stand's control-tasks worker). Each run creates new objects in that
 workspace; nothing secret is printed.
 
 The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:

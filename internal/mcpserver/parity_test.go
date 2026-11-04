@@ -104,7 +104,7 @@ func catalog(t *testing.T, send func(string) string) map[string]bool {
 // allParityTools is every parity tool list the console registers.
 func allParityTools() []parityTool {
 	var all []parityTool
-	for _, list := range [][]parityTool{actorTools, formTools, graphTools, reactionTools, userTools, attachmentTools, accessRequestTools, accountTools, ledgerTools, accountExtraTools, smartFormTools, corezoidTools} {
+	for _, list := range [][]parityTool{actorTools, formTools, graphTools, reactionTools, userTools, attachmentTools, accessRequestTools, accountTools, ledgerTools, accountExtraTools, smartFormTools, corezoidTools, taskTools} {
 		all = append(all, list...)
 	}
 	return all
@@ -172,7 +172,7 @@ func TestParityCatalogs(t *testing.T) {
 			if tc.profile == "console-full" {
 				hints := destructiveHints(t, send)
 				for _, name := range []string{"account_amount_set", "account_formula_set", "atom_transaction_create", "account_tags_set", "account_triggers_set", "account_actor_triggers_set", "actor_field_triggers_set",
-					"smart_form_release_rollback", "smart_form_file_rollback", "smart_form_trash_restore", "smart_form_page_submit", "corezoid_project_create", "corezoid_project_bind"} {
+					"smart_form_release_rollback", "smart_form_file_rollback", "smart_form_trash_restore", "smart_form_page_submit", "corezoid_project_create", "corezoid_project_bind", "graph_import_create"} {
 					if !hints[name] {
 						t.Errorf("%s is not hinted destructive", name)
 					}
@@ -223,6 +223,8 @@ func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
 		{"smart_form_trash_restore", `{"actorId":"app1","items":[{"id":5,"objType":"file"}]}`, "trash/restore", `"items":[{"id":5,"objType":"file"}]`},
 		{"smart_form_page_render", `{"ref":"leave_form","envTitle":"develop","page":"index"}`, "page/render", `"envTitle":"develop","page":"index","ref":"leave_form"`},
 		{"corezoid_project_bind", `{"actorId":"app1","projectId":4,"envs":[{"envTitle":"develop","stageId":5,"procId":6},{"envTitle":"production","stageId":7,"procId":8}]}`, "corezoid/project/bind", `"envs":[{"envTitle":"develop","stageId":5,"procId":6}`},
+		{"graph_export_create", `{"actors":["a1"],"ops":{"transactions":true}}`, "task/export/create", `"actors":["a1"],"ops":{"transactions":true}`},
+		{"graph_import_create", `{"fileName":"k.graph","ops":{"actorRefStrategy":"replace"}}`, "task/import/create", `"fileName":"k.graph","ops":{"actorRefStrategy":"replace"}`},
 		{"layer_edge_settings_save", `{"actorId":"L","laEdgeId":21,"layerSettings":{"lineStyle":"dashed","width":3,"color":"#FF0000"}}`, "graph/layer/edge_settings/save", `"laEdgeId":21,"layerSettings":{"lineStyle":"dashed","width":3,"color":"#FF0000"}`},
 	}
 	for _, tc := range cases {
