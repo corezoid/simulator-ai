@@ -110,7 +110,7 @@ func TestConsoleCatalog(t *testing.T) {
 	}
 	// The exact console catalog: its own tools plus every actor, form, graph, access, reaction, user
 	// and attachment tool.
-	want := "access_rules_get,access_rules_save,actor_by_ref_get,actor_corezoid_processes_list,actor_create,actor_delete,actor_get,actor_status_update,actor_system_get," +
+	want := "access_request_cancel,access_request_confirm,access_request_create,access_requests_list,access_rules_get,access_rules_save,actor_by_ref_get,actor_corezoid_processes_list,actor_create,actor_delete,actor_get,actor_status_update,actor_system_get," +
 		"actor_update,actors_create,actors_filter,actors_filter_count,actors_search,attachment_attach,attachment_detach,attachment_read,attachment_update,attachment_upload," +
 		"attachments_by_actor_list,attachments_list,edge_create,edge_delete,edge_endpoints_update,edge_exist,edge_get,edge_types_list,edge_update,edges_by_nodes_delete," +
 		"edges_create,flowchart_blocks_list,flowchart_layout,form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get," +
@@ -120,7 +120,7 @@ func TestConsoleCatalog(t *testing.T) {
 		"smart_form_create,smart_form_data_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get,user_get,users_search," +
 		"workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 80 {
+	if got := strings.Join(names, ","); got != want || len(names) != 84 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search"} {
@@ -385,9 +385,10 @@ func TestLayerGetShowsHoles(t *testing.T) {
 // legacy params, and the access tool's object dispatch.
 func TestConsolePeopleTools(t *testing.T) {
 	send, calls := consoleServer(t, map[string]string{
-		"user/list":                     `"result":{"list":[{"id":7,"nick":"Olena"}]}`,
-		"access_rule/actor/share":       `"result":{"list":[]}`,
-		"access_rule/formTemplate/list": `"result":{"list":[]}`,
+		"user/list":                        `"result":{"list":[{"id":7,"nick":"Olena"}]}`,
+		"access_rule/actor/share":          `"result":{"list":[]}`,
+		"access_rule/formTemplate/list":    `"result":{"list":[]}`,
+		"access_rule/actor/request/create": `"result":{"invite":{"id":5,"hash":"invite-secret","status":"pending"}}`,
 	})
 	for _, tc := range []struct{ tool, args, method, sent string }{
 		{"users_search", `{"query":"Olena"}`, "user/list", `"query":"Olena"`},
@@ -400,6 +401,10 @@ func TestConsolePeopleTools(t *testing.T) {
 		if strings.Contains(reply, `"isError":true`) || last.Method != tc.method || !strings.Contains(string(sent), tc.sent) {
 			t.Errorf("%s: %s called %s %s", tc.tool, reply, last.Method, sent)
 		}
+	}
+	// The invite's hash accepts it in legacy: it never reaches the model.
+	if reply := send(`"method":"tools/call","params":{"name":"access_request_create","arguments":{"actorId":"a9"}}`); strings.Contains(reply, "invite-secret") || !strings.Contains(reply, `\"id\":5`) {
+		t.Error("access_request_create answered", reply)
 	}
 	if reply := send(`"method":"tools/call","params":{"name":"users_search","arguments":{"query":"x","rootActorId":"a"}}`); !strings.Contains(reply, `"isError":true`) && !strings.Contains(reply, `"error"`) {
 		t.Error("users_search took a param outside its legacy set:", reply)

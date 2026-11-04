@@ -58,6 +58,7 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addParity(s, c, graphTools)
 		addGraphEngines(s, c)
 		addParity(s, c, reactionTools)
+		addParity(s, c, accessRequestTools)
 		addParity(s, c, userTools)
 		addParity(s, c, attachmentTools)
 		addConsoleAccess(s, c)

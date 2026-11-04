@@ -33,11 +33,13 @@ const (
 	maxDownloadBytes = 32 << 20
 )
 
-// scanWait is the first wait for a file ufs is still scanning; each retry doubles it, four in all.
+// scanWait is the first wait for a file ufs is still scanning; each retry doubles it: four for a
+// 425, two (about 3 s) for a 404, which is also a file that does not exist.
 var scanWait = time.Second
 
 // The media types of common files, so a file's type does not depend on the host's mime.types. They
-// are bare: a stand's allow-list (fileMimeTypes) compares the type exactly.
+// are bare: a stand's allow-list (fileMimeTypes) compares the type exactly. Registering them changes
+// the process-wide mime table on purpose; this binary has no other user of it.
 func init() {
 	for ext, kind := range map[string]string{
 		".txt": "text/plain", ".md": "text/markdown", ".csv": "text/csv",
@@ -147,40 +149,10 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if in.ActorID == "" {
 		return a, nil
 	}
-	// The route refuses an attach it may not make; an older stand only logged it. A read-only check
-	// confirms the link, and only a missing one is attached again (a second attach would repeat the
-	// realtime event and the webhooks).
-	if attached, err := c.attachedTo(ctx, in.ActorID, a.ID); err != nil || attached {
-		a.AttachedTo = in.ActorID
-		return a, nil
-	}
-	attach := map[string]any{"accId": c.config.Workspace, "actorId": in.ActorID, "attachmentIds": []int64{a.ID}}
-	if in.RootActorID != "" {
-		attach["rootActorId"] = in.RootActorID
-	}
-	if _, err = call[map[string]any, json.RawMessage](ctx, c, "attachment/attach", attach); err != nil {
-		return Attachment{}, fmt.Errorf("uploaded as attachment %d but not attached to %s (attach it with attachment_attach): %w", a.ID, in.ActorID, err)
-	}
+	// The route checks the attach before storing the file and refuses it with a 400 (sim-api
+	// 606ff98e, in every revision these tools need), so a 200 means the file hangs there.
 	a.AttachedTo = in.ActorID
 	return a, nil
-}
-
-// attachedTo says whether the newest files of an actor include the attachment.
-func (c *Client) attachedTo(ctx context.Context, actorID string, id int64) (bool, error) {
-	files, err := call[map[string]any, struct {
-		List []struct {
-			ID int64 `json:"id"`
-		} `json:"list"`
-	}](ctx, c, "attachment/by-actor/list", map[string]any{"accId": c.config.Workspace, "actorId": actorID, "limit": 100})
-	if err != nil {
-		return false, err
-	}
-	for _, f := range files.List {
-		if f.ID == id {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 type AttachmentReadInput struct {
@@ -221,7 +193,7 @@ func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (At
 			}
 			return AttachmentContent{}, errors.New("download transport unavailable")
 		}
-		if (resp.StatusCode == http.StatusTooEarly || resp.StatusCode == http.StatusNotFound) && tries < 4 {
+		if resp.StatusCode == http.StatusTooEarly && tries < 4 || resp.StatusCode == http.StatusNotFound && tries < 2 {
 			resp.Body.Close()
 			select {
 			case <-ctx.Done():

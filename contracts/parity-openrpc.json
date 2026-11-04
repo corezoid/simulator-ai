@@ -5903,6 +5903,134 @@
     }
    ],
    "summary": "Marks reactions as read"
+  },
+  {
+   "name": "access_rule/actor/request/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "modify",
+     "required": false,
+     "schema": {
+      "description": "Request modify permission (default: view only)",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "sendEvent",
+     "required": false,
+     "schema": {
+      "description": "Send notification event (default: true)",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Request access to an actor"
+  },
+  {
+   "name": "access_rule/actor/request/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "List the pending access requests to an actor (its waiting room)"
+  },
+  {
+   "name": "access_rule/actor/request/confirm",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "inviteId",
+     "required": true,
+     "schema": {
+      "description": "Invite identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "mirrorSign",
+     "required": false,
+     "schema": {
+      "description": "Create a sign reaction on the request access event (default: true)",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Confirm a pending request access invite"
+  },
+  {
+   "name": "access_rule/actor/request/cancel",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "inviteId",
+     "required": true,
+     "schema": {
+      "description": "Invite identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "mirrorSign",
+     "required": false,
+     "schema": {
+      "description": "Create a reject reaction on the request access event (default: true)",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Cancel a pending request access invite"
   }
  ]
 }

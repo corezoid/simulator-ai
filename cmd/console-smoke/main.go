@@ -87,7 +87,7 @@ func main() {
 	profile := flag.String("profile", "console", "console (the core catalog Hermes runs) or console-full")
 	flag.Parse()
 	if flag.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "usage: console-smoke -bin <binary> graph|form|parity ...")
+		fmt.Fprintln(os.Stderr, "usage: console-smoke -bin <binary> graph|form|parity|people ...")
 		os.Exit(2)
 	}
 	// Bounded like client-smoke: the whole run, all of its scenarios, gets five minutes.
@@ -118,6 +118,8 @@ func main() {
 			err = form(c, stamp)
 		case "parity":
 			err = parity(c, stamp)
+		case "people":
+			err = people(c, stamp)
 		default:
 			err = fmt.Errorf("unknown scenario %q", scenario)
 		}
