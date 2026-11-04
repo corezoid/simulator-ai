@@ -86,7 +86,7 @@ profiles (`read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`)
 | Messages and chats | `simulator-ai-chat` |
 | Tasks, orders, approvals | `simulator-ai-tasks` |
 | Files | `simulator-ai-attachments` |
-| Build or edit a Smart Form | `console`: the `smart_form_*` tools, in the order their descriptions give; `smart-forms` profile: `simulator-ai-smart-forms` |
+| Build, edit or release a Smart Form | `simulator-ai-smart-forms` |
 | Smart Form backend in Corezoid | `simulator-ai-smart-forms-logic` |
 | Fill in or run an existing Smart Form | `simulator-ai-smart-forms-runtime` |
 | Smart Form theme | `simulator-ai-styles` |

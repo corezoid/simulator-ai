@@ -60,7 +60,10 @@ the types you use; take types and props only from it. Write `pages/<page>/config
 (`schemaVersion: "2.0"`), `locale` and `viewModel` with `smart_form_files_create` /
 `smart_form_files_update`. Pages whose data comes from Corezoid set `meta.initViaCorezoid:
 true`; their submits are `form.submit` with `via: "corezoid"` naming the Form. Seed every
-view-model key a page reads.
+view-model key a page reads. Each new page needs a `pages/<page>` folder, which only the
+`smart-forms` profile can create (`application_folders_create`); in `console` keep the app on
+the existing pages (overlays, conditional sections) or ask the user to add the pages in the
+Smart Form editor.
 
 A session (token) must not travel in the URL `query` or the view model unless the backend
 leaves no alternative and the user agreed: both reach the browser. Never carry a password.

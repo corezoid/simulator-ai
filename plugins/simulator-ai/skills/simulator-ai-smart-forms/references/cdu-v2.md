@@ -1,10 +1,11 @@
 # Verified CDU v2 starter
 
-The public `app_file/create` reference defines a page config as `schemaVersion`, `id`,
-`tree`, optional `bindings` and `routes`. The following uses its demonstrated `Stack`
-and `Label` props; do not translate it to the legacy grid/forms format.
+A page config is `schemaVersion`, `id`, `tree`, optional `bindings`, `routes` and `meta`.
+The following uses the `Stack` and `Label` components; check their props with
+`smart_form_components {types: ["Stack", "Label"]}` and do not translate it to the legacy
+grid/forms format.
 
-Create `pages/main/config` with type `application/json` and JSON text source:
+`pages/main/config` (type `application/json`):
 
 ```json
 {
@@ -14,25 +15,23 @@ Create `pages/main/config` with type `application/json` and JSON text source:
     "id": "root",
     "type": "Stack",
     "children": [
-      {"id":"title","type":"Label","props":{"text":"[[title]]","size":"lg","weight":"bold"}},
-      {"id":"summary","type":"Label","props":{"text":"{{summary}}"}}
+      {"id":"title","type":"Label","props":{"text":"{{ $locale.title }}","size":"lg","weight":"bold"}},
+      {"id":"summary","type":"Label","props":{"text":"{{ vm.summary }}"}}
     ]
   }
 }
 ```
 
-Create `pages/main/locale` with `{"title":{"en":"Overview","uk":"Огляд"}}`,
-`pages/main/viewModel` with `{"summary":"Ready"}`, and root `config` with
-`{"startPage":"main"}`. All use `application/json`. Reuse existing seed folders/files;
-creating a second file with the same name does not replace the original.
+`pages/main/locale` `{"en":{"title":"Overview"},"uk":{"title":"Огляд"}}` (language first),
+`pages/main/viewModel` `{"summary":"Ready"}`, and the root `config` `{"startPage":"main"}`.
+All are `application/json`. Reuse existing seed folders and files; a second file with the same
+name does not replace the first.
 
-The snapshot's root node id is the root folder id. `pages` is a child folder, `main`
-is its child, and `config`, `locale`, `viewModel` are files inside `main`.
-The server validates on save and release. Matching schema/catalog support is required.
+The snapshot's root node id is the root folder id. `pages` is a child folder, `main` its child,
+and `config`, `locale`, `viewModel` are files inside `main`. The server validates on save and on
+release.
 
-This is a display-only starter, not a backend transaction example. Dynamic/business
-behavior requires the current catalog's binding/action contracts plus separately configured
-Corezoid logic. Do not put API keys or Corezoid credentials in view models or source files.
-The public Smart Forms tools here intentionally do not execute `page/render` or
-`page/submit`: initialization itself can invoke a business process, and submit needs its
-own viewer/session/idempotency contract.
+This is a display-only starter. A form that saves records is `smart_form_data_form_create` in
+`console`; Corezoid-backed data and submits are `simulator-ai-smart-forms-logic`. Never put API
+keys or Corezoid credentials in view models or sources. These tools do not run `page/render`
+or `page/submit`.

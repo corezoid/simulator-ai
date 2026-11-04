@@ -72,6 +72,9 @@ which skill does what), `simulator-ai-init` (environment and profile setup), `si
 briefs for the Corezoid plugin), `simulator-ai-smart-forms-runtime`, `simulator-ai-styles` (the v2
 `theme` file) and `simulator-ai-app-generator`. Where the catalog has no tool (binding a Corezoid
 process, rendering or submitting a page), they say so and leave that step to the user.
+`simulator-ai-graph` and `simulator-ai-smart-forms` lead with the console tools (flowcharts,
+batch actors and edges, holes, layer edits; Smart Form pages, data templates, releases, the Console
+reply) and keep the `graph-read`/`graph-create` and `smart-forms` profiles as their own sections.
 
 The `plugins/simulator-ai` directory includes Claude Code and Codex manifests, MCP config
 and the portable `simulator-ai-read` / `simulator-ai-smart-forms` skills. Its MCP command is the separately installed
