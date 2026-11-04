@@ -11862,6 +11862,119 @@
     }
    ],
    "summary": "Lists the lines of a meeting's live transcript"
+  },
+  {
+   "name": "graph/viewport/command",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "layerId",
+     "required": true,
+     "schema": {
+      "description": "Layer whose open views the command moves",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "action",
+     "required": true,
+     "schema": {
+      "description": "pan (x/y or cell), zoom (zoom, optional anchor x/y or cell), fit, focus (actorId), mode2d, mode3d or openLayer (targetLayerId)",
+      "enum": [
+       "pan",
+       "zoom",
+       "fit",
+       "focus",
+       "mode2d",
+       "mode3d",
+       "openLayer"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "x",
+     "required": false,
+     "schema": {
+      "description": "World X of the new center (pan) or of the zoom anchor; goes with y",
+      "type": "number"
+     }
+    },
+    {
+     "name": "y",
+     "required": false,
+     "schema": {
+      "description": "World Y of the new center (pan) or of the zoom anchor; goes with x",
+      "type": "number"
+     }
+    },
+    {
+     "name": "cell",
+     "required": false,
+     "schema": {
+      "description": "Grid cell (50 world units) instead of x and y",
+      "properties": {
+       "x": {
+        "description": "Column of the cell; its center is at world X = 50 × x",
+        "maximum": 1000000,
+        "minimum": -1000000,
+        "type": "integer"
+       },
+       "y": {
+        "description": "Row of the cell; its center is at world Y = 50 × y",
+        "maximum": 1000000,
+        "minimum": -1000000,
+        "type": "integer"
+       }
+      },
+      "type": "object"
+     }
+    },
+    {
+     "name": "zoom",
+     "required": false,
+     "schema": {
+      "description": "Absolute 2D zoom, 1 = 100%; required for zoom, optional for pan and focus",
+      "type": "number"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": false,
+     "schema": {
+      "description": "Actor to center on; required for focus",
+      "type": "string"
+     }
+    },
+    {
+     "name": "targetLayerId",
+     "required": false,
+     "schema": {
+      "description": "Layer to open in place of layerId; required for openLayer",
+      "type": "string"
+     }
+    },
+    {
+     "name": "transitionMs",
+     "required": false,
+     "schema": {
+      "description": "Requested animation duration in milliseconds",
+      "maximum": 60000,
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Moves the caller's own open view of a graph layer: pan, zoom, fit, focus an actor, switch 2D/3D or open another layer"
   }
  ]
 }

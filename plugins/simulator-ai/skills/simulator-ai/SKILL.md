@@ -69,10 +69,17 @@ Workspace
   the user has open, with route and page): "here", "this" and "the current" mean those, so use
   them instead of asking. New actors, links and placements go on the current layer unless the
   user names another; never create a new layer for them.
+- "Show me" on the layer the user has open: `layer_viewport` moves their own view (pan to a
+  cell, zoom, fit, focus an actor, 2D/3D, open a layer); `openTabs: 0` means it is not open.
 - Name a place on a layer by its Graph Editor cell, `"C, 7"` (column, row as on the rulers),
   never by coordinates (`simulator-ai-graph`).
 - Cite the ids you used. To link an entity, call `build_link` (`actor`, `layer`, `graph`,
-  `form`, `chat`, `smartForm`, ...); never compose a Simulator URL yourself.
+  `form`, `chat`, `smartForm`, ...); never compose a Simulator URL yourself. In AI Console the
+  user is inside a Smart Form: pass `appKey`, the "Smart Form appKey" of the Current context
+  (else `appId`, the current Smart Form), so the link opens in that form (`/sf/<appKey>/…`, with
+  the open actor or layer in its `#b=` fragment). A layer link there also needs `graphId`; a form
+  of its own names its routes itself (`route`, from its page/render `routing.routes`). Legacy web
+  app URLs are only the fallback (`legacy: true`): say that one opens outside the current form.
 
 ## Profiles
 

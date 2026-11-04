@@ -119,7 +119,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 47 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 48 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -157,7 +157,7 @@ scenarios use (see "AI Console profile").
 | `access_request_create` [requestAccess] (an actor of the host workspace) · `access_requests_list` · `access_request_confirm` · `access_request_cancel` | `access_rule/actor/request/create` · `…/list` · `…/confirm` · `…/cancel` | ✓ | | |
 | `reactions_list` [getReactions] · `reactions_count` · `reactions_mark_read` [markReactionsRead] | `reaction/list` · `reaction/count` · `reaction/read/update` | ✓ | | |
 | `reaction_create` · `reaction_update` · `reaction_delete` [createReaction, updateReaction, deleteReaction] | `reaction/create` · `reaction/update` · `reaction/delete` | ✓ | | |
-| `chat_open` (p2p reused by its exact ref as the web UI does, `selfUserId` from the request; or a new group chat) | `form/system/get` (`Events`) + `actor/by-ref/get` + `user/get`, then one atomic `batch` of `actor/create` (ref, title) + `access_rule/actor/share` (`$0.id`) | ✓ | | |
+| `chat_open` (p2p reused by its exact ref as the web UI does, you are the user a `Simulator` JWT names (its `sub`, matched to a member's `saId`), else `selfUserId` checked against the chat's rules; or a new group chat) | `form/system/get` (`Events`) + `actor/by-ref/get` + `user/get`, then one atomic `batch` of `actor/create` (ref, title) + `access_rule/actor/share` (`$0.id`) | ✓ | | |
 | `actor_attach` (actor card, Smart Form or pinned form card on an actor) | `actor/update` (`cardActorId` / `appId`) · `edge_type/get` + `edge/create` (`pinned`), with a new form actor in one atomic `batch` | ✓ | | |
 | `users_search` [searchUsers, getUsers] (without query a page of members) · `user_get` [getUser] · `workspaces_list` [getWorkspaces] | `user/list` · `user/get` · `workspace/list` | ✓ | | |
 | `attachments_list` [getAttachments] · `attachments_by_actor_list` [getActorAttachments] | `attachment/list` · `attachment/by-actor/list` | ✓ | | |
@@ -180,7 +180,7 @@ scenarios use (see "AI Console profile").
 | `actor_field_triggers_list` / `_set` [getDataFieldActorsByActor, saveDataFieldActorsByActor] | `actor/field/triggers/list` / `update` | ✓ | | |
 | `skills_find` [findSkill] (verified only, no body) · `skill_get` [getSkill] (by ref or id, with the procedure) | `form/system/get` (`Skills`) + `actor/filter/list` · `actor/by-ref/get` or `actor/get` | ✓ | | |
 | `agents_find` [findAgent] (members without query) · `agent_get` [getAgent] (a user's twin or any actor, with the profile) | `user/list`, or `form/system/get` (`System`) + `actor/search/list` (semantic, else text), or `actor/filter/list` of a `formId` · `actor/by-system_obj/get` or `actor/get` | ✓ | | |
-| `build_link` [buildLink] (actor, layer, form, chat, chart, … and a Smart Form route) | none: the legacy web app route table on `SIMULATOR_AI_ORIGIN`; a Smart Form's short URL from `route/build` (its production release) | ✓ | | |
+| `build_link` [buildLink] (actor, layer, form, chat, chart, … and a Smart Form route; with `appKey`/`appId` inside the current Smart Form) | `route/build` (`dynamic` on the current form's key, `route/key/get` for an `appId`) plus the block's `#b=` fragment; the legacy web app route table on `SIMULATOR_AI_ORIGIN` as the fallback; a Smart Form's short URL from `route/build` (its production release) | ✓ | | |
 | `bbcode_tags_get` [getBbcodeTags] | none: the BBCode catalog of simulator-ui-kit `packages/utils/src/bbcode/bbcode-tags.json`, built in | ✓ | | |
 | `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, `graph/layer/actors/manage` | ✓ | | |
 | `chart_update` [updateChart] (settings, series or filter; with `laId` the placement's size) | `actor/get` + `form/system/get`, a new filter's `actor/create`, `actor/update`, `graph/layer/elements/list` + `graph/layer/actor_settings/save` | ✓ | | |
@@ -199,9 +199,9 @@ scenarios use (see "AI Console profile").
 | `meet_transcription_list` [getTranscription] (the live transcript; empty before and after a call) | `meet/transcription/list` | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at 18d5aec2 or later (`cdu/catalog/get` !463,
+These tools need sim-api `feature/simulator-ai` at a547f397 or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`, the Smart Form history, trash, page and
-Corezoid methods, the task methods !494, guest links !495 and the transcript !496); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
+Corezoid methods, the task methods !494, guest links !495, the transcript !496 and `graph/viewport/command` for `layer_viewport`); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
 import, guest link create/revoke and Corezoid bind/create tools are hinted destructive (a new guest link opens view to
 anyone with its URL and stops the one already handed out); page render is not read-only either (it runs the page's `/get`).
 
@@ -213,9 +213,14 @@ retried for about 3 seconds and then reports "no such file, or its antivirus sca
 `simulator-ai-agents`, `simulator-ai-charts` and `simulator-ai-meetings` compose these tools.
 
 Skill procedures and agent profiles are descriptions users write: `skill_get` and `agent_get` return them as data, and
-their tool descriptions tell the model not to take instructions from them. `build_link` builds web app URLs on
-`SIMULATOR_AI_ORIGIN` with the 8-character workspace segment, each id escaped as one path segment; a `smartForm`
-link needs a route its released pages declare.
+their tool descriptions tell the model not to take instructions from them. `build_link` builds a link inside the current
+Smart Form when given its `appKey` (the Console context's `/sf/<key>`) or `appId` (sim-api `docs/ai-console.md`
+"Посилання"): `route/build` on that key with the start Smart Form's route of the entity (`workspace.actors`,
+`workspace.graphs-edit`, `workspace.events`, `workspace.chats`, `workspace.templates-edit`, the lists) or a `route` of
+the form's own, plus the block state as `#b=<blockId>:<route>` (both parts encodeURIComponent), root-relative. Without
+them, or for an entity with no runtime page (marked `legacy`), it builds web app URLs on `SIMULATOR_AI_ORIGIN` with
+the 8-character workspace segment, each id escaped as one path segment; a `smartForm` link needs a route its released
+pages declare.
 
 A chart's `data.source` is built locally as legacy createChart built it: the web app wizard's JSON string, which
 sim-api's `dashboard/get` reads too. The chart is drawn as `layerSettings` `{expandType: chart, expand: true, width: 650,
@@ -250,10 +255,10 @@ for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `u
 `skills_find`, `skill_get` and `build_link`, and for accounts, Account Templates, chats and cards `account_create`,
 `accounts_list`, `transfer_create`, `transaction_create`, `form_create`, `form_update`, `form_account_create`,
 `chat_open` and `actor_attach`, and for a Smart Form's business logic `corezoid_project_create` and
-`corezoid_project_get`: 47 in all (`smart_form_folders_create` is there because a form of more
+`corezoid_project_get`, and `layer_viewport` to show the user what the answer is about: 48 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page; `internal/mcpserver/console.go` says why each later one is). `console-full` adds every other actor, form, graph, access, reaction, user,
 attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
-transcript tool (179 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+transcript tool (180 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -282,7 +287,8 @@ another, never on a new one.
 | `edge_create` | `edge_type/get` (default `hierarchy`) + `edge/create` | id, source, target, edgeTypeId, name |
 | `layer_placements_create` | `graph/layer/actors/manage` (create only); a flowchart node is border-snapped and gets the block's `areaPicture` | nodes `{laId, actorId, position}`, edges `{laId, edgeId, laIdSource, laIdTarget}` |
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
-| `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges, `hasMore` |
+| `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges with `cell`, `hasMore` |
+| `layer_viewport` | `graph/viewport/command` (a ruler `cell` sent as its index: `"C, 7"` → `{x: 2, y: 6}`) | `commandId`, `openTabs` (0: the layer is not open, nothing moved) |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
 | `smart_form_components` | `cdu/catalog/get` | with `brief` every type's kind, category and label; with `types` the props the validator applies, events, state and api |
 | `smart_form_data_form_create` | `form/create` (data template) | formId and a ready page whose button submits via `form/submit` into it |

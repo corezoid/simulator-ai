@@ -24,11 +24,18 @@ type LinkInput struct {
 	Route  string                     `json:"route,omitempty"`
 	Params map[string]json.RawMessage `json:"params,omitempty"`
 	Query  map[string]string          `json:"query,omitempty"`
+	// AppKey (the /sf/<key> of the request's context) or AppID names the current Smart Form: the
+	// link is then built inside it (console_runtime_links.go). GraphID is a runtime layer's graph.
+	AppKey  string `json:"appKey,omitempty"`
+	AppID   string `json:"appId,omitempty"`
+	GraphID string `json:"graphId,omitempty"`
 }
 
-// Link is an absolute web app URL on the configured origin.
+// Link is a root-relative runtime link inside the current Smart Form, or an absolute legacy web app
+// URL on the configured origin, marked Legacy when a runtime one was asked for but has no page.
 type Link struct {
-	URL string `json:"url"`
+	URL    string `json:"url"`
+	Legacy bool   `json:"legacy,omitempty"`
 }
 
 // linkPath builds one entity's path from the short workspace id and escaped ids; the legacy
@@ -149,6 +156,9 @@ func (c *Client) BuildLink(ctx context.Context, in LinkInput) (Link, error) {
 		return Link{}, e
 	}
 	origin := strings.TrimRight(c.config.Origin, "/")
+	if in.Entity != "smartForm" && (in.AppKey != "" || in.AppID != "") {
+		return c.runtimeLink(ctx, in)
+	}
 	if in.Entity == "smartForm" {
 		if !validID(in.Ref) || !validID(in.Route) {
 			return Link{}, errors.New("entity smartForm requires ref (the Smart Form's ref) and route (a route name its pages declare)")
@@ -163,6 +173,12 @@ func (c *Client) BuildLink(ctx context.Context, in LinkInput) (Link, error) {
 		}
 		return Link{URL: origin + r.Href}, nil
 	}
+	return c.legacyLink(in)
+}
+
+// legacyLink is the legacy web app URL of an entity (pong-front-end routes.json).
+func (c *Client) legacyLink(in LinkInput) (Link, error) {
+	origin := strings.TrimRight(c.config.Origin, "/")
 	build, ok := linkPaths[in.Entity]
 	if !ok {
 		return Link{}, fmt.Errorf("unknown entity %q", in.Entity)
