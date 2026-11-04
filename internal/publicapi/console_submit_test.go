@@ -51,8 +51,8 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 
 // Without a text edit field form/submit would name the actor "<template> <date>"; the page names it.
 func TestDataPageTitlesActorsWithoutTextField(t *testing.T) {
-	params := func(fields ...DataField) map[string]any {
-		page, _ := json.Marshal(dataPage(DataFormInput{Title: "Leave", Fields: fields}, 7, "ws"))
+	params := func(title string, fields ...DataField) map[string]any {
+		page, _ := json.Marshal(dataPage(DataFormInput{Title: title, Fields: fields}, 7, "ws"))
 		var submit struct {
 			Params map[string]any `json:"simapiExtraParams"`
 		}
@@ -62,11 +62,19 @@ func TestDataPageTitlesActorsWithoutTextField(t *testing.T) {
 		}
 		return submit.Params
 	}
-	if got := params(DataField{Name: "start", Label: "Start", Type: "date"}, DataField{Name: "days", Label: "Days", Type: "number"})["title"]; got != "Leave" {
+	date, days := DataField{Name: "start", Label: "Start", Type: "date"}, DataField{Name: "days", Label: "Days", Type: "number"}
+	if got := params("Leave", date, days)["title"]; got != "Leave" {
 		t.Errorf("title = %v, want the template name", got)
 	}
-	if got, ok := params(DataField{Name: "start", Label: "Start", Type: "date"}, DataField{Name: "note", Label: "Note"})["title"]; ok {
+	if got, ok := params("Leave", date, DataField{Name: "note", Label: "Note"})["title"]; ok {
 		t.Errorf("title = %v, want none: form/submit takes it from the text field", got)
+	}
+	// form/submit refuses a title over 255 characters, and the renderer would evaluate {{ }}.
+	if got, _ := params(strings.Repeat("я", 300), date)["title"].(string); got != strings.Repeat("я", 255) {
+		t.Errorf("a long title is sent as %d characters, want 255", len([]rune(got)))
+	}
+	if got, ok := params("Q3 {{draft}}", date)["title"]; ok {
+		t.Errorf("title = %v, want none for a title the renderer would evaluate", got)
 	}
 }
 
@@ -79,6 +87,7 @@ func TestWireSubmits(t *testing.T) {
 		"D7: inputs and a button, no Form": {d7, "no Form node"},
 		"Form without a submit button":     {formOnly, `Form "request" has no button with form.submit`},
 		"no data template":                 {noTemplate, "needs simapiExtraParams.formId"},
+		"filter of a renamed Form":         {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "must read vm.leave"},
 	} {
 		if _, err := wireSubmits(tc.source, "ws"); err == nil || !strings.Contains(err.Error(), tc.err) || !strings.Contains(err.Error(), "smart_form_data_form_create") {
 			t.Errorf("%s: %v", name, err)

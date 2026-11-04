@@ -159,9 +159,10 @@ func dataPage(in DataFormInput, formID int64, workspace string) node {
 		params["successMessage"] = message
 	}
 	// form/submit names the actor after a text edit field; without one it would be the template
-	// name and a date, so the page names it after the template itself.
-	if !hasText(in.Fields) {
-		params["title"] = in.Title
+	// name and a date, so the page names it after the template itself: within form/submit's 255
+	// characters, and not when the title would be read as an expression.
+	if title := []rune(in.Title); !hasText(in.Fields) && !strings.Contains(in.Title, "{{") {
+		params["title"] = string(title[:min(len(title), 255)])
 	}
 	submit := node{"type": "form.submit", "formId": dataFormNode, "via": "simapi", "simapiMethod": "form/submit", "simapiExtraParams": params,
 		"onError": []any{node{"type": "notify", "level": "error", "title": "Not sent", "helperText": "{{ $error.message }}"}}}
@@ -176,7 +177,8 @@ func dataPage(in DataFormInput, formID int64, workspace string) node {
 // button without any action beside inputs on a page without a Form. A form.submit to form/submit must
 // name its data template, and its accId is set to the host workspace. Other submits (via corezoid,
 // other methods) are the page author's and pass as they are. A source that is not a page config, or
-// needs no accId, is stored byte for byte.
+// needs no accId, is stored byte for byte. A generated formData filter must read the values of the
+// Form its submit names, or a renamed form would send nothing.
 func wireSubmits(source, workspace string) (string, error) {
 	var doc any
 	if json.Unmarshal([]byte(source), &doc) != nil {
@@ -185,7 +187,8 @@ func wireSubmits(source, workspace string) (string, error) {
 	if page, ok := doc.(map[string]any); !ok || page["tree"] == nil || page["schemaVersion"] == nil {
 		return source, nil
 	}
-	forms, submitted := map[string]bool{}, map[string]bool{}
+	forms, submitted := map[string]string{}, map[string]bool{}
+	filters := map[string]string{} // Form id -> the formData filter of its form/submit
 	inputs, idleButtons, refs, changed := 0, 0, false, false
 	var problems []string
 	var walk func(v any)
@@ -204,7 +207,12 @@ func wireSubmits(source, workspace string) (string, error) {
 				}
 			case "Form":
 				if id, ok := t["id"].(string); ok {
-					forms[id] = true
+					props, _ := t["props"].(map[string]any)
+					key, _ := props["valueKey"].(string)
+					if key == "" {
+						key = id
+					}
+					forms[id] = key
 				}
 			case "form.submit":
 				id, _ := t["formId"].(string)
@@ -215,6 +223,9 @@ func wireSubmits(source, workspace string) (string, error) {
 						problems = append(problems, fmt.Sprintf("form.submit of %q needs simapiExtraParams.formId, the data template id", id))
 					} else if params["accId"] != workspace {
 						params["accId"], changed = workspace, true
+					}
+					if filter, _ := params["formData"].(string); strings.Contains(filter, "$sift(vm.") {
+						filters[id] = filter
 					}
 				}
 			}
@@ -234,6 +245,11 @@ func wireSubmits(source, workspace string) (string, error) {
 	for id := range forms {
 		if !submitted[id] && !refs {
 			problems = append(problems, fmt.Sprintf("Form %q has no button with form.submit", id))
+		}
+	}
+	for id, filter := range filters {
+		if key, ok := forms[id]; ok && !strings.Contains(filter, "$sift(vm."+key+",") {
+			problems = append(problems, fmt.Sprintf("simapiExtraParams.formData of the form.submit of %q must read vm.%s, the values of that Form", id, key))
 		}
 	}
 	if len(problems) > 0 {
