@@ -21,6 +21,8 @@ type EdgeCreateInput struct {
 	EdgeType   string `json:"edgeType,omitempty"`
 	Name       string `json:"name,omitempty"`
 	CurveStyle string `json:"curveStyle,omitempty"`
+	// Hole creates a placeholder edge; a plain edge to a hole actor is not one.
+	Hole bool `json:"hole,omitempty"`
 }
 
 type edgeCreateRequest struct {
@@ -30,6 +32,7 @@ type edgeCreateRequest struct {
 	EdgeTypeID int64  `json:"edgeTypeId"`
 	Name       string `json:"name,omitempty"`
 	CurveStyle string `json:"curveStyle,omitempty"`
+	Hole       bool   `json:"hole,omitempty"`
 	// ForceDirection keeps a flowchart loop B->A apart from an existing hierarchy edge A->B.
 	ForceDirection bool `json:"forceDirection"`
 }
@@ -104,6 +107,19 @@ type LayerViewNode struct {
 	FormID   *int64    `json:"formId,omitempty"`
 	Position *Position `json:"position,omitempty"`
 	BlockID  string    `json:"blockId,omitempty"`
+	// Hole marks a placeholder actor; ClosedHole a placement that closed one.
+	Hole       bool        `json:"hole,omitempty"`
+	ClosedHole *ClosedHole `json:"closedHole,omitempty"`
+}
+
+// ClosedHole follows graph/layer/actors/list closedHole: the hole a placement closed and, for
+// conditions, how many matched.
+type ClosedHole struct {
+	HoleActorID     string `json:"holeActorId"`
+	ClosingProgress *struct {
+		Matched int `json:"matched"`
+		Total   int `json:"total"`
+	} `json:"closingProgress,omitempty"`
 }
 
 // LayerViewEdge is a compact edge placement with the edge's own endpoints and label.
@@ -115,6 +131,9 @@ type LayerViewEdge struct {
 	Source     string  `json:"source,omitempty"`
 	Target     string  `json:"target,omitempty"`
 	Name       *string `json:"name,omitempty"`
+	// Hole marks a placeholder edge; ClosedHole is the edge hole this placement closed.
+	Hole       bool   `json:"hole,omitempty"`
+	ClosedHole string `json:"closedHole,omitempty"`
 }
 
 // LayerView is one page of node and one page of edge placements; HasMore when either page is full.
@@ -139,13 +158,33 @@ type layerNodeWire struct {
 	LayerSettings *struct {
 		BlockID string `json:"blockId"`
 	} `json:"layerSettings"`
-	Actor *Actor `json:"actor"`
+	Actor      *Actor      `json:"actor"`
+	Hole       bool        `json:"hole"`
+	ClosedHole *ClosedHole `json:"closedHole"`
 }
 type layerNodesWire struct {
 	List []layerNodeWire `json:"list"`
 }
+
+// layerEdgeWire follows graph/layer/edges/list rows, with the hole marks layer_get passes on.
+type layerEdgeWire struct {
+	LaID          int64                     `json:"laId"`
+	ID            string                    `json:"id"`
+	LaIDSource    *int64                    `json:"laIdSource"`
+	LaIDTarget    *int64                    `json:"laIdTarget"`
+	LayerSettings *GraphElementEdgeSettings `json:"layerSettings"`
+	Edge          *struct {
+		Source string  `json:"source"`
+		Target string  `json:"target"`
+		Name   *string `json:"name"`
+		Hole   bool    `json:"hole"`
+	} `json:"edge"`
+	ClosedHole *struct {
+		HoleEdgeID string `json:"holeEdgeId"`
+	} `json:"closedHole"`
+}
 type layerEdgesWire struct {
-	List []GraphElementEdge `json:"list"`
+	List []layerEdgeWire `json:"list"`
 }
 
 type systemFormRequest struct {
@@ -192,7 +231,7 @@ func (c *Client) CreateEdge(ctx context.Context, in EdgeCreateInput) (GraphCreat
 		return GraphCreatedEdge{}, e
 	}
 	r, e := call[edgeCreateRequest, GraphCreatedEdge](ctx, c, "edge/create", edgeCreateRequest{AccID: c.config.Workspace, Source: in.Source, Target: in.Target,
-		EdgeTypeID: t.ID, Name: in.Name, CurveStyle: in.CurveStyle, ForceDirection: true})
+		EdgeTypeID: t.ID, Name: in.Name, CurveStyle: in.CurveStyle, Hole: in.Hole, ForceDirection: true})
 	if e == nil && (validateGraphEdge(r) != nil || r.Source != in.Source || r.Target != in.Target) {
 		return GraphCreatedEdge{}, errors.New("edge/create returned an edge with other endpoints")
 	}
@@ -280,7 +319,7 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 		if n.LaID < 1 || strings.TrimSpace(n.ID) == "" {
 			return LayerView{}, errors.New("invalid node placement identity")
 		}
-		node := LayerViewNode{LaID: n.LaID, ActorID: n.ID, Position: n.Position}
+		node := LayerViewNode{LaID: n.LaID, ActorID: n.ID, Position: n.Position, Hole: n.Hole, ClosedHole: n.ClosedHole}
 		if n.LayerSettings != nil {
 			node.BlockID = n.LayerSettings.BlockID
 		}
@@ -295,7 +334,10 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 		}
 		edge := LayerViewEdge{LaID: p.LaID, EdgeID: p.ID, LaIDSource: p.LaIDSource, LaIDTarget: p.LaIDTarget}
 		if p.Edge != nil {
-			edge.Source, edge.Target, edge.Name = p.Edge.Source, p.Edge.Target, p.Edge.Name
+			edge.Source, edge.Target, edge.Name, edge.Hole = p.Edge.Source, p.Edge.Target, p.Edge.Name, p.Edge.Hole
+		}
+		if p.ClosedHole != nil {
+			edge.ClosedHole = p.ClosedHole.HoleEdgeID
 		}
 		if p.LayerSettings != nil && p.LayerSettings.Name != nil && *p.LayerSettings.Name != "" {
 			edge.Name = p.LayerSettings.Name

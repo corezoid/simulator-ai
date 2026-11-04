@@ -10,10 +10,12 @@ import (
 // actor_create, then LayerSettings with the node placement, so Graph Editor draws the block shape.
 // Data and LayerSettings are left out of a browse list without blockIds to keep it small.
 type Block struct {
-	FormID        int64                          `json:"formId"`
-	Title         string                         `json:"title"`
-	BlockID       string                         `json:"blockId"`
-	Collection    string                         `json:"collection,omitempty"`
+	FormID     int64  `json:"formId"`
+	Title      string `json:"title"`
+	BlockID    string `json:"blockId"`
+	Collection string `json:"collection,omitempty"`
+	// Color is the block form's own colour (czStart and the like), which the editor gives such a block.
+	Color         string                         `json:"color,omitempty"`
 	Data          json.RawMessage                `json:"data,omitempty"`
 	LayerSettings *publicapi.GraphNativeSettings `json:"layerSettings,omitempty"`
 }
@@ -32,11 +34,22 @@ func ConsoleBlocks(catalog publicapi.GraphCatalog, full bool) Blocks {
 		if err != nil {
 			continue
 		}
-		b := Block{FormID: def.ParentID, Title: def.Title, BlockID: def.BlockID, Collection: def.Collection}
+		b := Block{FormID: def.ParentID, Title: def.Title, BlockID: def.BlockID, Collection: def.Collection, Color: formColor(def.Form)}
 		if full {
 			b.Data, b.LayerSettings = data, &settings
 		}
 		out.List = append(out.List, b)
 	}
 	return out
+}
+
+// formColor reads a block form's own colour from its template bag (UI Kit flowchartBlocks.ts formColor).
+func formColor(form json.RawMessage) string {
+	var bag struct {
+		Color string `json:"color"`
+	}
+	if json.Unmarshal(form, &bag) != nil || len(bag.Color) > 32 {
+		return ""
+	}
+	return bag.Color
 }

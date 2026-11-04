@@ -43,10 +43,10 @@ func graph(c *client, stamp string) error {
 			return fmt.Errorf("workspace catalog has no %s block", title)
 		}
 	}
-	plan := []struct{ key, title, kind, color string }{
-		{"start", "Start", kinds["Start / Stop"], "#17B26A"}, {"check", "Approved?", kinds["Decision"], "#F79009"},
-		{"yes", "Book leave", kinds["Process"], "#539fdf"}, {"no", "Notify employee", kinds["Process"], "#F04438"},
-		{"end", "End", kinds["Start / Stop"], "#17B26A"}}
+	plan := []struct{ key, title, kind string }{
+		{"start", "Start", kinds["Start / Stop"]}, {"check", "Approved?", kinds["Decision"]},
+		{"yes", "Book leave", kinds["Process"]}, {"no", "Notify employee", kinds["Process"]},
+		{"end", "End", kinds["Start / Stop"]}}
 	links := []struct{ source, target, name string }{{"start", "check", "request"}, {"check", "yes", "yes"}, {"check", "no", "no"}, {"yes", "end", ""}, {"no", "end", ""}}
 	var nodesIn, edgesIn []map[string]any
 	for _, p := range plan {
@@ -58,6 +58,7 @@ func graph(c *client, stamp string) error {
 	var laid struct {
 		Nodes []struct {
 			FormID        int64           `json:"formId"`
+			Color         string          `json:"color"`
 			Data          json.RawMessage `json:"data"`
 			Position      struct{ X, Y float64 }
 			LayerSettings struct {
@@ -79,10 +80,14 @@ func graph(c *client, stamp string) error {
 	}
 	var batch []map[string]any
 	for i, p := range plan {
-		batch = append(batch, map[string]any{"formId": laid.Nodes[i].FormID, "title": p.title, "color": p.color, "data": laid.Nodes[i].Data})
+		// The layout's colour: the block's own, else a random editor palette hue.
+		batch = append(batch, map[string]any{"formId": laid.Nodes[i].FormID, "title": p.title, "color": laid.Nodes[i].Color, "data": laid.Nodes[i].Data})
 	}
 	var created struct {
-		Actors []id `json:"actors"`
+		Actors []struct {
+			ID    string `json:"id"`
+			Color string `json:"color"`
+		} `json:"actors"`
 	}
 	if err := c.tool("actors_create", map[string]any{"actors": batch}, &created); err != nil {
 		return err
@@ -94,7 +99,11 @@ func graph(c *client, stamp string) error {
 	for i, p := range plan {
 		n := laid.Nodes[i]
 		actors[p.key] = created.Actors[i].ID
-		nodes = append(nodes, map[string]any{"actorId": created.Actors[i].ID, "position": map[string]any{"x": n.Position.X, "y": n.Position.Y}, "layerSettings": raw.Nodes[i].LayerSettings, "color": p.color})
+		// No colour: layer_placements_create paints the block with its actor's own.
+		nodes = append(nodes, map[string]any{"actorId": created.Actors[i].ID, "position": map[string]any{"x": n.Position.X, "y": n.Position.Y}, "layerSettings": raw.Nodes[i].LayerSettings})
+		if !inPalette(created.Actors[i].Color) {
+			return fmt.Errorf("actor %s got colour %q outside the editor palette", p.title, created.Actors[i].Color)
+		}
 	}
 	var placed struct {
 		Nodes []struct {
@@ -230,3 +239,8 @@ func form(c *client, stamp string) error {
 	fmt.Println("OK form appId", created.AppID, "release", rel.ReleaseID)
 	return nil
 }
+
+// palette is the editor's random actor colour set (simulator-ui-kit themes/actorHues.ts).
+var palette = map[string]bool{"#875bf7": true, "#2970ff": true, "#36bffa": true, "#17b26a": true, "#66c61c": true, "#fac515": true, "#f38744": true, "#f63d68": true}
+
+func inPalette(color string) bool { return palette[color] }
