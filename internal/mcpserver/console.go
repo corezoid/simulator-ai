@@ -11,7 +11,8 @@ import (
 )
 
 // consoleCoreTools is the plain console catalog: what the Console scenarios (an actor answer, a
-// flowchart on a layer, a released Smart Form) use. Every schema rides in the model context on every
+// flowchart on a layer, a released Smart Form, a comment, a task or a chat shared with people, a file)
+// use. Every schema rides in the model context on every
 // turn, so the rest of the console tools are console-full only.
 var consoleCoreTools = map[string]bool{
 	"actor_get": true, "actor_create": true, "actors_create": true, "actor_update": true, "actors_search": true,
@@ -20,6 +21,8 @@ var consoleCoreTools = map[string]bool{
 	"layer_placements_create": true, "layer_positions_update": true, "edge_create": true, "edges_create": true,
 	"smart_form_components": true, "smart_form_data_form_create": true, "smart_form_create": true, "smart_form_files_get": true, "smart_form_files_update": true,
 	"smart_form_files_create": true, "smart_form_release": true, "smart_form_release_get": true,
+	"actor_by_ref_get": true, "reactions_list": true, "reaction_create": true, "users_search": true, "access_rules_get": true, "access_rules_save": true,
+	"attachment_upload": true, "attachment_read": true,
 }
 
 // keepConsoleCore drops every tool outside consoleCoreTools.
@@ -34,7 +37,7 @@ func keepConsoleCore(s *server.MCPServer) {
 }
 
 // destructiveTools delete what they touch; clients may ask for confirmation on this hint.
-var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true}
+var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true, "access_rules_save": true}
 
 // maxConsoleInput keeps one tool call, and so its request, under sim-api's 1 MiB JSON-RPC body
 // limit; Smart Form file batches are the largest inputs.
@@ -86,7 +89,7 @@ func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {
 func addConsoleSmartForms(s *server.MCPServer, c *publicapi.Client) {
 	addParity(s, c, smartFormTools)
 	consoleTool(s, "smart_form_data_form_create", "Create the data template a Smart Form saves into, and get its page. Create the Smart Form first and pass its appId: form/submit then lets whoever may open that form (its sharedWith) submit. fields [{name, label, type text|number|date|select, required?, options? for select}]: each becomes a field (name is its id; number is edit/float, date a calendar) of the template's one section and a bound input of the page. Returns formId and page: a ready pages/<page>/config source (a Form node, the inputs, and a submitLabel button that validates and submits via form/submit, creating one actor of the template per submit, titled by the first text field, else by the template title (255 characters), so give records a text field to tell them apart; empty fields left out; successMessage shown). Needs form/submit on the stand. Write page with smart_form_files_update as pages/index/config, then smart_form_release.",
-		`{"type":"object","properties":{"title":{"type":"string","minLength":1,"maxLength":1000},"fields":{"type":"array","minItems":1,"maxItems":50,"items":{"type":"object","properties":{"name":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_]{0,63}$"},"label":{"type":"string","minLength":1,"maxLength":255},"type":{"type":"string","enum":["text","number","date","select"]},"required":{"type":"boolean"},"options":{"type":"array","maxItems":100,"items":{"type":"string","minLength":1,"maxLength":255}}},"required":["name","label"],"additionalProperties":false}},"submitLabel":{"type":"string","maxLength":100},"successMessage":{"type":"string","maxLength":200},"appId":{"type":"string","minLength":1,"maxLength":255}},"required":["title","fields"],"additionalProperties":false}`, true, c.CreateDataForm)
+		`{"type":"object","properties":{"title":{"type":"string","minLength":1,"maxLength":1000},"fields":{"type":"array","minItems":1,"maxItems":50,"items":{"type":"object","properties":{"name":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_]{0,63}$"},"label":{"type":"string","minLength":1,"maxLength":255},"type":{"type":"string","enum":["text","number","date","select"]},"required":{"type":"boolean"},"options":{"type":"array","maxItems":100,"items":{"type":"string","minLength":1,"maxLength":255}}},"required":["name","label"],"additionalProperties":false}},"submitLabel":{"type":"string","maxLength":100},"successMessage":{"type":"string","maxLength":200},"appId":{"type":"string","minLength":1,"maxLength":64}},"required":["title","fields"],"additionalProperties":false}`, true, c.CreateDataForm)
 	consoleTool(s, "smart_form_create", "Create a Smart Form (CDU v2). It starts with a develop tree holding a pages/index page (config with an empty Stack), locale, viewModel and styles/index. Returns appId and env ids; edit develop with smart_form_files_get/update/create, then smart_form_release.",
 		`{"type":"object","properties":{"ref":{"type":"string","pattern":"^[0-9a-zA-Z_-]{5,255}$","description":"Short name unique among the workspace's Smart Forms"},"title":{"type":"string","minLength":1,"maxLength":255},"description":{"type":"string","maxLength":10000},"sharedWith":{"type":"string","enum":["userList","allWorkspaceUsers","allRegisteredUsers"],"description":"Who may open it; default userList (its access list). Widen only when the user asks"}},"required":["ref","title"],"additionalProperties":false}`, true, c.CreateSmartForm)
 	consoleTool(s, "smart_form_files_get", "List the develop folders and files of a Smart Form by path (pages/index/config, locale, styles/index, ...) with id, type and sourceHash; withSource adds file sources. Use folder ids for new files and file ids for updates.",
@@ -114,6 +117,9 @@ func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, 
 			return failure(e), nil
 		}
 		v, e := run(ctx, a)
+		if raw, ok := any(v).(json.RawMessage); ok {
+			return passResult(raw, e), nil
+		}
 		return result(v, e), nil
 	})
 }

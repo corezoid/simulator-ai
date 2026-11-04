@@ -135,7 +135,7 @@ func TestWireSubmits(t *testing.T) {
 	}
 	for name, legit := range map[string]string{
 		"corezoid submit":            `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"corezoid"}]}}]}}`,
-		"search with navigate":       `{"schemaVersion":"2.0","id":"index","tree":{"id":"r","type":"Stack","children":[{"id":"q","type":"TextInput"},{"id":"go","type":"Button","actions":{"onClick":[{"type":"navigate","to":"results"}]}}]}}`,
+		"search with navigate":       `{"schemaVersion":"2.0","id":"index","tree":{"id":"r","type":"Stack","children":[{"id":"q","type":"TextInput"},{"id":"go","type":"Button","actions":{"onClick":[{"type":"navigate.local","to":"results"}]}}]}}`,
 		"submit in a fragment":       `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"$ref":"#/submitButton"}]}}`,
 		"spaced filter of its Form":  `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.leave , function($v){ $v != \"\" })]) }}"}}]}}]}}`,
 		"Form read by simapi.call":   `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"simapi.call","method":"actor/create","params":{"data":"{{ vm.leave }}"}}]}}]}}`,

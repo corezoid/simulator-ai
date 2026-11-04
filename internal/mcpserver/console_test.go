@@ -108,18 +108,22 @@ func TestConsoleCatalog(t *testing.T) {
 			t.Errorf("%s output schema types open JSON as bytes", tool.Name)
 		}
 	}
-	// The exact console catalog: its own tools plus every actor, form and graph parity tool.
-	want := "actor_by_ref_get,actor_corezoid_processes_list,actor_create,actor_delete,actor_get,actor_status_update,actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count,actors_search," +
-		"edge_create,edge_delete,edge_endpoints_update,edge_exist,edge_get,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
-		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get,form_status_update,form_update,forms_count,forms_list,forms_tree_get," +
-		"graph_get,graph_list,layer_actors_move,layer_actors_search,layer_clean,layer_compact,layer_create,layer_edges_list,layer_element_exist,layer_get,layer_placements_all," +
-		"layer_placements_create,layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_skeleton_get,layer_stats_get,search_all," +
-		"smart_form_components,smart_form_create,smart_form_data_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
+	// The exact console catalog: its own tools plus every actor, form, graph, access, reaction, user
+	// and attachment tool.
+	want := "access_rules_get,access_rules_save,actor_by_ref_get,actor_corezoid_processes_list,actor_create,actor_delete,actor_get,actor_status_update,actor_system_get," +
+		"actor_update,actors_create,actors_filter,actors_filter_count,actors_search,attachment_attach,attachment_detach,attachment_read,attachment_update,attachment_upload," +
+		"attachments_by_actor_list,attachments_list,edge_create,edge_delete,edge_endpoints_update,edge_exist,edge_get,edge_types_list,edge_update,edges_by_nodes_delete," +
+		"edges_create,flowchart_blocks_list,flowchart_layout,form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get," +
+		"form_status_update,form_update,forms_count,forms_list,forms_tree_get,graph_get,graph_list,layer_actors_move,layer_actors_search,layer_clean,layer_compact," +
+		"layer_create,layer_edges_list,layer_element_exist,layer_get,layer_placements_all,layer_placements_create,layer_placements_list,layer_placements_manage,layer_positions_update," +
+		"layer_prune_long_edges,layer_skeleton_get,layer_stats_get,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,reactions_mark_read,search_all,smart_form_components," +
+		"smart_form_create,smart_form_data_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get,user_get,users_search," +
+		"workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 62 {
+	if got := strings.Join(names, ","); got != want || len(names) != 80 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
-	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
+	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search"} {
 		if !reads[name] {
 			t.Errorf("%s must be read-only", name)
 		}
@@ -312,7 +316,7 @@ func TestConsoleCoreCatalog(t *testing.T) {
 			t.Error("console has", name)
 		}
 	}
-	if len(names) != len(consoleCoreTools) || len(names) != 24 {
+	if len(names) != len(consoleCoreTools) || len(names) != 32 {
 		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
 	}
 }
@@ -374,5 +378,30 @@ func TestLayerGetShowsHoles(t *testing.T) {
 		if !strings.Contains(reply, want) {
 			t.Errorf("layer_get lacks %s: %s", want, reply)
 		}
+	}
+}
+
+// The people tools reach their public methods through the MCP layer: a parity tool narrowed to its
+// legacy params, and the access tool's object dispatch.
+func TestConsolePeopleTools(t *testing.T) {
+	send, calls := consoleServer(t, map[string]string{
+		"user/list":                     `"result":{"list":[{"id":7,"nick":"Olena"}]}`,
+		"access_rule/actor/share":       `"result":{"list":[]}`,
+		"access_rule/formTemplate/list": `"result":{"list":[]}`,
+	})
+	for _, tc := range []struct{ tool, args, method, sent string }{
+		{"users_search", `{"query":"Olena"}`, "user/list", `"query":"Olena"`},
+		{"access_rules_save", `{"objType":"actor","objId":"a1","rules":[{"userId":7,"privs":{"view":true,"execute":true}}]}`, "access_rule/actor/share", `"actions":[{"action":"create","privs":{"execute":true,"view":true},"userId":7}]`},
+		{"access_rules_get", `{"objType":"formTemplate","objId":"42"}`, "access_rule/formTemplate/list", `"formId":42`},
+	} {
+		reply := send(fmt.Sprintf(`"method":"tools/call","params":{"name":%q,"arguments":%s}`, tc.tool, tc.args))
+		last := (*calls)[len(*calls)-1]
+		sent, _ := json.Marshal(last.Params)
+		if strings.Contains(reply, `"isError":true`) || last.Method != tc.method || !strings.Contains(string(sent), tc.sent) {
+			t.Errorf("%s: %s called %s %s", tc.tool, reply, last.Method, sent)
+		}
+	}
+	if reply := send(`"method":"tools/call","params":{"name":"users_search","arguments":{"query":"x","rootActorId":"a"}}`); !strings.Contains(reply, `"isError":true`) && !strings.Contains(reply, `"error"`) {
+		t.Error("users_search took a param outside its legacy set:", reply)
 	}
 }

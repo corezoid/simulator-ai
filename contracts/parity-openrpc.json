@@ -1835,7 +1835,7 @@
      "name": "tags",
      "required": false,
      "schema": {
-      "description": "Lossless legacy account template tags",
+      "description": "Account template tags: an array of strings (legacy), stored as sent",
       "type": "array"
      }
     },
@@ -2062,7 +2062,7 @@
      "name": "tags",
      "required": false,
      "schema": {
-      "description": "Lossless legacy account template tags",
+      "description": "Account template tags: an array of strings (legacy), stored as sent",
       "type": "array"
      }
     },
@@ -4005,6 +4005,1904 @@
     }
    ],
    "summary": "Reads the CDU component catalog a page config is validated against: each component type with its props, events, state and api"
+  },
+  {
+   "name": "access_rule/actor/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Retrieves a list of users with access permissions for a specific actor"
+  },
+  {
+   "name": "access_rule/actor/share",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "filterIncorrect",
+     "required": false,
+     "schema": {
+      "description": "Skip actions whose userId does not exist instead of failing the call",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isNotify",
+     "required": false,
+     "schema": {
+      "description": "Notify the subjects whose access changes",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isRecursive",
+     "required": false,
+     "schema": {
+      "description": "Graph or Layer actor only: also share its layers and the actors on them (default true)",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "actions",
+     "required": false,
+     "schema": {
+      "description": "Changes to apply; subjects not listed keep their rules",
+      "items": {
+       "properties": {
+        "action": {
+         "description": "create grants or replaces the subject's privileges; delete removes its rule",
+         "enum": [
+          "create",
+          "delete"
+         ],
+         "type": "string"
+        },
+        "privs": {
+         "description": "Privileges to grant with create; all false behaves as delete",
+         "properties": {
+          "ds": {
+           "description": "Is asked to sign the object with a digital signature",
+           "type": "boolean"
+          },
+          "execute": {
+           "description": "Is asked to carry out (execute) the object",
+           "type": "boolean"
+          },
+          "modify": {
+           "description": "Can change the object and its access rules",
+           "type": "boolean"
+          },
+          "remove": {
+           "description": "Can delete the object",
+           "type": "boolean"
+          },
+          "sign": {
+           "description": "Is asked to approve (sign) the object",
+           "type": "boolean"
+          },
+          "view": {
+           "description": "Can see the object",
+           "type": "boolean"
+          }
+         },
+         "type": "object"
+        },
+        "reactionOrders": {
+         "description": "Per-stage parallel-signing order (sign, ds, execute) — same order acts in parallel; replaces the whole object",
+         "properties": {
+          "ds": {
+           "description": "Order (from 1) in which this subject gives a digital signature",
+           "minimum": 1,
+           "type": "integer"
+          },
+          "execute": {
+           "description": "Order (from 1) in which this subject executes",
+           "minimum": 1,
+           "type": "integer"
+          },
+          "sign": {
+           "description": "Order (from 1) in which this subject signs; equal orders sign in parallel",
+           "minimum": 1,
+           "type": "integer"
+          }
+         },
+         "type": "object"
+        },
+        "userId": {
+         "description": "User, group or API user id (userId from user/list, group/list); actions without it are skipped",
+         "type": "integer"
+        }
+       },
+       "required": [
+        "action"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Assigns or updates access permissions for users on a specific actor"
+  },
+  {
+   "name": "access_rule/formTemplate/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Retrieves a list of users with access permissions for an account template"
+  },
+  {
+   "name": "access_rule/formTemplate/share",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "filterIncorrect",
+     "required": false,
+     "schema": {
+      "description": "Skip actions whose userId does not exist instead of failing the call",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isNotify",
+     "required": false,
+     "schema": {
+      "description": "Notify the subjects whose access changes",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isRecursive",
+     "required": false,
+     "schema": {
+      "description": "Accepted for compatibility; has no effect on this object",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "actions",
+     "required": false,
+     "schema": {
+      "description": "Changes to apply; subjects not listed keep their rules",
+      "items": {
+       "properties": {
+        "action": {
+         "description": "create grants or replaces the subject's privileges; delete removes its rule",
+         "enum": [
+          "create",
+          "delete"
+         ],
+         "type": "string"
+        },
+        "privs": {
+         "description": "Privileges to grant with create; all false behaves as delete",
+         "properties": {
+          "ds": {
+           "description": "Is asked to sign the object with a digital signature",
+           "type": "boolean"
+          },
+          "execute": {
+           "description": "Is asked to carry out (execute) the object",
+           "type": "boolean"
+          },
+          "modify": {
+           "description": "Can change the object and its access rules",
+           "type": "boolean"
+          },
+          "remove": {
+           "description": "Can delete the object",
+           "type": "boolean"
+          },
+          "sign": {
+           "description": "Is asked to approve (sign) the object",
+           "type": "boolean"
+          },
+          "view": {
+           "description": "Can see the object",
+           "type": "boolean"
+          }
+         },
+         "type": "object"
+        },
+        "reactionOrders": {
+         "description": "Per-stage parallel-signing order (sign, ds, execute) — same order acts in parallel; replaces the whole object",
+         "properties": {
+          "ds": {
+           "description": "Order (from 1) in which this subject gives a digital signature",
+           "minimum": 1,
+           "type": "integer"
+          },
+          "execute": {
+           "description": "Order (from 1) in which this subject executes",
+           "minimum": 1,
+           "type": "integer"
+          },
+          "sign": {
+           "description": "Order (from 1) in which this subject signs; equal orders sign in parallel",
+           "minimum": 1,
+           "type": "integer"
+          }
+         },
+         "type": "object"
+        },
+        "userId": {
+         "description": "User, group or API user id (userId from user/list, group/list); actions without it are skipped",
+         "type": "integer"
+        }
+       },
+       "required": [
+        "action"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Assigns or updates access permissions for users on an account template"
+  },
+  {
+   "name": "access_rule/templateActors/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Retrieves access permissions for actors created from a template"
+  },
+  {
+   "name": "access_rule/templateActors/share",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "filterIncorrect",
+     "required": false,
+     "schema": {
+      "description": "Skip actions whose userId does not exist instead of failing the call",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isNotify",
+     "required": false,
+     "schema": {
+      "description": "Notify the subjects whose access changes",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isRecursive",
+     "required": false,
+     "schema": {
+      "description": "Accepted for compatibility; has no effect on this object",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "actions",
+     "required": false,
+     "schema": {
+      "description": "Changes to apply; subjects not listed keep their rules",
+      "items": {
+       "properties": {
+        "action": {
+         "description": "create grants or replaces the subject's privileges; delete removes its rule",
+         "enum": [
+          "create",
+          "delete"
+         ],
+         "type": "string"
+        },
+        "privs": {
+         "description": "Privileges to grant with create; all false behaves as delete",
+         "properties": {
+          "ds": {
+           "description": "Is asked to sign the object with a digital signature",
+           "type": "boolean"
+          },
+          "execute": {
+           "description": "Is asked to carry out (execute) the object",
+           "type": "boolean"
+          },
+          "modify": {
+           "description": "Can change the object and its access rules",
+           "type": "boolean"
+          },
+          "remove": {
+           "description": "Can delete the object",
+           "type": "boolean"
+          },
+          "sign": {
+           "description": "Is asked to approve (sign) the object",
+           "type": "boolean"
+          },
+          "view": {
+           "description": "Can see the object",
+           "type": "boolean"
+          }
+         },
+         "type": "object"
+        },
+        "reactionOrders": {
+         "description": "Per-stage parallel-signing order (sign, ds, execute) — same order acts in parallel; replaces the whole object",
+         "properties": {
+          "ds": {
+           "description": "Order (from 1) in which this subject gives a digital signature",
+           "minimum": 1,
+           "type": "integer"
+          },
+          "execute": {
+           "description": "Order (from 1) in which this subject executes",
+           "minimum": 1,
+           "type": "integer"
+          },
+          "sign": {
+           "description": "Order (from 1) in which this subject signs; equal orders sign in parallel",
+           "minimum": 1,
+           "type": "integer"
+          }
+         },
+         "type": "object"
+        },
+        "userId": {
+         "description": "User, group or API user id (userId from user/list, group/list); actions without it are skipped",
+         "type": "integer"
+        }
+       },
+       "required": [
+        "action"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Assigns or updates access permissions for actors created from a template"
+  },
+  {
+   "name": "access_rule/account/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Account currency identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Retrieves a list of users who are granted access permissions for the given account and currency pair"
+  },
+  {
+   "name": "access_rule/account/share",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "filterIncorrect",
+     "required": false,
+     "schema": {
+      "description": "Skip actions whose userId does not exist instead of failing the call",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isNotify",
+     "required": false,
+     "schema": {
+      "description": "Notify the subjects whose access changes",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "isRecursive",
+     "required": false,
+     "schema": {
+      "description": "Accepted for compatibility; has no effect on this object",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "actions",
+     "required": false,
+     "schema": {
+      "description": "Changes to apply; subjects not listed keep their rules",
+      "items": {
+       "properties": {
+        "action": {
+         "description": "create grants or replaces the subject's privileges; delete removes its rule",
+         "enum": [
+          "create",
+          "delete"
+         ],
+         "type": "string"
+        },
+        "privs": {
+         "description": "Privileges to grant with create; all false behaves as delete",
+         "properties": {
+          "ds": {
+           "description": "Is asked to sign the object with a digital signature",
+           "type": "boolean"
+          },
+          "execute": {
+           "description": "Is asked to carry out (execute) the object",
+           "type": "boolean"
+          },
+          "modify": {
+           "description": "Can change the object and its access rules",
+           "type": "boolean"
+          },
+          "remove": {
+           "description": "Can delete the object",
+           "type": "boolean"
+          },
+          "sign": {
+           "description": "Is asked to approve (sign) the object",
+           "type": "boolean"
+          },
+          "view": {
+           "description": "Can see the object",
+           "type": "boolean"
+          }
+         },
+         "type": "object"
+        },
+        "reactionOrders": {
+         "description": "Per-stage parallel-signing order (sign, ds, execute) — same order acts in parallel; replaces the whole object",
+         "properties": {
+          "ds": {
+           "description": "Order (from 1) in which this subject gives a digital signature",
+           "minimum": 1,
+           "type": "integer"
+          },
+          "execute": {
+           "description": "Order (from 1) in which this subject executes",
+           "minimum": 1,
+           "type": "integer"
+          },
+          "sign": {
+           "description": "Order (from 1) in which this subject signs; equal orders sign in parallel",
+           "minimum": 1,
+           "type": "integer"
+          }
+         },
+         "type": "object"
+        },
+        "userId": {
+         "description": "User, group or API user id (userId from user/list, group/list); actions without it are skipped",
+         "type": "integer"
+        }
+       },
+       "required": [
+        "action"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Assigns or updates access permissions for users on a specific account"
+  },
+  {
+   "name": "reaction/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": true,
+     "schema": {
+      "description": "Actor the reactions are under",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "view",
+     "required": false,
+     "schema": {
+      "default": "tree",
+      "description": "List projection: tree (top-level reactions with replies), flat (all in time order) or thread (one thread; cursor pagination only)",
+      "enum": [
+       "tree",
+       "flat",
+       "thread"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "rid",
+     "required": false,
+     "schema": {
+      "description": "Deprecated legacy numeric anchor",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "default": "createdAt",
+      "description": "Field to sort by",
+      "enum": [
+       "createdAt",
+       "updatedAt"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "default": "DESC",
+      "description": "Sort order direction (ASC/DESC)",
+      "enum": [
+       "DESC",
+       "ASC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "pagination",
+     "required": false,
+     "schema": {
+      "default": "offset",
+      "description": "Pagination strategy",
+      "enum": [
+       "offset",
+       "cursor"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "cursor",
+     "required": false,
+     "schema": {
+      "description": "Opaque keyset cursor",
+      "type": "string"
+     }
+    },
+    {
+     "name": "direction",
+     "required": false,
+     "schema": {
+      "description": "Cursor direction",
+      "enum": [
+       "older",
+       "newer"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "anchorReactionId",
+     "required": false,
+     "schema": {
+      "description": "Reaction actor UUID to center in a cursor window",
+      "type": "string"
+     }
+    },
+    {
+     "name": "parentId",
+     "required": false,
+     "schema": {
+      "description": "Parent reaction UUID for a tree child page or top-level reaction UUID for thread view",
+      "type": "string"
+     }
+    },
+    {
+     "name": "types",
+     "required": false,
+     "schema": {
+      "description": "Reaction types to include (cursor pagination only)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "ownerIds",
+     "required": false,
+     "schema": {
+      "description": "Reaction author identifiers to include",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Only reactions posted at or after this time (Unix milliseconds)",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Only reactions posted at or before this time (Unix milliseconds)",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "linkedActorId",
+     "required": false,
+     "schema": {
+      "description": "Only reactions whose extra.linkedActorId is this actor",
+      "type": "string"
+     }
+    },
+    {
+     "name": "withChildrenCount",
+     "required": false,
+     "schema": {
+      "description": "Include direct visible reply counts",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "childrenLimit",
+     "required": false,
+     "schema": {
+      "description": "Direct replies returned per root in tree view",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: user (the author), attachments (attached files; attachments:user adds each uploader), parentActor (the reaction replied to; parentActor:user,attachments add its author and files), emojiReactions (emoji marks)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Lists reactions on an actor with pagination"
+  },
+  {
+   "name": "reaction/count",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": true,
+     "schema": {
+      "description": "Root actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "view",
+     "required": false,
+     "schema": {
+      "default": "flat",
+      "description": "List projection to count",
+      "enum": [
+       "tree",
+       "flat",
+       "thread"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "parentId",
+     "required": false,
+     "schema": {
+      "description": "Parent reaction UUID for tree child counts or top-level reaction UUID for thread view",
+      "type": "string"
+     }
+    },
+    {
+     "name": "types",
+     "required": false,
+     "schema": {
+      "description": "Reaction types to include",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "ownerIds",
+     "required": false,
+     "schema": {
+      "description": "Reaction author identifiers to include",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Only reactions posted at or after this time (Unix milliseconds)",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Only reactions posted at or before this time (Unix milliseconds)",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "linkedActorId",
+     "required": false,
+     "schema": {
+      "description": "Only reactions whose extra.linkedActorId is this actor",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Counts reactions using the same filters as cursor reaction/list"
+  },
+  {
+   "name": "reaction/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": true,
+     "schema": {
+      "description": "Actor the reactions are under",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": true,
+     "schema": {
+      "description": "Reaction type: comment, done, freeze, rating, view, reject, sign or ds",
+      "enum": [
+       "comment",
+       "done",
+       "freeze",
+       "rating",
+       "view",
+       "reject",
+       "sign",
+       "ds"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "description",
+     "required": false,
+     "schema": {
+      "description": "Reaction text (the comment body)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "Reaction data; a string data.rid makes the call idempotent per author",
+      "type": "object"
+     }
+    },
+    {
+     "name": "appId",
+     "required": false,
+     "schema": {
+      "description": "Smart Form (an actor of the Scripts system template) to embed in the reaction",
+      "type": "string"
+     }
+    },
+    {
+     "name": "appSettings",
+     "required": false,
+     "schema": {
+      "description": "Settings of the embedded Smart Form",
+      "type": "object"
+     }
+    },
+    {
+     "name": "parentId",
+     "required": false,
+     "schema": {
+      "description": "Reaction to reply to",
+      "type": "string"
+     }
+    },
+    {
+     "name": "metaInfo",
+     "required": false,
+     "schema": {
+      "description": "Client metadata stored with the reaction",
+      "type": "object"
+     }
+    },
+    {
+     "name": "extra",
+     "required": false,
+     "schema": {
+      "description": "Presentation flags and, for a comment on a graph layer, its anchor",
+      "properties": {
+       "anchor": {
+        "description": "Where on a graph layer the comment belongs",
+        "properties": {
+         "actorId": {
+          "description": "Actor anchor: the actor the comment is attached to",
+          "type": "string"
+         },
+         "actorIds": {
+          "description": "Actors anchor: the actors the comment area covers",
+          "items": {
+           "type": "string"
+          },
+          "type": "array"
+         },
+         "color": {
+          "description": "Actors anchor: the region's tint, an #rrggbb actor-palette stop",
+          "type": "string"
+         },
+         "fallback": {
+          "description": "Actors anchor: marker position when the outline cannot be derived",
+          "properties": {
+           "x": {
+            "description": "X in graph coordinates",
+            "type": "number"
+           },
+           "y": {
+            "description": "Y in graph coordinates",
+            "type": "number"
+           }
+          },
+          "type": "object"
+         },
+         "kind": {
+          "description": "Anchor kind: point, actor or actors",
+          "enum": [
+           "point",
+           "actor",
+           "actors"
+          ],
+          "type": "string"
+         },
+         "origin": {
+          "description": "Actors anchor: the box the members occupied when the outline was drawn, so the region can follow them",
+          "properties": {
+           "h": {
+            "description": "Height in graph coordinates",
+            "minimum": 0,
+            "type": "number"
+           },
+           "w": {
+            "description": "Width in graph coordinates",
+            "minimum": 0,
+            "type": "number"
+           },
+           "x": {
+            "description": "Left edge in graph coordinates",
+            "type": "number"
+           },
+           "y": {
+            "description": "Top edge in graph coordinates",
+            "type": "number"
+           }
+          },
+          "type": "object"
+         },
+         "polygon": {
+          "description": "Actors anchor: the drawn lasso outline, used until placements are known",
+          "items": {
+           "type": "array"
+          },
+          "type": "array"
+         },
+         "x": {
+          "description": "Point anchor: X in graph coordinates",
+          "type": "number"
+         },
+         "y": {
+          "description": "Point anchor: Y in graph coordinates",
+          "type": "number"
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "type": "object"
+       },
+       "commentStyleType": {
+        "description": "How the comment bubble is rendered",
+        "enum": [
+         "primary",
+         "secondary",
+         "text"
+        ],
+        "type": "string"
+       },
+       "coordinates": {
+        "description": "Legacy position of a comment on a layer",
+        "properties": {
+         "x": {
+          "description": "X in graph coordinates",
+          "type": "number"
+         },
+         "y": {
+          "description": "Y in graph coordinates",
+          "type": "number"
+         }
+        },
+        "type": "object"
+       },
+       "layerPosition": {
+        "description": "Legacy, unused: position of a comment on a layer",
+        "properties": {
+         "x": {
+          "description": "X in graph coordinates",
+          "type": "number"
+         },
+         "y": {
+          "description": "Y in graph coordinates",
+          "type": "number"
+         }
+        },
+        "type": "object"
+       },
+       "linkedActorId": {
+        "description": "Actor embedded in the reaction as a preview",
+        "type": "string"
+       },
+       "mcp": {
+        "description": "Hand the reaction to the AI agent",
+        "type": "boolean"
+       },
+       "sipTranscription": {
+        "description": "Reaction came from a SIP transcription",
+        "type": "boolean"
+       }
+      },
+      "type": "object"
+     }
+    },
+    {
+     "name": "hidden",
+     "required": false,
+     "schema": {
+      "description": "Hide the reaction from users without execute access to the root actor",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "notify",
+     "required": false,
+     "schema": {
+      "default": true,
+      "description": "Whether to notify the root actor's participants",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "attachmentIds",
+     "required": false,
+     "schema": {
+      "description": "Uploaded files to attach to the reaction",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "sipTranscription",
+     "required": false,
+     "schema": {
+      "description": "Also write the reaction into the live meeting transcript of the root actor (flags extra.sipTranscription)",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: user (the author), attachments (attached files; attachments:user adds each uploader), parentActor (the reaction replied to; parentActor:user,attachments add its author and files), emojiReactions (emoji marks)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Creates a reaction (comment, rating, signature) on an actor"
+  },
+  {
+   "name": "reaction/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": true,
+     "schema": {
+      "description": "Actor the reactions are under",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Reaction to update",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "description",
+     "required": false,
+     "schema": {
+      "description": "New reaction text",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "New reaction data",
+      "type": "object"
+     }
+    },
+    {
+     "name": "appId",
+     "required": false,
+     "schema": {
+      "description": "Smart Form (an actor of the Scripts system template) to embed in the reaction",
+      "type": "string"
+     }
+    },
+    {
+     "name": "appSettings",
+     "required": false,
+     "schema": {
+      "description": "Settings of the embedded Smart Form",
+      "type": "object"
+     }
+    },
+    {
+     "name": "hidden",
+     "required": false,
+     "schema": {
+      "description": "Hide or show the reaction for users without execute access to the root actor",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "extra",
+     "required": false,
+     "schema": {
+      "description": "Presentation flags and, for a comment on a graph layer, its anchor",
+      "properties": {
+       "anchor": {
+        "description": "Where on a graph layer the comment belongs",
+        "properties": {
+         "actorId": {
+          "description": "Actor anchor: the actor the comment is attached to",
+          "type": "string"
+         },
+         "actorIds": {
+          "description": "Actors anchor: the actors the comment area covers",
+          "items": {
+           "type": "string"
+          },
+          "type": "array"
+         },
+         "color": {
+          "description": "Actors anchor: the region's tint, an #rrggbb actor-palette stop",
+          "type": "string"
+         },
+         "fallback": {
+          "description": "Actors anchor: marker position when the outline cannot be derived",
+          "properties": {
+           "x": {
+            "description": "X in graph coordinates",
+            "type": "number"
+           },
+           "y": {
+            "description": "Y in graph coordinates",
+            "type": "number"
+           }
+          },
+          "type": "object"
+         },
+         "kind": {
+          "description": "Anchor kind: point, actor or actors",
+          "enum": [
+           "point",
+           "actor",
+           "actors"
+          ],
+          "type": "string"
+         },
+         "origin": {
+          "description": "Actors anchor: the box the members occupied when the outline was drawn, so the region can follow them",
+          "properties": {
+           "h": {
+            "description": "Height in graph coordinates",
+            "minimum": 0,
+            "type": "number"
+           },
+           "w": {
+            "description": "Width in graph coordinates",
+            "minimum": 0,
+            "type": "number"
+           },
+           "x": {
+            "description": "Left edge in graph coordinates",
+            "type": "number"
+           },
+           "y": {
+            "description": "Top edge in graph coordinates",
+            "type": "number"
+           }
+          },
+          "type": "object"
+         },
+         "polygon": {
+          "description": "Actors anchor: the drawn lasso outline, used until placements are known",
+          "items": {
+           "type": "array"
+          },
+          "type": "array"
+         },
+         "x": {
+          "description": "Point anchor: X in graph coordinates",
+          "type": "number"
+         },
+         "y": {
+          "description": "Point anchor: Y in graph coordinates",
+          "type": "number"
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "type": "object"
+       },
+       "commentStyleType": {
+        "description": "How the comment bubble is rendered",
+        "enum": [
+         "primary",
+         "secondary",
+         "text"
+        ],
+        "type": "string"
+       },
+       "coordinates": {
+        "description": "Legacy position of a comment on a layer",
+        "properties": {
+         "x": {
+          "description": "X in graph coordinates",
+          "type": "number"
+         },
+         "y": {
+          "description": "Y in graph coordinates",
+          "type": "number"
+         }
+        },
+        "type": "object"
+       },
+       "layerPosition": {
+        "description": "Legacy, unused: position of a comment on a layer",
+        "properties": {
+         "x": {
+          "description": "X in graph coordinates",
+          "type": "number"
+         },
+         "y": {
+          "description": "Y in graph coordinates",
+          "type": "number"
+         }
+        },
+        "type": "object"
+       },
+       "linkedActorId": {
+        "description": "Actor embedded in the reaction as a preview",
+        "type": "string"
+       },
+       "mcp": {
+        "description": "Hand the reaction to the AI agent",
+        "type": "boolean"
+       },
+       "sipTranscription": {
+        "description": "Reaction came from a SIP transcription",
+        "type": "boolean"
+       }
+      },
+      "type": "object"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: user (the author), attachments (attached files; attachments:user adds each uploader), parentActor (the reaction replied to; parentActor:user,attachments add its author and files), emojiReactions (emoji marks)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Updates an existing reaction"
+  },
+  {
+   "name": "reaction/delete",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": true,
+     "schema": {
+      "description": "Actor the reactions are under",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Reaction to delete",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Deletes a reaction from an actor"
+  },
+  {
+   "name": "attachment/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "starred",
+     "required": false,
+     "schema": {
+      "description": "Only the files the calling user has starred",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "people",
+     "required": false,
+     "schema": {
+      "description": "Only files uploaded by these users",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "default": "createdAt",
+      "description": "Field to sort by: createdAt or updatedAt",
+      "enum": [
+       "createdAt",
+       "updatedAt"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "default": "DESC",
+      "description": "Sort direction: DESC or ASC",
+      "enum": [
+       "DESC",
+       "ASC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 100,
+      "description": "Maximum number of files to return (1-100)",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of files to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related facts to include: starred (adds starred, whether the calling user starred each file)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Lists attachments with pagination and filtering"
+  },
+  {
+   "name": "attachment/by-actor/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor whose files to list",
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "default": "createdAt",
+      "description": "Field to sort by: createdAt or updatedAt",
+      "enum": [
+       "createdAt",
+       "updatedAt"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "default": "DESC",
+      "description": "Sort direction: DESC or ASC",
+      "enum": [
+       "DESC",
+       "ASC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 100,
+      "description": "Maximum number of files to return (1-100)",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of files to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related facts to include: starred (adds starred, whether the calling user starred each file)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Lists all attachments for a specific actor"
+  },
+  {
+   "name": "attachment/attach",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor (or reaction) the files hang on",
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": false,
+     "schema": {
+      "description": "When actorId is a reaction: the actor the reaction is under",
+      "type": "string"
+     }
+    },
+    {
+     "name": "attachmentIds",
+     "required": true,
+     "schema": {
+      "description": "Attachment identifiers",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Attaches files to an actor or other entity"
+  },
+  {
+   "name": "attachment/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "attachmentId",
+     "required": true,
+     "schema": {
+      "description": "Attachment identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "title",
+     "required": true,
+     "schema": {
+      "description": "New file name; the original extension is appended when missing",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Updates attachment metadata and properties"
+  },
+  {
+   "name": "attachment/detach",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor (or reaction) the files hang on",
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": false,
+     "schema": {
+      "description": "When actorId is a reaction: the actor the reaction is under",
+      "type": "string"
+     }
+    },
+    {
+     "name": "attachmentIds",
+     "required": true,
+     "schema": {
+      "description": "Attachment identifiers",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Detaches files from an actor or entity"
+  },
+  {
+   "name": "user/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Search the users instead of listing them (matched by SuperAdmin)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 200,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists all users in the workspace with pagination"
+  },
+  {
+   "name": "user/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "userId",
+     "required": true,
+     "schema": {
+      "description": "User identifier",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Retrieves details of a specific user"
+  },
+  {
+   "name": "workspace/list",
+   "params": [
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Find workspaces by name instead of listing them all",
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists all available workspaces for the current user"
+  },
+  {
+   "name": "reaction/read/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": true,
+     "schema": {
+      "description": "Root actor identifier for hierarchical structures",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "count",
+     "required": false,
+     "schema": {
+      "description": "How many of the caller's unread reactions under the root actor are now read; the unread counter drops by it",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "time",
+     "required": false,
+     "schema": {
+      "description": "Unix seconds up to which the caller has read the thread; 0 or absent leaves the read mark as it is",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Marks reactions as read"
   }
  ]
 }

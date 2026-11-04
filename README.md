@@ -109,7 +109,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 24 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 32 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -142,21 +142,39 @@ scenarios use (see "AI Console profile").
 | `graph_list` [getRelatedActors] (hierarchy by default) | `graph/list` | ✓ | | ✓ |
 | `graph_get` [getActorLinks, getLinkedActors] | `graph/get` | ✓ | | ✓ |
 | `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
+| `access_rules_get` [getAccessRules, getTemplateActorsAccess, getTreeLayerAccess] (objType actor, formTemplate, templateActors, account) | `access_rule/<objType>/list` | ✓ | | |
+| `access_rules_save` [saveAccessRules, saveTemplateActorsAccess, saveTreeLayerAccess] (`mode` merge, or replace: everyone not named is revoked) | `access_rule/<objType>/share` (replace reads `…/list` first) | ✓ | | |
+| `reactions_list` [getReactions] · `reactions_count` · `reactions_mark_read` [markReactionsRead] | `reaction/list` · `reaction/count` · `reaction/read/update` | ✓ | | |
+| `reaction_create` · `reaction_update` · `reaction_delete` [createReaction, updateReaction, deleteReaction] | `reaction/create` · `reaction/update` · `reaction/delete` | ✓ | | |
+| `users_search` [searchUsers, getUsers] (without query a page of members) · `user_get` [getUser] · `workspaces_list` [getWorkspaces] | `user/list` · `user/get` · `workspace/list` | ✓ | | |
+| `attachments_list` [getAttachments] · `attachments_by_actor_list` [getActorAttachments] | `attachment/list` · `attachment/by-actor/list` | ✓ | | |
+| `attachment_attach` · `attachment_update` · `attachment_detach` [addAttachments, updateAttachment, removeAttachments] | `attachment/attach` · `attachment/update` · `attachment/detach` | ✓ | | |
+| `attachment_upload` (file bytes as base64, up to 700 KiB; `actorId` attaches it) | HTTP `POST /api/2.0/rest/upload` (multipart, ufs limits and antivirus), then `attachment/by-actor/list` confirms the link (`attachment/attach` only when an older stand did not make it) | ✓ | | |
+| `attachment_read` [readAttachment] (text up to 100 KiB; binary: type and size) | HTTP `GET /api/1.0/download/<fileName>` (425, or 404 from a stand serving files from ufs while it scans, retried; 403 quarantine) | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at 908569b8 or later (`cdu/catalog/get` !463,
+These tools need sim-api `feature/simulator-ai` at a4f6d229 or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
 with reason `methodNotFound`.
 
+An AI Console run's token reaches `rest/upload` (and no other REST route) through sim-api !481
+(`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand
+serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
+retried for several seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
+`simulator-ai-attachments`, `simulator-ai-chat` and `simulator-ai-tasks` compose these tools.
+
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
-too large for this slice. Every other actor, form and graph tool is above.
+too large for this slice; requestAccess, whose public `access_rule/actor/request/*` methods (!480) are not yet on
+`feature/simulator-ai`. Out of scope by the owner's decision: pinned reactions, uploadBase64 and data-field actors
+by form.
 
 ## AI Console profile
 
 Every tool schema rides in the model context on every turn, so `SIMULATOR_AI_PROFILE=console` is the core
 catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, `actor_update`, `actors_search`,
-`form_get`, `forms_list`, `graph_get`, the flowchart tools and the Smart Form tools below, 24 in all
-(36.2 KiB of tool JSON, 28.6 KiB without output schemas). `console-full` adds every other actor, form and graph
-tool (62 tools, 81.6 KiB). Parameter descriptions are cut to their first sentence and nested fields keep only
+`actor_by_ref_get`, `form_get`, `forms_list`, `graph_get`, the flowchart tools, the Smart Form tools below and,
+for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
+`access_rules_save`, `attachment_upload` and `attachment_read`: 32 in all. `console-full` adds every other actor,
+form, graph, reaction, user and attachment tool (80 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of

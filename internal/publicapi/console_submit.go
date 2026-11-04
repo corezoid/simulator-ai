@@ -66,8 +66,8 @@ func (c *Client) CreateDataForm(ctx context.Context, in DataFormInput) (DataForm
 	if e := consoleOnly(c); e != nil {
 		return DataForm{}, e
 	}
-	if !validTitle(in.Title, false) || len(in.Fields) < 1 || len(in.Fields) > 50 || utf8.RuneCountInString(in.SuccessMessage) > 200 || len(in.AppID) > 255 {
-		return DataForm{}, errors.New("a title, 1..50 fields, a success message up to 200 characters and an appId up to 255 required")
+	if !validTitle(in.Title, false) || len(in.Fields) < 1 || len(in.Fields) > 50 || utf8.RuneCountInString(in.SuccessMessage) > 200 || len(in.AppID) > 64 {
+		return DataForm{}, errors.New("a title, 1..50 fields, a success message up to 200 characters and an appId up to 64 characters required")
 	}
 	seen := map[string]bool{}
 	fields := make([]templateField, len(in.Fields))
@@ -177,7 +177,7 @@ func dataPage(in DataFormInput, formID int64, workspace string) pageNode {
 		"children": []any{pageNode{"id": dataFormNode, "type": "Form", "props": pageNode{"valueKey": dataFormNode, "fields": rules}, "children": children}}}}
 }
 
-// literal keeps text of the agent's a literal: the renderer resolves every string holding {{, so
+// literal keeps the agent's text literal: the renderer resolves every string holding {{, so
 // such text becomes a JSONata string literal with its braces escaped (one {{ … }} in all).
 func literal(s string) string {
 	if !strings.Contains(s, "{{") {
