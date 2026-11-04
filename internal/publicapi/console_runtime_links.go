@@ -99,6 +99,16 @@ type dynamicRouteRequest struct {
 // without one gets the legacy web app URL, marked legacy.
 func (c *Client) runtimeLink(ctx context.Context, in LinkInput) (Link, error) {
 	key, err := c.appKey(ctx, in)
+	if err != nil && in.AppKey == "" {
+		// The Smart Form appId names has no key to read (never released, or route/key/get refused):
+		// the legacy URL still links the entity, marked as opening outside the current form.
+		legacy, lerr := c.legacyLink(in)
+		legacy.Legacy = true
+		if lerr != nil {
+			return Link{}, fmt.Errorf("%w; and no legacy URL either: %v", err, lerr)
+		}
+		return legacy, nil
+	}
 	if err != nil {
 		return Link{}, err
 	}

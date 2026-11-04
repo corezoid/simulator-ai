@@ -54,13 +54,23 @@ type memberRow struct {
 	SAID int64 `json:"saId"`
 }
 
+// caller is who chat_open acts as. Trusted: the id came from the credential's own member row.
+// Otherwise ID is the selfUserId the model passed, and SAID, when the credential names one, still
+// tells whose rule on a chat is the caller's.
+type caller struct {
+	ID      int64
+	Trusted bool
+	SAID    int64
+}
+
 // selfUserID is the caller's platform userId. From a Simulator JWT it is the member whose saId the
 // token names (searched by its nick first, then the member list): trusted, and an argument that
-// differs is refused. Any other credential takes the argument as it is, untrusted.
-func (c *Client) selfUserID(ctx context.Context, claimed int64) (id int64, trusted bool, err error) {
+// differs is refused. user/list needs the viewUsers permission, which an ordinary member lacks: on
+// accessDenied, and with any other credential, the argument is taken as it is, untrusted.
+func (c *Client) selfUserID(ctx context.Context, claimed int64) (caller, error) {
 	user, ok := c.credentialUser()
 	if !ok {
-		return claimed, false, nil
+		return caller{ID: claimed}, nil
 	}
 	find := func(query string, offset int) (int64, int, error) {
 		params := map[string]any{"accId": c.config.Workspace, "limit": 200, "offset": offset}
@@ -71,7 +81,7 @@ func (c *Client) selfUserID(ctx context.Context, claimed int64) (id int64, trust
 			List []memberRow `json:"list"`
 		}](ctx, c, "user/list", params)
 		if err != nil {
-			return 0, 0, fmt.Errorf("user/list: %w", err)
+			return 0, 0, err
 		}
 		for _, m := range page.List {
 			if m.SAID == user.SAID && m.ID > 0 {
@@ -80,45 +90,45 @@ func (c *Client) selfUserID(ctx context.Context, claimed int64) (id int64, trust
 		}
 		return 0, len(page.List), nil
 	}
+	var id int64
+	var err error
 	if user.Nick != "" {
-		if id, _, err = find(user.Nick, 0); err != nil || id != 0 {
-			return c.checkClaimed(id, claimed, err)
-		}
+		id, _, err = find(user.Nick, 0)
 	}
-	for offset := 0; offset < 2000; offset += 200 {
+	for offset := 0; err == nil && id == 0 && offset < 2000; offset += 200 {
 		var n int
-		if id, n, err = find("", offset); err != nil || id != 0 || n < 200 {
+		if id, n, err = find("", offset); n < 200 {
 			break
 		}
 	}
-	if err == nil && id == 0 {
-		err = errors.New("the user your credential names is not a member of this workspace")
-	}
-	return c.checkClaimed(id, claimed, err)
-}
-
-func (c *Client) checkClaimed(id, claimed int64, err error) (int64, bool, error) {
+	var api *APIError
 	switch {
+	case errors.As(err, &api) && api.Reason == "accessDenied":
+		return caller{ID: claimed, SAID: user.SAID}, nil
 	case err != nil:
-		return 0, false, err
+		return caller{}, fmt.Errorf("user/list: %w", err)
+	case id == 0:
+		return caller{}, errors.New("the user your credential names is not a member of this workspace")
 	case claimed != 0 && claimed != id:
-		return 0, false, fmt.Errorf("selfUserId %d is not you: you are user %d", claimed, id)
+		return caller{}, fmt.Errorf("selfUserId %d is not you: you are user %d", claimed, id)
 	}
-	return id, true, nil
+	return caller{ID: id, Trusted: true, SAID: user.SAID}, nil
 }
 
-// isParticipant says whether the user holds an access rule on the actor (its owner included).
-func (c *Client) isParticipant(ctx context.Context, actorID string, userID int64) (bool, error) {
+// isParticipant says whether the caller holds an access rule on the actor (its owner included):
+// the rule of its userId and, when the credential names a SuperAdmin id, of that saId too.
+func (c *Client) isParticipant(ctx context.Context, actorID string, who caller) (bool, error) {
 	rules, err := call[map[string]any, struct {
 		List []struct {
 			UserID int64 `json:"userId"`
+			SAID   int64 `json:"saId"`
 		} `json:"list"`
 	}](ctx, c, "access_rule/actor/list", map[string]any{"accId": c.config.Workspace, "actorId": actorID})
 	if err != nil {
 		return false, fmt.Errorf("access_rule/actor/list: %w", err)
 	}
 	for _, r := range rules.List {
-		if r.UserID == userID {
+		if r.UserID == who.ID && (who.SAID == 0 || r.SAID == who.SAID) {
 			return true, nil
 		}
 	}

@@ -92,3 +92,20 @@ func TestEncodeURIComponent(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+// No key for appId's Smart Form: the legacy URL, marked; a bad appKey given by the model still fails.
+func TestRuntimeLinkWithoutAKey(t *testing.T) {
+	c, _ := rpcBackend(t, func(method string) string {
+		if method == "route/key/get" {
+			return notFound
+		}
+		return `{}`
+	})
+	got, err := c.BuildLink(context.Background(), LinkInput{Entity: "actor", ID: "a1", AppID: "app1"})
+	if err != nil || !got.Legacy || !strings.HasSuffix(got.URL, "/actors_graph/ws/view/a1") {
+		t.Fatal(got, err)
+	}
+	if _, err := c.BuildLink(context.Background(), LinkInput{Entity: "actor", AppID: "app1"}); err == nil {
+		t.Fatal("an actor link without id was built")
+	}
+}

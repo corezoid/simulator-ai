@@ -30,6 +30,8 @@ type ChatOpened struct {
 	Type         string  `json:"type"`
 	Created      bool    `json:"created"`
 	Participants []int64 `json:"participants"`
+	// Notified says the other side of a new p2p chat was told about it.
+	Notified bool `json:"notified,omitempty"`
 }
 
 // chatPrivs are what the web UI gives a chat participant.
@@ -59,11 +61,11 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 		return ChatOpened{}, err
 	}
 	if in.Type == "group" {
-		out, _, err := c.createChat(ctx, events, in, in.Title, "")
+		out, _, err := c.createChat(ctx, events, in, in.Title, "", false)
 		return out, err
 	}
-	self, trusted, err := c.selfUserID(ctx, in.SelfUserID)
-	other := in.UserIDs[0]
+	who, err := c.selfUserID(ctx, in.SelfUserID)
+	self, other := who.ID, in.UserIDs[0]
 	switch {
 	case err != nil:
 		return ChatOpened{}, err
@@ -73,12 +75,12 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 	in.SelfUserID = self
 	ref := fmt.Sprintf("p2pConversation_%d_%d", min(self, other), max(self, other))
 	// reuse answers an existing chat. An admin sees chats of others, so an id the model gave (not
-	// the credential's) must be one of the chat's people.
+	// the credential's) must be one of the chat's people, with the credential's saId when it names one.
 	reuse := func(found ChatOpened) (ChatOpened, error) {
-		if trusted {
+		if who.Trusted {
 			return found, nil
 		}
-		member, err := c.isParticipant(ctx, found.ChatID, self)
+		member, err := c.isParticipant(ctx, found.ChatID, who)
 		if err == nil && !member {
 			err = fmt.Errorf("selfUserId %d is not a participant of chat %s: pass the userId of the user you act for", self, found.ChatID)
 		}
@@ -93,11 +95,13 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 		}
 		return reuse(found)
 	}
-	title, err := c.p2pTitle(ctx, min(self, other), max(self, other))
+	title, err := c.p2pTitle(ctx, min(self, other), max(self, other), self)
 	if err != nil {
 		return ChatOpened{}, err
 	}
-	out, owner, err := c.createChat(ctx, events, in, title, ref)
+	// The web UI tells the other side of a new p2p chat. Only a caller known from the credential is
+	// notified for at once; otherwise after the creator is checked, so a wrong id notifies nobody.
+	out, owner, err := c.createChat(ctx, events, in, title, ref, who.Trusted)
 	if err != nil {
 		// The ref is unique within the template: a chat created meanwhile is the one to reuse.
 		if found, again := c.chatByRef(ctx, events, ref, other); again == nil && found.ChatID != "" {
@@ -106,7 +110,16 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 		return ChatOpened{}, err
 	}
 	if owner != self {
-		return ChatOpened{}, fmt.Errorf("chat %s was created by user %d, not selfUserId %d, so its ref names someone else: delete it and pass the userId the request names", out.ChatID, owner, self)
+		// The ref names someone else: take the quiet, just-made chat back.
+		if _, derr := call[map[string]any, json.RawMessage](ctx, c, "actor/delete", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID}); derr != nil {
+			return ChatOpened{}, fmt.Errorf("selfUserId %d is not you (chat %s was created by user %d) and the chat could not be deleted (%v): delete it, then pass the userId the request names", self, out.ChatID, owner, derr)
+		}
+		return ChatOpened{}, fmt.Errorf("selfUserId %d is not you: the chat was created by user %d and removed again; pass the userId the request names", self, owner)
+	}
+	out.Notified = who.Trusted
+	if !who.Trusted {
+		_, err := call[map[string]any, json.RawMessage](ctx, c, "access_rule/actor/share", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID, "actions": []accessAction{{Action: "create", UserID: other, Privs: chatPrivs}}, "isNotify": true})
+		out.Notified = err == nil
 	}
 	return out, nil
 }
@@ -129,7 +142,7 @@ func (c *Client) chatByRef(ctx context.Context, events int64, ref string, other 
 
 // createChat creates the chat and shares it with the participants in one atomic batch; it answers
 // the chat and its creator.
-func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput, title, ref string) (ChatOpened, int64, error) {
+func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput, title, ref string, notify bool) (ChatOpened, int64, error) {
 	now := time.Now().Unix()
 	chat := map[string]any{"accId": c.config.Workspace, "formId": events, "title": title, "data": map[string]any{"chatType": in.Type, "startDate": now, "endDate": now, "scheduleMeeting": false}, "fields": []string{"id", "userId"}}
 	if ref != "" {
@@ -141,8 +154,7 @@ func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput,
 	}
 	results, err := c.atomicItems(ctx, []atomicItem{
 		{Method: "actor/create", Params: chat},
-		// The web UI tells the other side of a p2p chat it was opened; group invitations stay quiet.
-		{Method: "access_rule/actor/share", Params: map[string]any{"accId": c.config.Workspace, "actorId": "$0.id", "actions": actions, "isNotify": in.Type == "p2p"}, UseRefs: true},
+		{Method: "access_rule/actor/share", Params: map[string]any{"accId": c.config.Workspace, "actorId": "$0.id", "actions": actions, "isNotify": notify}, UseRefs: true},
 	})
 	if err != nil {
 		return ChatOpened{}, 0, err
@@ -157,13 +169,17 @@ func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput,
 	return ChatOpened{ChatID: created.ID, Title: title, Type: in.Type, Created: true, Participants: in.UserIDs}, created.UserID, nil
 }
 
-// p2pTitle is the web UI's p2p title from the two nicks, an id standing in for a nick it cannot read.
-func (c *Client) p2pTitle(ctx context.Context, low, high int64) (string, error) {
+// p2pTitle is the web UI's p2p title from the two nicks. user/get needs viewUsers: the caller's own
+// nick then comes from the credential, and an id stands in for a nick nothing gives.
+func (c *Client) p2pTitle(ctx context.Context, low, high, self int64) (string, error) {
 	users, err := c.PassEach(ctx, "user/get", []map[string]json.RawMessage{rawParams(map[string]any{"userId": low}), rawParams(map[string]any{"userId": high})})
 	if err != nil {
 		return "", err
 	}
 	nicks := []string{strconv.FormatInt(low, 10), strconv.FormatInt(high, 10)}
+	if user, ok := c.credentialUser(); ok && user.Nick != "" {
+		nicks[map[bool]int{true: 0, false: 1}[self == low]] = user.Nick
+	}
 	for i, r := range users {
 		var u struct {
 			Nick string `json:"nick"`

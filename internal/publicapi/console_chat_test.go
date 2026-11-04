@@ -68,29 +68,45 @@ func TestOpenChatCreatesAndSharesAtomically(t *testing.T) {
 	if err != nil || out.ChatID != "chat-1" || !out.Created || out.Title != "Olena:p2p:Ivan" {
 		t.Fatal(out, err)
 	}
-	last, _ := json.Marshal((*calls)[len(*calls)-1].Params)
+	// The id came from the model, not the credential: the batch shares quietly, and the other side is
+	// notified only once the chat's creator proved to be that id.
+	batch, _ := json.Marshal((*calls)[len(*calls)-2].Params)
 	for _, want := range []string{
 		`"isAtomic":true`,
 		`"method":"actor/create","params":{"accId":"ws","data":{"chatType":"p2p"`,
 		`"ref":"p2pConversation_5_12","title":"Olena:p2p:Ivan"}`,
-		`"method":"access_rule/actor/share","params":{"accId":"ws","actions":[{"action":"create","privs":{"modify":true,"remove":true,"view":true},"userId":5}],"actorId":"$0.id","isNotify":true},"useRefs":true`,
+		`"method":"access_rule/actor/share","params":{"accId":"ws","actions":[{"action":"create","privs":{"modify":true,"remove":true,"view":true},"userId":5}],"actorId":"$0.id","isNotify":false},"useRefs":true`,
 	} {
-		if !strings.Contains(string(last), want) {
-			t.Errorf("batch lacks %s: %s", want, last)
+		if !strings.Contains(string(batch), want) {
+			t.Errorf("batch lacks %s: %s", want, batch)
 		}
 	}
+	last := methods(*calls)[len(*calls)-1]
+	if last != `access_rule/actor/share {"accId":"ws","actions":[{"action":"create","privs":{"modify":true,"remove":true,"view":true},"userId":5}],"actorId":"chat-1","isNotify":true}` || !out.Notified {
+		t.Fatal("the notification after the check:", last, out.Notified)
+	}
 	for _, m := range methods(*calls) {
-		if strings.HasPrefix(m, "actor/update") || strings.HasPrefix(m, "access_rule/actor/share") {
-			t.Error("the chat is named and shared inside the atomic batch, not after it:", m)
+		if strings.HasPrefix(m, "actor/update") {
+			t.Error("the chat is named inside the atomic batch, not after it:", m)
 		}
 	}
 }
 
-// A selfUserId that is not the caller is caught: the chat's creator is someone else.
+// A selfUserId that is not the caller is caught by the chat's creator: the quiet chat is deleted
+// again and nobody is notified.
 func TestOpenChatRefusesAForeignSelf(t *testing.T) {
-	c, _ := chatBackend(t, "")
-	if _, err := c.OpenChat(context.Background(), ChatOpenInput{Type: "p2p", UserIDs: []int64{5}, SelfUserID: 77}); err == nil || !strings.Contains(err.Error(), "not selfUserId 77") {
+	c, calls := chatBackend(t, "")
+	if _, err := c.OpenChat(context.Background(), ChatOpenInput{Type: "p2p", UserIDs: []int64{5}, SelfUserID: 77}); err == nil || !strings.Contains(err.Error(), "selfUserId 77 is not you") {
 		t.Fatal(err)
+	}
+	got := methods(*calls)
+	if last := got[len(got)-1]; last != `actor/delete {"accId":"ws","actorId":"chat-1"}` {
+		t.Fatal("the wrong chat was not taken back:", got)
+	}
+	for _, m := range got {
+		if strings.Contains(m, `"isNotify":true`) {
+			t.Error("a wrong selfUserId notified someone:", m)
+		}
 	}
 }
 
