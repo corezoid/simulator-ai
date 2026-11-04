@@ -27,6 +27,10 @@ type parityTool struct {
 	Params []string
 	// RandomColor sends a random editor palette colour when no color is given.
 	RandomColor bool
+	// Destructive hints that the call cannot be undone or replaces what it touches.
+	Destructive bool
+	// Idempotent hints that a repeat of a write returns the same result and changes nothing more.
+	Idempotent bool
 	// Strip drops these keys (a dot path into the result object) from the answer the model sees.
 	Strip []string
 }
@@ -52,10 +56,10 @@ func addParity(s *server.MCPServer, c *publicapi.Client, tools []parityTool) {
 		}
 		m := publicapi.ParityMethods[t.Method]
 		// manage takes delete items and move takes placements off the source layer.
-		destructive := strings.HasSuffix(t.Method, "/delete") || t.Method == "graph/layer/clean" || t.Method == "graph/layer/actors/manage" || t.Method == "graph/layer/actors/move" || t.Method == "attachment/detach" ||
+		destructive := t.Destructive || strings.HasSuffix(t.Method, "/delete") || t.Method == "graph/layer/clean" || t.Method == "graph/layer/actors/manage" || t.Method == "graph/layer/actors/move" || t.Method == "attachment/detach" ||
 			t.Method == "access_rule/actor/request/confirm" || t.Method == "access_rule/actor/request/cancel" // grant or turn down another user's access
 		tool := mcp.NewTool(t.Name, mcp.WithDescription(t.Description+" Public "+t.Method+"."), mcp.WithRawInputSchema(schema),
-			mcp.WithReadOnlyHintAnnotation(!m.Write), mcp.WithDestructiveHintAnnotation(destructive), mcp.WithIdempotentHintAnnotation(!m.Write))
+			mcp.WithReadOnlyHintAnnotation(!m.Write), mcp.WithDestructiveHintAnnotation(destructive), mcp.WithIdempotentHintAnnotation(!m.Write || t.Idempotent))
 		s.AddTool(tool, parityHandler(c, t))
 	}
 }

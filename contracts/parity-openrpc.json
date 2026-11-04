@@ -6031,6 +6031,3614 @@
     }
    ],
    "summary": "Cancel a pending request access invite"
+  },
+  {
+   "name": "account/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Creates a new account with specified name and currency"
+  },
+  {
+   "name": "account/delete",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Deletes an account and removes all associated access rules"
+  },
+  {
+   "name": "account_actor/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "default": "fact",
+      "description": "Account type: fact, plan, or a statistical aggregate min, max, avg",
+      "enum": [
+       "fact",
+       "plan",
+       "min",
+       "max",
+       "avg"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "search",
+     "required": false,
+     "schema": {
+      "description": "Whether search is enabled",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "minLimit",
+     "required": false,
+     "schema": {
+      "description": "Minimum limit",
+      "type": "number"
+     }
+    },
+    {
+     "name": "maxLimit",
+     "required": false,
+     "schema": {
+      "description": "Maximum limit",
+      "type": "number"
+     }
+    },
+    {
+     "name": "commissionServiceUrl",
+     "required": false,
+     "schema": {
+      "description": "Commission service URL",
+      "type": "string"
+     }
+    },
+    {
+     "name": "limitServiceUrl",
+     "required": false,
+     "schema": {
+      "description": "Limit service URL",
+      "type": "string"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: meta (account name and currency labels)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Creates a new financial account for a specific actor"
+  },
+  {
+   "name": "account_actor/by-ref/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ref",
+     "required": true,
+     "schema": {
+      "description": "Ref of the actor within formId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "default": "fact",
+      "description": "Account type: fact, plan, or a statistical aggregate min, max, avg",
+      "enum": [
+       "fact",
+       "plan",
+       "min",
+       "max",
+       "avg"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "search",
+     "required": false,
+     "schema": {
+      "description": "Whether search is enabled",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "minLimit",
+     "required": false,
+     "schema": {
+      "description": "Minimum limit",
+      "type": "number"
+     }
+    },
+    {
+     "name": "maxLimit",
+     "required": false,
+     "schema": {
+      "description": "Maximum limit",
+      "type": "number"
+     }
+    },
+    {
+     "name": "commissionServiceUrl",
+     "required": false,
+     "schema": {
+      "description": "Commission service URL",
+      "type": "string"
+     }
+    },
+    {
+     "name": "limitServiceUrl",
+     "required": false,
+     "schema": {
+      "description": "Limit service URL",
+      "type": "string"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: meta (account name and currency labels)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Creates a new account for an actor identified by account template and reference"
+  },
+  {
+   "name": "account_actor/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "description": "Account type: fact or plan, or an aggregate (min, max, avg) — a separate row legacy keeps next to the fact pair, whose balance is a counter aggregate. Defaults to fact when neither accountType nor accountTypes is given; mutually exclusive with accountTypes",
+      "enum": [
+       "fact",
+       "plan",
+       "min",
+       "max",
+       "avg"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountTypes",
+     "required": false,
+     "schema": {
+      "description": "Several account types at once (fact, plan, min, max, avg); mutually exclusive with accountType. Rows are ordered by name, currency, type name (alphabetical), then income side. A page holds ROWS, not pairs: with several types a pair is up to 10 rows (5 types x 2 income sides), so limit can cut a pair across two pages; count with countBy=pair counts pairs",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": false,
+     "schema": {
+      "description": "Account name identifier; mutually exclusive with nameIds",
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": false,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Income type filter",
+      "type": "string"
+     }
+    },
+    {
+     "name": "amountFrom",
+     "required": false,
+     "schema": {
+      "description": "Lower bound (inclusive) on the STORED available balance (amount minus hold). Compares the ledger column, not a from/to window and not a formula's or analytic counter's resolved value; rejected for aggregate account types, which have no stored balance",
+      "type": "number"
+     }
+    },
+    {
+     "name": "amountTo",
+     "required": false,
+     "schema": {
+      "description": "Upper bound (inclusive) on the STORED available balance (amount minus hold). Same caveats as amountFrom",
+      "type": "number"
+     }
+    },
+    {
+     "name": "tag",
+     "required": false,
+     "schema": {
+      "description": "Only the pairs filed under this tag actor",
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Case-insensitive substring of the account NAME (legacy query); LIKE metacharacters are matched literally",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameIds",
+     "required": false,
+     "schema": {
+      "description": "Only the accounts under any of these account names; mutually exclusive with nameId. Meant for reading the statistics (min, max, avg) of the pairs one page of fact rows shows: pass that page's names with accountTypes. A name still yields up to 10 rows, so page the read like any other",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "untagged",
+     "required": false,
+     "schema": {
+      "description": "Only accounts filed under no tag (legacy 'ungrouped'); ignored when tag is given",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Balance window start, unix MILLISECONDS; omitted, the balance is the running total",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Balance window end, unix MILLISECONDS. Alone it means the balance AS AT that moment",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "default": "nameId",
+      "description": "Sort key, a fact about the PAIR so its two legs stay adjacent: nameId (default, legacy order), name (account name title), amount (credit minus debit of the STORED available amount; rejected for aggregate types), createdAt, updatedAt",
+      "enum": [
+       "nameId",
+       "name",
+       "amount",
+       "createdAt",
+       "updatedAt"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "default": "ASC",
+      "description": "Sort direction (ASC, DESC)",
+      "enum": [
+       "ASC",
+       "DESC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Accepted but not applied yet: every row carries all its keys",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: meta (account name and currency labels), triggers, tags",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of rows to return (with accountTypes a pair is up to 10 rows, so size the page for it)",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists all accounts associated with a specific actor"
+  },
+  {
+   "name": "account_actor/count",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "description": "Account type: fact or plan, or an aggregate (min, max, avg) — a separate row legacy keeps next to the fact pair, whose balance is a counter aggregate. Defaults to fact when neither accountType nor accountTypes is given; mutually exclusive with accountTypes",
+      "enum": [
+       "fact",
+       "plan",
+       "min",
+       "max",
+       "avg"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountTypes",
+     "required": false,
+     "schema": {
+      "description": "Several account types at once (fact, plan, min, max, avg); mutually exclusive with accountType. Rows are ordered by name, currency, type name (alphabetical), then income side. A page holds ROWS, not pairs: with several types a pair is up to 10 rows (5 types x 2 income sides), so limit can cut a pair across two pages; count with countBy=pair counts pairs",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": false,
+     "schema": {
+      "description": "Account name identifier; mutually exclusive with nameIds",
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": false,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Income type filter",
+      "type": "string"
+     }
+    },
+    {
+     "name": "amountFrom",
+     "required": false,
+     "schema": {
+      "description": "Lower bound (inclusive) on the STORED available balance (amount minus hold). Compares the ledger column, not a from/to window and not a formula's or analytic counter's resolved value; rejected for aggregate account types, which have no stored balance",
+      "type": "number"
+     }
+    },
+    {
+     "name": "amountTo",
+     "required": false,
+     "schema": {
+      "description": "Upper bound (inclusive) on the STORED available balance (amount minus hold). Same caveats as amountFrom",
+      "type": "number"
+     }
+    },
+    {
+     "name": "tag",
+     "required": false,
+     "schema": {
+      "description": "Only the pairs filed under this tag actor",
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Case-insensitive substring of the account NAME (legacy query); LIKE metacharacters are matched literally",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameIds",
+     "required": false,
+     "schema": {
+      "description": "Only the accounts under any of these account names; mutually exclusive with nameId. Meant for reading the statistics (min, max, avg) of the pairs one page of fact rows shows: pass that page's names with accountTypes. A name still yields up to 10 rows, so page the read like any other",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "untagged",
+     "required": false,
+     "schema": {
+      "description": "Only accounts filed under no tag (legacy 'ungrouped'); ignored when tag is given",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "countBy",
+     "required": false,
+     "schema": {
+      "default": "row",
+      "description": "What to count: row (default, matches list paging) or pair (account name + currency)",
+      "enum": [
+       "row",
+       "pair"
+      ],
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Counts accounts associated with a specific actor with optional filters"
+  },
+  {
+   "name": "account_actor/by-ref/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ref",
+     "required": true,
+     "schema": {
+      "description": "Ref of the actor within formId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "description": "Account type: fact or plan, or an aggregate (min, max, avg) — a separate row legacy keeps next to the fact pair, whose balance is a counter aggregate. Defaults to fact when neither accountType nor accountTypes is given; mutually exclusive with accountTypes",
+      "enum": [
+       "fact",
+       "plan",
+       "min",
+       "max",
+       "avg"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountTypes",
+     "required": false,
+     "schema": {
+      "description": "Several account types at once (fact, plan, min, max, avg); mutually exclusive with accountType. Rows are ordered by name, currency, type name (alphabetical), then income side. A page holds ROWS, not pairs: with several types a pair is up to 10 rows (5 types x 2 income sides), so limit can cut a pair across two pages; count with countBy=pair counts pairs",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": false,
+     "schema": {
+      "description": "Account name identifier; mutually exclusive with nameIds",
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": false,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Income type filter",
+      "type": "string"
+     }
+    },
+    {
+     "name": "amountFrom",
+     "required": false,
+     "schema": {
+      "description": "Lower bound (inclusive) on the STORED available balance (amount minus hold). Compares the ledger column, not a from/to window and not a formula's or analytic counter's resolved value; rejected for aggregate account types, which have no stored balance",
+      "type": "number"
+     }
+    },
+    {
+     "name": "amountTo",
+     "required": false,
+     "schema": {
+      "description": "Upper bound (inclusive) on the STORED available balance (amount minus hold). Same caveats as amountFrom",
+      "type": "number"
+     }
+    },
+    {
+     "name": "tag",
+     "required": false,
+     "schema": {
+      "description": "Only the pairs filed under this tag actor",
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Case-insensitive substring of the account NAME (legacy query); LIKE metacharacters are matched literally",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameIds",
+     "required": false,
+     "schema": {
+      "description": "Only the accounts under any of these account names; mutually exclusive with nameId. Meant for reading the statistics (min, max, avg) of the pairs one page of fact rows shows: pass that page's names with accountTypes. A name still yields up to 10 rows, so page the read like any other",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "default": "nameId",
+      "description": "Sort key, a fact about the PAIR so its two legs stay adjacent: nameId (default, legacy order), name (account name title), amount (credit minus debit of the STORED available amount; rejected for aggregate types), createdAt, updatedAt",
+      "enum": [
+       "nameId",
+       "name",
+       "amount",
+       "createdAt",
+       "updatedAt"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderValue",
+     "required": false,
+     "schema": {
+      "default": "ASC",
+      "description": "Sort direction (ASC, DESC)",
+      "enum": [
+       "ASC",
+       "DESC"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "fields",
+     "required": false,
+     "schema": {
+      "description": "Accepted but not applied yet: every row carries all its keys",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: meta (account name and currency labels), triggers, tags",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of rows to return (with accountTypes a pair is up to 10 rows, so size the page for it)",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists accounts for an actor identified by account template and reference with filters"
+  },
+  {
+   "name": "account_actor/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "description": "Account type: fact or plan, or an aggregate (min, max, avg) — a separate row legacy keeps next to the fact pair, whose balance is a counter aggregate. Defaults to fact; mutually exclusive with accountTypes",
+      "enum": [
+       "fact",
+       "plan",
+       "min",
+       "max",
+       "avg"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountTypes",
+     "required": false,
+     "schema": {
+      "description": "Several account types read in one call (e.g. [\"fact\",\"plan\"]); each row carries its own type and a type with no rows is absent. Mutually exclusive with accountType",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Narrow to one income side",
+      "enum": [
+       "credit",
+       "debit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: meta (account name and currency labels), triggers, tags",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Retrieves the actor's account pair at (nameId, currencyId, accountType or accountTypes), optionally narrowed to one income side"
+  },
+  {
+   "name": "account_actor/by-ref/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ref",
+     "required": true,
+     "schema": {
+      "description": "Ref of the actor within formId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "description": "Account type: fact or plan, or an aggregate (min, max, avg) — a separate row legacy keeps next to the fact pair, whose balance is a counter aggregate. Defaults to fact; mutually exclusive with accountTypes",
+      "enum": [
+       "fact",
+       "plan",
+       "min",
+       "max",
+       "avg"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountTypes",
+     "required": false,
+     "schema": {
+      "description": "Several account types read in one call (e.g. [\"fact\",\"plan\"]); each row carries its own type and a type with no rows is absent. Mutually exclusive with accountType",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Narrow to one income side",
+      "enum": [
+       "credit",
+       "debit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: meta (account name and currency labels), triggers, tags",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Retrieves the account pair of the actor resolved by (formId, ref) at accountType or accountTypes, optionally narrowed to one income side"
+  },
+  {
+   "name": "account_actor/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "default": "fact",
+      "description": "Account type (default fact)",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "search",
+     "required": false,
+     "schema": {
+      "description": "Include the pair in search (default true, legacy)",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "minLimit",
+     "required": false,
+     "schema": {
+      "description": "Minimum balance limit; omitted clears the column WITHOUT a marker transaction (legacy quirk)",
+      "type": "number"
+     }
+    },
+    {
+     "name": "maxLimit",
+     "required": false,
+     "schema": {
+      "description": "Maximum balance limit; same omission semantics",
+      "type": "number"
+     }
+    },
+    {
+     "name": "limitServiceUrl",
+     "required": false,
+     "schema": {
+      "description": "External limit service URL; omitted clears it",
+      "type": "string"
+     }
+    },
+    {
+     "name": "commissionServiceUrl",
+     "required": false,
+     "schema": {
+      "description": "External commission service URL; omitted clears it",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Updates the pair's tunables (limits, search, service URLs); a changed limit records a min/maxLimitChanged marker transaction through the ledger engine"
+  },
+  {
+   "name": "account_actor/status/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Account row identifier: one income side of a pair",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "status",
+     "required": true,
+     "schema": {
+      "description": "New status: active (unblock) or blocked (block)",
+      "enum": [
+       "active",
+       "blocked"
+      ],
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Updates the status of an account associated with an actor"
+  },
+  {
+   "name": "account_actor/delete",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Account row identifier: one income side of a pair",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Deletes an account associated with a specific actor"
+  },
+  {
+   "name": "account_currency/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "name",
+     "required": true,
+     "schema": {
+      "description": "Currency name, unique within the workspace",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "symbol",
+     "required": false,
+     "schema": {
+      "description": "Currency symbol, e.g. €",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "precision",
+     "required": false,
+     "schema": {
+      "default": 2,
+      "description": "Number of decimal places",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "default": "number",
+      "description": "How amounts are shown: number, percent, currency, dateTime or seconds",
+      "enum": [
+       "number",
+       "percent",
+       "currency",
+       "dateTime",
+       "seconds"
+      ],
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Creates a new currency definition in the workspace"
+  },
+  {
+   "name": "account_currency/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Retrieves details of a specific currency by ID"
+  },
+  {
+   "name": "account_currency/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Case-insensitive substring of the currency name",
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists all currencies in the workspace with optional search"
+  },
+  {
+   "name": "account_currency/update",
+   "params": [
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "name",
+     "required": true,
+     "schema": {
+      "description": "Currency name, unique within the workspace",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "symbol",
+     "required": false,
+     "schema": {
+      "description": "Currency symbol, e.g. €",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "precision",
+     "required": false,
+     "schema": {
+      "default": 2,
+      "description": "Number of decimal places",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "default": "number",
+      "description": "How amounts are shown: number, percent, currency, dateTime or seconds",
+      "enum": [
+       "number",
+       "percent",
+       "currency",
+       "dateTime",
+       "seconds"
+      ],
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Updates an existing currency definition"
+  },
+  {
+   "name": "account_name/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "name",
+     "required": true,
+     "schema": {
+      "description": "Account name; a name that already exists in the workspace is returned as is",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "abbreviation",
+     "required": false,
+     "schema": {
+      "description": "Account name abbreviation",
+      "maxLength": 255,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Creates a new account name definition in the workspace"
+  },
+  {
+   "name": "account_name/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Retrieves details of a specific account name by ID"
+  },
+  {
+   "name": "account_name/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Case-insensitive substring of the account name",
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 20,
+      "description": "Maximum number of items to return",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Number of items to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists all account names in the workspace with optional search"
+  },
+  {
+   "name": "account_name/update",
+   "params": [
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "name",
+     "required": true,
+     "schema": {
+      "description": "New account name; must stay unique within the workspace",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "abbreviation",
+     "required": false,
+     "schema": {
+      "description": "Account name abbreviation; omitted leaves it unchanged, empty string clears it",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "transferOnly",
+     "required": false,
+     "schema": {
+      "description": "Accounts under this name move value only through transfers; omitted leaves it unchanged",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Updates an existing account name definition"
+  },
+  {
+   "name": "counter/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template of the actor the counter belongs to",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorRef",
+     "required": true,
+     "schema": {
+      "description": "Ref of the actor within formId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountName",
+     "required": true,
+     "schema": {
+      "description": "Account name given by its name, not its nameId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currency",
+     "required": true,
+     "schema": {
+      "description": "Currency given by its name, not its currencyId",
+      "type": "string"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": true,
+     "schema": {
+      "description": "Income side the counter belongs to: debit or credit",
+      "enum": [
+       "debit",
+       "credit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: title of the actor created when formId has no actor with actorRef yet",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: data (template field values) of the actor created when formId has no actor with actorRef yet",
+      "type": "object"
+     }
+    },
+    {
+     "name": "tagName",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: tag to file the account pair under",
+      "type": "string"
+     }
+    },
+    {
+     "name": "precision",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: precision of the currency when it has to be created",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: open the account on this actor (of this workspace) instead of finding or creating it by formId and actorRef",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Retrieves the current value of a counter"
+  },
+  {
+   "name": "counter/set",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template of the actor the counter belongs to",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorRef",
+     "required": true,
+     "schema": {
+      "description": "Ref of the actor within formId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountName",
+     "required": true,
+     "schema": {
+      "description": "Account name given by its name, not its nameId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currency",
+     "required": true,
+     "schema": {
+      "description": "Currency given by its name, not its currencyId",
+      "type": "string"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": true,
+     "schema": {
+      "description": "Income side the counter belongs to: debit or credit",
+      "enum": [
+       "debit",
+       "credit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: title of the actor created when formId has no actor with actorRef yet",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: data (template field values) of the actor created when formId has no actor with actorRef yet",
+      "type": "object"
+     }
+    },
+    {
+     "name": "tagName",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: tag to file the account pair under",
+      "type": "string"
+     }
+    },
+    {
+     "name": "precision",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: precision of the currency when it has to be created",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: open the account on this actor (of this workspace) instead of finding or creating it by formId and actorRef",
+      "type": "string"
+     }
+    },
+    {
+     "name": "amount",
+     "required": true,
+     "schema": {
+      "description": "New counter value; the hold is reset to 0",
+      "type": "number"
+     }
+    },
+    {
+     "name": "createAccount",
+     "required": false,
+     "schema": {
+      "description": "Also open the matching actor account, creating the actor, account name and currency when missing",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Sets a counter to a specific value"
+  },
+  {
+   "name": "counter/increment",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template of the actor the counter belongs to",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorRef",
+     "required": true,
+     "schema": {
+      "description": "Ref of the actor within formId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountName",
+     "required": true,
+     "schema": {
+      "description": "Account name given by its name, not its nameId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currency",
+     "required": true,
+     "schema": {
+      "description": "Currency given by its name, not its currencyId",
+      "type": "string"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": true,
+     "schema": {
+      "description": "Income side the counter belongs to: debit or credit",
+      "enum": [
+       "debit",
+       "credit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: title of the actor created when formId has no actor with actorRef yet",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: data (template field values) of the actor created when formId has no actor with actorRef yet",
+      "type": "object"
+     }
+    },
+    {
+     "name": "tagName",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: tag to file the account pair under",
+      "type": "string"
+     }
+    },
+    {
+     "name": "precision",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: precision of the currency when it has to be created",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: open the account on this actor (of this workspace) instead of finding or creating it by formId and actorRef",
+      "type": "string"
+     }
+    },
+    {
+     "name": "amount",
+     "required": true,
+     "schema": {
+      "description": "Amount to add; a negative amount subtracts",
+      "type": "number"
+     }
+    },
+    {
+     "name": "createAccount",
+     "required": false,
+     "schema": {
+      "description": "Also open the matching actor account, creating the actor, account name and currency when missing",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Increments a counter value by the specified amount. The write may be buffered for up to one flush window and merged with other increments of the counter; inside a batch the item answers at once and a failed write is reported on it when the batch ends. An error means the outcome is unknown, not that nothing was applied: counter writes are never retried, so do not blindly repeat the call"
+  },
+  {
+   "name": "counter/by-period/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Account template of the actor the counter belongs to",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorRef",
+     "required": true,
+     "schema": {
+      "description": "Ref of the actor within formId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountName",
+     "required": true,
+     "schema": {
+      "description": "Account name given by its name, not its nameId",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currency",
+     "required": true,
+     "schema": {
+      "description": "Currency given by its name, not its currencyId",
+      "type": "string"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": true,
+     "schema": {
+      "description": "Income side the counter belongs to: debit or credit",
+      "enum": [
+       "debit",
+       "credit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "title",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: title of the actor created when formId has no actor with actorRef yet",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: data (template field values) of the actor created when formId has no actor with actorRef yet",
+      "type": "object"
+     }
+    },
+    {
+     "name": "tagName",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: tag to file the account pair under",
+      "type": "string"
+     }
+    },
+    {
+     "name": "precision",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: precision of the currency when it has to be created",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": false,
+     "schema": {
+      "description": "With createAccount: open the account on this actor (of this workspace) instead of finding or creating it by formId and actorRef",
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": true,
+     "schema": {
+      "description": "Window start, Unix milliseconds",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": true,
+     "schema": {
+      "description": "Window end, Unix milliseconds",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "highPrecision",
+     "required": false,
+     "schema": {
+      "description": "Combine minute, hour and day buckets so the window edges are exact to the minute; otherwise one bucket size is picked for the whole window, which can round the edges",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Retrieves counter values for a specific time period"
+  },
+  {
+   "name": "transaction/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountId",
+     "required": true,
+     "schema": {
+      "description": "Account identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "amount",
+     "required": false,
+     "schema": {
+      "description": "Signed amount; required unless type is canceled, reversed or declined",
+      "type": "number"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "description": "Two-stage type: authorized (hold), completed/canceled/reversed (close the hold named by parentId or parentRef) or declined; omit for a plain completed transaction",
+      "enum": [
+       "authorized",
+       "declined",
+       "completed",
+       "canceled",
+       "reversed"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Your reference, unique per account; a repeat is rejected with trs005",
+      "type": "string"
+     }
+    },
+    {
+     "name": "comment",
+     "required": false,
+     "schema": {
+      "description": "Free-text comment",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "Caller data stored with the record",
+      "type": "object"
+     }
+    },
+    {
+     "name": "parentId",
+     "required": false,
+     "schema": {
+      "description": "Parent transaction id (two-stage close)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "parentRef",
+     "required": false,
+     "schema": {
+      "description": "Parent transaction ref (two-stage close)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "disableAccountLimits",
+     "required": false,
+     "schema": {
+      "description": "Skip the account limit check for this leg",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "expiration",
+     "required": false,
+     "schema": {
+      "description": "Hold expiration (unix seconds; authorized only)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "originalDate",
+     "required": false,
+     "schema": {
+      "description": "Business date override (Unix milliseconds); defaults to the creation time",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "noRetry",
+     "required": false,
+     "schema": {
+      "description": "Fail at once when another write holds the account instead of retrying",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Creates one ledger transaction on an account (completed by default; a type makes it two-stage)"
+  },
+  {
+   "name": "transaction/by-actor_ref/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Actor's account template identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorRef",
+     "required": true,
+     "schema": {
+      "description": "Actor reference",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "default": "debit",
+      "description": "Income side (default debit)",
+      "enum": [
+       "credit",
+       "debit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "default": "fact",
+      "description": "Account type (default fact)",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "amount",
+     "required": false,
+     "schema": {
+      "description": "Signed amount; required unless type is canceled, reversed or declined",
+      "type": "number"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "description": "Two-stage type: authorized (hold), completed/canceled/reversed (close the hold named by parentId or parentRef) or declined; omit for a plain completed transaction",
+      "enum": [
+       "authorized",
+       "declined",
+       "completed",
+       "canceled",
+       "reversed"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Your reference, unique per account; a repeat is rejected with trs005",
+      "type": "string"
+     }
+    },
+    {
+     "name": "comment",
+     "required": false,
+     "schema": {
+      "description": "Free-text comment",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "Caller data stored with the record",
+      "type": "object"
+     }
+    },
+    {
+     "name": "parentId",
+     "required": false,
+     "schema": {
+      "description": "Parent transaction id (two-stage close)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "parentRef",
+     "required": false,
+     "schema": {
+      "description": "Parent transaction ref (two-stage close)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "disableAccountLimits",
+     "required": false,
+     "schema": {
+      "description": "Skip the account limit check for this leg",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "expiration",
+     "required": false,
+     "schema": {
+      "description": "Hold expiration (unix seconds; authorized only)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "originalDate",
+     "required": false,
+     "schema": {
+      "description": "Business date override (Unix milliseconds); defaults to the creation time",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "noRetry",
+     "required": false,
+     "schema": {
+      "description": "Fail at once when another write holds the account instead of retrying",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Creates one ledger transaction on the account resolved by the actor's (formId, ref) plus the account coordinates"
+  },
+  {
+   "name": "transaction/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Transaction identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "createdAt",
+     "required": false,
+     "schema": {
+      "description": "Exact created_at (ms) — partition hint",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: meta (account/currency/actor labels), privs (caller's rights on the account pair)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Loads one transaction by id (createdAt hint prunes to one partition; bare id is bounded to ~12 months)"
+  },
+  {
+   "name": "transaction/by-ref/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountId",
+     "required": true,
+     "schema": {
+      "description": "Account identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": true,
+     "schema": {
+      "description": "Idempotency reference",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Loads one transaction by (accountId, ref) — the idempotency lookup, always primary"
+  },
+  {
+   "name": "transaction/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "nameId",
+     "required": true,
+     "schema": {
+      "description": "Account name identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "currencyId",
+     "required": true,
+     "schema": {
+      "description": "Currency identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "default": "fact",
+      "description": "Account type",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "default": "all",
+      "description": "Income side",
+      "enum": [
+       "credit",
+       "debit",
+       "all"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Window start (ms). Default: current month start",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "description": "Page size (default 50)",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Offset paging (legacy compatibility; prefer cursor)",
+      "maximum": 10000,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "cursor",
+     "required": false,
+     "schema": {
+      "description": "Keyset cursor from a previous response's nextCursor",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Pages transactions of an actor's account key, expanded through the account tree and formula sources"
+  },
+  {
+   "name": "transaction/account/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountId",
+     "required": true,
+     "schema": {
+      "description": "Account identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Window start (ms). Default: current month start",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "description": "Page size (default 50)",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Offset paging (legacy compatibility; prefer cursor)",
+      "maximum": 10000,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "cursor",
+     "required": false,
+     "schema": {
+      "description": "Keyset cursor from a previous response's nextCursor",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Pages one account's transactions, newest first"
+  },
+  {
+   "name": "transaction/filter",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "default": "fact",
+      "description": "Account type",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "description": "Window/order column (default created_at)",
+      "enum": [
+       "created_at",
+       "createdAt",
+       "original_date",
+       "originalDate"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "description": "Transaction type: completed, authorized, declined, canceled, reversed, minLimitChanged or maxLimitChanged",
+      "enum": [
+       "authorized",
+       "declined",
+       "completed",
+       "canceled",
+       "reversed",
+       "minLimitChanged",
+       "maxLimitChanged"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Income side",
+      "enum": [
+       "credit",
+       "debit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "ownerId",
+     "required": false,
+     "schema": {
+      "description": "Author user id",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorIds",
+     "required": false,
+     "schema": {
+      "description": "Actor filter",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "accounts",
+     "required": false,
+     "schema": {
+      "description": "Account (nameId, currencyId) pairs",
+      "items": {
+       "properties": {
+        "currencyId": {
+         "description": "Currency identifier",
+         "type": "integer"
+        },
+        "nameId": {
+         "description": "Account name identifier",
+         "minLength": 1,
+         "type": "string"
+        }
+       },
+       "required": [
+        "nameId",
+        "currencyId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "amount",
+     "required": false,
+     "schema": {
+      "description": "Amount comparison value",
+      "type": "number"
+     }
+    },
+    {
+     "name": "oper",
+     "required": false,
+     "schema": {
+      "description": "Amount comparison operator (default eq)",
+      "enum": [
+       "eq",
+       "neq",
+       "gt",
+       "gte",
+       "lt",
+       "lte"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Full-text search over amount/comment/data",
+      "maxLength": 200,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": false,
+     "schema": {
+      "description": "Exact transaction id (still bounded by the window — send a window that covers it)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Exact ref",
+      "type": "string"
+     }
+    },
+    {
+     "name": "transferId",
+     "required": false,
+     "schema": {
+      "description": "Exact transfer id",
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Window start (ms). Default: current month start",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "description": "Page size (default 50)",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Offset paging (legacy compatibility; prefer cursor)",
+      "maximum": 10000,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "cursor",
+     "required": false,
+     "schema": {
+      "description": "Keyset cursor from a previous response's nextCursor",
+      "type": "string"
+     }
+    },
+    {
+     "name": "scope",
+     "required": false,
+     "schema": {
+      "description": "Account scope. Omit for the classic behavior (accounts, or every visible pair of the workspace). \"auto\" with no accounts: the server reads the caller's saved pairs (user setting transactionsList, data.accounts; up to 50), else the 20 most recently active visible pairs, else the first 20 visible pairs — always intersected with what the caller may view — and reports them in appliedAccounts/scopeSource. \"auto\" with accounts uses them (scopeSource explicit)",
+      "enum": [
+       "auto"
+      ],
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Filters workspace transactions with display enrichment (access-gated per account pair)"
+  },
+  {
+   "name": "transaction/filter/count",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "default": "fact",
+      "description": "Account type",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "orderBy",
+     "required": false,
+     "schema": {
+      "description": "Window/order column (default created_at)",
+      "enum": [
+       "created_at",
+       "createdAt",
+       "original_date",
+       "originalDate"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "description": "Transaction type: completed, authorized, declined, canceled, reversed, minLimitChanged or maxLimitChanged",
+      "enum": [
+       "authorized",
+       "declined",
+       "completed",
+       "canceled",
+       "reversed",
+       "minLimitChanged",
+       "maxLimitChanged"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "incomeType",
+     "required": false,
+     "schema": {
+      "description": "Income side",
+      "enum": [
+       "credit",
+       "debit"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "ownerId",
+     "required": false,
+     "schema": {
+      "description": "Author user id",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "actorIds",
+     "required": false,
+     "schema": {
+      "description": "Actor filter",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "accounts",
+     "required": false,
+     "schema": {
+      "description": "Account (nameId, currencyId) pairs",
+      "items": {
+       "properties": {
+        "currencyId": {
+         "description": "Currency identifier",
+         "type": "integer"
+        },
+        "nameId": {
+         "description": "Account name identifier",
+         "minLength": 1,
+         "type": "string"
+        }
+       },
+       "required": [
+        "nameId",
+        "currencyId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "amount",
+     "required": false,
+     "schema": {
+      "description": "Amount comparison value",
+      "type": "number"
+     }
+    },
+    {
+     "name": "oper",
+     "required": false,
+     "schema": {
+      "description": "Amount comparison operator (default eq)",
+      "enum": [
+       "eq",
+       "neq",
+       "gt",
+       "gte",
+       "lt",
+       "lte"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Full-text search over amount/comment/data",
+      "maxLength": 200,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": false,
+     "schema": {
+      "description": "Exact transaction id (still bounded by the window — send a window that covers it)",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Exact ref",
+      "type": "string"
+     }
+    },
+    {
+     "name": "transferId",
+     "required": false,
+     "schema": {
+      "description": "Exact transfer id",
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Window start (ms). Default: current month start",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "description": "Page size (default 50)",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Offset paging (legacy compatibility; prefer cursor)",
+      "maximum": 10000,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "cursor",
+     "required": false,
+     "schema": {
+      "description": "Keyset cursor from a previous response's nextCursor",
+      "type": "string"
+     }
+    },
+    {
+     "name": "scope",
+     "required": false,
+     "schema": {
+      "description": "Account scope, resolved exactly as on transaction/filter: \"auto\" with no accounts counts over the same pairs transaction/filter reports in appliedAccounts for identical params",
+      "enum": [
+       "auto"
+      ],
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Counts transactions matching a filter (legacy total=true, as its own method)"
+  },
+  {
+   "name": "transaction/children/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "parentId",
+     "required": true,
+     "schema": {
+      "description": "Parent transaction identifier",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Window start (ms). Default: current month start",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "description": "Page size (default 50)",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Offset paging (legacy compatibility; prefer cursor)",
+      "maximum": 10000,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "cursor",
+     "required": false,
+     "schema": {
+      "description": "Keyset cursor from a previous response's nextCursor",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Pages a transaction's children (bounded and windowed, unlike legacy's full scan)"
+  },
+  {
+   "name": "transfer/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "description": "Transfer type: completed, authorized, declined, canceled or reversed",
+      "enum": [
+       "authorized",
+       "declined",
+       "completed",
+       "canceled",
+       "reversed"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "transferId",
+     "required": false,
+     "schema": {
+      "description": "Step 2: the step-1 transfer to close",
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Workspace-unique idempotency reference (or the step-1 ref on step 2)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "comment",
+     "required": false,
+     "schema": {
+      "description": "Comment (also the header's search source)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "Caller data stored with the record",
+      "type": "object"
+     }
+    },
+    {
+     "name": "from",
+     "required": true,
+     "schema": {
+      "description": "Debit legs (0..20)",
+      "items": {
+       "properties": {
+        "accountId": {
+         "description": "Account identifier",
+         "minLength": 1,
+         "type": "string"
+        },
+        "amount": {
+         "description": "Amount (required unless authorized TO leg)",
+         "type": "number"
+        },
+        "amountText": {
+         "description": "Exact decimal amount text; preferred by precision-sensitive clients",
+         "type": "string"
+        },
+        "comment": {
+         "description": "Leg comment (defaults to the transfer comment)",
+         "type": "string"
+        },
+        "data": {
+         "description": "Leg data",
+         "type": "object"
+        },
+        "originalDate": {
+         "description": "Business date override (Unix milliseconds); defaults to the creation time",
+         "type": "integer"
+        },
+        "parentId": {
+         "description": "Step-2: the step-1 hold this leg closes",
+         "type": "integer"
+        },
+        "parentRef": {
+         "description": "Step-2: parent by ref",
+         "type": "string"
+        },
+        "ref": {
+         "description": "Per-account idempotency reference of the leg",
+         "type": "string"
+        }
+       },
+       "required": [
+        "accountId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "to",
+     "required": true,
+     "schema": {
+      "description": "Credit legs (0..20)",
+      "items": {
+       "properties": {
+        "accountId": {
+         "description": "Account identifier",
+         "minLength": 1,
+         "type": "string"
+        },
+        "amount": {
+         "description": "Amount (required unless authorized TO leg)",
+         "type": "number"
+        },
+        "amountText": {
+         "description": "Exact decimal amount text; preferred by precision-sensitive clients",
+         "type": "string"
+        },
+        "comment": {
+         "description": "Leg comment (defaults to the transfer comment)",
+         "type": "string"
+        },
+        "data": {
+         "description": "Leg data",
+         "type": "object"
+        },
+        "originalDate": {
+         "description": "Business date override (Unix milliseconds); defaults to the creation time",
+         "type": "integer"
+        },
+        "parentId": {
+         "description": "Step-2: the step-1 hold this leg closes",
+         "type": "integer"
+        },
+        "parentRef": {
+         "description": "Step-2: parent by ref",
+         "type": "string"
+        },
+        "ref": {
+         "description": "Per-account idempotency reference of the leg",
+         "type": "string"
+        }
+       },
+       "required": [
+        "accountId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "amountValidation",
+     "required": false,
+     "schema": {
+      "description": "Amount validation toggle (default true)",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "noRetry",
+     "required": false,
+     "schema": {
+      "description": "Fail at once when another write holds an account instead of retrying",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "noLink",
+     "required": false,
+     "schema": {
+      "description": "Skip the post-commit graph effects (transfersAmount edges, AI-pipe webhooks)",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Creates a transfer (double-entry): all legs in one transaction; one- and two-step flows"
+  },
+  {
+   "name": "transfer/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "id",
+     "required": true,
+     "schema": {
+      "description": "Transfer identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Loads one transfer by id"
+  },
+  {
+   "name": "transfer/by-ref/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": true,
+     "schema": {
+      "description": "Idempotency reference",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "with",
+     "required": false,
+     "schema": {
+      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Loads one transfer by (accId, ref) — always primary"
+  },
+  {
+   "name": "transfer/filter",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "description": "Transfer type: completed, authorized, declined, canceled or reversed",
+      "enum": [
+       "authorized",
+       "declined",
+       "completed",
+       "canceled",
+       "reversed"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorIds",
+     "required": false,
+     "schema": {
+      "description": "Actor filter — matches a leg on either side. Combined with accounts and/or accountType, all must hold on the same leg",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "accounts",
+     "required": false,
+     "schema": {
+      "description": "Account (nameId, currencyId) pairs — matches a leg on either side. Combined with actorIds and/or accountType, all must hold on the same leg",
+      "items": {
+       "properties": {
+        "currencyId": {
+         "description": "Currency identifier",
+         "type": "integer"
+        },
+        "nameId": {
+         "description": "Account name identifier",
+         "minLength": 1,
+         "type": "string"
+        }
+       },
+       "required": [
+        "nameId",
+        "currencyId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "description": "Type of the leg's account (fact, plan); omitted = any. Alone it matches a transfer with any account leg of that type; with actorIds and/or accounts all must hold on the same leg",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Full-text search over the transfer comment",
+      "maxLength": 200,
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Exact ref",
+      "type": "string"
+     }
+    },
+    {
+     "name": "transferId",
+     "required": false,
+     "schema": {
+      "description": "Exact transfer id",
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Window start (ms). Default: current month start",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "description": "Page size (default 50)",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Offset paging (legacy compatibility; prefer cursor)",
+      "maximum": 10000,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "cursor",
+     "required": false,
+     "schema": {
+      "description": "Keyset cursor from a previous response's nextCursor",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Filters workspace transfers with enriched from/to legs (access-gated per leg)"
+  },
+  {
+   "name": "transfer/filter/count",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "type",
+     "required": false,
+     "schema": {
+      "description": "Transfer type: completed, authorized, declined, canceled or reversed",
+      "enum": [
+       "authorized",
+       "declined",
+       "completed",
+       "canceled",
+       "reversed"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorIds",
+     "required": false,
+     "schema": {
+      "description": "Actor filter — matches a leg on either side. Combined with accounts and/or accountType, all must hold on the same leg",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "accounts",
+     "required": false,
+     "schema": {
+      "description": "Account (nameId, currencyId) pairs — matches a leg on either side. Combined with actorIds and/or accountType, all must hold on the same leg",
+      "items": {
+       "properties": {
+        "currencyId": {
+         "description": "Currency identifier",
+         "type": "integer"
+        },
+        "nameId": {
+         "description": "Account name identifier",
+         "minLength": 1,
+         "type": "string"
+        }
+       },
+       "required": [
+        "nameId",
+        "currencyId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "accountType",
+     "required": false,
+     "schema": {
+      "description": "Type of the leg's account (fact, plan); omitted = any. Alone it matches a transfer with any account leg of that type; with actorIds and/or accounts all must hold on the same leg",
+      "enum": [
+       "fact",
+       "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Full-text search over the transfer comment",
+      "maxLength": 200,
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Exact ref",
+      "type": "string"
+     }
+    },
+    {
+     "name": "transferId",
+     "required": false,
+     "schema": {
+      "description": "Exact transfer id",
+      "type": "string"
+     }
+    },
+    {
+     "name": "from",
+     "required": false,
+     "schema": {
+      "description": "Window start (ms). Default: current month start",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "to",
+     "required": false,
+     "schema": {
+      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "description": "Page size (default 50)",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Offset paging (legacy compatibility; prefer cursor)",
+      "maximum": 10000,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "cursor",
+     "required": false,
+     "schema": {
+      "description": "Keyset cursor from a previous response's nextCursor",
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Counts transfers matching a filter"
   }
  ]
 }

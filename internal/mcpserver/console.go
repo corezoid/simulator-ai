@@ -36,6 +36,9 @@ func keepConsoleCore(s *server.MCPServer) {
 	s.DeleteTools(drop...)
 }
 
+// idempotentTools are console writes whose repeat returns the same result and changes nothing more.
+var idempotentTools = map[string]bool{"account_pair_create": true}
+
 // destructiveTools delete what they touch; clients may ask for confirmation on this hint.
 var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true, "access_rules_save": true}
 
@@ -110,7 +113,7 @@ func consoleTool[P, R any](s *server.MCPServer, name, description, schema string
 
 func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, description, schema string, write bool, run func(context.Context, P) (R, error)) {
 	t := mcp.NewTool(name, mcp.WithDescription(description), mcp.WithRawInputSchema(json.RawMessage(schema)), output,
-		mcp.WithReadOnlyHintAnnotation(!write), mcp.WithDestructiveHintAnnotation(destructiveTools[name]), mcp.WithIdempotentHintAnnotation(!write))
+		mcp.WithReadOnlyHintAnnotation(!write), mcp.WithDestructiveHintAnnotation(destructiveTools[name]), mcp.WithIdempotentHintAnnotation(!write || idempotentTools[name]))
 	s.AddTool(t, func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		a, e := decodeLimit[P](r, maxConsoleInput)
 		if e != nil {

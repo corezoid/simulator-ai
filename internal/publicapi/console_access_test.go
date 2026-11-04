@@ -15,7 +15,11 @@ type rpcCall struct {
 	Params map[string]any `json:"params"`
 }
 
-// rpcBackend answers every JSON-RPC call with result and records the calls.
+// notFound is a result func's answer for sim-api's notFound error.
+const notFound = `"error":{"code":-32004,"message":"not found: account","data":{"reason":"notFound"}}`
+
+// rpcBackend answers every JSON-RPC call with result (an "error": member answers with that error)
+// and records the calls.
 func rpcBackend(t *testing.T, result func(method string) string) (*Client, *[]rpcCall) {
 	t.Helper()
 	var calls []rpcCall
@@ -26,7 +30,11 @@ func rpcBackend(t *testing.T, result func(method string) string) (*Client, *[]rp
 		}
 		_ = json.NewDecoder(r.Body).Decode(&q)
 		calls = append(calls, q.rpcCall)
-		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, q.ID, result(q.Method))
+		if r := result(q.Method); strings.HasPrefix(r, `"error":`) {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,%s}`, q.ID, r)
+		} else {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, q.ID, r)
+		}
 	}))
 	t.Cleanup(api.Close)
 	c, err := New(Config{Origin: api.URL, Workspace: "ws", Profile: "console", Authorization: "Simulator run"})
