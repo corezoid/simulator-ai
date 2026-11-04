@@ -101,7 +101,9 @@ that type and direction). Adding a step to a flowchart: create and place the new
 the neighbours' positions, then re-point or add the edges. Confirm every delete, clean or prune
 with the user first.
 
-Edge line style, colour and width per placement are not settable here; `curveStyle` is.
+An edge's look on one layer: `layer_edge_settings_save {actorId: <layerId>, laEdgeId: <its laId>,
+layerSettings: {lineStyle: solid|dashed|dotted, width, color: "#RRGGBB", curveStyle, name}}`
+(`console-full`); sent keys are merged, and the same edge on other layers keeps its own look.
 
 ## Desktop profiles: `graph-read` and `graph-create`
 

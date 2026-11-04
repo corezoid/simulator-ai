@@ -12,7 +12,7 @@ import (
 // tool. Its result is an explicit passthrough: the backend's own projection, shaped by the caller's
 // documented fields/with, never re-modelled here.
 type ParityMethod struct {
-	Domain string // actor, form, graph; smartform, access, reaction, attachment, user, finance (console only)
+	Domain string // actor, form, graph; smartform, corezoid, access, reaction, attachment, user, finance (console only)
 	Write  bool
 }
 
@@ -36,8 +36,14 @@ var ParityMethods = map[string]ParityMethod{
 	"graph/layer/clean": {"graph", true}, "graph/layer/element/exist": {"graph", false},
 	"graph/layer/stats/get": {"graph", false}, "graph/layer/actors/search/list": {"graph", false},
 	"graph/list": {"graph", false}, "graph/get": {"graph", false},
-	"cdu/catalog/get":        {"smartform", false},
-	"access_rule/actor/list": {"access", false}, "access_rule/actor/share": {"access", true},
+	"cdu/catalog/get": {"smartform", false}, "app_folder/create": {"smartform", true},
+	"release/list": {"smartform", false}, "release/diff": {"smartform", false}, "release/rollback": {"smartform", true},
+	"file_version/list": {"smartform", false}, "file_version/get": {"smartform", false}, "file/rollback": {"smartform", true},
+	"trash/list": {"smartform", false}, "trash/restore": {"smartform", true}, "page/render": {"smartform", false}, "page/submit": {"smartform", true},
+	"corezoid/project/list": {"corezoid", false}, "corezoid/project/get": {"corezoid", false}, "corezoid/project/create": {"corezoid", true},
+	"corezoid/project/bind": {"corezoid", true}, "corezoid/stage/list": {"corezoid", false}, "corezoid/process/list": {"corezoid", false},
+	"graph/layer/edge_settings/save": {"graph", true},
+	"access_rule/actor/list":         {"access", false}, "access_rule/actor/share": {"access", true},
 	"access_rule/formTemplate/list": {"access", false}, "access_rule/formTemplate/share": {"access", true},
 	"access_rule/templateActors/list": {"access", false}, "access_rule/templateActors/share": {"access", true},
 	"access_rule/account/list": {"access", false}, "access_rule/account/share": {"access", true},

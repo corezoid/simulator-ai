@@ -57,8 +57,11 @@ type SmartFormEntry struct {
 }
 
 type SmartFormFiles struct {
-	AppID string           `json:"appId"`
-	Files []SmartFormEntry `json:"files"`
+	AppID string `json:"appId"`
+	// The environments' ids, for the release, trash and history tools.
+	DevelopEnvID    int64            `json:"developEnvId"`
+	ProductionEnvID int64            `json:"productionEnvId"`
+	Files           []SmartFormEntry `json:"files"`
 }
 
 // SmartFormFileCreate creates a file in a develop folder; source is stored as text.
@@ -109,7 +112,7 @@ type SmartFormWritten struct {
 
 type SmartFormReleaseInput struct {
 	AppID     string `json:"appId"`
-	ReleaseID int64  `json:"releaseId"`
+	ReleaseID int64  `json:"releaseId,omitempty"`
 }
 
 // SmartFormRelease is the result contract the Console backend reads: Ready is true only when the
@@ -202,7 +205,7 @@ func (c *Client) GetSmartFormFiles(ctx context.Context, in SmartFormFilesInput) 
 	if e := consoleOnly(c); e != nil {
 		return SmartFormFiles{}, e
 	}
-	dev, _, e := c.envs(ctx, in.AppID)
+	dev, prod, e := c.envs(ctx, in.AppID)
 	if e != nil {
 		return SmartFormFiles{}, e
 	}
@@ -217,7 +220,7 @@ func (c *Client) GetSmartFormFiles(ctx context.Context, in SmartFormFilesInput) 
 	if r.Tree.ID < 1 || r.Tree.ObjType != "folder" {
 		return SmartFormFiles{}, errors.New("invalid Smart Form tree")
 	}
-	out := SmartFormFiles{AppID: in.AppID, Files: []SmartFormEntry{}}
+	out := SmartFormFiles{AppID: in.AppID, DevelopEnvID: dev, ProductionEnvID: prod, Files: []SmartFormEntry{}}
 	var walk func(n ContentNode, path string)
 	walk = func(n ContentNode, path string) {
 		out.Files = append(out.Files, SmartFormEntry{ID: n.ID, Path: path, ObjType: n.ObjType, Type: n.Type, SourceHash: n.SourceHash, Source: n.Source})
@@ -326,17 +329,32 @@ func (c *Client) ReleaseSmartForm(ctx context.Context, in SmartFormInput) (Smart
 	return released(in.AppID, r), nil
 }
 
-// GetSmartFormRelease reads the current state of one release.
+type routeKeyWire struct {
+	ActiveReleaseID int64 `json:"activeReleaseId"`
+}
+
+// GetSmartFormRelease reads the current state of one release; without releaseId, the release
+// production serves now (route/key/get), so a form released before this run can be embedded.
 func (c *Client) GetSmartFormRelease(ctx context.Context, in SmartFormReleaseInput) (SmartFormRelease, error) {
 	if e := consoleOnly(c); e != nil {
 		return SmartFormRelease{}, e
 	}
-	if in.ReleaseID < 1 {
-		return SmartFormRelease{}, errors.New("appId and positive releaseId required")
+	if in.ReleaseID < 0 {
+		return SmartFormRelease{}, errors.New("appId and a positive releaseId (or none for the active one) required")
 	}
 	_, prod, e := c.envs(ctx, in.AppID)
 	if e != nil {
 		return SmartFormRelease{}, e
+	}
+	if in.ReleaseID == 0 {
+		k, e := call[appRequest, routeKeyWire](ctx, c, "route/key/get", appRequest{AccID: c.config.Workspace, ActorID: in.AppID})
+		if e != nil {
+			return SmartFormRelease{}, e
+		}
+		if k.ActiveReleaseID < 1 {
+			return SmartFormRelease{}, errors.New("the Smart Form has no active production release: release it with smart_form_release")
+		}
+		in.ReleaseID = k.ActiveReleaseID
 	}
 	r, e := call[releaseGetRequest, Release](ctx, c, "release/get", releaseGetRequest{AccID: c.config.Workspace, ActorID: in.AppID, ReleaseID: in.ReleaseID})
 	if e != nil {

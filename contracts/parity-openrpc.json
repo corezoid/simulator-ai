@@ -10357,6 +10357,950 @@
     }
    ],
    "summary": "Replaces the set of data triggers bound to one data field of an actor"
+  },
+  {
+   "name": "app_folder/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "items",
+     "required": true,
+     "schema": {
+      "description": "Folders to create, one per item; created in one transaction",
+      "items": {
+       "properties": {
+        "folderId": {
+         "description": "Parent folder: the environment's root folder (rootFolderId of application/env/list) or a folder below it. It also decides the environment",
+         "minimum": 1,
+         "type": "integer"
+        },
+        "isStatic": {
+         "description": "Editor flag, stored and carried into releases; the server attaches no behavior to it",
+         "type": "boolean"
+        },
+        "title": {
+         "description": "Folder name; the renderer finds pages/<page>/, definitions/ and styles/ by name. Not unique within the parent",
+         "type": "string"
+        }
+       },
+       "required": [
+        "folderId",
+        "title"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Creates folders in a Smart Form environment, all or none"
+  },
+  {
+   "name": "release/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "envId",
+     "required": false,
+     "schema": {
+      "description": "Only releases of this env",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "status",
+     "required": false,
+     "schema": {
+      "description": "Only releases in this status: active, archived or rolled_back",
+      "enum": [
+       "active",
+       "archived",
+       "rolled_back"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 50,
+      "description": "Page size, 1 to 200",
+      "maximum": 200,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Releases to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "List releases for a Smart Form (optionally filtered by env/status)"
+  },
+  {
+   "name": "release/diff",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "releaseId",
+     "required": true,
+     "schema": {
+      "description": "Release A, the base",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "vs",
+     "required": true,
+     "schema": {
+      "description": "Release B, compared with A; any release of the same Smart Form",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Diff two releases by (objType, originalId); file changes detected via source hash"
+  },
+  {
+   "name": "release/rollback",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "releaseId",
+     "required": true,
+     "schema": {
+      "description": "The release to restore; the env it belongs to is the one rolled back",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Roll an environment back to a prior release (linear-forward)"
+  },
+  {
+   "name": "file_version/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "fileId",
+     "required": true,
+     "schema": {
+      "description": "File whose history to list; may be in the trash",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "schema": {
+      "default": 50,
+      "description": "Versions per page (1-200, default 50); a file keeps its newest 50",
+      "maximum": 200,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "offset",
+     "required": false,
+     "schema": {
+      "description": "Versions to skip",
+      "minimum": 0,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists the version history of a Smart Form file, newest first"
+  },
+  {
+   "name": "file_version/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "fileId",
+     "required": true,
+     "schema": {
+      "description": "File the version belongs to",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "versionId",
+     "required": true,
+     "schema": {
+      "description": "Version to read, from file_version/list",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Returns one version of a Smart Form file"
+  },
+  {
+   "name": "file/rollback",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "fileId",
+     "required": true,
+     "schema": {
+      "description": "File to roll back; a file in the trash is restored",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "versionId",
+     "required": true,
+     "schema": {
+      "description": "Version of this file whose title, type, folder and source to apply",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Returns a Smart Form file to the state of one of its versions"
+  },
+  {
+   "name": "trash/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "envId",
+     "required": true,
+     "schema": {
+      "description": "Environment whose trash to list (application/env/list)",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Lists the folders and files in the trash of a Smart Form environment"
+  },
+  {
+   "name": "trash/restore",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "items",
+     "required": true,
+     "schema": {
+      "description": "Objects to restore; ones not in the trash are skipped",
+      "items": {
+       "properties": {
+        "id": {
+         "description": "Folder or file id",
+         "minimum": 1,
+         "type": "integer"
+        },
+        "objType": {
+         "description": "folder or file. A folder is restored alone, without what was deleted with it",
+         "enum": [
+          "folder",
+          "file"
+         ],
+         "type": "string"
+        }
+       },
+       "required": [
+        "id",
+        "objType"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Restores folders and files of a Smart Form from the trash"
+  },
+  {
+   "name": "page/render",
+   "params": [
+    {
+     "name": "accId",
+     "required": false,
+     "schema": {
+      "description": "Workspace identifier (flat addressing; omit when target is set)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Smart Form actor reference (flat addressing; omit when target is set)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "envTitle",
+     "required": false,
+     "schema": {
+      "description": "Environment title (flat addressing; omit when target is set)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "page",
+     "required": false,
+     "schema": {
+      "description": "Page identifier; empty resolves the env start page (flat addressing)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "target",
+     "required": false,
+     "schema": {
+      "description": "Page address, instead of the flat params: {kind:direct, workspaceId, scriptRef, environment, pageId?} or {kind:dynamic, appKey, path}",
+      "properties": {
+       "appKey": {
+        "description": "Dynamic: the Smart Form's short key, the {appKey} of /sf/{appKey}/...",
+        "type": "string"
+       },
+       "environment": {
+        "description": "Direct: environment, develop or production",
+        "type": "string"
+       },
+       "kind": {
+        "description": "Target kind: direct (technical coordinates) or dynamic (short URL)",
+        "enum": [
+         "direct",
+         "dynamic"
+        ],
+        "type": "string"
+       },
+       "pageId": {
+        "description": "Direct: page identifier; empty resolves the env start page",
+        "type": "string"
+       },
+       "path": {
+        "description": "Dynamic: the pathname under /sf/{appKey}: empty or starting with / (both address the root)",
+        "type": "string"
+       },
+       "scriptRef": {
+        "description": "Direct: Smart Form actor reference",
+        "type": "string"
+       },
+       "workspaceId": {
+        "description": "Direct: workspace identifier",
+        "type": "string"
+       }
+      },
+      "required": [
+       "kind"
+      ],
+      "type": "object"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Query parameters",
+      "type": "object"
+     }
+    },
+    {
+     "name": "context",
+     "required": false,
+     "schema": {
+      "description": "Client context (browser, language, etc.)",
+      "type": "object"
+     }
+    },
+    {
+     "name": "supportedSchemaVersions",
+     "required": false,
+     "schema": {
+      "description": "CDU protocol versions this runtime supports. When present, reject an incompatible page before invoking its initialization process. Omit only for legacy clients.",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "ifVersion",
+     "required": false,
+     "schema": {
+      "description": "Opt-in to versioned renders: the 'version' of the render the client already shows. Present (an empty string on the first render) → the result carries 'version'; equal to the version of this render → the result is only {notModified: true, version, refresh} and the client keeps what it shows. The page is still rendered in full (a Corezoid /get still runs); only the payload and the client re-render are saved. Absent → the result is exactly as without this parameter.",
+      "maxLength": 128,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Returns a CDU v2 page (tree/bindings/viewModel/locale) for the runtime"
+  },
+  {
+   "name": "page/submit",
+   "params": [
+    {
+     "name": "accId",
+     "required": false,
+     "schema": {
+      "description": "Workspace identifier (flat addressing; omit when target is set)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Smart Form actor reference (flat addressing; omit when target is set)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "envTitle",
+     "required": false,
+     "schema": {
+      "description": "Environment title (flat addressing; omit when target is set)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "page",
+     "required": false,
+     "schema": {
+      "description": "Page identifier (flat addressing; omit when target is set)",
+      "type": "string"
+     }
+    },
+    {
+     "name": "target",
+     "required": false,
+     "schema": {
+      "description": "Page address, instead of the flat params: {kind:direct, workspaceId, scriptRef, environment, pageId} or {kind:dynamic, appKey, path}",
+      "properties": {
+       "appKey": {
+        "description": "Dynamic: the Smart Form's short key, the {appKey} of /sf/{appKey}/...",
+        "type": "string"
+       },
+       "environment": {
+        "description": "Direct: environment, develop or production",
+        "type": "string"
+       },
+       "kind": {
+        "description": "Target kind: direct (technical coordinates) or dynamic (short URL)",
+        "enum": [
+         "direct",
+         "dynamic"
+        ],
+        "type": "string"
+       },
+       "pageId": {
+        "description": "Direct: page identifier; empty resolves the env start page",
+        "type": "string"
+       },
+       "path": {
+        "description": "Dynamic: the pathname under /sf/{appKey}: empty or starting with / (both address the root)",
+        "type": "string"
+       },
+       "scriptRef": {
+        "description": "Direct: Smart Form actor reference",
+        "type": "string"
+       },
+       "workspaceId": {
+        "description": "Direct: workspace identifier",
+        "type": "string"
+       }
+      },
+      "required": [
+       "kind"
+      ],
+      "type": "object"
+     }
+    },
+    {
+     "name": "formId",
+     "required": true,
+     "schema": {
+      "description": "Form identifier",
+      "type": "string"
+     }
+    },
+    {
+     "name": "formData",
+     "required": false,
+     "schema": {
+      "description": "Form field values",
+      "type": "object"
+     }
+    },
+    {
+     "name": "query",
+     "required": false,
+     "schema": {
+      "description": "Query parameters",
+      "type": "object"
+     }
+    },
+    {
+     "name": "context",
+     "required": false,
+     "schema": {
+      "description": "Client context (browser, language, etc.)",
+      "type": "object"
+     }
+    },
+    {
+     "name": "expectedSchemaVersion",
+     "required": false,
+     "schema": {
+      "description": "Original schemaVersion returned by page/render. Reject a protocol change before invoking the submit process; omission preserves legacy behavior. This checks protocol, not the content revision.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Submits a CDU v2 page form to Corezoid /send"
+  },
+  {
+   "name": "corezoid/project/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier (= the Corezoid company)",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "The workspace's Corezoid projects the caller can see"
+  },
+  {
+   "name": "corezoid/project/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Where a Smart Form's processes live in Corezoid: project, stages and admin links (no secrets)"
+  },
+  {
+   "name": "corezoid/project/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Give an existing Smart Form a Corezoid project of its own (an import task that binds both envs)"
+  },
+  {
+   "name": "corezoid/project/bind",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier (= the Corezoid company)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Smart Form actor id",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "projectId",
+     "required": true,
+     "schema": {
+      "description": "Corezoid project id",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "envs",
+     "required": true,
+     "schema": {
+      "description": "One entry for every env of the Smart Form, each env once",
+      "items": {
+       "properties": {
+        "envTitle": {
+         "description": "Env of the Smart Form: develop or production",
+         "minLength": 1,
+         "type": "string"
+        },
+        "procId": {
+         "description": "The process the env will run: one corezoid/process/list returns for that stage",
+         "minimum": 1,
+         "type": "integer"
+        },
+        "stageId": {
+         "description": "Stage of the project the process is in (corezoid/stage/list)",
+         "minimum": 1,
+         "type": "integer"
+        }
+       },
+       "required": [
+        "envTitle",
+        "stageId",
+        "procId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Bind every env of a Smart Form to a process of one Corezoid project of the workspace"
+  },
+  {
+   "name": "corezoid/stage/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier (= the Corezoid company)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "projectId",
+     "required": true,
+     "schema": {
+      "description": "Corezoid project id",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "The stages of a Corezoid project of the workspace"
+  },
+  {
+   "name": "corezoid/process/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier (= the Corezoid company)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "projectId",
+     "required": true,
+     "schema": {
+      "description": "Corezoid project id",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "stageId",
+     "required": true,
+     "schema": {
+      "description": "Corezoid stage id",
+      "minimum": 1,
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "The processes of a stage of a Corezoid project of the workspace (folders walked)"
+  },
+  {
+   "name": "graph/layer/edge_settings/save",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Layer identifier (the id of the layer actor)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "laEdgeId",
+     "required": true,
+     "schema": {
+      "description": "Edge placement id (laId) on this layer",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "layerSettings",
+     "required": false,
+     "schema": {
+      "description": "Display settings of the edge on this layer; sent keys are merged into the stored bag",
+      "properties": {
+       "color": {
+        "description": "Line color, #RRGGBB",
+        "type": "string"
+       },
+       "curveStyle": {
+        "description": "Edge curve style",
+        "enum": [
+         "curved",
+         "rounded",
+         "roundedDownward",
+         "straight"
+        ],
+        "type": "string"
+       },
+       "lineStyle": {
+        "description": "Edge line style",
+        "enum": [
+         "solid",
+         "dashed",
+         "dotted"
+        ],
+        "type": "string"
+       },
+       "linkedActorId": {
+        "description": "Actor linked to the edge on this layer (see edge/create linkedActorId)",
+        "type": "string"
+       },
+       "name": {
+        "description": "Label on this layer, shown instead of the edge's own name",
+        "type": "string"
+       },
+       "routingPoints": {
+        "description": "Hand-placed bend points, in order from source to target",
+        "items": {
+         "properties": {
+          "d": {
+           "description": "Distance from that line, perpendicular to it, in graph units",
+           "type": "number"
+          },
+          "w": {
+           "description": "Position along the source-to-target line: 0 is the source center, 1 the target center",
+           "type": "number"
+          }
+         },
+         "type": "object"
+        },
+        "type": "array"
+       },
+       "width": {
+        "description": "Line width",
+        "type": "integer"
+       }
+      },
+      "type": "object"
+     }
+    }
+   ],
+   "summary": "Merges layer settings into an edge on a layer"
   }
  ]
 }

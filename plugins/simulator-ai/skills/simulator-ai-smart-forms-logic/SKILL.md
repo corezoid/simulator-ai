@@ -80,10 +80,15 @@ Rules the brief must state:
    process name; node list in order with every Code node body written out; constants for
    `_ENV_VARS_`.
 3. After the push, keep the numeric process id.
-4. **Bind it** to both environments. The binding (sim-api `corezoid/project/bind`) sets up the
-   API key and shares the process itself, with no secret in the conversation, but this catalog
-   has no tool for it: ask the user to bind it in the Smart Form editor's Corezoid settings
-   ("bind existing processes", develop and production). Releases ship files, never bindings.
+4. **Bind it** to both environments (`console-full`). Find the ids: `corezoid_projects_list`,
+   `corezoid_stages_list {projectId}`, `corezoid_processes_list {projectId, stageId}`. Name the
+   process per environment and get a yes, then `corezoid_project_bind {actorId: <appId>,
+   projectId, envs: [{envTitle: "develop", stageId, procId}, {envTitle: "production", stageId,
+   procId}]}`: every env, once. The server sets up the API key and shares the processes, with
+   no secret in the conversation; the binding replaces the current one and is not undone in
+   Corezoid. A form with no project at all can get one of its own instead:
+   `corezoid_project_create {actorId}`, then `corezoid_project_get {actorId}` until `status` is
+   `ready`. Releases ship files, never bindings.
 5. Test the process with `run-task` (via the Corezoid skills) on synthetic `/get` and `/send`
    bodies; the final callback fails without a real `__callback_url`, so check that the task
    reached it with the right `viewModel` / `data`. Then release (`smart_form_release`) and let
@@ -91,7 +96,8 @@ Rules the brief must state:
 
 ## 4. Edit
 
-Find the bound process (the Smart Form editor shows it), classify the change — a new
+Find the bound process (`corezoid_project_get {actorId: <appId>}` in `console-full`, or the
+Smart Form editor), classify the change — a new
 view-model key the page reads needs the `/get` builder, a new Form or button needs a `/send` branch, a new page
 a `body.page` branch — and hand `corezoid-edit` a brief: process, goal, nodes to add or change
 with their payloads, everything else kept. Keep page files and process in step: change the

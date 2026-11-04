@@ -1,5 +1,5 @@
 {
- "source": "sim-api feature/simulator-ai d237665a, internal/server/testdata/public-openrpc.json",
+ "source": "sim-api feature/simulator-ai 831fe0a9, internal/server/testdata/public-openrpc.json",
  "documentSha256": "2594ab79d170dd71998750de345e070f18d402e8073cdeda2ec98bc14205b3c9",
- "methods": 124
+ "methods": 142
 }
