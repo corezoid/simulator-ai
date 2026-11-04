@@ -37,6 +37,9 @@ type DataForm struct {
 	Page   string `json:"page"`
 }
 
+// siftedKey finds the vm key a generated formData filter reads.
+var siftedKey = regexp.MustCompile(`\$sift\(\s*vm\.\s*([^\s,()]+)\s*,`)
+
 var fieldName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,63}$`)
 
 // dataFormNode is the Form node id of generated pages; vm.<it>.<field> holds the values.
@@ -188,7 +191,7 @@ func wireSubmits(source, workspace string) (string, error) {
 		return source, nil
 	}
 	forms, submitted := map[string]string{}, map[string]bool{}
-	filters := map[string]string{} // Form id -> the formData filter of its form/submit
+	var filters [][2]string // Form id and the vm key a form/submit's formData filter reads
 	inputs, idleButtons, refs, changed := 0, 0, false, false
 	var problems []string
 	var walk func(v any)
@@ -208,9 +211,9 @@ func wireSubmits(source, workspace string) (string, error) {
 			case "Form":
 				if id, ok := t["id"].(string); ok {
 					props, _ := t["props"].(map[string]any)
-					key, _ := props["valueKey"].(string)
-					if key == "" {
-						key = id
+					key, named := props["valueKey"].(string)
+					if !named {
+						key = id // the renderer's valueKey ?? id
 					}
 					forms[id] = key
 				}
@@ -224,8 +227,8 @@ func wireSubmits(source, workspace string) (string, error) {
 					} else if params["accId"] != workspace {
 						params["accId"], changed = workspace, true
 					}
-					if filter, _ := params["formData"].(string); strings.Contains(filter, "$sift(vm.") {
-						filters[id] = filter
+					if filter, _ := params["formData"].(string); siftedKey.MatchString(filter) {
+						filters = append(filters, [2]string{id, siftedKey.FindStringSubmatch(filter)[1]})
 					}
 				}
 			}
@@ -247,9 +250,9 @@ func wireSubmits(source, workspace string) (string, error) {
 			problems = append(problems, fmt.Sprintf("Form %q has no button with form.submit", id))
 		}
 	}
-	for id, filter := range filters {
-		if key, ok := forms[id]; ok && !strings.Contains(filter, "$sift(vm."+key+",") {
-			problems = append(problems, fmt.Sprintf("simapiExtraParams.formData of the form.submit of %q must read vm.%s, the values of that Form", id, key))
+	for _, f := range filters {
+		if key, ok := forms[f[0]]; ok && f[1] != key {
+			problems = append(problems, fmt.Sprintf("simapiExtraParams.formData of a form.submit of %q reads vm.%s, not vm.%s, the values of that Form", f[0], f[1], key))
 		}
 	}
 	if len(problems) > 0 {
