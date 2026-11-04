@@ -216,7 +216,6 @@ func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
 		{"account_amount_set", `{"id":"r1","amount":7}`, "account_actor/amount/update", `"amount":7,"id":"r1"`},
 		{"actor_field_triggers_set", `{"actorId":"a1","dataField":"price","triggers":["t1"]}`, "actor/field/triggers/update", `"actorId":"a1","dataField":"price","triggers":["t1"]`},
 		{"account_tags_set", `{"nameId":"n1","currencyId":3,"tags":["t1"]}`, "account/tags/update", `"currencyId":3,"nameId":"n1","tags":["t1"]`},
-		{"account_create", `{"actorId":"a1","nameId":"n1","currencyId":3,"counterType":"counter","ignoreIfExist":true}`, "account_actor/create", `"counterType":"counter","currencyId":3,"ignoreIfExist":true`},
 		{"counter_increment", `{"formId":5,"actorRef":"car","accountName":"Mileage","currency":"km","incomeType":"debit","amount":12}`, "counter/increment", `"accountName":"Mileage","actorRef":"car","amount":12`},
 		{"smart_form_folders_create", `{"actorId":"app1","items":[{"folderId":101,"title":"thanks"}]}`, "app_folder/create", `"actorId":"app1","items":[{"folderId":101,"title":"thanks"}]`},
 		{"smart_form_release_rollback", `{"actorId":"app1","releaseId":8}`, "release/rollback", `"actorId":"app1","releaseId":8`},

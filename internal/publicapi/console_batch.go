@@ -37,6 +37,8 @@ type atomicItem struct {
 	ID     string `json:"id"`
 	Method string `json:"method"`
 	Params any    `json:"params"`
+	// UseRefs resolves "$<index>.id" in params to an earlier item's result id (sim-api rpc_batch refs).
+	UseRefs bool `json:"useRefs,omitempty"`
 }
 type atomicRequest struct {
 	IsAtomic bool         `json:"isAtomic"`
@@ -55,12 +57,22 @@ type atomicWire struct {
 // atomic runs one method per item in an atomic public batch: every item is created, or none is and
 // the error names the first failed item by index.
 func (c *Client) atomic(ctx context.Context, method string, params []any) ([]json.RawMessage, error) {
-	if len(params) < 1 || len(params) > 100 {
+	items := make([]atomicItem, len(params))
+	for i, p := range params {
+		items[i] = atomicItem{Method: method, Params: p}
+	}
+	return c.atomicItems(ctx, items)
+}
+
+// atomicItems runs the items, of any methods, in one atomic public batch, in order.
+func (c *Client) atomicItems(ctx context.Context, items []atomicItem) ([]json.RawMessage, error) {
+	if len(items) < 1 || len(items) > 100 {
 		return nil, errors.New("1..100 items required")
 	}
-	req := atomicRequest{IsAtomic: true, List: make([]atomicItem, len(params))}
-	for i, p := range params {
-		req.List[i] = atomicItem{ID: strconv.Itoa(i), Method: method, Params: p}
+	req := atomicRequest{IsAtomic: true, List: make([]atomicItem, len(items))}
+	for i, item := range items {
+		item.ID = strconv.Itoa(i)
+		req.List[i] = item
 	}
 	wire, err := call[atomicRequest, atomicWire](ctx, c, "batch", req)
 	if err != nil {
@@ -71,10 +83,10 @@ func (c *Client) atomic(ctx context.Context, method string, params []any) ([]jso
 	if !wire.IsAtomic {
 		return nil, errors.New("the backend did not run the batch atomically: some items may be created; read them back before retrying")
 	}
-	if len(wire.List) != len(params) {
+	if len(wire.List) != len(items) {
 		return nil, errors.New("batch returned a different number of items; read the items back before retrying")
 	}
-	out := make([]json.RawMessage, len(params))
+	out := make([]json.RawMessage, len(items))
 	for i, item := range wire.List {
 		if item.Error != nil {
 			cause := c.apiError(item.Error)

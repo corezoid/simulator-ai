@@ -1,13 +1,12 @@
 package mcpserver
 
-// accountTools are the legacy account, account-name and currency tools (createAccount, getAccounts,
+// accountTools are the legacy account, account-name and currency tools (getAccounts,
 // getBalance, updateAccount, deleteAccount, getCurrencies/searchCurrencies, createCurrency,
 // getAccountNames/searchAccountNames, createAccountName, updateAccountName) on public methods; the
-// pair (createAccountPair) is account_pair_create. An account is a pair of rows on an actor, credit
+// pair (createAccountPair) is account_pair_create and createAccount is the console account_create. An account is a pair of rows on an actor, credit
 // and debit, of one (account name, currency, accountType).
 var accountTools = []parityTool{
-	{Name: "account_create", Method: "account_actor/create", Description: "Open an account pair on an actor (credit and debit rows, zero balance) for an account name (nameId) and currency (currencyId), accountType fact (default), plan, min, max or avg; minLimit/maxLimit bound the balance; counterType amount (default, moved by transactions) or counter, uniqCounter, systemCounter (balance read from that counter, fed by counter_increment; statistical accounts are amount only). Register the pair first with account_pair_create. Needs modify on the actor; opening the same pair again fails with alreadyExists, or with ignoreIfExist answers it as it is (existed true)."},
-	{Name: "account_by_ref_create", Method: "account_actor/by-ref/create", Description: "Open an account pair on the actor found by its template (formId) and your ref, with account_create's params; needs view on that actor and on the pair."},
+	{Name: "account_by_ref_create", Method: "account_actor/by-ref/create", Description: "Open an account pair on the actor found by its template (formId) and your ref, with nameId, currencyId, accountType, limits and counterType as in account_create; needs view on that actor and on the pair."},
 	{Name: "accounts_list", Method: "account_actor/list", Description: "List an actor's account rows (both income sides of each pair) with balances: fact rows unless accountType or accountTypes says otherwise; nameId(s), currencyId, incomeType, amount range, tag, query narrow it; from and to together (Unix ms) turn amounts into the turnover of that window; one page per call (limit, default 20; offset). Each row's id is the accountId of the transaction tools. Needs view on the actor."},
 	{Name: "accounts_count", Method: "account_actor/count", Description: "Count the account rows accounts_list would return for the same filters (a pair counts as 2 unless countBy says otherwise)."},
 	{Name: "accounts_by_ref_list", Method: "account_actor/by-ref/list", Description: "List the account rows, as accounts_list, of the actor found by its template (formId) and your ref."},

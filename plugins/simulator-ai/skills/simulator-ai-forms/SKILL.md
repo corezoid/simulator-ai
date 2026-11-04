@@ -3,9 +3,9 @@ name: simulator-ai-forms
 description: Design and change Simulator templates (forms, Account Templates, «Шаблон рахунків») — sections and fields, dynamic selects, the template tree and default accounts — and find system templates, through the public Simulator AI tools. Use when the user wants to create or modify a template, add fields, define an actor schema, set a template's status, give every actor of a template an account, or asks what system templates exist ("створи шаблон", "додай поле", "шаблон рахунків", "создай форму", "добавь поле").
 ---
 
-Use the installed `simulator-ai` catalog. `console` has `form_get` and `forms_list`; writes
-(`form_create`, `form_update`, `form_status_update`, `form_delete`), `forms_count`, the tree
-reads and the account definitions need `console-full`. The records of a template are
+Use the installed `simulator-ai` catalog. `console` has `form_get`, `forms_list`, `form_create`,
+`form_update` and `form_account_create`; `form_status_update`, `form_delete`, `forms_count`, the
+tree reads and the rest of the account definitions need `console-full`. The records of a template are
 `simulator-ai-actors`.
 
 A template is the schema of its actors: `sections[]`, each `{title, content[]}`, and each
@@ -70,13 +70,15 @@ actor can carry fields of several templates of its tree (`simulator-ai-actors`).
 ## Default accounts
 
 An account definition on a template opens that account on every actor of the template, now
-and later; removing it removes it from all of them.
+and later (the Account Template's accounts).
 
-- `form_accounts_list {formId}`, `form_account_create {formId, nameId, currencyId,
-  accountType?}` (`fact` default, `plan`, `min`, `max`, `avg`), `form_account_delete {formId,
-  id}` (confirm first).
-- The name and currency must exist: `account_pair_create` finds or creates them by name
-  (`simulator-ai-finance`). An account on one actor only is `account_create`.
+- `form_account_create {formId, accountName, currencyName, accountType?}` by NAME (or `nameId`,
+  `currencyId`; a missing name or currency is created): binds the pair (`fact` default or
+  `plan`), so actors created from the template open it, and opens it on the template's existing
+  actors too, 500 per call (`nextOffset`: repeat with `offset`); `skipExisting: true` leaves them.
+  A pair already bound is kept (`wasBound`).
+- `form_accounts_list {formId}`, `form_account_delete {formId, id}` (confirm first) are
+  `console-full`. An account on one actor only is `account_create` (`simulator-ai-finance`).
 
 After creating a template you may offer 3–6 accounts worth tracking (an account name with a
 currency, or a counter: Mileage in km, Budget in USD, Hours Spent). Reuse existing names and

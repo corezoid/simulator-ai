@@ -3,8 +3,9 @@ name: simulator-ai-finance
 description: Manage Simulator accounts, balances, transactions, transfers, currencies, account names and counters with the public Simulator AI tools (profile console-full). Use when the user wants to open an account on an actor, read a balance or its history, record a transaction, move value between actors, add a currency or category, track a counter, set a balance, write a formula, or tag accounts and bind triggers ("баланс рахунку", "запиши транзакцію", "переказ коштів", "лічильник", "баланс счёта", "перевод средств").
 ---
 
-Use the installed `simulator-ai` catalog with profile `console-full`; plain `console` has no
-finance tools. Every tool works in the host workspace.
+Use the installed `simulator-ai` catalog. Plain `console` (AI Console) has `account_create`,
+`accounts_list`, `transaction_create`, `transfer_create` and `form_account_create`; the rest
+below is `console-full`. Every tool works in the host workspace.
 
 ## The model
 
@@ -21,6 +22,20 @@ finance tools. Every tool works in the host workspace.
 
 ## Set up
 
+**Open an account on an actor by its names** ("відкрий рахунок Default USD"):
+`account_create {actorId, accountName: "Default", currencyName: "USD"}`, as the actor's
+Accounts tab does: the name and the currency are found (a missing one is created), the pair is
+registered, and the `fact` account is opened in one atomic call; `plan: true` also opens its
+plan twin. It returns `accounts [{accountType, credit, debit}]`, the row ids the transaction
+tools take, and answers an account the actor already has as it is (`existed`). A pair nobody was
+given access to is refused: repeat with `takeOwnership: true` only when the user agrees (see 1).
+
+Every actor of an **Account Template** gets the account with `form_account_create {formId,
+accountName, currencyName}`: actors created later open it, and the template's existing actors
+get it now (500 per call; repeat with `offset: nextOffset`). `skipExisting: true` leaves them.
+
+With ids, step by step:
+
 1. `account_pair_create {accountName, currencyName, symbol?, precision?, type?}`, by NAME. It
    finds the name and the currency, creates only the missing ones, and returns `{nameId,
    currencyId, registered}`:
@@ -33,7 +48,7 @@ finance tools. Every tool works in the host workspace.
      Registering it makes you its only subject and hides it from everyone else, so repeat with
      `takeOwnership: true` only when the user agrees.
 2. `account_create {actorId, nameId, currencyId, accountType?, minLimit?, maxLimit?}` opens it
-   on an actor (or `account_by_ref_create` by template and ref).
+   on an actor (or `account_by_ref_create` by template and ref, `console-full`).
 
 `currencies_list` / `account_names_list` (`query`) find existing ones; `currency_create`,
 `account_name_create` add one alone; `currency_update` replaces every field.
@@ -60,6 +75,12 @@ second call with `type` `completed`, `canceled` or `reversed` and `parentId` (or
 A blocked, formula, statistical or transfer-only account refuses plain transactions.
 
 ## Move value
+
+"Проведи транзакцію між акторами" (a transaction between actors, a payment from A to B) is a
+**transfer**: one `transfer_create` from A's `debit` row to B's `credit` row of the same pair
+(`accounts_list {actorId, nameId}` for each, or the ids `account_create` returned). A single
+`transaction_create` is only for when the user names ONE account (income to it, a charge to
+it). Neither actor has the pair yet: open it on both with `account_create` first.
 
 `transfer_create {ref, from: [{accountId, amount}], to: [{accountId, amount}]}`: `from` legs are
 debit rows, `to` legs credit rows, one currency, balanced, up to 20 per side. Confirm the
