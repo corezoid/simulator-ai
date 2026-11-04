@@ -27,6 +27,8 @@ type parityTool struct {
 	Params []string
 	// RandomColor sends a random editor palette colour when no color is given.
 	RandomColor bool
+	// Strip drops these keys (a dot path into the result object) from the answer the model sees.
+	Strip []string
 }
 
 // rowFields is the compact projection of list rows and graph nodes unless the caller sends fields.
@@ -50,7 +52,8 @@ func addParity(s *server.MCPServer, c *publicapi.Client, tools []parityTool) {
 		}
 		m := publicapi.ParityMethods[t.Method]
 		// manage takes delete items and move takes placements off the source layer.
-		destructive := strings.HasSuffix(t.Method, "/delete") || t.Method == "graph/layer/clean" || t.Method == "graph/layer/actors/manage" || t.Method == "graph/layer/actors/move" || t.Method == "attachment/detach"
+		destructive := strings.HasSuffix(t.Method, "/delete") || t.Method == "graph/layer/clean" || t.Method == "graph/layer/actors/manage" || t.Method == "graph/layer/actors/move" || t.Method == "attachment/detach" ||
+			t.Method == "access_rule/actor/request/confirm" // grants another user access
 		tool := mcp.NewTool(t.Name, mcp.WithDescription(t.Description+" Public "+t.Method+"."), mcp.WithRawInputSchema(schema),
 			mcp.WithReadOnlyHintAnnotation(!m.Write), mcp.WithDestructiveHintAnnotation(destructive), mcp.WithIdempotentHintAnnotation(!m.Write))
 		s.AddTool(tool, parityHandler(c, t))
@@ -82,8 +85,27 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 			args["edgeTypeId"], _ = json.Marshal(id)
 		}
 		v, err := c.Pass(ctx, t.Method, args)
+		if err == nil && len(t.Strip) > 0 {
+			v, err = strip(v, t.Strip)
+		}
 		return passResult(v, err), nil
 	}
+}
+
+// strip removes dot-path keys from a result object; a path that is not there is ignored.
+func strip(v json.RawMessage, paths []string) (json.RawMessage, error) {
+	var doc map[string]any
+	if json.Unmarshal(v, &doc) != nil {
+		return v, nil
+	}
+	for _, p := range paths {
+		keys, at := strings.Split(p, "."), doc
+		for _, k := range keys[:len(keys)-1] {
+			at, _ = at[k].(map[string]any)
+		}
+		delete(at, keys[len(keys)-1])
+	}
+	return json.Marshal(doc)
 }
 
 // rawArguments returns the tool arguments as raw values, bounded like every console call.

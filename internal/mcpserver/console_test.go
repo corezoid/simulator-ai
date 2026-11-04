@@ -385,9 +385,10 @@ func TestLayerGetShowsHoles(t *testing.T) {
 // legacy params, and the access tool's object dispatch.
 func TestConsolePeopleTools(t *testing.T) {
 	send, calls := consoleServer(t, map[string]string{
-		"user/list":                     `"result":{"list":[{"id":7,"nick":"Olena"}]}`,
-		"access_rule/actor/share":       `"result":{"list":[]}`,
-		"access_rule/formTemplate/list": `"result":{"list":[]}`,
+		"user/list":                        `"result":{"list":[{"id":7,"nick":"Olena"}]}`,
+		"access_rule/actor/share":          `"result":{"list":[]}`,
+		"access_rule/formTemplate/list":    `"result":{"list":[]}`,
+		"access_rule/actor/request/create": `"result":{"invite":{"id":5,"hash":"invite-secret","status":"pending"}}`,
 	})
 	for _, tc := range []struct{ tool, args, method, sent string }{
 		{"users_search", `{"query":"Olena"}`, "user/list", `"query":"Olena"`},
@@ -400,6 +401,10 @@ func TestConsolePeopleTools(t *testing.T) {
 		if strings.Contains(reply, `"isError":true`) || last.Method != tc.method || !strings.Contains(string(sent), tc.sent) {
 			t.Errorf("%s: %s called %s %s", tc.tool, reply, last.Method, sent)
 		}
+	}
+	// The invite's hash accepts it in legacy: it never reaches the model.
+	if reply := send(`"method":"tools/call","params":{"name":"access_request_create","arguments":{"actorId":"a9"}}`); strings.Contains(reply, "invite-secret") || !strings.Contains(reply, `\"id\":5`) {
+		t.Error("access_request_create answered", reply)
 	}
 	if reply := send(`"method":"tools/call","params":{"name":"users_search","arguments":{"query":"x","rootActorId":"a"}}`); !strings.Contains(reply, `"isError":true`) && !strings.Contains(reply, `"error"`) {
 		t.Error("users_search took a param outside its legacy set:", reply)

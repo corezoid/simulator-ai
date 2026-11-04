@@ -16,8 +16,8 @@ actors and reactions, and `fileName` (its storage key, not its title) reads it b
 - `fileName` becomes the title; `contentType` defaults from its extension.
 - `actorId` attaches it to an actor (needs modify); for a reaction pass the reaction as
   `actorId` and its actor as `rootActorId`. A refused attach is an error, and the file is
-  usually not stored; if the backend reports it stored, the file is unattached and not listed:
-  upload it again once the cause is fixed.
+  usually not stored; when the attach fails only after storing (an internal error), the file
+  stays unattached and is not listed: upload it again once the cause is fixed.
 - `ttl` (seconds) makes the file temporary; a temporary file can be neither attached nor put
   in a reaction, so leave `ttl` out of anything you attach.
 - The result is `{id, title, type, size, fileName, attachedTo}`.

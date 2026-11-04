@@ -99,7 +99,7 @@ func TestUploadAttachmentReportsTheRefusal(t *testing.T) {
 func TestReadAttachment(t *testing.T) {
 	scanWait = time.Millisecond
 	defer func() { scanWait = time.Second }()
-	scans := 0
+	scans, misses := 0, 0
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
 			http.Error(w, "the download needs no credential", http.StatusBadRequest)
@@ -128,6 +128,7 @@ func TestReadAttachment(t *testing.T) {
 		case "infected":
 			http.Error(w, "file quarantined", http.StatusForbidden)
 		default:
+			misses++
 			http.NotFound(w, r)
 		}
 	}))
@@ -153,5 +154,8 @@ func TestReadAttachment(t *testing.T) {
 		if _, err := read(name); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+	if misses != 3 { // a 404 is retried twice, not like a 425
+		t.Errorf("a missing file was asked for %d times, want 3", misses)
 	}
 }

@@ -52,18 +52,21 @@ only owners/admins may change it, only API users can be added, and only `view`/`
 A read that fails with an access error means you lack `view`. Say so; do not retry under
 another identity or guess the data. Ask the actor's managers instead:
 
-1. `access_request_create {actorId, modify?}` asks for `view` (and `modify` with
+1. Ask the user first: the request notifies the actor's managers in their name. Then
+   `access_request_create {actorId, modify?}` asks for `view` (and `modify` with
    `modify: true`). It grants nothing: tell the user the request is pending. Asking again while
-   it is pending returns the same request; with `view` already it is refused.
+   it is pending returns the same request as first asked (`modify` is not added); with `view`
+   already it is refused.
 2. Retry the blocked step only after the user says it was granted.
 
 Requests exist for actors only; for a template or an account, tell the user who to ask.
 
-## Answering requests (you manage the actor)
+## Answering requests (you manage the actor; `console-full` only)
 
 - `access_requests_list {actorId}` shows the waiting room: who asked, for `modify` too, when.
 - `access_request_confirm {inviteId}` grants `view` (and `modify` if asked), never more; the
   requester is notified. Confirm with the user before granting.
-- `access_request_cancel {inviteId}` turns a request down, or withdraws your own.
+- `access_request_cancel {inviteId}` turns a request down, or withdraws your own (the `invite.id`
+  that `access_request_create` returned).
 
 Both put a `sign` or `reject` reaction on the request's event unless `mirrorSign: false`.
