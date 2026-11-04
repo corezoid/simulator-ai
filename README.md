@@ -120,6 +120,7 @@ step needs.
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
 | `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges, `hasMore` |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
+| `smart_form_components` | none (pinned sim-api CDU 2.0 catalog, `contracts/cdu-components.json`) | component types with category; with `types` their props, events and slots |
 | `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |

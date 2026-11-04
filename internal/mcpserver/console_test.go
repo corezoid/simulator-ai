@@ -106,11 +106,11 @@ func TestConsoleCatalog(t *testing.T) {
 			t.Errorf("%s output schema types open JSON as bytes", tool.Name)
 		}
 	}
-	want := "actor_create,actor_get,actor_update,actors_create,edge_create,edges_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
+	want := "actor_create,actor_get,actor_update,actors_create,edge_create,edges_create,flowchart_blocks_list,flowchart_layout,layer_create,layer_get,layer_placements_create,layer_positions_update,smart_form_components,smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get"
 	if strings.Join(names, ",") != want {
 		t.Fatal("console tools:", names)
 	}
-	for _, name := range []string{"actor_get", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
+	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get"} {
 		if !reads[name] {
 			t.Errorf("%s must be read-only", name)
 		}
@@ -242,7 +242,7 @@ func TestConsoleBatches(t *testing.T) {
 	failed := `"result":{"isAtomic":true,"rolledBack":true,"list":[{"id":"0","result":{"id":"a1","formId":5}},{"id":"1","error":{"code":-32602,"message":"invalid params: formId","data":{"reason":"invalidParams"}}}]}`
 	for _, tc := range []struct {
 		name, tool, args, batch, wire, want string
-		fails                                bool
+		fails                               bool
 	}{
 		{"actors in order", "actors_create", `{"actors":[{"formId":5,"title":"Start","color":"#17B26A","data":{"k":1}},{"formId":5,"title":"End"}]}`, actors,
 			`"isAtomic":true,"list":[{"id":"0","method":"actor/create","params":{"accId":"ws","color":"#17B26A","data":{"k":1}`, `"actors":[{"formId":5,"id":"a1","title":"Start"},{"formId":5,"id":"a2","title":"End"}]`, false},
@@ -262,5 +262,39 @@ func TestConsoleBatches(t *testing.T) {
 				t.Fatalf("reply %s, want %s", reply, tc.want)
 			}
 		})
+	}
+}
+
+func TestSmartFormComponents(t *testing.T) {
+	send, calls := consoleServer(t, nil)
+	text := func(args string) string {
+		var r struct {
+			Result struct {
+				Content    []struct{ Text string } `json:"content"`
+				Structured json.RawMessage         `json:"structuredContent"`
+			} `json:"result"`
+		}
+		_ = json.Unmarshal([]byte(send(`"method":"tools/call","params":{"name":"smart_form_components","arguments":`+args+`}`)), &r)
+		if len(r.Result.Structured) > 0 {
+			return string(r.Result.Structured)
+		}
+		if len(r.Result.Content) > 0 {
+			return r.Result.Content[0].Text
+		}
+		return ""
+	}
+	list := text(`{}`)
+	if strings.Count(list, `"category":`) != 97 || strings.Contains(list, `"props"`) || !strings.Contains(list, `"type":"DatePicker"`) {
+		t.Fatal("component list:", list[:300])
+	}
+	detail := text(`{"types":["TextInput","Button"]}`)
+	if !strings.Contains(detail, `"label":{"description":"Label for the input","type":"string"}`) || !strings.Contains(detail, `"title":`) || strings.Count(detail, `"category":`) != 2 {
+		t.Fatal("component detail:", detail[:300])
+	}
+	if unknown := text(`{"types":["DateInput"]}`); !strings.Contains(unknown, "unknown CDU component types [DateInput]") {
+		t.Fatal(unknown)
+	}
+	if len(*calls) != 0 {
+		t.Fatal("the component reference called the API")
 	}
 }

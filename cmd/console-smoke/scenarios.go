@@ -188,8 +188,21 @@ func form(c *client, stamp string) error {
 	if config == nil {
 		return fmt.Errorf("new Smart Form has no pages/index/config")
 	}
+	// The leave request of acceptance scenario 2, built only from smart_form_components types.
+	var kinds struct {
+		Components []struct {
+			Type string `json:"type"`
+		} `json:"components"`
+	}
+	if err := c.tool("smart_form_components", map[string]any{"types": []string{"Stack", "Label", "DatePicker", "TextInput", "Button"}}, &kinds); err != nil {
+		return err
+	}
 	page, _ := json.Marshal(map[string]any{"schemaVersion": "2.0", "id": "index", "tree": map[string]any{"id": "root", "type": "Stack", "children": []any{
-		map[string]any{"id": "days", "type": "TextInput", "props": map[string]any{"label": "Кількість днів", "required": true}},
+		map[string]any{"id": "startLabel", "type": "Label", "props": map[string]any{"title": "Дата початку"}},
+		map[string]any{"id": "start", "type": "DatePicker", "props": map[string]any{"mode": "single"}},
+		map[string]any{"id": "endLabel", "type": "Label", "props": map[string]any{"title": "Дата кінця"}},
+		map[string]any{"id": "end", "type": "DatePicker", "props": map[string]any{"mode": "single"}},
+		map[string]any{"id": "comment", "type": "TextInput", "props": map[string]any{"label": "Коментар"}},
 		map[string]any{"id": "submit", "type": "Button", "props": map[string]any{"title": "Надіслати"}},
 	}}})
 	config["source"] = string(page)
