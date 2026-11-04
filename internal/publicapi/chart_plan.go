@@ -17,8 +17,11 @@ type storedSource struct {
 	DynamicSource *storedDynamic  `json:"dynamicSource"`
 }
 type storedAccount struct {
-	Color      string `json:"color"`
-	IncomeType string `json:"incomeType"`
+	ActorID    string  `json:"actorId"`
+	NameID     string  `json:"nameId"`
+	CurrencyID flexInt `json:"currencyId"`
+	Color      string  `json:"color"`
+	IncomeType string  `json:"incomeType"`
 }
 type storedDynamic struct {
 	ID          string  `json:"id"`
@@ -183,12 +186,18 @@ func (p *sourcePlan) manual(in ChartUpdateInput, cur storedSource) error {
 		if len(cur.Accounts) == 0 || json.Unmarshal(p.keys["accounts"], &series) != nil || len(series) != len(cur.Accounts) {
 			return errors.New("this chart has no series: pass accounts, or filterActorId or sourceFormId, accountNameId and currencyId for an actorFilter chart")
 		}
+		seen := seriesSeen{}
 		for i := range series {
 			if series[i] == nil {
 				series[i] = map[string]json.RawMessage{}
 			}
-			income := orDefault(in.IncomeType, orDefault(cur.Accounts[i].IncomeType, "total"))
+			a := cur.Accounts[i]
+			income := orDefault(in.IncomeType, orDefault(a.IncomeType, "total"))
 			if err := checkEnum("incomeType", income, chartIncomeTypes); err != nil {
+				return err
+			}
+			// One incomeType for every series can make two of them the same series.
+			if err := seen.add(i, a.ActorID, a.NameID, int64(a.CurrencyID), income); err != nil {
 				return err
 			}
 			setJSON(series[i], "incomeType", income)

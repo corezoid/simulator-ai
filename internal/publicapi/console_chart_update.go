@@ -116,7 +116,10 @@ func (c *Client) UpdateChart(ctx context.Context, in ChartUpdateInput) (ChartUpd
 	settings := chartLayerSettings{ExpandType: "chart", Expand: in.Expand == nil || *in.Expand, Width: in.Width, Height: in.Height}
 	if _, err = call[actorSettingsRequest, json.RawMessage](ctx, c, "graph/layer/actor_settings/save", actorSettingsRequest{AccID: c.config.Workspace,
 		ActorID: in.LayerID, LaActorID: in.LaID, LayerSettings: settings}); err != nil {
-		if in.changesSource() {
+		switch {
+		case in.changesSource() && out.FilterActorID != "":
+			err = fmt.Errorf("%w (the chart's source was saved; it now reads the ActorFilters actor %s)", err, out.FilterActorID)
+		case in.changesSource():
 			err = fmt.Errorf("%w (the chart's source was saved)", err)
 		}
 		return ChartUpdated{}, err

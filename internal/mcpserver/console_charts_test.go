@@ -94,6 +94,17 @@ func TestChartUpdate(t *testing.T) {
 		t.Fatal(reply)
 	}
 
+	// The source moved to a new filter, then the placement failed: the error names that filter.
+	send, _ = consoleServer(t, map[string]string{
+		"actor/get":                       chart,
+		"graph/layer/elements/list":       `"result":{"nodes":[{"laId":31,"id":"` + chartActor + `"}],"edges":[]}`,
+		"graph/layer/actor_settings/save": `"error":{"code":1,"message":"denied","data":{"reason":"accessDenied"}}`,
+	})
+	reply = callTool(send, "chart_update", `{"chartId":"`+chartActor+`","sourceFormId":19,"accountNameId":"`+chartName+`","currencyId":2,"layerId":"`+chartLayer+`","laId":31}`)
+	if !strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "it now reads the ActorFilters actor a1") {
+		t.Fatal("placement failure after a new filter:", reply)
+	}
+
 	// Another actor's placement, or an actor that is not a chart, is refused before any write.
 	for _, tc := range []struct{ name, method, result, want string }{
 		{"another placement", "graph/layer/elements/list", `"result":{"nodes":[{"laId":31,"id":"other"}]}`, "is not a placement of the chart"},

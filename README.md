@@ -300,7 +300,7 @@ workspace roles, `SMOKE_TTL`, `ROTATE=1`) and writes `~/.config/simulator-ai/smo
 placements read back with `layer_get`, then a Smart Form with a field, a submit button and a root route, released,
 read back as `ready` and linked with `build_link`, then a verified skill found by `skills_find`, read by `skill_get`
 and linked. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
-by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`) the simulation one (a shop with a balance
+by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`), the simulation one (a shop with a balance
 of 100 and a supplier on a new layer; a payment model checked against `simulation_snapshot_get` and run live in two
 scenarios) and the charts one (a manual chart read back with its source and chart placement, turned into an
 actorFilter chart with a new filter and resized, then back to manual). Each run creates new objects in that

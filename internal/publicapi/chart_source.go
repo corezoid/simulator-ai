@@ -161,11 +161,24 @@ func (s *ChartSettings) normalize() ([]string, error) {
 	return warnings, nil
 }
 
-// normalizeAccounts defaults incomeType and colour, and refuses a series without its ids or one
-// the web app would show once (it keys series by actor, name, currency and incomeType).
+// seriesSeen refuses a series the web app would show once: it keys series by actor, account name,
+// currency and incomeType.
+type seriesSeen map[string]int
+
+func (seen seriesSeen) add(i int, actorID, nameID string, currencyID int64, incomeType string) error {
+	key := fmt.Sprintf("%s_%s_%d_%s", actorID, nameID, currencyID, incomeType)
+	if j, dup := seen[key]; dup {
+		return fmt.Errorf("accounts[%d] repeats accounts[%d]: the chart would show it once", i, j)
+	}
+	seen[key] = i
+	return nil
+}
+
+// normalizeAccounts defaults incomeType and colour, and refuses a series without its ids or a
+// repeated one.
 func normalizeAccounts(in []ChartAccount) ([]ChartAccount, error) {
 	out := slices.Clone(in)
-	seen := map[string]int{}
+	seen := seriesSeen{}
 	for i := range out {
 		a := &out[i]
 		a.IncomeType = orDefault(a.IncomeType, "total")
@@ -176,11 +189,9 @@ func normalizeAccounts(in []ChartAccount) ([]ChartAccount, error) {
 		if !uuidPattern.MatchString(a.ActorID) || !uuidPattern.MatchString(a.NameID) || a.CurrencyID < 1 {
 			return nil, fmt.Errorf("accounts[%d] needs actorId (actor id), nameId (account name id) and a positive currencyId", i)
 		}
-		key := fmt.Sprintf("%s_%s_%d_%s", a.ActorID, a.NameID, a.CurrencyID, a.IncomeType)
-		if j, dup := seen[key]; dup {
-			return nil, fmt.Errorf("accounts[%d] repeats accounts[%d]: the chart would show it once", i, j)
+		if err := seen.add(i, a.ActorID, a.NameID, a.CurrencyID, a.IncomeType); err != nil {
+			return nil, err
 		}
-		seen[key] = i
 	}
 	return out, nil
 }

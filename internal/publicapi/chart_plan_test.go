@@ -54,6 +54,19 @@ func TestPlanManualKeepsStoredKeys(t *testing.T) {
 	}
 }
 
+// One incomeType for every series must not turn two series into one the web app shows once.
+func TestPlanManualRefusesRepeatedSeries(t *testing.T) {
+	both := `{"chartType":"bar","sourceType":"manual","accounts":[{"actorId":"` + actorA + `","nameId":"` + nameN + `","currencyId":"1"},` +
+		`{"actorId":"` + actorA + `","nameId":"` + nameN + `","currencyId":1,"incomeType":"credit"}]}`
+	_, err := planSource(context.Background(), ChartUpdateInput{ChartID: chartID, IncomeType: "credit"}, storedChart(both), noFilter)
+	if err == nil || !strings.Contains(err.Error(), "accounts[1] repeats accounts[0]") {
+		t.Fatal("two series made one:", err)
+	}
+	if _, err = planSource(context.Background(), ChartUpdateInput{ChartID: chartID, IncomeType: "debit"}, storedChart(manualSource), noFilter); err != nil {
+		t.Fatal("distinct series refused:", err)
+	}
+}
+
 func TestPlanManualToFilter(t *testing.T) {
 	ctx := context.Background()
 	if _, err := planSource(ctx, ChartUpdateInput{ChartID: chartID, ChartFilterInput: ChartFilterInput{SourceFormID: 19}}, storedChart(manualSource), noFilter); err == nil || !strings.Contains(err.Error(), "a new filter needs") {
