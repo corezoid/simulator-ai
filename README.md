@@ -109,7 +109,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 33 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 32 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -173,7 +173,7 @@ Every tool schema rides in the model context on every turn, so `SIMULATOR_AI_PRO
 catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, `actor_update`, `actors_search`,
 `actor_by_ref_get`, `form_get`, `forms_list`, `graph_get`, the flowchart tools, the Smart Form tools below and,
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
-`access_rules_save`, `access_request_create`, `attachment_upload` and `attachment_read`: 33 in all. `console-full`
+`access_rules_save`, `attachment_upload` and `attachment_read`: 32 in all. `console-full`
 adds every other actor, form, graph, access, reaction, user and attachment tool (84 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 

@@ -50,7 +50,8 @@ only owners/admins may change it, only API users can be added, and only `view`/`
 ## When you cannot see an object
 
 A read that fails with an access error means you lack `view`. Say so; do not retry under
-another identity or guess the data. Ask the actor's managers instead:
+another identity or guess the data. In plain `console` tell the user whom to ask. With
+`console-full` you can ask the actor's managers:
 
 1. Ask the user first: the request notifies the actor's managers in their name. Then
    `access_request_create {actorId, modify?}` asks for `view` (and `modify` with
