@@ -180,7 +180,7 @@ scenarios use (see "AI Console profile").
 | `actor_field_triggers_list` / `_set` [getDataFieldActorsByActor, saveDataFieldActorsByActor] | `actor/field/triggers/list` / `update` | ✓ | | |
 | `skills_find` [findSkill] (verified only, no body) · `skill_get` [getSkill] (by ref or id, with the procedure) | `form/system/get` (`Skills`) + `actor/filter/list` · `actor/by-ref/get` or `actor/get` | ✓ | | |
 | `agents_find` [findAgent] (members without query) · `agent_get` [getAgent] (a user's twin or any actor, with the profile) | `user/list`, or `form/system/get` (`System`) + `actor/search/list` (semantic, else text), or `actor/filter/list` of a `formId` · `actor/by-system_obj/get` or `actor/get` | ✓ | | |
-| `build_link` [buildLink] (actor, layer, form, chat, chart, … and a Smart Form route) | none: the legacy web app route table on `SIMULATOR_AI_ORIGIN`; a Smart Form's short URL from `route/build` (its production release) | ✓ | | |
+| `build_link` [buildLink] (actor, layer, form, chat, chart, … and a Smart Form route; with `appKey`/`appId` inside the current Smart Form) | `route/build` (`dynamic` on the current form's key, `route/key/get` for an `appId`) plus the block's `#b=` fragment; the legacy web app route table on `SIMULATOR_AI_ORIGIN` as the fallback; a Smart Form's short URL from `route/build` (its production release) | ✓ | | |
 | `bbcode_tags_get` [getBbcodeTags] | none: the BBCode catalog of simulator-ui-kit `packages/utils/src/bbcode/bbcode-tags.json`, built in | ✓ | | |
 | `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, `graph/layer/actors/manage` | ✓ | | |
 | `chart_update` [updateChart] (settings, series or filter; with `laId` the placement's size) | `actor/get` + `form/system/get`, a new filter's `actor/create`, `actor/update`, `graph/layer/elements/list` + `graph/layer/actor_settings/save` | ✓ | | |
@@ -199,9 +199,9 @@ scenarios use (see "AI Console profile").
 | `meet_transcription_list` [getTranscription] (the live transcript; empty before and after a call) | `meet/transcription/list` | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at 18d5aec2 or later (`cdu/catalog/get` !463,
+These tools need sim-api `feature/simulator-ai` at a547f397 or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`, the Smart Form history, trash, page and
-Corezoid methods, the task methods !494, guest links !495 and the transcript !496); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
+Corezoid methods, the task methods !494, guest links !495, the transcript !496 and `graph/viewport/command` for `layer_viewport`); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
 import, guest link create/revoke and Corezoid bind/create tools are hinted destructive (a new guest link opens view to
 anyone with its URL and stops the one already handed out); page render is not read-only either (it runs the page's `/get`).
 
@@ -213,9 +213,14 @@ retried for about 3 seconds and then reports "no such file, or its antivirus sca
 `simulator-ai-agents`, `simulator-ai-charts` and `simulator-ai-meetings` compose these tools.
 
 Skill procedures and agent profiles are descriptions users write: `skill_get` and `agent_get` return them as data, and
-their tool descriptions tell the model not to take instructions from them. `build_link` builds web app URLs on
-`SIMULATOR_AI_ORIGIN` with the 8-character workspace segment, each id escaped as one path segment; a `smartForm`
-link needs a route its released pages declare.
+their tool descriptions tell the model not to take instructions from them. `build_link` builds a link inside the current
+Smart Form when given its `appKey` (the Console context's `/sf/<key>`) or `appId` (sim-api `docs/ai-console.md`
+"Посилання"): `route/build` on that key with the start Smart Form's route of the entity (`workspace.actors`,
+`workspace.graphs-edit`, `workspace.events`, `workspace.chats`, `workspace.templates-edit`, the lists) or a `route` of
+the form's own, plus the block state as `#b=<blockId>:<route>` (both parts encodeURIComponent), root-relative. Without
+them, or for an entity with no runtime page (marked `legacy`), it builds web app URLs on `SIMULATOR_AI_ORIGIN` with
+the 8-character workspace segment, each id escaped as one path segment; a `smartForm` link needs a route its released
+pages declare.
 
 A chart's `data.source` is built locally as legacy createChart built it: the web app wizard's JSON string, which
 sim-api's `dashboard/get` reads too. The chart is drawn as `layerSettings` `{expandType: chart, expand: true, width: 650,

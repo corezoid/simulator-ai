@@ -53,7 +53,7 @@ data: {scheduleMeeting: true, startDate, endDate,
 
 | Want | How |
 | --- | --- |
-| Open the meeting in the app | `build_link {entity: "actor", id}` and append `?tab=meeting` |
+| Open the meeting in the app | in AI Console `build_link {entity: "event", id, query: {tab: "meeting"}, appKey}`; elsewhere `build_link {entity: "actor", id}` and append `?tab=meeting` |
 | The meeting-room page | `build_link {entity: "meeting", id}` |
 | A guest link, no account needed | `public_link_create {actorId, waitList?, ttl?, dueDate?}` → `{hash, url}` |
 

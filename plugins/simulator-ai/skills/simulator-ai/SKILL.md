@@ -74,7 +74,12 @@ Workspace
 - Name a place on a layer by its Graph Editor cell, `"C, 7"` (column, row as on the rulers),
   never by coordinates (`simulator-ai-graph`).
 - Cite the ids you used. To link an entity, call `build_link` (`actor`, `layer`, `graph`,
-  `form`, `chat`, `smartForm`, ...); never compose a Simulator URL yourself.
+  `form`, `chat`, `smartForm`, ...); never compose a Simulator URL yourself. In AI Console the
+  user is inside a Smart Form: pass `appKey`, the "Smart Form appKey" of the Current context
+  (else `appId`, the current Smart Form), so the link opens in that form (`/sf/<appKey>/…`, with
+  the open actor or layer in its `#b=` fragment). A layer link there also needs `graphId`; a form
+  of its own names its routes itself (`route`, from its page/render `routing.routes`). Legacy web
+  app URLs are only the fallback (`legacy: true`): say that one opens outside the current form.
 
 ## Profiles
 
