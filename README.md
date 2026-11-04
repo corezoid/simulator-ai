@@ -144,7 +144,7 @@ scenarios use (see "AI Console profile").
 | `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
 | `access_rules_get` [getAccessRules, getTemplateActorsAccess, getTreeLayerAccess] (objType actor, formTemplate, templateActors, account) | `access_rule/<objType>/list` | ✓ | | |
 | `access_rules_save` [saveAccessRules, saveTemplateActorsAccess, saveTreeLayerAccess] (`mode` merge, or replace: everyone not named is revoked) | `access_rule/<objType>/share` (replace reads `…/list` first) | ✓ | | |
-| `access_request_create` [requestAccess] · `access_requests_list` · `access_request_confirm` · `access_request_cancel` | `access_rule/actor/request/create` · `…/list` · `…/confirm` · `…/cancel` | ✓ | | |
+| `access_request_create` [requestAccess] (an actor of the host workspace) · `access_requests_list` · `access_request_confirm` · `access_request_cancel` | `access_rule/actor/request/create` · `…/list` · `…/confirm` · `…/cancel` | ✓ | | |
 | `reactions_list` [getReactions] · `reactions_count` · `reactions_mark_read` [markReactionsRead] | `reaction/list` · `reaction/count` · `reaction/read/update` | ✓ | | |
 | `reaction_create` · `reaction_update` · `reaction_delete` [createReaction, updateReaction, deleteReaction] | `reaction/create` · `reaction/update` · `reaction/delete` | ✓ | | |
 | `users_search` [searchUsers, getUsers] (without query a page of members) · `user_get` [getUser] · `workspaces_list` [getWorkspaces] | `user/list` · `user/get` · `workspace/list` | ✓ | | |
