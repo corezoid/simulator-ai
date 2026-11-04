@@ -110,22 +110,24 @@ func TestConsoleCatalog(t *testing.T) {
 	}
 	// The exact console catalog: its own tools plus every actor, form, graph, access, reaction, user,
 	// attachment and finance tool.
-	want := "access_request_cancel,access_request_confirm,access_request_create,access_requests_list,access_rules_get,access_rules_save,account_by_ref_create,account_by_ref_get," +
-		"account_create,account_delete,account_get,account_name_create,account_name_get,account_name_update,account_names_list,account_pair_create,account_pair_unregister," +
-		"account_status_update,account_transactions_list,account_update,accounts_by_ref_list,accounts_count,accounts_list,actor_by_ref_get,actor_corezoid_processes_list," +
-		"actor_create,actor_delete,actor_get,actor_status_update,actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count,actors_search,attachment_attach," +
-		"attachment_detach,attachment_read,attachment_update,attachment_upload,attachments_by_actor_list,attachments_list,counter_by_period_get,counter_get,counter_increment," +
-		"counter_set,currencies_list,currency_create,currency_get,currency_update,edge_create,edge_delete,edge_endpoints_update,edge_exist,edge_get,edge_types_list," +
-		"edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout,form_account_create,form_account_delete,form_accounts_list,form_create," +
-		"form_delete,form_get,form_linked_get,form_status_update,form_update,forms_count,forms_list,forms_tree_get,graph_get,graph_list,layer_actors_move,layer_actors_search," +
-		"layer_clean,layer_compact,layer_create,layer_edges_list,layer_element_exist,layer_get,layer_placements_all,layer_placements_create,layer_placements_list," +
-		"layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_skeleton_get,layer_stats_get,reaction_create,reaction_delete,reaction_update," +
-		"reactions_count,reactions_list,reactions_mark_read,search_all,smart_form_components,smart_form_create,smart_form_data_form_create,smart_form_files_create," +
-		"smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get,transaction_by_actor_ref_create,transaction_by_ref_get,transaction_children_list," +
-		"transaction_create,transaction_get,transactions_filter,transactions_filter_count,transactions_list,transfer_by_ref_get,transfer_create,transfer_get,transfers_filter," +
-		"transfers_filter_count,user_get,users_search,workspaces_list"
+	want := "access_request_cancel,access_request_confirm,access_request_create,access_requests_list,access_rules_get,access_rules_save,account_actor_tags_count,account_actor_tags_list," +
+		"account_actor_triggers_list,account_actor_triggers_set,account_amount_set,account_by_id_get,account_by_ref_create,account_by_ref_get,account_create,account_delete," +
+		"account_formula_get,account_formula_preview,account_formula_set,account_get,account_name_create,account_name_get,account_name_update,account_names_list," +
+		"account_pair_create,account_pair_unregister,account_status_update,account_tag_add,account_tags_list,account_tags_set,account_transactions_list,account_triggers_list," +
+		"account_triggers_set,account_update,accounts_by_ref_list,accounts_count,accounts_list,actor_by_ref_get,actor_corezoid_processes_list,actor_create,actor_delete," +
+		"actor_field_triggers_list,actor_field_triggers_set,actor_get,actor_status_update,actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count," +
+		"actors_search,atom_transaction_create,attachment_attach,attachment_detach,attachment_read,attachment_update,attachment_upload,attachments_by_actor_list," +
+		"attachments_list,counter_by_period_get,counter_get,counter_increment,counter_set,currencies_list,currency_create,currency_get,currency_update,edge_create," +
+		"edge_delete,edge_endpoints_update,edge_exist,edge_get,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
+		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get,form_status_update,form_update,forms_count,forms_list," +
+		"forms_tree_get,graph_get,graph_list,layer_actors_move,layer_actors_search,layer_clean,layer_compact,layer_create,layer_edges_list,layer_element_exist,layer_get," +
+		"layer_placements_all,layer_placements_create,layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_skeleton_get," +
+		"layer_stats_get,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,reactions_mark_read,search_all,smart_form_components,smart_form_create," +
+		"smart_form_data_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get,transaction_by_actor_ref_create," +
+		"transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter,transactions_filter_count,transactions_list,transfer_by_ref_get," +
+		"transfer_create,transfer_get,transfers_filter,transfers_filter_count,user_get,users_search,workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 122 {
+	if got := strings.Join(names, ","); got != want || len(names) != 139 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search"} {

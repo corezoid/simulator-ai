@@ -61,6 +61,7 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addParity(s, c, accessRequestTools)
 		addParity(s, c, accountTools)
 		addParity(s, c, ledgerTools)
+		addParity(s, c, accountExtraTools)
 		addConsoleFinance(s, c)
 		addParity(s, c, userTools)
 		addParity(s, c, attachmentTools)

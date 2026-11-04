@@ -61,6 +61,12 @@ var ParityMethods = map[string]ParityMethod{
 	"transaction/account/list": {"finance", false}, "transaction/filter": {"finance", false}, "transaction/filter/count": {"finance", false},
 	"transaction/children/list": {"finance", false}, "transfer/create": {"finance", true}, "transfer/get": {"finance", false},
 	"transfer/by-ref/get": {"finance", false}, "transfer/filter": {"finance", false}, "transfer/filter/count": {"finance", false},
+	"account_actor/amount/update": {"finance", true}, "account_actor/formula/get": {"finance", false}, "account_actor/formula/preview": {"finance", false},
+	"account_actor/formula/update": {"finance", true}, "transaction/atom/create": {"finance", true}, "account_actor/by-id/get": {"finance", false},
+	"account/tags/create": {"finance", true}, "account/tags/list": {"finance", false}, "account/tags/update": {"finance", true},
+	"account/triggers/list": {"finance", false}, "account/triggers/update": {"finance", true}, "account_actor/triggers/list": {"finance", false},
+	"account_actor/triggers/update": {"finance", true}, "account_actor/tags/list": {"finance", false}, "account_actor/tags/count": {"finance", false},
+	"actor/field/triggers/list": {"finance", false}, "actor/field/triggers/update": {"finance", true},
 }
 
 // ParityAllowed says whether this profile exposes the method: console all of them; the read-only
