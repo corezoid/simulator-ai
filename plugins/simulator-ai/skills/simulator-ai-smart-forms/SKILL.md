@@ -84,29 +84,52 @@ without actions beside inputs, or a `form/submit` without its template is refuse
    existing folder (e.g. `pages/index/locale`).
 5. On a refusal, read the server's message: it names the component, prop or wiring at fault.
 
-A new page needs a new folder `pages/<page>`; `console` cannot create folders (the
-`smart-forms` profile can). Until then add views inside existing pages (overlays, `if`).
+A new page is a folder `pages/<page>` holding its `config`: `smart_form_folders_create
+{actorId: <appId>, items: [{folderId: <id of pages>, title: "<page>"}]}`, then
+`smart_form_files_create` the `config` (and `locale`) with the new folder's id. Reuse a folder
+that exists: titles are not unique.
 
 ## Release and show it
 
 `smart_form_release {appId}` deploys develop into production (it replaces production's whole
 content). A refused page or route deploys nothing. A form you did not create in this run may
-already be live, and there is no rollback tool: before releasing it, name the form and what
-the release changes, and get an explicit yes. Its result `{releaseId, releaseNumber,
+already be live: before releasing it, name the form and what the release changes, and get an
+explicit yes (`smart_form_release_rollback` undoes it, below). Its result `{releaseId, releaseNumber,
 status, ready, marker}`: `ready: true` means production serves it. `smart_form_release_get
 {appId, releaseId}` reads a release again.
 
 - **In AI Console:** when ready, end the final answer with the `marker` line exactly as returned
   (`appId: <appId>`); the reply then embeds the form (autorun) for a person allowed to open it.
-  Only a form released or read back in this run can be embedded.
+  Only a form released or read back in this run can be embedded: for a form released before,
+  `smart_form_release_get {appId}` without `releaseId` reads the release production serves
+  and its marker.
 - **In an actor or a comment:** `actor_update {actorId, appId, appSettings}` or
   `reaction_create {rootActorId, type: "comment", appId, appSettings}`; `appSettings` such as
   `{autorun, fullWidth, expired, users, groups}`.
 - **As a link:** `build_link {entity: "smartForm", ref, route, params?}`; it needs a released
   form whose page declares that route (`routes` in the page config).
 
-Release history, rollback, file history and trash have no tool here: tell the user to use the
-Smart Form editor.
+## History, rollback, trash and a test run (`console-full`)
+
+`actorId` is the `appId`; `smart_form_files_get` returns `developEnvId` and `productionEnvId`.
+
+- **Releases:** `smart_form_releases_list {actorId, envId?, status?}`; `smart_form_release_diff
+  {actorId, releaseId: <A>, vs: <B>}` lists what B adds, removes and modifies against A.
+  `smart_form_release_rollback {actorId, releaseId}` restores that release's snapshot as a new
+  active release (history is kept; undo it by rolling back again). Preview it with a diff of the
+  active release against the one to restore, name what changes and get a yes first. An env
+  keeps snapshots of its newest 5 releases only.
+- **A file's history:** `smart_form_file_versions_list {actorId, fileId}` (newest first; an
+  `update` version holds the file **before** that edit), `smart_form_file_version_get {actorId,
+  fileId, versionId}`, and `smart_form_file_rollback {actorId, fileId, versionId}` for a develop
+  file (it records the current state first, so it can be undone). Confirm first.
+- **Trash:** `smart_form_trash_list {actorId, envId: <developEnvId>}` and
+  `smart_form_trash_restore {actorId, items: [{id, objType}]}`; a folder comes back alone, so
+  restore its files as items of their own. Confirm first.
+- **Test run:** `smart_form_page_render {ref, envTitle: "develop", page}` builds a page as the
+  runtime does, its initialization process included, and returns the error that breaks it.
+  `smart_form_page_submit {ref, envTitle, page, formId: <Form node id>, formData}` runs a submit
+  and whatever its process writes: only test data, and only when the user asked for a test.
 
 ## `smart-forms` desktop profile
 

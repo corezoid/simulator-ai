@@ -4,9 +4,9 @@ description: Go through an existing Simulator Smart Form on the user's behalf â€
 ---
 
 Use the installed `simulator-ai` catalog. You run an app; building or editing one is
-`simulator-ai-smart-forms`. This catalog has **no page render or submit tool**: you cannot
-press an app's buttons or run its Corezoid logic. What you can do depends on where the app's
-submit goes.
+`simulator-ai-smart-forms`. In `console` you cannot press an app's buttons or run its Corezoid
+logic; `console-full` can (`smart_form_page_render`, `smart_form_page_submit`). What you do
+depends on where the app's submit goes.
 
 ## 1. Find the app
 
@@ -36,9 +36,13 @@ date as `{startDate, endDate}`, select as in `simulator-ai-actors`), and create 
 `actor_create {formId, title, data}` (title: the first text field, as the app does).
 Creating needs your own access to the template; a refusal means the user must use the form.
 
-**Corezoid or other app.** You cannot run it. Prepare the values with the user, then ask them
-to open the Smart Form (by its title) and submit it; never write the process's records
-yourself to imitate it.
+**Corezoid or other app.** Its process decides what is written. In `console-full`, run it as
+the runtime does: `smart_form_page_render {ref, envTitle: "production", page}` returns the page
+with its viewModel (what `/get` loaded), then, after the confirmation gate,
+`smart_form_page_submit {ref, envTitle: "production", page, formId: <the Form node id>,
+formData}` submits like its button and returns what the process answered. In `console`, prepare
+the values with the user and ask them to open the Smart Form (by its title) and submit it.
+Never write the process's records yourself to imitate it.
 
 Either way:
 

@@ -74,6 +74,8 @@ Save validation checks the shape, not the token ids: no `; { } < >`, `url(`, `ex
    `ifMatchHash` from its `sourceHash`), or `smart_form_files_create` in the root folder when
    it is missing. Prefer `scales` and `presets` over many single tokens.
 4. Adjust component props on the pages only through the catalog's props.
-5. `smart_form_release` publishes it. A form already live elsewhere cannot be rolled back
-   here: name it and what changes, and get an explicit yes first. Tell the user what to look at: no tool here renders the
-   page, so a human check of contrast and layout is part of done, at phone width too.
+5. `smart_form_release` publishes it. A form already live elsewhere: name it and what changes,
+   and get an explicit yes first (`smart_form_release_rollback` in `console-full` undoes a
+   release). `smart_form_page_render` shows a page still builds, but only a person sees the
+   result: tell the user what to look at; a human check of contrast and layout is part of done,
+   at phone width too.

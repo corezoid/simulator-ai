@@ -60,10 +60,9 @@ the types you use; take types and props only from it. Write `pages/<page>/config
 (`schemaVersion: "2.0"`), `locale` and `viewModel` with `smart_form_files_create` /
 `smart_form_files_update`. Pages whose data comes from Corezoid set `meta.initViaCorezoid:
 true`; their submits are `form.submit` with `via: "corezoid"` naming the Form. Seed every
-view-model key a page reads. Each new page needs a `pages/<page>` folder, which only the
-`smart-forms` profile can create (`application_folders_create`); in `console` keep the app on
-the existing pages (overlays, conditional sections) or ask the user to add the pages in the
-Smart Form editor.
+view-model key a page reads. Each new page needs a `pages/<page>` folder:
+`smart_form_folders_create {actorId: <appId>, items: [{folderId: <id of pages>, title: "<page>"}]}`,
+then its files in that folder.
 
 A session (token) must not travel in the URL `query` or the view model unless the backend
 leaves no alternative and the user agreed: both reach the browser. Never carry a password.
@@ -74,8 +73,9 @@ One bound process routes `/get` (per `body.page`) and `/send` (per `body.formId`
 domain processes via `api_rpc`, and answers with `viewModel` or `data.actions` — the contract
 and node rules of `simulator-ai-smart-forms-logic` §1–§2. Write the brief there, including
 every Code node body, the language of its literals, and namespacing replies when a branch
-calls two processes; hand it to `corezoid-create`. Then the user binds it to both
-environments in the Smart Form editor (no tool here binds).
+calls two processes; hand it to `corezoid-create`. Then bind it to both environments with
+`corezoid_project_bind` (`console-full`; the steps are `simulator-ai-smart-forms-logic` §3), after
+the user's yes.
 
 ## 5. Test, repair, release
 
@@ -86,8 +86,11 @@ environments in the Smart Form editor (no tool here binds).
 3. Fix in the owning layer (page file, or `corezoid-edit` for the process), re-run, at most
    three passes per defect; then report what still fails and why.
 4. Theme (`simulator-ai-styles`), then `smart_form_release` after the user confirms.
-5. End-to-end: no tool here renders or submits a page, so the user walks every page and
-   outcome, phone width too. Say which pages nobody checked.
+5. End-to-end (`console-full`): `smart_form_page_render {ref, envTitle: "develop", page}` for
+   every page; it runs each page's `/get`. A submit runs the bound `/send` process and whatever
+   it writes, so show the user the test values per Form and get a yes before
+   `smart_form_page_submit` with them. Then the user walks every page and outcome, phone width
+   too. Say which pages nobody checked.
 
 Report: the Smart Form `appId`/`ref`, the middleware process id, the coverage table, results
 per test layer, and known gaps (unknown shapes, unprobed processes, dropped ones).

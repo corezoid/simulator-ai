@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-attachments
-description: Upload, attach, list, read, rename and detach files with the public Simulator AI console tools. Use when the user wants to upload a file, attach a document or picture to an actor or a comment, read an attached file, or list a record's files ("завантаж файл", "прикріпи документ", "прочитай вкладення", "відкріпи файл", "загрузи файл").
+description: Upload, attach, list, read, rename and detach files with the public Simulator AI console tools. Use when the user wants to upload a file, attach a document or picture to an actor or a comment, set an actor's picture, read an attached file, or list a record's files ("завантаж файл", "прикріпи документ", "прочитай вкладення", "відкріпи файл", "загрузи файл").
 ---
 
 Use the installed `simulator-ai` catalog (profile `console`; the list, attach, rename and
@@ -47,3 +47,11 @@ Upload first, then `reaction_create {rootActorId, type: "comment", description, 
 
 `attachment_update {attachmentId, title}` renames. `attachment_detach {actorId, attachmentIds}`
 takes files off an actor; the files stay in the workspace. Confirm before detaching.
+
+## An actor's picture
+
+The picture (avatar) an actor shows is not an attachment: `actor_picture_upload {actorId,
+fileName, content}` (`console-full`; a .png, .jpg, .jpeg, .gif or .webp image in base64, up
+to 700 KiB; no SVG, which the web app refuses as a picture) uploads it and sets it as the actor's `picture`. It replaces the
+current picture: confirm when the actor already has one (`actor_get {actorId, fields:
+["picture"]}`).

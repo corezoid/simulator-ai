@@ -119,7 +119,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 35 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 36 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -182,11 +182,21 @@ scenarios use (see "AI Console profile").
 | `bbcode_tags_get` [getBbcodeTags] | none: the BBCode catalog of simulator-ui-kit `packages/utils/src/bbcode/bbcode-tags.json`, built in | ✓ | | |
 | `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, `graph/layer/actors/manage` | ✓ | | |
 | `chart_update` [updateChart] (settings, series or filter; with `laId` the placement's size) | `actor/get` + `form/system/get`, a new filter's `actor/create`, `actor/update`, `graph/layer/elements/list` + `graph/layer/actor_settings/save` | ✓ | | |
+| `smart_form_folders_create` (a new page's `pages/<page>`) | `app_folder/create` | ✓ | | |
+| `smart_form_releases_list` · `smart_form_release_diff` · `smart_form_release_rollback` | `release/list` · `release/diff` · `release/rollback` | ✓ | | |
+| `smart_form_file_versions_list` · `smart_form_file_version_get` · `smart_form_file_rollback` | `file_version/list` · `file_version/get` · `file/rollback` | ✓ | | |
+| `smart_form_trash_list` · `smart_form_trash_restore` | `trash/list` · `trash/restore` | ✓ | | |
+| `smart_form_page_render` · `smart_form_page_submit` (a page run as the runtime does; submit runs its process) | `page/render` · `page/submit` | ✓ | | |
+| `corezoid_projects_list` · `corezoid_stages_list` · `corezoid_processes_list` · `corezoid_project_get` | `corezoid/project/list` · `corezoid/stage/list` · `corezoid/process/list` · `corezoid/project/get` | ✓ | | |
+| `corezoid_project_bind` · `corezoid_project_create` (bind a Smart Form's envs to processes, or give it a project) | `corezoid/project/bind` · `corezoid/project/create` | ✓ | | |
+| `layer_edge_settings_save` (an edge's line style, width, colour, label on one layer) | `graph/layer/edge_settings/save` | ✓ | | |
+| `actor_picture_upload` [uploadActorPicture] (PNG, JPEG, GIF or WebP; no SVG) | HTTP `POST /api/2.0/rest/upload` (attached to nothing) + `actor/update` `picture` = its fileName, as the web app writes | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at cda5b60e or later (`cdu/catalog/get` !463,
-`actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
-with reason `methodNotFound`.
+These tools need sim-api `feature/simulator-ai` at 831fe0a9 or later (`cdu/catalog/get` !463,
+`actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`, the Smart Form history, trash, page and
+Corezoid methods); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit and
+Corezoid bind/create tools are hinted destructive; page render is not read-only either (it runs the page's `/get`).
 
 An AI Console run's token reaches `rest/upload` (and no other REST route) through sim-api !481
 (`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand
@@ -226,8 +236,9 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 `actor_by_ref_get`, `form_get`, `forms_list`, `graph_get`, the flowchart tools, the Smart Form tools below and,
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
-`skills_find`, `skill_get` and `build_link`: 35 in all. `console-full` adds every other actor, form, graph, access,
-reaction, user, attachment, finance, registry, simulation and chart tool (150 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+`skills_find`, `skill_get` and `build_link`: 36 in all (`smart_form_folders_create` is there because a form of more
+than one page needs a folder per page). `console-full` adds every other actor, form, graph, access, reaction, user,
+attachment, finance, registry, simulation, chart, Smart Form history and Corezoid tool (169 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -258,10 +269,11 @@ step needs.
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
 | `smart_form_components` | `cdu/catalog/get` | with `brief` every type's kind, category and label; with `types` the props the validator applies, events, state and api |
 | `smart_form_data_form_create` | `form/create` (data template) | formId and a ready page whose button submits via `form/submit` into it |
-| `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources |
+| `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources, `developEnvId`, `productionEnvId` |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
+| `smart_form_folders_create` | `app_folder/create` | folders with ids (a page is `pages/<page>`) |
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
-| `smart_form_release_get` | `application/env/list` + `release/get` | same release result |
+| `smart_form_release_get` | `application/env/list` + `release/get` (without `releaseId`: `route/key/get` names the active one) | same release result |
 
 Flowchart: `flowchart_blocks_list` (kinds) → `flowchart_layout(nodes, edges)` → `actor_create(formId, title,
 color, data)` per node → `layer_placements_create` nodes with the layout's `position`, `layerSettings` and the same
@@ -303,7 +315,11 @@ and linked. With `console-full` it runs the parity, people and finance scenarios
 by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`), the simulation one (a shop with a balance
 of 100 and a supplier on a new layer; a payment model checked against `simulation_snapshot_get` and run live in two
 scenarios) and the charts one (a manual chart read back with its source and chart placement, turned into an
-actorFilter chart with a new filter and resized, then back to manual). Each run creates new objects in that
+actorFilter chart with a new filter and resized, then back to manual), the formops one (a second page in its own
+folder, two releases listed and compared, a rollback read back as the active release without its id, the page's
+file history and a rollback of its edit, the trash, a develop render, no Corezoid project yet) and the extras one
+(an edge drawn dashed, 3 wide and red, an actor's picture, the first Corezoid project's stages and processes;
+nothing is bound). Each run creates new objects in that
 workspace; nothing secret is printed.
 
 The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:
