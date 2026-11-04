@@ -18,6 +18,8 @@ func chatBackend(t *testing.T, byRef string) (*Client, *[]rpcCall) {
 				return notFound
 			}
 			return byRef
+		case "access_rule/actor/list": // the chat of 5 and 12
+			return `{"list":[{"userId":12},{"userId":5}]}`
 		case "batch": // the nick reads fall back to ids; the create answers as user 12
 			return batchOf(`{"id":"0","result":{"id":"chat-1","userId":12}}`, `{"id":"1","result":{"list":[]}}`)
 		}
@@ -31,9 +33,18 @@ func TestOpenChatReusesTheExactP2PChat(t *testing.T) {
 	if err != nil || out.ChatID != "chat-0" || out.Created {
 		t.Fatal(out, err)
 	}
-	// The exact web UI key, never a search a workspace admin could match a stranger's chat with.
-	if got := strings.Join(methods(*calls), "\n"); len(*calls) != 2 || !strings.Contains(got, `actor/by-ref/get {"accId":"ws","fields":["id","title"],"formId":9,"ref":"p2pConversation_5_12"}`) {
+	// The exact web UI key, never a search a workspace admin could match a stranger's chat with;
+	// a selfUserId the model gave must be one of the chat's people.
+	got := strings.Join(methods(*calls), "\n")
+	if len(*calls) != 3 || !strings.Contains(got, `actor/by-ref/get {"accId":"ws","fields":["id","title"],"formId":9,"ref":"p2pConversation_5_12"}`) || !strings.Contains(got, `access_rule/actor/list {"accId":"ws","actorId":"chat-0"}`) {
 		t.Fatal(got)
+	}
+	// An admin who sees the chat of 5 and 12 but passes 12 as itself is refused.
+	if _, err := c.OpenChat(context.Background(), ChatOpenInput{Type: "p2p", UserIDs: []int64{12}, SelfUserID: 5}); err != nil {
+		t.Fatal("5 is a participant:", err)
+	}
+	if _, err := c.OpenChat(context.Background(), ChatOpenInput{Type: "p2p", UserIDs: []int64{5}, SelfUserID: 99}); err == nil || !strings.Contains(err.Error(), "not a participant") {
+		t.Fatal("a stranger's chat was reused:", err)
 	}
 }
 
@@ -62,7 +73,7 @@ func TestOpenChatCreatesAndSharesAtomically(t *testing.T) {
 		`"isAtomic":true`,
 		`"method":"actor/create","params":{"accId":"ws","data":{"chatType":"p2p"`,
 		`"ref":"p2pConversation_5_12","title":"Olena:p2p:Ivan"}`,
-		`"method":"access_rule/actor/share","params":{"accId":"ws","actions":[{"action":"create","privs":{"modify":true,"remove":true,"view":true},"userId":5}],"actorId":"$0.id","isNotify":false},"useRefs":true`,
+		`"method":"access_rule/actor/share","params":{"accId":"ws","actions":[{"action":"create","privs":{"modify":true,"remove":true,"view":true},"userId":5}],"actorId":"$0.id","isNotify":true},"useRefs":true`,
 	} {
 		if !strings.Contains(string(last), want) {
 			t.Errorf("batch lacks %s: %s", want, last)
@@ -95,6 +106,8 @@ func TestOpenChatRaceReusesTheWinner(t *testing.T) {
 				return notFound
 			}
 			return `{"id":"chat-w","title":"Olena:p2p:Ivan"}`
+		case "access_rule/actor/list":
+			return `{"list":[{"userId":12},{"userId":5}]}`
 		case "batch":
 			if reads == 1 {
 				return `{"list":[{"id":"0","result":{"nick":"Olena"}},{"id":"1","result":{"nick":"Ivan"}}]}`

@@ -131,7 +131,8 @@ func coreChat(c *client, own string) (string, error) {
 		return "", err
 	}
 	time.Sleep(2 * time.Second) // the reuse lookup reads a replica
-	if err := c.tool("chat_open", map[string]any{"type": "p2p", "userIds": []int64{other}, "selfUserId": owner.UserID}, &second); err != nil {
+	// The run's own credential names the caller, so the second call needs no selfUserId.
+	if err := c.tool("chat_open", map[string]any{"type": "p2p", "userIds": []int64{other}}, &second); err != nil {
 		return "", err
 	}
 	if second.ChatID != first.ChatID || second.Created {

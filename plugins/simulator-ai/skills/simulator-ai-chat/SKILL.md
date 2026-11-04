@@ -11,12 +11,13 @@ is `reaction_create` in it.
 ## Message user N
 
 1. **Resolve N.** `users_search {query: "N"}` → N's `id`. Several matches: ask which one.
-2. **Open the chat.** `chat_open {type: "p2p", userIds: [<N>], selfUserId: <you>}`, where
-   `selfUserId` is the userId of the user you act for as the request names it ("userId … — the
-   user you act for"; no tool says who you are). It reuses the 1:1 chat of exactly the two of
-   you, as the web UI does (`ref` `p2pConversation_<min id>_<max id>`), else creates it titled
-   `<nick>:p2p:<nick>` and shares it with N (view, modify, remove) in one atomic call. You own a
-   chat you create: do not add yourself.
+2. **Open the chat.** `chat_open {type: "p2p", userIds: [<N>], selfUserId: <you>}`. You are the
+   user the run's credential names; `selfUserId`, the userId the request names ("userId … — the
+   user you act for"), is checked against it and is needed only where the credential names no
+   user (an API key: a reused chat must then list it among its participants). It reuses the 1:1
+   chat of exactly the two of you, as the web UI does (`ref` `p2pConversation_<min id>_<max id>`),
+   else creates it titled `<nick>:p2p:<nick>` and shares it with N (view, modify, remove; N is
+   notified) in one atomic call. You own a chat you create: do not add yourself.
 3. **Post the message.** `reaction_create {rootActorId: <chatId>, type: "comment",
    description: "<the text>"}`. A message notifies N: confirm the text with the user first
    when it speaks for them.
