@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -247,11 +248,36 @@ func (c *Client) CreateSmartFormFiles(ctx context.Context, in SmartFormFilesCrea
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
+	if err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileCreate) *string { return configSource(it.Title, &it.Source) }); err != nil {
+		return SmartFormWritten{}, err
+	}
 	r, e := call[appFilesRequest[SmartFormFileCreate], Files](ctx, c, "app_file/create", appFilesRequest[SmartFormFileCreate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {
 		return SmartFormWritten{}, e
 	}
 	return written(in.AppID, r, len(in.Items))
+}
+
+// wireConfigSources runs wireSubmits on every page config source of items, in place.
+func wireConfigSources[T any](items []T, workspace, appID string, source func(*T) *string) error {
+	for i := range items {
+		if s := source(&items[i]); s != nil {
+			wired, err := wireSubmits(*s, workspace, appID)
+			if err != nil {
+				return fmt.Errorf("file %d: %w", i, err)
+			}
+			*s = wired
+		}
+	}
+	return nil
+}
+
+// configSource is the source of a page config file, nil for another file or no source.
+func configSource(title string, source *string) *string {
+	if title != "config" {
+		return nil
+	}
+	return source
 }
 
 // UpdateSmartFormFiles changes develop files in one transaction.
@@ -261,6 +287,9 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 	}
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
+	}
+	if err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) }); err != nil {
+		return SmartFormWritten{}, err
 	}
 	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {

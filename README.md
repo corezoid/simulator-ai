@@ -109,7 +109,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 23 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 24 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -154,9 +154,9 @@ too large for this slice. Every other actor, form and graph tool is above.
 
 Every tool schema rides in the model context on every turn, so `SIMULATOR_AI_PROFILE=console` is the core
 catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, `actor_update`, `actors_search`,
-`form_get`, `forms_list`, `graph_get`, the flowchart tools and the Smart Form tools below, 23 in all
-(33.8 KB of tool JSON, 26.6 KB without output schemas). `console-full` adds every other actor, form and graph
-tool (61 tools, 80.4 KB). Parameter descriptions are cut to their first sentence and nested fields keep only
+`form_get`, `forms_list`, `graph_get`, the flowchart tools and the Smart Form tools below, 24 in all
+(36.2 KiB of tool JSON, 28.6 KiB without output schemas). `console-full` adds every other actor, form and graph
+tool (62 tools, 81.6 KiB). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -186,6 +186,7 @@ step needs.
 | `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges, `hasMore` |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
 | `smart_form_components` | `cdu/catalog/get` | with `brief` every type's kind, category and label; with `types` the props the validator applies, events, state and api |
+| `smart_form_data_form_create` | `form/create` (data template) | formId and a ready page whose button submits via `form/submit` into it |
 | `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
@@ -199,7 +200,20 @@ boundaries (25 + 50k); a position is the block centre and a block's top-left cor
 block of whole cells fills whole cells. The layout ranks nodes top to bottom (loop-back edges excluded from
 ranking) with three free cells between blocks and ranks. Like the editor, the placement carries the block
 silhouette as `areaPicture`, which makes it graphic, so sim-api keeps that position instead of snapping the centre
-to a multiple of 50 (half a cell off for even-sized blocks). Smart Form: `smart_form_create` →
+to a multiple of 50 (half a cell off for even-sized blocks). Smart Form: a form the user fills in saves what is submitted as an actor of its own data template.
+`smart_form_create` first, then `smart_form_data_form_create` creates that template from the fields and returns a ready page (a Form node, bound
+inputs, a button that validates and calls `form/submit` via simapi with the template's formId). Its limits: field
+types are only text, number (an `edit/float` field and a `float` TextInput), date (a calendar holding
+`{startDate, endDate}`) and select, all in one section; empty values are left out of the submit (its `formData`
+filters the Form's `vm` values); the actor is titled by the first text field, or in a template without one by the
+template title (its first 255 characters), so every record of a template without a text field has the same
+title; text of the agent holding `{{` is written as a JSONata string literal, so the renderer shows it as typed;
+the stand must serve `form/submit`. A submit needs View on the template, which only its creator has, so the page
+passes `appId`: `form/submit` then lets whoever may open that Smart Form (its `sharedWith`, as `smart_form_create`
+set it) submit into a template its released page names. Page writes refuse inputs with an action-less button but no Form, a Form that neither a form.submit names
+nor any action passes on (`vm.<valueKey>` in a `simapi.call`, `widget.call`, `bus.publish`, `navigate.local`/`navigate.route` or `copy`; their `onError`/`notify` follow-ups do not count), a `form/submit` without a template and a `formData`
+filter reading another Form, and set its `accId` to the host workspace and its `appId` to that Smart Form; other submits (via Corezoid, other
+methods) are left as they are. Then
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its
 `ready: true` (status `active`, snapshot kept, production env) comes with `marker: "appId: <appId>"`. The
 agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries
