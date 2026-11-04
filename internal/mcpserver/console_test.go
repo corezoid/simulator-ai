@@ -117,10 +117,10 @@ func TestConsoleCatalog(t *testing.T) {
 		"form_status_update,form_update,forms_count,forms_list,forms_tree_get,graph_get,graph_list,layer_actors_move,layer_actors_search,layer_clean,layer_compact," +
 		"layer_create,layer_edges_list,layer_element_exist,layer_get,layer_placements_all,layer_placements_create,layer_placements_list,layer_placements_manage,layer_positions_update," +
 		"layer_prune_long_edges,layer_skeleton_get,layer_stats_get,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,search_all,smart_form_components," +
-		"smart_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get,user_get,users_list,users_search," +
+		"smart_form_create,smart_form_data_form_create,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_release,smart_form_release_get,user_get,users_list,users_search," +
 		"workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 79 {
+	if got := strings.Join(names, ","); got != want || len(names) != 80 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search"} {
@@ -316,7 +316,7 @@ func TestConsoleCoreCatalog(t *testing.T) {
 			t.Error("console has", name)
 		}
 	}
-	if len(names) != len(consoleCoreTools) || len(names) != 31 {
+	if len(names) != len(consoleCoreTools) || len(names) != 32 {
 		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
 	}
 }
