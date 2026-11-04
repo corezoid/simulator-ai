@@ -200,7 +200,8 @@ scenarios use (see "AI Console profile").
 These tools need sim-api `feature/simulator-ai` at 18d5aec2 or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`, the Smart Form history, trash, page and
 Corezoid methods, the task methods !494, guest links !495 and the transcript !496); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
-import, guest link revoke and Corezoid bind/create tools are hinted destructive; page render is not read-only either (it runs the page's `/get`).
+import, guest link create/revoke and Corezoid bind/create tools are hinted destructive (a new guest link opens view to
+anyone with its URL and stops the one already handed out); page render is not read-only either (it runs the page's `/get`).
 
 An AI Console run's token reaches `rest/upload` (and no other REST route) through sim-api !481
 (`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand

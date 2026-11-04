@@ -62,7 +62,8 @@ data: {scheduleMeeting: true, startDate, endDate,
   request the hosts answer (`access_requests_list`, `access_request_confirm` /
   `access_request_cancel`).
 - It lives `ttl` seconds (default 2 hours, at most a year) or until `dueDate`; expiry only stops
-  new joins. One live link per actor: creating another replaces it, and the old URL stops.
+  new joins. One live link per actor: creating another replaces it, and the URL already handed
+  out stops at once, so check `public_link_get` first and reuse a live link.
 - `public_link_get {actorId}` re-reads it (`link: null` when there is none).
 - `public_link_revoke {actorId}` ends it and takes back what it gave: guests it admitted
   directly in the last 30 days lose their access and are dropped from a call in progress
