@@ -66,6 +66,13 @@ Only literal loopback HTTP is accepted for local scripted development. HTTPS ver
 redirects are refused, including same-origin redirects, so credentials cannot be forwarded.
 No login/OAuth is claimed. Normal human Bearer sessions are not accepted by this profile.
 
+Skills ported from the legacy plugin onto this catalog: `simulator-ai` (platform model, rules and
+which skill does what), `simulator-ai-init` (environment and profile setup), `simulator-ai-actors`,
+`simulator-ai-forms`, and for Smart Forms `simulator-ai-smart-forms-logic` (Corezoid `/get`/`/send`
+briefs for the Corezoid plugin), `simulator-ai-smart-forms-runtime`, `simulator-ai-styles` (the v2
+`theme` file) and `simulator-ai-app-generator`. Where the catalog has no tool (binding a Corezoid
+process, rendering or submitting a page), they say so and leave that step to the user.
+
 The `plugins/simulator-ai` directory includes Claude Code and Codex manifests, MCP config
 and the portable `simulator-ai-read` / `simulator-ai-smart-forms` skills. Its MCP command is the separately installed
 `simulator-ai` binary. Install that plugin directory using your client's plugin mechanism,
