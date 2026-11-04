@@ -19,7 +19,11 @@ alone assigns nobody.
 
 ## Create and assign
 
-1. **Resolve the Events template:** `forms_list {type: "system", query: "Events"}`.
+1. **Pick the template**, in this order: a custom template of the workspace that matches the
+   task (`forms_list {query: "<task, order, request…>"}`; read it with `form_get`), else the
+   Events system template (`forms_list {type: "system", query: "Events"}`), and Default only
+   when neither fits. The steps below are for Events; a custom template's fields go in `data`
+   (`simulator-ai-actors`), the roles stay access rules.
 2. **Resolve every person** with `users_search` → `id`; never guess an id.
 3. **Create the task:** `actor_create {formId: <Events>, title: "<short label>", description:
    "<the full task text>", data: {startDate: <now>, endDate: <deadline>}}`. Dates are plain

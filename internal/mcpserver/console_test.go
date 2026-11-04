@@ -329,7 +329,7 @@ func TestConsoleCoreCatalog(t *testing.T) {
 			t.Error("console has", name)
 		}
 	}
-	if len(names) != len(consoleCoreTools) || len(names) != 45 {
+	if len(names) != len(consoleCoreTools) || len(names) != 47 {
 		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
 	}
 }
@@ -421,6 +421,27 @@ func TestConsolePeopleTools(t *testing.T) {
 	}
 	if reply := send(`"method":"tools/call","params":{"name":"users_search","arguments":{"query":"x","rootActorId":"a"}}`); !strings.Contains(reply, `"isError":true`) && !strings.Contains(reply, `"error"`) {
 		t.Error("users_search took a param outside its legacy set:", reply)
+	}
+}
+
+// The owner's Console rules ride in the core tools' descriptions, which the model sees every turn.
+func TestConsoleRulesInDescriptions(t *testing.T) {
+	c, err := publicapi.New(publicapi.Config{Origin: "http://127.0.0.1:1", Workspace: "ws", Profile: "console", Authorization: "Bearer user"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tools := New(c).ListTools()
+	for name, want := range map[string]string{
+		"actor_create":                "else the Events system template, and Default only when neither fits",
+		"smart_form_create":           "It creates no data template",
+		"smart_form_data_form_create": "only when the user asked to keep what is submitted",
+		"smart_form_release":          "offer the user Corezoid processes for its business logic",
+		"layer_create":                "never draw ASCII diagrams",
+		"reaction_create":             "is actor_attach, not a reaction",
+	} {
+		if tool := tools[name]; tool == nil || !strings.Contains(tool.Tool.Description, want) {
+			t.Errorf("%s lacks %q", name, want)
+		}
 	}
 }
 

@@ -6,7 +6,8 @@ description: Create, edit and release CDU v2 Smart Forms (mini-apps) through the
 Use the installed `simulator-ai` catalog. In `console`: `smart_form_create`,
 `smart_form_components`, `smart_form_data_form_create`, `smart_form_files_get`,
 `smart_form_files_create`, `smart_form_files_update`, `smart_form_release`,
-`smart_form_release_get`. The `smart-forms` desktop profile has its own receipt-based tools
+`smart_form_release_get`, and `corezoid_project_create` / `corezoid_project_get` for its
+business logic. The `smart-forms` desktop profile has its own receipt-based tools
 (last section). Related skills: `simulator-ai-styles` (the look), `simulator-ai-smart-forms-logic`
 (a Corezoid backend), `simulator-ai-smart-forms-runtime` (filling in an existing form),
 `simulator-ai-app-generator` (a whole app from Corezoid processes).
@@ -55,8 +56,10 @@ has none, so put a `Label` before it.
    digits, `_`, `-`, unique among the workspace's Smart Forms. `sharedWith` is `userList` (its
    access list, default), `allWorkspaceUsers` or `allRegisteredUsers`; widen it only when the
    user asks.
-2. A form must save what is submitted. `smart_form_data_form_create {appId, title, fields,
-   submitLabel?, successMessage?}` creates the data template and returns a ready page: fields
+2. **Only when the user asked to keep what is submitted** (or agreed when you asked: "save the
+   answers as records?"), `smart_form_data_form_create {appId, title, fields, submitLabel?,
+   successMessage?}` creates the data template and returns a ready page. A form that only
+   shows or calculates needs none, and `smart_form_create` never makes one. Fields
    `{name, label, type, required?, options?}` with `type` `text`, `number`, `date` or `select`,
    all in one section. Each submit creates one actor of that template, titled by the first
    text field (else the template title), so include a text field; empty values are left out.
@@ -64,9 +67,15 @@ has none, so put a `Label` before it.
 3. `smart_form_files_get {appId}` → `smart_form_files_update` of `pages/index/config` with
    that page (the file's `id`, its current `title` and `type`).
 4. `smart_form_release {appId}` (below).
+5. **Offer the business logic.** After the first release of a form you built, offer Corezoid
+   processes for what it should do (load data on open, handle submits): with a yes,
+   `corezoid_project_create {actorId: <appId>}` gives it a project with develop and production
+   stages and a stub handler bound to both, then `corezoid_project_get {actorId}` until
+   `status` is `ready`; the processes themselves are `simulator-ai-smart-forms-logic`.
 
 For richer pages, extend the returned page with catalog components rather than writing the
-Form by hand. A page with inputs must save somewhere: a Form that nothing submits, a button
+Form by hand. Inputs the user did not ask to keep still need somewhere to go (a Corezoid
+submit, step 5, or a navigation): ask which rather than making a data template. A page with inputs must save somewhere: a Form that nothing submits, a button
 without actions beside inputs, or a `form/submit` without its template is refused.
 
 ## Edit pages
