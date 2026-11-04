@@ -1,0 +1,53 @@
+package mcpserver
+
+// accountTools are the legacy account, account-name and currency tools (createAccount, getAccounts,
+// getBalance, updateAccount, deleteAccount, getCurrencies/searchCurrencies, createCurrency,
+// getAccountNames/searchAccountNames, createAccountName, updateAccountName) on public methods; the
+// pair (createAccountPair) is account_pair_create. An account is a pair of rows on an actor, credit
+// and debit, of one (account name, currency, accountType).
+var accountTools = []parityTool{
+	{Name: "account_create", Method: "account_actor/create", Description: "Open an account pair on an actor (credit and debit rows, zero balance) for an account name (nameId) and currency (currencyId), accountType fact (default), plan, min, max or avg; minLimit/maxLimit bound the balance. Register the pair first with account_pair_create. Needs modify on the actor; opening the same pair again fails with alreadyExists."},
+	{Name: "account_by_ref_create", Method: "account_actor/by-ref/create", Description: "Open an account pair, as account_create, on the actor found by its template (formId) and your ref."},
+	{Name: "accounts_list", Method: "account_actor/list", Description: "List an actor's account rows (both income sides of each pair) with balances: accountType(s), nameId(s), currencyId, incomeType, amount range, tag, query narrow it; from/to (Unix ms) turn amounts into the turnover of that window; one page per call (limit/offset). Each row's id is the accountId of the transaction tools. Needs view on the actor."},
+	{Name: "accounts_count", Method: "account_actor/count", Description: "Count the account rows accounts_list would return for the same filters (a pair counts as 2 unless countBy says otherwise)."},
+	{Name: "accounts_by_ref_list", Method: "account_actor/by-ref/list", Description: "List the account rows, as accounts_list, of the actor found by its template (formId) and your ref."},
+	{Name: "account_get", Method: "account_actor/get", Description: "Read one account pair of an actor (nameId, currencyId, accountType default fact) with balances resolved: credit and debit rows; incomeType keeps one side; with meta, triggers, tags. A formula or counter account shows its computed amount. Fails with notFound when the actor has no such pair."},
+	{Name: "account_by_ref_get", Method: "account_actor/by-ref/get", Description: "Read one account pair, as account_get, of the actor found by its template (formId) and your ref."},
+	{Name: "account_update", Method: "account_actor/update", Description: "Change an account pair's settings on an actor: minLimit, maxLimit, search, limit and commission service URLs. It REPLACES every setting: an omitted limit or URL is cleared, so send the full set to keep. A changed limit records a marker transaction."},
+	{Name: "account_status_update", Method: "account_actor/status/update", Description: "Block or unblock one account row (id from accounts_list): status blocked or active; block both rows to freeze a pair."},
+	{Name: "account_delete", Method: "account_actor/delete", Description: "Delete one account row (id) from an actor with its transactions; a fact row takes its min/max/avg rows along. Delete both rows to remove a pair. Destructive and irreversible: confirm with the user first."},
+	{Name: "account_pair_unregister", Method: "account/delete", Description: "Remove every access rule of a workspace account pair (nameId, currencyId); balances on actors stay. Destructive: confirm with the user first."},
+	{Name: "currencies_list", Method: "account_currency/list", Description: "List the workspace's currencies (units of account), platform ones included; query matches the name; one page per call (limit 1..100, offset). Each id is a currencyId."},
+	{Name: "currency_get", Method: "account_currency/get", Description: "Read one currency by id."},
+	{Name: "currency_create", Method: "account_currency/create", Description: "Add a currency: name (unique, so a repeat returns the existing one), symbol, precision (default 2), type number (default), currency, percent, dateTime or seconds. Returns its id, the currencyId of account pairs."},
+	{Name: "currency_update", Method: "account_currency/update", Description: "Replace a currency's name, symbol, precision and type: an omitted field is cleared or defaulted, so send every field to keep."},
+	{Name: "account_names_list", Method: "account_name/list", Description: "List the workspace's account names (balance categories such as Revenue), platform ones included, alphabetically; query matches the name; one page per call (limit 1..100, offset). Each id is a nameId."},
+	{Name: "account_name_get", Method: "account_name/get", Description: "Read one account name by id."},
+	{Name: "account_name_create", Method: "account_name/create", Description: "Add an account name (unique, so a repeat returns the existing one) with an optional abbreviation. Returns its id, the nameId of account pairs."},
+	{Name: "account_name_update", Method: "account_name/update", Description: "Rename an account name (name required); abbreviation and transferOnly change only when sent (transferOnly true lets its accounts move value only by transfers)."},
+}
+
+// ledgerTools are the legacy counter, transaction and transfer tools (saveCounters, setCounters,
+// getCounters, createTransaction, finalizeTransaction, getTransactions, getAccountTransactions,
+// getTransactionByRef, createTransfer, createTransferTwoStep, getTransfer, getTransferByRef,
+// filterTransfers) on public methods.
+var ledgerTools = []parityTool{
+	{Name: "counter_get", Method: "counter/get", Description: "Read a counter's current value and hold. A counter is addressed by strings: the actor by template (formId) and actorRef, accountName and currency by NAME, incomeType debit or credit; never written reads as 0. Needs modify on the template."},
+	{Name: "counter_period_get", Method: "counter/by-period/get", Description: "Read how much a counter moved between from and to (Unix ms), addressed as in counter_get."},
+	{Name: "counter_increment", Method: "counter/increment", Description: "Add amount (negative subtracts) to a counter addressed as in counter_get; createAccount true also opens the actor's account. The write may be buffered and is never retried: on an error the outcome is unknown, so read counter_get before repeating."},
+	{Name: "counter_set", Method: "counter/set", Description: "Set a counter addressed as in counter_get to amount (its hold to 0); the change is recorded as one movement. On an error read counter_get before repeating."},
+	{Name: "transaction_create", Method: "transaction/create", Description: "Post one transaction to an account row (accountId from accounts_list): amount, completed by default; type authorized holds it and a second call with type completed, canceled or reversed and parentId or parentRef settles it (legacy finalizeTransaction). ref is unique per account: after a timeout read transaction_by_ref_get with the same ref before retrying. Returns the row with the account balance after it. Needs modify on the pair."},
+	{Name: "transaction_by_ref_create", Method: "transaction/by-actor_ref/create", Description: "Post one transaction, as transaction_create, to the account found by the actor's template (formId) and actorRef plus nameId, currencyId, incomeType (default debit) and accountType (default fact)."},
+	{Name: "transaction_get", Method: "transaction/get", Description: "Read one transaction by id; createdAt (Unix ms) finds one older than about 12 months."},
+	{Name: "transaction_by_ref_get", Method: "transaction/by-ref/get", Description: "Read the transaction posted on an account (accountId) with your ref: the idempotency lookup after a timed-out transaction_create, always current."},
+	{Name: "transactions_list", Method: "transaction/list", Description: "List the transactions behind one balance of an actor (nameId, currencyId, accountType; both sides unless incomeType), newest first, through the account tree and formula sources. Window from/to (Unix ms, at most about 12 months; default this month); limit/offset or cursor."},
+	{Name: "account_transactions_list", Method: "transaction/account/list", Description: "List one account row's transactions (accountId), newest first, in a from/to window (Unix ms, default this month); hasMore means pass nextCursor as cursor."},
+	{Name: "transactions_filter", Method: "transaction/filter", Description: "Search the workspace's transactions, newest first, each labelled with account name, currency and actor: by actors, accounts, type, incomeType, amount with oper, query, ref, transferId, a from/to window; limit/offset or cursor. The total is transactions_filter_count."},
+	{Name: "transactions_filter_count", Method: "transaction/filter/count", Description: "Count the transactions transactions_filter returns for the same filter."},
+	{Name: "transaction_children_list", Method: "transaction/children/list", Description: "List the transactions that settled an authorized hold (parentId): completed, canceled or reversed, newest first, in a from/to window."},
+	{Name: "transfer_create", Method: "transfer/create", Description: "Move value between accounts as one double entry: from legs on debit accounts, to legs on credit accounts, one currency, up to 20 per side, balanced. type authorized holds it and a second call with transferId and type completed or canceled settles it (legacy createTransferTwoStep). ref makes a retry safe: after a timeout read transfer_by_ref_get before repeating. Irreversible once completed: confirm amounts with the user."},
+	{Name: "transfer_get", Method: "transfer/get", Description: "Read one transfer by id; with legs or transactions adds its legs."},
+	{Name: "transfer_by_ref_get", Method: "transfer/by-ref/get", Description: "Read the transfer with your ref: the idempotency lookup after a timed-out transfer_create, always current."},
+	{Name: "transfers_filter", Method: "transfer/filter", Description: "Search the workspace's transfers, newest first, with from and to legs labelled: by actors, accounts, type, query, ref, transferId, a from/to window; limit/offset or cursor. The total is transfers_filter_count."},
+	{Name: "transfers_filter_count", Method: "transfer/filter/count", Description: "Count the transfers transfers_filter returns for the same filter."},
+}

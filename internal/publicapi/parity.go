@@ -12,7 +12,7 @@ import (
 // tool. Its result is an explicit passthrough: the backend's own projection, shaped by the caller's
 // documented fields/with, never re-modelled here.
 type ParityMethod struct {
-	Domain string // actor, form, graph; smartform, access, reaction, attachment, user (console only)
+	Domain string // actor, form, graph; smartform, access, reaction, attachment, user, finance (console only)
 	Write  bool
 }
 
@@ -48,6 +48,19 @@ var ParityMethods = map[string]ParityMethod{
 	"attachment/list": {"attachment", false}, "attachment/by-actor/list": {"attachment", false},
 	"attachment/attach": {"attachment", true}, "attachment/update": {"attachment", true}, "attachment/detach": {"attachment", true},
 	"user/list": {"user", false}, "user/get": {"user", false}, "workspace/list": {"user", false},
+	"account/delete": {"finance", true}, "account_actor/create": {"finance", true},
+	"account_actor/by-ref/create": {"finance", true}, "account_actor/list": {"finance", false}, "account_actor/count": {"finance", false},
+	"account_actor/by-ref/list": {"finance", false}, "account_actor/get": {"finance", false},
+	"account_actor/by-ref/get": {"finance", false}, "account_actor/update": {"finance", true}, "account_actor/status/update": {"finance", true},
+	"account_actor/delete": {"finance", true}, "account_currency/create": {"finance", true}, "account_currency/get": {"finance", false},
+	"account_currency/list": {"finance", false}, "account_currency/update": {"finance", true}, "account_name/create": {"finance", true},
+	"account_name/get": {"finance", false}, "account_name/list": {"finance", false}, "account_name/update": {"finance", true},
+	"counter/get": {"finance", false}, "counter/set": {"finance", true}, "counter/increment": {"finance", true},
+	"counter/by-period/get": {"finance", false}, "transaction/create": {"finance", true}, "transaction/by-actor_ref/create": {"finance", true},
+	"transaction/get": {"finance", false}, "transaction/by-ref/get": {"finance", false}, "transaction/list": {"finance", false},
+	"transaction/account/list": {"finance", false}, "transaction/filter": {"finance", false}, "transaction/filter/count": {"finance", false},
+	"transaction/children/list": {"finance", false}, "transfer/create": {"finance", true}, "transfer/get": {"finance", false},
+	"transfer/by-ref/get": {"finance", false}, "transfer/filter": {"finance", false}, "transfer/filter/count": {"finance", false},
 }
 
 // ParityAllowed says whether this profile exposes the method: console all of them; the read-only
