@@ -60,7 +60,8 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addParity(s, c, reactionTools)
 		addParity(s, c, userTools)
 		addParity(s, c, attachmentTools)
-		addConsolePeople(s, c)
+		addConsoleAccess(s, c)
+		addConsoleFiles(s, c)
 		if c.ConsoleCore() {
 			keepConsoleCore(s)
 		}

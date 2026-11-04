@@ -109,8 +109,9 @@ func withView(privs json.RawMessage) (json.RawMessage, error) {
 
 // SaveAccessRules grants, changes or revokes access in one share call. merge leaves the subjects
 // the call does not name as they are. replace also revokes the people, groups and API users that
-// only view, sign or carry out the object; whoever may modify it (the caller among them), the
-// system owner and public-link guests stay unless remove names them.
+// view, sign, sign legally or carry out the object; whoever may modify or remove it (the caller
+// among them), the system owner and public-link guests stay unless remove names them. A replace
+// with nothing to change returns the rules it read.
 func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (json.RawMessage, error) {
 	if e := consoleOnly(c); e != nil {
 		return nil, e
@@ -145,13 +146,17 @@ func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (
 		named[id] = true
 		actions = append(actions, accessAction{Action: "delete", UserID: id})
 	}
+	var read json.RawMessage
 	if in.Mode == "replace" {
-		current, err := call[map[string]any, accessList](ctx, c, family+"/list", params)
+		var current accessList
+		if read, err = call[map[string]any, json.RawMessage](ctx, c, family+"/list", params); err == nil {
+			err = json.Unmarshal(read, &current)
+		}
 		if err != nil {
 			return nil, err
 		}
 		for _, r := range current.List {
-			kept := r.Privs["modify"] || r.UserID < 1 || r.UserType == "system" || r.UserType == "anonymous"
+			kept := r.Privs["modify"] || r.Privs["remove"] || r.UserID < 1 || r.UserType == "system" || r.UserType == "anonymous"
 			if !named[r.UserID] && !kept {
 				named[r.UserID] = true
 				actions = append(actions, accessAction{Action: "delete", UserID: r.UserID})
@@ -159,7 +164,7 @@ func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (
 		}
 	}
 	if len(actions) == 0 {
-		return json.RawMessage(`{"list":[]}`), nil
+		return read, nil // replace: nobody to revoke, the rules stay as read
 	}
 	params["actions"], params["isNotify"], params["filterIncorrect"] = actions, in.IsNotify, in.FilterIncorrect
 	if in.IsRecursive != nil {

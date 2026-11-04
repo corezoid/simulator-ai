@@ -144,24 +144,26 @@ scenarios use (see "AI Console profile").
 | `layer_compact` [compactGraphLayout] · `layer_prune_long_edges` [pruneLongEdges] | layer reads + `…/positions/update` · `edge/delete` | ✓ | | |
 | `access_rules_get` [getAccessRules, getTemplateActorsAccess, getTreeLayerAccess] (objType actor, formTemplate, templateActors, account) | `access_rule/<objType>/list` | ✓ | | |
 | `access_rules_save` [saveAccessRules, saveTemplateActorsAccess, saveTreeLayerAccess] (`mode` merge, or replace: everyone not named is revoked) | `access_rule/<objType>/share` (replace reads `…/list` first) | ✓ | | |
-| `reactions_list` [getReactions] · `reactions_count` | `reaction/list` · `reaction/count` | ✓ | | |
+| `reactions_list` [getReactions] · `reactions_count` · `reactions_mark_read` [markReactionsRead] | `reaction/list` · `reaction/count` · `reaction/read/update` | ✓ | | |
 | `reaction_create` · `reaction_update` · `reaction_delete` [createReaction, updateReaction, deleteReaction] | `reaction/create` · `reaction/update` · `reaction/delete` | ✓ | | |
-| `users_search` [searchUsers] · `users_list` [getUsers] · `user_get` [getUser] · `workspaces_list` [getWorkspaces] | `user/list` (query) · `user/list` · `user/get` · `workspace/list` | ✓ | | |
+| `users_search` [searchUsers, getUsers] (without query a page of members) · `user_get` [getUser] · `workspaces_list` [getWorkspaces] | `user/list` · `user/get` · `workspace/list` | ✓ | | |
 | `attachments_list` [getAttachments] · `attachments_by_actor_list` [getActorAttachments] | `attachment/list` · `attachment/by-actor/list` | ✓ | | |
 | `attachment_attach` · `attachment_update` · `attachment_detach` [addAttachments, updateAttachment, removeAttachments] | `attachment/attach` · `attachment/update` · `attachment/detach` | ✓ | | |
-| `attachment_upload` (file bytes as base64, up to 700 KiB) | HTTP `POST /api/2.0/rest/upload` (multipart, ufs limits and antivirus) | ✓ | | |
-| `attachment_read` [readAttachment] (text up to 100 KiB; binary: type and size) | HTTP `GET /api/1.0/download/<fileName>` (425 retried, 403 quarantine) | ✓ | | |
+| `attachment_upload` (file bytes as base64, up to 700 KiB; `actorId` attaches it) | HTTP `POST /api/2.0/rest/upload` (multipart, ufs limits and antivirus), then `attachment/attach` (changes nothing when the route attached it) | ✓ | | |
+| `attachment_read` [readAttachment] (text up to 100 KiB; binary: type and size) | HTTP `GET /api/1.0/download/<fileName>` (425, or 404 from a stand serving files from ufs while it scans, retried; 403 quarantine) | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at fc0f2181 or later (`cdu/catalog/get` !463,
+These tools need sim-api `feature/simulator-ai` at a4f6d229 or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
 with reason `methodNotFound`.
 
-An AI Console run's token reaches `rest/upload` only from sim-api !481 (`AuthReqAllowingAgentRun`); before
-it `attachment_upload` under a run returns the backend's refusal as it is. The skills `simulator-ai-access`,
+An AI Console run's token reaches `rest/upload` (and no other REST route) through sim-api !481
+(`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand
+serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
+retried for several seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
 `simulator-ai-attachments`, `simulator-ai-chat` and `simulator-ai-tasks` compose these tools.
 
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
-too large for this slice; requestAccess and markReactionsRead, whose public methods (!479, !480) are not yet on
+too large for this slice; requestAccess, whose public `access_rule/actor/request/*` methods (!480) are not yet on
 `feature/simulator-ai`. Out of scope by the owner's decision: pinned reactions, uploadBase64 and data-field actors
 by form.
 

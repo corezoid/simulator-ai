@@ -42,7 +42,7 @@ var ParityMethods = map[string]ParityMethod{
 	"access_rule/templateActors/list": {"access", false}, "access_rule/templateActors/share": {"access", true},
 	"access_rule/account/list": {"access", false}, "access_rule/account/share": {"access", true},
 	"reaction/list": {"reaction", false}, "reaction/count": {"reaction", false}, "reaction/create": {"reaction", true},
-	"reaction/update": {"reaction", true}, "reaction/delete": {"reaction", true},
+	"reaction/update": {"reaction", true}, "reaction/delete": {"reaction", true}, "reaction/read/update": {"reaction", true},
 	"attachment/list": {"attachment", false}, "attachment/by-actor/list": {"attachment", false},
 	"attachment/attach": {"attachment", true}, "attachment/update": {"attachment", true}, "attachment/detach": {"attachment", true},
 	"user/list": {"user", false}, "user/get": {"user", false}, "workspace/list": {"user", false},

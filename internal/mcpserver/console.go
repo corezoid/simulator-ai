@@ -37,7 +37,7 @@ func keepConsoleCore(s *server.MCPServer) {
 }
 
 // destructiveTools delete what they touch; clients may ask for confirmation on this hint.
-var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true}
+var destructiveTools = map[string]bool{"edges_by_nodes_delete": true, "layer_prune_long_edges": true, "access_rules_save": true}
 
 // maxConsoleInput keeps one tool call, and so its request, under sim-api's 1 MiB JSON-RPC body
 // limit; Smart Form file batches are the largest inputs.
@@ -117,6 +117,9 @@ func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, 
 			return failure(e), nil
 		}
 		v, e := run(ctx, a)
+		if raw, ok := any(v).(json.RawMessage); ok {
+			return passResult(raw, e), nil
+		}
 		return result(v, e), nil
 	})
 }

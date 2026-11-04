@@ -36,6 +36,19 @@ const (
 // scanWait is the first wait for a file ufs is still scanning; each retry doubles it, four in all.
 var scanWait = time.Second
 
+// The media types of common files, so a file's type does not depend on the host's mime.types.
+func init() {
+	for ext, kind := range map[string]string{
+		".txt": "text/plain; charset=utf-8", ".md": "text/markdown; charset=utf-8", ".csv": "text/csv; charset=utf-8",
+		".json": "application/json", ".yaml": "application/yaml", ".yml": "application/yaml", ".xml": "application/xml",
+		".pdf": "application/pdf", ".zip": "application/zip", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+		".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	} {
+		_ = mime.AddExtensionType(ext, kind)
+	}
+}
+
 type AttachmentUploadInput struct {
 	FileName    string `json:"fileName"`
 	Content     string `json:"content"` // base64 (standard, padded)
@@ -65,10 +78,6 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if name == "" || len(name) > 255 || strings.ContainsAny(name, "/\\\r\n\"") || len(in.ActorID) > 255 || len(in.RootActorID) > 255 || in.RootActorID != "" && in.ActorID == "" || in.TTL < 0 {
 		return Attachment{}, errors.New("a fileName without path separators or quotes, and rootActorId only with actorId, required")
 	}
-	if in.TTL > 0 && in.ActorID != "" {
-		// sim-api never finds a temporary file to attach (attachment/attach, reaction attachmentIds).
-		return Attachment{}, errors.New("a temporary file (ttl) cannot be attached: drop ttl or actorId")
-	}
 	if base64.StdEncoding.DecodedLen(len(in.Content)) > MaxUploadBytes+2 {
 		return Attachment{}, fmt.Errorf("content over %d KiB: upload larger files from the Simulator UI", MaxUploadBytes>>10)
 	}
@@ -89,9 +98,9 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	}
 	var body bytes.Buffer
 	form := multipart.NewWriter(&body)
-	// The upload route only logs a failed attach and still answers 200, so the file is attached
-	// afterwards with public attachment/attach, whose refusal reaches the caller.
-	fields := [][2]string{{"accId", c.config.Workspace}}
+	// The route attaches to actorId itself and refuses an attach it may not make before storing the
+	// file (sim-api 606ff98e); an older stand stored the file and only logged the failure.
+	fields := [][2]string{{"accId", c.config.Workspace}, {"actorId", in.ActorID}, {"rootActorId", in.RootActorID}}
 	if in.TTL > 0 {
 		fields = append(fields, [2]string{"ttl", strconv.FormatInt(in.TTL, 10)})
 	}
@@ -119,7 +128,7 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 		if ctx.Err() != nil {
 			return Attachment{}, ctx.Err()
 		}
-		return Attachment{}, errors.New("upload transport unavailable; outcome unknown; list the actor's attachments before retrying")
+		return Attachment{}, errors.New("upload transport unavailable; outcome unknown; retry the upload (a duplicate is a harmless unattached file)")
 	}
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
@@ -133,6 +142,12 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if in.ActorID == "" {
 		return a, nil
 	}
+	if in.TTL > 0 { // the route attached it; attachment/attach never finds a temporary file
+		a.AttachedTo = in.ActorID
+		return a, nil
+	}
+	// Attaching again changes nothing when the route attached it, and attaches it on a stand whose
+	// route only logged a failure: either way the caller learns whether the file hangs there.
 	attach := map[string]any{"accId": c.config.Workspace, "actorId": in.ActorID, "attachmentIds": []int64{a.ID}}
 	if in.RootActorID != "" {
 		attach["rootActorId"] = in.RootActorID
@@ -159,8 +174,9 @@ type AttachmentContent struct {
 	Binary      bool   `json:"binary,omitempty"`
 }
 
-// ReadAttachment downloads a file by its storage key (fileName). A file ufs is still scanning
-// (425) is retried with backoff; a quarantined one (403) is never served.
+// ReadAttachment downloads a file by its storage key (fileName). A file ufs is still scanning is
+// retried with backoff: sim-api's own route answers 425, a stand serving the route from ufs 404
+// (also for a quarantined file); sim-api answers 403 for a quarantined one, never served.
 func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (AttachmentContent, error) {
 	if e := consoleOnly(c); e != nil {
 		return AttachmentContent{}, e
@@ -181,7 +197,7 @@ func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (At
 			}
 			return AttachmentContent{}, errors.New("download transport unavailable")
 		}
-		if resp.StatusCode == http.StatusTooEarly && tries < 4 {
+		if (resp.StatusCode == http.StatusTooEarly || resp.StatusCode == http.StatusNotFound) && tries < 4 {
 			resp.Body.Close()
 			select {
 			case <-ctx.Done():
@@ -195,7 +211,7 @@ func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (At
 		case http.StatusOK:
 			return readContent(in.FileName, resp)
 		case http.StatusNotFound:
-			return AttachmentContent{}, errors.New("no such file")
+			return AttachmentContent{}, errors.New("no such file, or its antivirus scan has not finished (or it is quarantined) on a stand serving files from ufs; try again later")
 		case http.StatusTooEarly:
 			return AttachmentContent{}, errors.New("the antivirus scan of the file has not finished; try again later")
 		case http.StatusForbidden:

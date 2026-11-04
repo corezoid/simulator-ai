@@ -5862,6 +5862,47 @@
     }
    ],
    "summary": "Lists all available workspaces for the current user"
+  },
+  {
+   "name": "reaction/read/update",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "rootActorId",
+     "required": true,
+     "schema": {
+      "description": "Root actor identifier for hierarchical structures",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "count",
+     "required": false,
+     "schema": {
+      "description": "How many of the caller's unread reactions under the root actor are now read; the unread counter drops by it",
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "time",
+     "required": false,
+     "schema": {
+      "description": "Unix seconds up to which the caller has read the thread; 0 or absent leaves the read mark as it is",
+      "type": "integer"
+     }
+    }
+   ],
+   "summary": "Marks reactions as read"
   }
  ]
 }
