@@ -119,7 +119,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 47 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 48 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -250,10 +250,10 @@ for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `u
 `skills_find`, `skill_get` and `build_link`, and for accounts, Account Templates, chats and cards `account_create`,
 `accounts_list`, `transfer_create`, `transaction_create`, `form_create`, `form_update`, `form_account_create`,
 `chat_open` and `actor_attach`, and for a Smart Form's business logic `corezoid_project_create` and
-`corezoid_project_get`: 47 in all (`smart_form_folders_create` is there because a form of more
+`corezoid_project_get`, and `layer_viewport` to show the user what the answer is about: 48 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page; `internal/mcpserver/console.go` says why each later one is). `console-full` adds every other actor, form, graph, access, reaction, user,
 attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
-transcript tool (179 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+transcript tool (180 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -280,7 +280,8 @@ step needs.
 | `edge_create` | `edge_type/get` (default `hierarchy`) + `edge/create` | id, source, target, edgeTypeId, name |
 | `layer_placements_create` | `graph/layer/actors/manage` (create only); a flowchart node is border-snapped and gets the block's `areaPicture` | nodes `{laId, actorId, position}`, edges `{laId, edgeId, laIdSource, laIdTarget}` |
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
-| `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges, `hasMore` |
+| `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges with `cell`, `hasMore` |
+| `layer_viewport` | `graph/viewport/command` (a ruler `cell` sent as its index: `"C, 7"` → `{x: 2, y: 6}`) | `commandId`, `openTabs` (0: the layer is not open, nothing moved) |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
 | `smart_form_components` | `cdu/catalog/get` | with `brief` every type's kind, category and label; with `types` the props the validator applies, events, state and api |
 | `smart_form_data_form_create` | `form/create` (data template) | formId and a ready page whose button submits via `form/submit` into it |

@@ -48,6 +48,24 @@ URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
 - A short page does not prove the end: follow `hasMore`/`offset` under a finite budget and say
   when the read is incomplete.
 
+## Show the user on their screen
+
+"Show me …", "where is …" on a layer the user has open: move their own Graph Editor view with
+`layer_viewport {layerId, action}` (only their view moves; nothing is stored). `layerId` is the
+current layer of the Current context.
+
+| To | action and fields |
+| --- | --- |
+| centre a place | `pan`, `cell: "C, 7"` (or `x`, `y`), optional `zoom` |
+| zoom | `zoom`, `zoom: 1.5` (1 = 100 %), optional anchor `cell` |
+| show an actor | `focus`, `actorId`, optional `zoom` |
+| show everything | `fit` |
+| 2D / 3D | `mode2d` / `mode3d` |
+| open another layer | `openLayer`, `targetLayerId` |
+
+A field the action does not take is refused. `openTabs: 0` means the user does not have the
+layer open, so nothing moved: say so (and offer `build_link` to the layer) rather than "done".
+
 ## Visualize in the chat
 
 Asked to visualize something in the chat, ask first how: a Smart Form that shows a layer in a

@@ -144,8 +144,8 @@ func coreChat(c *client, own string) (string, error) {
 	return first.ChatID, nil
 }
 
-// coreCells places an actor on a layer by its Graph Editor cell, moves it to another, and reads
-// both cells back with layer_get.
+// coreCells places an actor on a layer by its Graph Editor cell, moves it to another, reads both
+// cells back with layer_get, and pans the user's view of the layer to that cell.
 func coreCells(c *client, layer, actor string) error {
 	var placed struct {
 		Nodes []struct {
@@ -178,6 +178,17 @@ func coreCells(c *client, layer, actor string) error {
 		if len(view.Nodes) != 1 || view.Nodes[0].Cell != cell {
 			return fmt.Errorf("layer_get after moving to %s: %+v", cell, view.Nodes)
 		}
+	}
+	// The smoke has no browser: the command reaches sim-api and no tab has the layer open.
+	var moved struct {
+		CommandID string `json:"commandId"`
+		OpenTabs  *int   `json:"openTabs"`
+	}
+	if err := c.tool("layer_viewport", map[string]any{"layerId": layer, "action": "pan", "cell": "-B, -1"}, &moved); err != nil {
+		return err
+	}
+	if moved.CommandID == "" || moved.OpenTabs == nil || *moved.OpenTabs != 0 {
+		return fmt.Errorf("layer_viewport answered %+v, want a command id and openTabs 0", moved)
 	}
 	return nil
 }
