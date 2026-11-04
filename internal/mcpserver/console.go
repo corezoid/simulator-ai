@@ -11,8 +11,8 @@ import (
 )
 
 // consoleCoreTools is the plain console catalog: what the Console scenarios (an actor answer, a
-// flowchart on a layer, a released Smart Form, a comment, a task or a chat shared with people, a file)
-// use. Every schema rides in the model context on every
+// flowchart on a layer, a released Smart Form, a comment, a task or a chat shared with people, a file,
+// a saved skill run, a link to what was made) use. Every schema rides in the model context on every
 // turn, so the rest of the console tools are console-full only.
 var consoleCoreTools = map[string]bool{
 	"actor_get": true, "actor_create": true, "actors_create": true, "actor_update": true, "actors_search": true,
@@ -22,7 +22,7 @@ var consoleCoreTools = map[string]bool{
 	"smart_form_components": true, "smart_form_data_form_create": true, "smart_form_create": true, "smart_form_files_get": true, "smart_form_files_update": true,
 	"smart_form_files_create": true, "smart_form_release": true, "smart_form_release_get": true,
 	"actor_by_ref_get": true, "reactions_list": true, "reaction_create": true, "users_search": true, "access_rules_get": true, "access_rules_save": true,
-	"attachment_upload": true, "attachment_read": true,
+	"attachment_upload": true, "attachment_read": true, "skills_find": true, "skill_get": true, "build_link": true,
 }
 
 // keepConsoleCore drops every tool outside consoleCoreTools.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"strings"
 	"time"
 )
@@ -171,7 +172,8 @@ func graph(c *client, stamp string) error {
 	return nil
 }
 
-// form: Smart Form -> pages/index/config with a field and a submit button -> release -> release_get.
+// form: Smart Form -> pages/index/config with a field, a submit button and a root route -> release ->
+// release_get -> its short URL from build_link -> a submit.
 func form(c *client, stamp string) error {
 	var created struct {
 		AppID string `json:"appId"`
@@ -212,8 +214,14 @@ func form(c *client, stamp string) error {
 		"fields": []map[string]any{{"name": "start", "label": "Дата початку", "type": "date", "required": true}, {"name": "end", "label": "Дата кінця", "type": "date", "required": true}, {"name": "comment", "label": "Коментар"}}}, &data); err != nil {
 		return err
 	}
-	page := []byte(data.Page)
-	config["source"] = string(page)
+	// A root route gives the released form a short URL, which build_link then builds.
+	var page map[string]any
+	if err := json.Unmarshal([]byte(data.Page), &page); err != nil {
+		return err
+	}
+	page["routes"] = []map[string]any{{"name": "leave.new", "path": "/"}}
+	source, _ := json.Marshal(page)
+	config["source"] = string(source)
 	var ignored json.RawMessage
 	if err := c.tool("smart_form_files_update", map[string]any{"appId": created.AppID, "items": []any{config}}, &ignored); err != nil {
 		return err
@@ -232,10 +240,19 @@ func form(c *client, stamp string) error {
 	if !rel.Ready || !again.Ready || rel.Marker != "appId: "+created.AppID {
 		return fmt.Errorf("release %d is not ready", rel.ReleaseID)
 	}
+	var link struct {
+		URL string `json:"url"`
+	}
+	if err := c.tool("build_link", map[string]any{"entity": "smartForm", "ref": "ai_smoke_leave_" + stamp, "route": "leave.new"}, &link); err != nil {
+		return err
+	}
+	if !strings.HasPrefix(link.URL, os.Getenv("SIMULATOR_AI_ORIGIN")+"/sf/") {
+		return fmt.Errorf("build_link of the released form returned %s", link.URL)
+	}
 	if err := submit(c, data.FormID); err != nil {
 		return err
 	}
-	fmt.Println("OK form appId", created.AppID, "release", rel.ReleaseID)
+	fmt.Println("OK form appId", created.AppID, "release", rel.ReleaseID, link.URL)
 	return nil
 }
 
