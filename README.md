@@ -66,8 +66,18 @@ Only literal loopback HTTP is accepted for local scripted development. HTTPS ver
 redirects are refused, including same-origin redirects, so credentials cannot be forwarded.
 No login/OAuth is claimed. Normal human Bearer sessions are not accepted by this profile.
 
+Skills ported from the legacy plugin onto this catalog: `simulator-ai` (platform model, rules and
+which skill does what), `simulator-ai-init` (environment and profile setup), `simulator-ai-actors`,
+`simulator-ai-forms`, and for Smart Forms `simulator-ai-smart-forms-logic` (Corezoid `/get`/`/send`
+briefs for the Corezoid plugin), `simulator-ai-smart-forms-runtime`, `simulator-ai-styles` (the v2
+`theme` file) and `simulator-ai-app-generator`. Where the catalog has no tool (binding a Corezoid
+process, rendering or submitting a page), they say so and leave that step to the user.
+`simulator-ai-graph` and `simulator-ai-smart-forms` lead with the console tools (flowcharts,
+batch actors and edges, holes, layer edits; Smart Form pages, data templates, releases, the Console
+reply) and keep the `graph-read`/`graph-create` and `smart-forms` profiles as their own sections.
+
 The `plugins/simulator-ai` directory includes Claude Code and Codex manifests, MCP config
-and the portable `simulator-ai-read` / `simulator-ai-smart-forms` skills. Its MCP command is the separately installed
+and the portable skills in `plugins/simulator-ai/skills/` (one folder each). Its MCP command is the separately installed
 `simulator-ai` binary. Install that plugin directory using your client's plugin mechanism,
 or configure the MCP directly (the latter does not install the skill automatically):
 
@@ -172,6 +182,7 @@ scenarios use (see "AI Console profile").
 | `bbcode_tags_get` [getBbcodeTags] | none: the BBCode catalog of simulator-ui-kit `packages/utils/src/bbcode/bbcode-tags.json`, built in | ✓ | | |
 | `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, `graph/layer/actors/manage` | ✓ | | |
 | `chart_update` [updateChart] (settings, series or filter; with `laId` the placement's size) | `actor/get` + `form/system/get`, a new filter's `actor/create`, `actor/update`, `graph/layer/elements/list` + `graph/layer/actor_settings/save` | ✓ | | |
+| `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
 These tools need sim-api `feature/simulator-ai` at cda5b60e or later (`cdu/catalog/get` !463,
 `actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`); on an older backend they fail
@@ -196,6 +207,13 @@ store as zeros. `chart_update` keeps every stored key it does not change and nev
 changed filter is a new one; the result names the one the chart stopped using). Legacy's account inheritance from the
 layer's graph (`/accounts/inherit`) has no public method and is not set up.
 
+Simulation is the legacy engine moved as it was (`internal/simulation`, its conformance cases included): a model
+runs in model time in memory and nothing is written to Simulator. `simulation_snapshot_get` returns the layer
+YAML instead of writing `<layerId>.sim.yaml`, and `simulation_check` / `simulation_run` take it back as `graph`
+(there are no file paths); a formula account keeps its formula next to its current value, which a run does not
+recompute. A snapshot reads accounts of at most 2000 actors; `simulation_run` takes at most 5 minutes, live layer
+read included, and two at once per process (`SIMULATOR_AI_MAX_CONCURRENT_SIMULATIONS`); another is refused as busy. The skill `simulator-ai-simulate` (with the model format in its `references/`) composes them.
+
 Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
 too large for this slice; getChildAccounts, since account trees were removed from the platform (walk the
 children with `graph_list` and read their `accounts_list`). Out of scope by the owner's decision: pinned reactions, uploadBase64 and data-field actors
@@ -209,7 +227,7 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
 `skills_find`, `skill_get` and `build_link`: 35 in all. `console-full` adds every other actor, form, graph, access,
-reaction, user, attachment, finance, registry and chart tool (147 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+reaction, user, attachment, finance, registry, simulation and chart tool (150 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
@@ -282,9 +300,10 @@ workspace roles, `SMOKE_TTL`, `ROTATE=1`) and writes `~/.config/simulator-ai/smo
 placements read back with `layer_get`, then a Smart Form with a field, a submit button and a root route, released,
 read back as `ready` and linked with `build_link`, then a verified skill found by `skills_find`, read by `skill_get`
 and linked. With `console-full` it runs the parity, people and finance scenarios and the agents one (a member's twin
-by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`) and the charts one (a manual chart read back
-with its source and chart placement, turned into an actorFilter chart with a new filter and resized, then back to
-manual). Each run creates new objects in that
+by `agent_get`, found again by `agents_find`, and `bbcode_tags_get`) the simulation one (a shop with a balance
+of 100 and a supplier on a new layer; a payment model checked against `simulation_snapshot_get` and run live in two
+scenarios) and the charts one (a manual chart read back with its source and chart placement, turned into an
+actorFilter chart with a new filter and resized, then back to manual). Each run creates new objects in that
 workspace; nothing secret is printed.
 
 The same file connects the desktop agents with the read profile. Start them from a shell that loaded it:
