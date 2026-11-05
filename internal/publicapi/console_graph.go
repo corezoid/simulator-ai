@@ -48,6 +48,11 @@ type NodePlacement struct {
 	LayerSettings *GraphNativeSettings `json:"layerSettings,omitempty"`
 	Color         string               `json:"color,omitempty"`
 	AreaPicture   *GraphAreaPicture    `json:"-"`
+	// Expand places the node open in place (its layer, chart or Smart Form), as the Graph Editor
+	// places a chart or a Smart Form.
+	Expand bool `json:"expand,omitempty"`
+	// openAs is the nested kind when the caller knows it (chart_create), saving the actor read.
+	openAs string
 }
 
 // EdgePlacement draws an existing edge between two node placements of the same layer.
@@ -131,6 +136,15 @@ type LayerViewNode struct {
 	// Hole marks a placeholder actor; ClosedHole a placement that closed one.
 	Hole       bool        `json:"hole,omitempty"`
 	ClosedHole *ClosedHole `json:"closedHole,omitempty"`
+	// Open is set while the node is open in place: what it shows and the box it covers.
+	Open *LayerNodeOpen `json:"open,omitempty"`
+}
+
+// LayerNodeOpen is an open node's state: expandType (layer, chart, script, ...) and the box it
+// covers by corner cells.
+type LayerNodeOpen struct {
+	ExpandType string `json:"expandType"`
+	Area       string `json:"area"`
 }
 
 // ClosedHole follows graph/layer/actors/list closedHole: the hole a placement closed and, for
@@ -158,10 +172,12 @@ type LayerViewEdge struct {
 }
 
 // LayerView is one page of node and one page of edge placements; HasMore when either page is full.
+// Anisotropy is the layer's setting: on, a node that grows or lands on a taken area moves the rest.
 type LayerView struct {
-	Nodes   []LayerViewNode `json:"nodes"`
-	Edges   []LayerViewEdge `json:"edges"`
-	HasMore bool            `json:"hasMore"`
+	Nodes      []LayerViewNode `json:"nodes"`
+	Edges      []LayerViewEdge `json:"edges"`
+	HasMore    bool            `json:"hasMore"`
+	Anisotropy bool            `json:"anisotropy"`
 }
 
 type layerPageRequest struct {
@@ -173,16 +189,14 @@ type layerPageRequest struct {
 	With    []string `json:"with,omitempty"`
 }
 type layerNodeWire struct {
-	LaID          int64     `json:"laId"`
-	ID            string    `json:"id"`
-	Position      *Position `json:"position"`
-	AccessDenied  bool      `json:"accessDenied"`
-	LayerSettings *struct {
-		BlockID string `json:"blockId"`
-	} `json:"layerSettings"`
-	Actor      *Actor      `json:"actor"`
-	Hole       bool        `json:"hole"`
-	ClosedHole *ClosedHole `json:"closedHole"`
+	LaID          int64                  `json:"laId"`
+	ID            string                 `json:"id"`
+	Position      *Position              `json:"position"`
+	AccessDenied  bool                   `json:"accessDenied"`
+	LayerSettings *placementSettingsWire `json:"layerSettings"`
+	Actor         *Actor                 `json:"actor"`
+	Hole          bool                   `json:"hole"`
+	ClosedHole    *ClosedHole            `json:"closedHole"`
 }
 type layerNodesWire struct {
 	List []layerNodeWire `json:"list"`
@@ -257,35 +271,56 @@ func (c *Client) CreateEdge(ctx context.Context, in EdgeCreateInput) (GraphCreat
 	return r, e
 }
 
-// CreatePlacements places nodes and/or edges on a layer in one transaction.
-func (c *Client) CreatePlacements(ctx context.Context, in PlacementsCreateInput) (GraphCreatedPlacements, error) {
+// CreatePlacements places nodes and/or edges on a layer in one transaction. Nodes are checked for
+// room first (layer_place.go): an occupied area is refused, or on a layer with anisotropy made room
+// for in the same atomic batch.
+func (c *Client) CreatePlacements(ctx context.Context, in PlacementsCreateInput) (PlacementsCreated, error) {
 	if e := consoleOnly(c); e != nil {
-		return GraphCreatedPlacements{}, e
+		return PlacementsCreated{}, e
 	}
 	n := len(in.Nodes) + len(in.Edges)
 	if !validID(in.LayerID) || n < 1 || n > 100 {
-		return GraphCreatedPlacements{}, errors.New("layerId and 1..100 node or edge placements required")
+		return PlacementsCreated{}, errors.New("layerId and 1..100 node or edge placements required")
+	}
+	if err := in.validBornOpen(); err != nil {
+		return PlacementsCreated{}, err
 	}
 	items := make([]GraphPlacementItem, 0, n)
 	for _, p := range in.Nodes {
 		if !validID(p.ActorID) {
-			return GraphCreatedPlacements{}, errors.New("node placement needs actorId")
+			return PlacementsCreated{}, errors.New("node placement needs actorId")
 		}
 		pos := p.Position
 		items = append(items, GraphPlacementItem{Action: "create", Data: GraphPlacementData{ID: p.ActorID, Type: "node", Position: &pos, LayerSettings: p.LayerSettings, AreaPicture: p.AreaPicture}})
 	}
 	for _, p := range in.Edges {
 		if !validID(p.EdgeID) || p.LaIDSource < 1 || p.LaIDTarget < 1 {
-			return GraphCreatedPlacements{}, errors.New("edge placement needs edgeId, laIdSource and laIdTarget")
+			return PlacementsCreated{}, errors.New("edge placement needs edgeId, laIdSource and laIdTarget")
 		}
 		src, dst := p.LaIDSource, p.LaIDTarget
 		items = append(items, GraphPlacementItem{Action: "create", Data: GraphPlacementData{ID: p.EdgeID, Type: "edge", LaIDSource: &src, LaIDTarget: &dst}})
 	}
-	r, e := call[layerManageRequest, GraphCreatedPlacements](ctx, c, "graph/layer/actors/manage", layerManageRequest{AccID: c.config.Workspace, ActorID: in.LayerID, Items: items})
-	if e == nil && (len(r.Nodes) != len(in.Nodes) || len(r.Edges) != len(in.Edges)) {
-		return GraphCreatedPlacements{}, errors.New("graph/layer/actors/manage returned a different number of placements")
+	var plan roomPlan
+	if len(in.Nodes) > 0 {
+		var err error
+		if plan, err = c.planRoom(ctx, in); err != nil {
+			return PlacementsCreated{}, err
+		}
 	}
-	return r, e
+	var r GraphCreatedPlacements
+	var e error
+	if len(plan.directives) == 0 && plan.open == nil {
+		r, e = call[layerManageRequest, GraphCreatedPlacements](ctx, c, "graph/layer/actors/manage", layerManageRequest{AccID: c.config.Workspace, ActorID: in.LayerID, Items: items})
+	} else {
+		r, e = c.placeWithRoom(ctx, in, items, plan)
+	}
+	if e == nil && (len(r.Nodes) != len(in.Nodes) || len(r.Edges) != len(in.Edges)) {
+		e = errors.New("graph/layer/actors/manage returned a different number of placements")
+	}
+	if e != nil {
+		return PlacementsCreated{}, e
+	}
+	return PlacementsCreated{GraphCreatedPlacements: r, Moved: plan.moved, Opened: plan.opened, Warning: plan.warning}, nil
 }
 
 // UpdatePositions moves node placements on a layer; all or none are applied.
@@ -326,6 +361,10 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 	if !validID(in.LayerID) || limit < 1 || limit > 500 || in.Offset < 0 {
 		return LayerView{}, errors.New("layerId required, limit 1..500 and offset >=0")
 	}
+	aniso, e := c.layerAnisotropy(ctx, in.LayerID)
+	if e != nil {
+		return LayerView{}, e
+	}
 	q := layerPageRequest{AccID: c.config.Workspace, ActorID: in.LayerID, Limit: limit, Offset: in.Offset}
 	edges, e := call[layerPageRequest, layerEdgesWire](ctx, c, "graph/layer/edges/list", q)
 	if e != nil {
@@ -337,7 +376,7 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 		return LayerView{}, e
 	}
 	v := LayerView{Nodes: make([]LayerViewNode, 0, len(nodes.List)), Edges: make([]LayerViewEdge, 0, len(edges.List)),
-		HasMore: int64(len(nodes.List)) >= limit || int64(len(edges.List)) >= limit}
+		HasMore: int64(len(nodes.List)) >= limit || int64(len(edges.List)) >= limit, Anisotropy: aniso}
 	for _, n := range nodes.List {
 		if n.LaID < 1 || strings.TrimSpace(n.ID) == "" {
 			return LayerView{}, errors.New("invalid node placement identity")
@@ -346,8 +385,12 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 		if n.Position != nil && n.Position.X != nil && n.Position.Y != nil {
 			node.Cell = CellOf(GraphPoint{X: *n.Position.X, Y: *n.Position.Y})
 		}
-		if n.LayerSettings != nil {
-			node.BlockID = n.LayerSettings.BlockID
+		if s := n.LayerSettings; s != nil {
+			node.BlockID = s.BlockID
+			if p := node.Position; s.Expand && s.BlockID == "" && p != nil && p.X != nil && p.Y != nil {
+				open := openNode{X: *p.X, Y: *p.Y, SizeGrade: s.SizeGrade, Settings: s.openSettings}
+				node.Open = &LayerNodeOpen{ExpandType: s.ExpandType, Area: areaCells(open.box())}
+			}
 		}
 		if n.Actor != nil && !n.AccessDenied {
 			node.Title, node.FormID = n.Actor.Title, n.Actor.FormID

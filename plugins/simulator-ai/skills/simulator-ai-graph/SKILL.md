@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form), close holes or draw on it ("рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
+description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes, nodes opened in place (multi-layers) and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, open or close an actor or a layer in place, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form, anisotropy), close holes or draw on it ("рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "розкрий шар", "розгорни актора", "згорни", "анізотропія", "создай блок-схему", "нарисуй процесс", "что на слое", "раскрой слой").
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
@@ -30,6 +30,11 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
 - A **hole** is a placeholder: an actor with `hole: true` (its data fields are the conditions
   that close it) or an edge with `hole: true`. `layer_get` marks `hole` and `closedHole`.
   Closing one is its own operation (section Holes), never a new actor drawn over it.
+- A node can be **open in place** (multi-layers): it shows its own layer, its chart or its Smart
+  Form in a box of cells around it, over the layer (section Open in place). `layer_get` gives an
+  open node `open {expandType, area}`; the cells of `area` are taken.
+- A layer with **anisotropy** (on by default) makes room: what grows on it pushes the rest of the
+  layer aside instead of covering it (section Open in place). `layer_get` answers `anisotropy`.
 - A person on a graph is their twin actor: `actor_system_get {objType: "user", objId}`.
 
 ## Read a layer
@@ -37,9 +42,9 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
 "What is on this graph/layer" means that layer's placements, never a workspace search. In a
 URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
 
-- `layer_get {layerId}`: nodes `{laId, actorId, title, formId, position, cell, blockId, hole}` and
-  edges `{laId, edgeId, source, target, name, hole}`, up to 500 per kind; `hasMore` → next
-  `offset`.
+- `layer_get {layerId}`: nodes `{laId, actorId, title, formId, position, cell, blockId, hole, open}`
+  and edges `{laId, edgeId, source, target, name, hole}`, up to 500 per kind; `hasMore` → next
+  `offset`; `anisotropy` is the layer's setting.
 - `console-full`: `layer_stats_get` (counts of nodes, edges, holes; not a snapshot),
   `layer_placements_list` / `layer_edges_list` (pages with full actors and layer settings),
   `layer_placements_all` (every node at once), `layer_skeleton_get` (a large layer, or a box),
@@ -110,8 +115,8 @@ edges. Spread rows and columns at least 4 cells apart.
 
 `layer_placements_manage {actorId: <layerId>, items}` (`console-full`, 1–500 items, deletes
 first) also places special nodes through `layerSettings`: a text label (`isTextNode`,
-`textNodeScale`, `textWidth`/`textHeight` sized to the text), a card or expanded view
-(`isCardView`, `expand`, `expandType`), `labelStyle`, `opacity`, `rotation`, `zIndex`; and an
+`textNodeScale`, `textWidth`/`textHeight` sized to the text), a card view (`isCardView`),
+`labelStyle`, `opacity`, `rotation`, `zIndex`; and an
 image body (`areaPicture {img, width, height}`). Use it for flowchart blocks only through
 `layer_placements_create`, which keeps them on the grid.
 
@@ -157,6 +162,42 @@ with `actor_get {actorId: <layerId>, fields: ["id", "data"]}`. Never say a layer
 be changed before checking this list; keys, shapes and the other system forms' settings (events,
 dashboards, streams):
 [simulator-ai-forms references/system-form-settings.md](../simulator-ai-forms/references/system-form-settings.md).
+
+## Open in place (multi-layers) and anisotropy
+
+The Graph Editor opens a node in place: the node stays one cell, and a box of cells around it
+shows what it opens — a plain actor its own layer (its ego-layer), an actor that is a layer that
+layer, a Dashboards actor its chart, a Scripts actor its Smart Form. "Open / expand / unfold this
+layer or actor here", "розкрий шар", "згорни" mean `layer_node_expand` (`console-full`, group
+`graph`):
+
+- Open: `layer_node_expand {layerId, laId}` (the node's `laId` from `layer_get`). The box is
+  13 × 9 cells around the node (a Smart Form 11 × 9), or the size it had when last open; `width`
+  / `height` (cells, at least 5 × 4) set it. Only a plain actor opens: a flowchart block, a
+  hole, a text node, a picture or an actor card (profile) is refused.
+- Resize an open node: the same call with the new `width` / `height`.
+- Close: `layer_node_expand {layerId, laId, expand: false}`; the size is kept for the next open.
+- The answer: `expanded`, `expandType` (`layer`, `chart`, `script`), `area` (the box by its
+  corner cells, "-E, -1 - H, 8"), `moved` (how many placements made room), `covers` (what the box
+  lies over when the layer does not make room). `changed: false` means it already was so.
+- A node can be placed open: `layer_placements_create` with `expand: true` on its only node
+  (`chart_create` always places its chart open).
+
+**Anisotropy** is a layer setting (`layer_settings_update {layerId, anisotropy}`, on when never
+set). On, the layer makes room exactly as the Graph Editor does: when a node opens, its box grows
+from the node's cell and every placement beyond the cell's edges is pushed out by as much
+(right of it to the right, below it down, diagonally both; the grid keeps whole cells), across the
+whole layer; closing pulls them back by the same amount, and resizing an open node moves them by
+the change. A node opened while anisotropy was off never pushes or pulls, even if the setting is
+turned on later. Off, the box lies over its neighbours.
+
+Placing never covers a node: a new node must not land on a cell another node holds, on an open
+node's `area` or on a flowchart block's box, and two nodes of one call must not overlap. With
+anisotropy on, `layer_placements_create` makes room for the new nodes first (the layer moves
+apart along a seam through their area: a tall area inserts columns, a wide one rows) and reports
+`moved`; with it off, the call is refused and names the taken cells: pick free ones from
+`layer_get`. `layer_draw` pictures are marks over the graph: they neither take cells nor move
+anything. Tell the user when placing or opening moved other nodes.
 
 ## Draw by hand (Pencil, `console-full`)
 

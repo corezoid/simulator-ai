@@ -25,7 +25,8 @@ var consoleReplies = map[string]string{
 	"edge/create":                         `{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"yes"}`,
 	"graph/layer/actors/manage":           `{"nodes":[{"laId":11,"actorId":"a1","position":{"x":0,"y":0}}],"edges":[]}`,
 	"graph/layer/actors/positions/update": `{}`,
-	"graph/layer/actors/list":             `{"list":[{"laId":11,"id":"a1","position":{"x":0,"y":0},"layerSettings":{"blockId":"process"},"actor":{"id":"a1","title":"Demo","formId":5}}]}`,
+	"actor/get":                           `{"id":"L","data":{"anisotropy":false}}`,
+	"graph/layer/actors/list":             `{"list":[{"laId":11,"id":"a1","position":{"x":1000,"y":1000},"layerSettings":{"blockId":"process"},"actor":{"id":"a1","title":"Demo","formId":5}}]}`,
 	"graph/layer/edges/list":              `{"list":[{"laId":21,"id":"e1","laIdSource":11,"laIdTarget":12,"edge":{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"yes"}}]}`,
 	"application/create":                  `{"application":{"id":"app1","ref":"leave_form"},"envs":[{"id":1,"actorId":"app1","title":"develop"},{"id":2,"actorId":"app1","title":"production","readonly":true}]}`,
 	"application/env/list":                `{"canModify":true,"envs":[{"id":1,"actorId":"app1","title":"develop","rootFolderId":100},{"id":2,"actorId":"app1","title":"production","readonly":true}]}`,
@@ -123,7 +124,7 @@ func TestConsoleCatalog(t *testing.T) {
 		"edge_endpoints_update,edge_exist,edge_get,edge_hole_close,edge_hole_reopen,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
 		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_get,form_linked_get,form_status_update,form_update,forms_count," +
 		"forms_list,forms_tree_get,graph_export_create,graph_file_upload,graph_get,graph_import_create,graph_list,hole_close,hole_conditions_get,hole_reopen,layer_actors_move,layer_actors_search,layer_clean," +
-		"layer_compact,layer_create,layer_draw,layer_edge_settings_save,layer_edges_list,layer_element_exist,layer_get,layer_placements_all,layer_placements_create," +
+		"layer_compact,layer_create,layer_draw,layer_edge_settings_save,layer_edges_list,layer_element_exist,layer_get,layer_node_expand,layer_placements_all,layer_placements_create," +
 		"layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_settings_update,layer_skeleton_get,layer_stats_get,layer_viewport,meet_transcription_list," +
 		"public_link_create,public_link_get,public_link_revoke,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,reactions_mark_read," +
 		"search_all,simulation_check,simulation_run,simulation_snapshot_get,skill_get,skills_find,smart_form_components,smart_form_create,smart_form_data_form_create," +
@@ -133,7 +134,7 @@ func TestConsoleCatalog(t *testing.T) {
 		"transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter,transactions_filter_count,transactions_list," +
 		"transfer_by_ref_get,transfer_create,transfer_get,transfers_filter,transfers_filter_count,user_get,users_search,workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 187 {
+	if got := strings.Join(names, ","); got != want || len(names) != 188 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get"} {
@@ -159,19 +160,19 @@ func TestConsoleRequests(t *testing.T) {
 		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/flowchart-block/search", `"blockIds":["process"]`, `"layerSettings":{"width":200,"height":100,"blockId":"process"`},
 		{"layer_create", `{"title":"Flow"}`, "form/system/get,actor/create", `"data":{},"fields"`, `"id":"a1"`},
 		{"edge_create", `{"source":"a1","target":"a2","name":"yes"}`, "edge_type/get,edge/create", `"edgeTypeId":3,"forceDirection":true,"name":"yes","source":"a1","target":"a2"`, `"id":"e1"`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":0,"y":0}}]}`, "graph/layer/actors/manage", `"actorId":"L","items":[{"action":"create","data":{"id":"a1","position":{"x":0,"y":0},"type":"node"}}]`, `"laId":11`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","color":"#539fdf","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "graph/layer/actors/manage",
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":0,"y":0}}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/manage", `"actorId":"L","items":[{"action":"create","data":{"id":"a1","position":{"x":0,"y":0},"type":"node"}}]`, `"laId":11`},
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","color":"#539fdf","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/manage",
 			`"data":{"areaPicture":{"height":100,"img":"data:image/svg+xml;base64,`, `"laId":11`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "batch,graph/layer/actors/manage",
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "batch,actor/get,graph/layer/actors/list,graph/layer/actors/manage",
 			`"position":{"x":25,"y":25},"type":"node"`, `"laId":11`},
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"blockIds":["process"]`,
 			`"key":"b","blockId":"process","formId":5,"color":"#`},
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"limit":100`,
 			`"position":{"x":25,"y":325},"cell":"B, 8","layerSettings":{"width":200,"height":100,"blockId":"process"`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","cell":"C, 7"}]}`, "graph/layer/actors/manage", `"data":{"id":"a1","position":{"x":100,"y":300},"type":"node"}`, `"cell":"`},
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","cell":"C, 7"}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/manage", `"data":{"id":"a1","position":{"x":100,"y":300},"type":"node"}`, `"cell":"`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"cell":"-B, -1"}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":-100,"y":-50}}]`, `"updated":1`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"x":150,"y":0}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":150,"y":0}}]`, `"updated":1`},
-		{"layer_get", `{"layerId":"L"}`, "graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":0,"y":0},"cell":"A, 1","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
+		{"layer_get", `{"layerId":"L"}`, "actor/get,graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":1000,"y":1000},"cell":"U, 21","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
 		{"smart_form_create", `{"ref":"leave_form","title":"Leave request","sharedWith":"allWorkspaceUsers"}`, "application/create", `"cduVersion":2,"ref":"leave_form","sharedWith":"allWorkspaceUsers"`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
 		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
