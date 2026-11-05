@@ -250,12 +250,15 @@ func (c *Client) narrowFiles(ctx context.Context, all SmartFormFiles, paths []st
 	out.Files = []SmartFormEntry{}
 	hit := map[string]bool{}
 	for _, f := range all.Files {
+		kept := false
 		for _, p := range paths {
 			if p = strings.Trim(p, "/"); p != "" && (f.Path == p || strings.HasPrefix(f.Path, p+"/")) {
-				hit[p] = true
-				out.Files = append(out.Files, f)
-				break
+				hit[p] = true // every path that names it counts as found; the entry is kept once
+				kept = true
 			}
+		}
+		if kept {
+			out.Files = append(out.Files, f)
 		}
 	}
 	for _, p := range paths {

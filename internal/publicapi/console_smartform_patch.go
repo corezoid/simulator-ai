@@ -124,92 +124,59 @@ func patchSource(source, nodeID string, ops []PatchOp) (string, []string, bool, 
 		return "", nil, false, fmt.Errorf("the file is not JSON (%v): patch a page config, locale or viewModel, or rewrite it with smart_form_files_update", e)
 	}
 	before := cloneDoc(doc)
-	if nodeID != "" {
-		base, e := findNode(doc, nodeID)
-		if e != nil {
-			return "", nil, false, e
-		}
-		rel := ops
-		ops = make([]PatchOp, len(rel))
-		for i, op := range rel {
-			if op.Path != "" && op.Path[0] != '/' {
-				return "", nil, false, fmt.Errorf("op %d: path %q must start with / (or be empty for the node itself)", i, op.Path)
-			}
-			ops[i] = op
-			ops[i].Path = base + op.Path
-			if op.Op == "move" || op.Op == "copy" {
-				ops[i].From = base + op.From
-			}
-		}
-	}
-	doc, e = applyPatch(doc, ops)
-	if e != nil {
-		return "", nil, false, e
-	}
-	b, e := encodeDoc(doc, docIndent(source))
-	if e != nil {
-		return "", nil, false, e
-	}
+	root := &doc
 	applied := make([]string, len(ops))
 	for i, op := range ops {
+		if nodeID != "" {
+			if op, e = nodeOp(*root, nodeID, op, i); e != nil {
+				return "", nil, false, e
+			}
+		}
+		if e = applyOp(root, op); e != nil {
+			return "", nil, false, fmt.Errorf("op %d (%s %s): %w", i, op.Op, op.Path, e)
+		}
 		applied[i] = op.Op + " " + op.Path
 		if op.Op == "move" || op.Op == "copy" {
 			applied[i] = op.Op + " " + op.From + " -> " + op.Path
 		}
 	}
-	return string(b), applied, !equalDoc(before, doc), nil
+	b, e := encodeDoc(*root, docIndent(source))
+	if e != nil {
+		return "", nil, false, e
+	}
+	return string(b), applied, !equalDoc(before, *root), nil
 }
 
-// findNode returns the JSON Pointer of the one node with this id in the page's tree, walking
-// children lists and named-slot children.
-func findNode(doc any, id string) (string, error) {
-	page, ok := doc.(*object)
-	tree, has := any(nil), false
-	if ok {
-		tree, has = page.get("tree")
-	}
-	if !has {
-		return "", errors.New("nodeId needs a page config: the file has no tree")
-	}
-	var found, ids []string
-	var walk func(n any, path []string)
-	walk = func(n any, path []string) {
-		node, ok := n.(*object)
-		if !ok {
-			return
+// nodeOp makes an op relative to the node nodeID absolute. The node is found anew for every op,
+// since an earlier one may have moved, replaced or removed it: then the op is refused rather than
+// sent to whatever took the node's place. "" is the node itself, so add and replace "" replace it
+// (an add at an array index would insert a sibling with the same id) and remove "" deletes it.
+func nodeOp(doc any, nodeID string, op PatchOp, i int) (PatchOp, error) {
+	base, e := findNode(doc, nodeID)
+	if e != nil {
+		if i > 0 {
+			return op, fmt.Errorf("op %d: after the ops before it, %w", i, e)
 		}
-		if v, ok := node.get("id"); ok {
-			if s, ok := v.(string); ok {
-				ids = append(ids, s)
-				if s == id {
-					found = append(found, pointerOf(path))
-				}
-			}
-		}
-		children, _ := node.get("children")
-		switch c := children.(type) {
-		case []any:
-			for i, child := range c {
-				walk(child, append(append([]string{}, path...), "children", fmt.Sprint(i)))
-			}
-		case *object:
-			for _, slot := range c.keys {
-				list, _ := c.vals[slot].([]any)
-				for i, child := range list {
-					walk(child, append(append([]string{}, path...), "children", slot, fmt.Sprint(i)))
-				}
-			}
+		return op, e
+	}
+	moves := op.Op == "move" || op.Op == "copy"
+	for _, p := range []string{op.Path, op.From} {
+		if p != "" && p[0] != '/' {
+			return op, fmt.Errorf("op %d: pointer %q must start with / (or be empty for the node itself)", i, p)
 		}
 	}
-	walk(tree, []string{"tree"})
-	switch {
-	case len(found) == 1:
-		return found[0], nil
-	case len(found) > 1:
-		return "", fmt.Errorf("nodeId %q names %d nodes (%s): patch by absolute path", id, len(found), strings.Join(found, ", "))
+	abs := op
+	abs.Path = base + op.Path
+	if moves {
+		abs.From = base + op.From
 	}
-	if len(ids) > 40 {
-		ids = append(ids[:40], "…")
+	if op.Path == "" {
+		switch {
+		case op.Op == "add":
+			abs.Op = "replace"
+		case moves:
+			return op, fmt.Errorf("op %d: %s onto the node itself is not supported: replace it with the value", i, op.Op)
+		}
 	}
-	return "", fmt.Errorf("no node with id %q in the tree; node ids: %s", id, strings.Join(ids, ", "))
+	return abs, nil
 }

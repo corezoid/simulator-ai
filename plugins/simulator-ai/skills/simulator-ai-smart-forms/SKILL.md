@@ -105,11 +105,13 @@ To change an existing page, touch only that page and only the components you cha
 2. The types you add or change: `smart_form_reference_read {doc: "components/<Type>"}` or
    `smart_form_components {types: [...]}`, one line per prop, enums inlined (`schema: true` the
    raw JSON Schemas).
-3. `smart_form_page_patch {appId, path?, nodeId, ops}`: JSON Patch ops relative to the node
-   with that `id`, e.g. `{nodeId: "root", ops: [{op: "add", path: "/props/size", value:
-   "xl"}]}`; `add` to `/children/-` appends a child, `remove` with `""` drops the node. All
-   ops apply or none, the write is refused if the file changed since it was read, and it
-   returns the new `sourceHash`, not the source.
+3. `smart_form_page_patch {appId, path?, nodeId, ifMatchHash, ops}`: always pass the
+   `sourceHash` you just read as `ifMatchHash`, so a change made since is refused, not lost.
+   Ops are JSON Patch relative to the node with that `id`, e.g. `{nodeId: "root", ifMatchHash:
+   "<sourceHash>", ops: [{op: "add", path: "/props/size", value: "xl"}]}`; `add` to
+   `/children/-` appends a child, `replace` with `""` swaps the node, `remove` with `""` drops it.
+   All ops apply or none; it returns the new `sourceHash` (the next patch's `ifMatchHash`), not
+   the source.
 4. Rewrite whole files with `smart_form_files_update {appId, items: [{id, title, type, source,
    ifMatchHash}]}` only for a new page or a big restructure (up to 20 files, one transaction,
    under 960 KiB): send the current `title` and `type`, and the read `sourceHash` as

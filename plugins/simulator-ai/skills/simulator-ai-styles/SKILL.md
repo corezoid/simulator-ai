@@ -79,8 +79,8 @@ Save validation checks the shape, not the token ids: no `; { } < >`, `url(`, `ex
    it is missing. Prefer `scales` and `presets` over many single tokens.
 4. Adjust component props on the pages only through the catalog's props: read the page with
    `smart_form_files_get {paths: ["pages/<page>/config"]}` and change just those props with
-   `smart_form_page_patch {appId, path, nodeId, ops: [{op: "replace", path: "/props/<prop>",
-   value}]}` rather than rewriting the page.
+   `smart_form_page_patch {appId, path, nodeId, ifMatchHash: <its sourceHash>, ops: [{op:
+   "replace", path: "/props/<prop>", value}]}` rather than rewriting the page.
 5. `smart_form_release` publishes it. A form already live elsewhere: name it and what changes,
    and get an explicit yes first (`smart_form_release_rollback` in `console-full` undoes a
    release). `smart_form_page_render` shows a page still builds, but only a person sees the

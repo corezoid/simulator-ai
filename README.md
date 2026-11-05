@@ -278,7 +278,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | --- | --: | --: | --- |
 | `core` | 14 | 22.9 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
 | `graph` | 43 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings, nodes opened in place (at the 55 KiB bound: the next graph tool needs a split) |
-| `smart_forms` | 24 | 29.3 | Smart Form pages, the CDU reference, data template, releases, history, trash, test runs, its Corezoid project |
+| `smart_forms` | 24 | 29.5 | Smart Form pages, the CDU reference, data template, releases, history, trash, test runs, its Corezoid project |
 | `forms` | 12 | 21.4 | Account Templates: create, change, tree, their accounts, records filtered by data |
 | `finance` | 18 | 26.6 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
 | `finance_setup` | 40 | 47.5 | currencies and account names, formulas, tags, triggers, counters, limits and status, atomic posts, by-ref variants |
@@ -289,7 +289,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | `charts` | 5 | 10.9 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 191 | 253.2 | |
+| all (`console-full`) | 191 | 253.3 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),

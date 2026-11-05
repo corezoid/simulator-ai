@@ -13,18 +13,11 @@ func patchDoc(t *testing.T, src, ops string) (string, string) {
 	if err := json.Unmarshal([]byte(ops), &list); err != nil {
 		t.Fatal(err)
 	}
-	doc, err := decodeDoc([]byte(src))
+	out, _, _, err := patchSource(src, "", list)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if doc, err = applyPatch(doc, list); err != nil {
 		return "", err.Error()
 	}
-	b, err := encodeDoc(doc, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(b), ""
+	return out, ""
 }
 
 func TestApplyPatch(t *testing.T) {
@@ -125,5 +118,57 @@ func TestPatchSourceNodeID(t *testing.T) {
 	}
 	if _, _, _, err = patchSource(patchPage, "root", []PatchOp{{Op: "remove", Path: "props"}}); err == nil || !strings.Contains(err.Error(), "must start with /") {
 		t.Fatal("a relative path must still be a pointer:", err)
+	}
+}
+
+// "" under nodeId is the node itself: add and replace swap it, remove deletes it, and an op after
+// the node is gone is refused instead of reaching the sibling that took its index.
+func TestPatchSourceNodeItself(t *testing.T) {
+	label := json.RawMessage(`{"id":"title","type":"Label","props":{"text":"Hello"}}`)
+	for _, op := range []string{"add", "replace"} {
+		out, applied, _, err := patchSource(patchPage, "title", []PatchOp{{Op: op, Path: "", Value: label}})
+		if err != nil || strings.Count(out, `"id":"title"`) != 1 || !strings.Contains(out, `"children":[{"id":"title","type":"Label","props":{"text":"Hello"}},{"id":"tabs"`) ||
+			applied[0] != "replace /tree/children/0" {
+			t.Fatalf("%s \"\": %s %v %v", op, out, applied, err)
+		}
+	}
+	out, applied, _, err := patchSource(patchPage, "title", []PatchOp{{Op: "remove", Path: ""}})
+	if err != nil || strings.Contains(out, `"id":"title"`) || applied[0] != "remove /tree/children/0" {
+		t.Fatal(out, applied, err)
+	}
+	_, _, _, err = patchSource(patchPage, "title", []PatchOp{{Op: "remove", Path: ""}, {Op: "add", Path: "/props/size", Value: json.RawMessage(`"xl"`)}})
+	if err == nil || !strings.Contains(err.Error(), `op 1: after the ops before it, no node with id "title"`) {
+		t.Fatal("an op after the node was removed must be refused:", err)
+	}
+	// replaced by a node of another id, the node is gone for the ops after it too
+	_, _, _, err = patchSource(patchPage, "title", []PatchOp{{Op: "replace", Path: "", Value: json.RawMessage(`{"id":"heading","type":"Label"}`)}, {Op: "remove", Path: "/props"}})
+	if err == nil || !strings.Contains(err.Error(), `op 1: after the ops before it, no node with id "title"`) {
+		t.Fatal(err)
+	}
+	if _, _, _, err = patchSource(patchPage, "title", []PatchOp{{Op: "copy", From: "/props", Path: ""}}); err == nil || !strings.Contains(err.Error(), "onto the node itself") {
+		t.Fatal(err)
+	}
+}
+
+// Nodes inside overlay.open content, in node actions and in bindings, are found like tree nodes.
+func TestFindNodeInOverlays(t *testing.T) {
+	page := `{"schemaVersion":"2.0","id":"index","tree":{"id":"root","type":"Stack","children":[
+{"id":"open","type":"Button","actions":{"onClick":[{"type":"if","then":[{"type":"overlay.open","content":{"id":"dialog","type":"Stack","children":[{"id":"ok","type":"Button"}]}}]}]}}]},
+"bindings":[{"on":"x","do":[{"type":"overlay.open","content":[{"id":"side","type":"Label"}]}]}]}`
+	doc, err := decodeDoc([]byte(page))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]string{
+		"ok":   "/tree/children/0/actions/onClick/0/then/0/content/children/0",
+		"side": "/bindings/0/do/0/content/0",
+	} {
+		if got, err := findNode(doc, id); err != nil || got != want {
+			t.Errorf("%s: %s %v, want %s", id, got, err, want)
+		}
+	}
+	out, _, _, err := patchSource(page, "ok", []PatchOp{{Op: "add", Path: "/props", Value: json.RawMessage(`{"title":"OK"}`)}})
+	if err != nil || !strings.Contains(out, `{"id":"ok","type":"Button","props":{"title":"OK"}}`) {
+		t.Fatal(out, err)
 	}
 }
