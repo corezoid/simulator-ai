@@ -19,9 +19,8 @@ import (
 // MaxInlineBytes bounds an image sent along as a content block; maxPageImages the pages of a scan
 // (Hermes passes up to four images of one tool result to the model).
 const (
-	MaxInlineBytes  = 5 << 20
-	maxPageImages   = 4
-	maxImagesPerRun = 8
+	MaxInlineBytes = 5 << 20
+	maxPageImages  = 4
 )
 
 const (
@@ -157,39 +156,12 @@ func (a AttachmentContent) AttachmentNote() string {
 		note = fmt.Sprintf("%s: its first %d page images follow as image blocks.", why, len(a.Pages))
 	case a.TooLarge:
 		note = fmt.Sprintf("The image is larger than the %d MiB inline limit, so it is not sent: ask the user to open it in Simulator or to share a smaller one.", MaxInlineBytes>>20)
-	case a.Kind == "pdf" && a.Text == "" && a.ImagesSkipped == 0:
+	case a.Kind == "pdf" && a.Text == "":
 		why := "The PDF has no text layer (a scan) and its pages are not JPEG images that can be sent"
 		if a.Note != "" {
 			why = strings.ToUpper(a.Note[:1]) + a.Note[1:]
 		}
 		note = why + ", so its content is not available: ask the user for a text version or to describe it."
 	}
-	if a.ImagesSkipped > 0 {
-		note = strings.TrimSpace(note + fmt.Sprintf(" %d image(s) of this file were not sent: this request already sent %d images, the most one request may; ask the user which to look at and read it again in a new request.", a.ImagesSkipped, maxImagesPerRun))
-	}
 	return note
-}
-
-// limitImages holds back the image blocks past maxImagesPerRun in this process (one Console run):
-// every image goes again with each later step of the run, so they are not let pile up.
-func (c *Client) limitImages(a *AttachmentContent) {
-	n := len(a.Pages)
-	if a.Kind == "image" && a.Inline {
-		n = 1
-	}
-	if n == 0 {
-		return
-	}
-	over := min(int(c.imagesSent.Add(int64(n))-maxImagesPerRun), n)
-	if over <= 0 {
-		return
-	}
-	c.imagesSent.Add(-int64(over))
-	a.ImagesSkipped = over
-	if a.Kind == "image" {
-		a.Data, a.Inline = nil, false
-		return
-	}
-	a.Pages = a.Pages[:n-over]
-	a.Inline = len(a.Pages) > 0
 }
