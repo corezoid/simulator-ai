@@ -143,6 +143,9 @@ func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, 
 		if raw, ok := any(v).(json.RawMessage); ok {
 			return passResult(raw, e), nil
 		}
+		if file, ok := any(v).(publicapi.AttachmentContent); ok && e == nil {
+			return withFile(result(v, e), file), nil
+		}
 		return result(v, e), nil
 	})
 }

@@ -24,6 +24,8 @@ type client struct {
 	out  *bufio.Scanner
 	seq  int
 	last json.RawMessage
+	// blocks are the content block types of the last result after its structured text, e.g. image.
+	blocks []string
 }
 
 func (c *client) rpc(method string, params any) (json.RawMessage, error) {
@@ -56,9 +58,9 @@ func (c *client) tool(name string, args map[string]any, out any) error {
 		return fmt.Errorf("%s: %w", name, err)
 	}
 	var r struct {
-		IsError    bool                    `json:"isError"`
-		Content    []struct{ Text string } `json:"content"`
-		Structured json.RawMessage         `json:"structuredContent"`
+		IsError    bool                          `json:"isError"`
+		Content    []struct{ Type, Text string } `json:"content"`
+		Structured json.RawMessage               `json:"structuredContent"`
 	}
 	if err = json.Unmarshal(raw, &r); err != nil {
 		return err
@@ -75,7 +77,10 @@ func (c *client) tool(name string, args map[string]any, out any) error {
 		shown = shown[:400] + "…"
 	}
 	fmt.Printf("%s: %s\n", name, shown)
-	c.last = r.Structured
+	c.last, c.blocks = r.Structured, nil
+	for _, b := range r.Content {
+		c.blocks = append(c.blocks, b.Type)
+	}
 	return json.Unmarshal(r.Structured, out)
 }
 

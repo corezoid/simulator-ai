@@ -147,7 +147,8 @@ func TestReadAttachment(t *testing.T) {
 	if got, err := read("long"); err != nil || !got.Truncated || len(got.Text) > maxReadText || !strings.HasSuffix(got.Text, "я") || got.Size != int64(2*maxReadText) {
 		t.Fatal(len(got.Text), got.Truncated, got.Size, err)
 	}
-	if got, err := read("picture"); err != nil || !got.Binary || got.Text != "" || got.Size != 8 {
+	// A PNG type with bytes no image decoder needs: sent as the image it says it is.
+	if got, err := read("picture"); err != nil || got.Kind != "image" || !got.Inline || got.Text != "" || got.Size != 8 {
 		t.Fatal(got, err)
 	}
 	for name, want := range map[string]string{"infected": "quarantined", "missing": "no such file, or its antivirus scan has not finished", "../etc": "storage key"} {
