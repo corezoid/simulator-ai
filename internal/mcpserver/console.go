@@ -27,7 +27,7 @@ var consoleCoreTools = map[string]bool{
 	// value: a transfer between actors' accounts, a transaction when one account is named.
 	"account_create": true, "accounts_list": true, "transfer_create": true, "transaction_create": true,
 	// Account Templates: the template itself and the accounts every actor of it has.
-	"form_create": true, "form_update": true, "form_account_create": true,
+	"form_create": true, "form_update": true, "form_fields_patch": true, "form_account_create": true,
 	// A p2p or group chat in one call (its reuse ref needs the creator's id, which no tool gives).
 	"chat_open": true,
 	// The actor, form and Smart Form cards an actor shows.
@@ -87,6 +87,7 @@ func addConsole(s *server.MCPServer, c *publicapi.Client) {
 	addConsoleDraw(s, c)
 	addConsoleLayerSettings(s, c)
 	addConsoleExpand(s, c)
+	addConsoleForms(s, c)
 }
 
 func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {

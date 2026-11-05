@@ -204,7 +204,7 @@ func (c *Client) ListLayerActors(ctx context.Context, id string, limit, offset i
 func (c *Client) apiError(e *rpcError) *APIError {
 	reason := "remote_error"
 	switch e.Data.Reason {
-	case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams", "operationConflict", "operationResultExpired", "appEnvironmentChanged", "appFileSourceMismatch", "invalidRoutes", "methodNotFound":
+	case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams", "operationConflict", "operationResultExpired", "appEnvironmentChanged", "appFileSourceMismatch", "invalidRoutes", "methodNotFound", "formEditConflict":
 		reason = e.Data.Reason
 	}
 	err := &APIError{Code: e.Code, Reason: reason}

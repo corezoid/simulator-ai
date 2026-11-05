@@ -119,7 +119,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 50 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 51 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -134,6 +134,7 @@ scenarios use (see "AI Console profile").
 | `form_get` [getForm] (body, editToken with `editor`) | `form/get` | ✓ | ✓ | ✓ |
 | `forms_list` / `forms_count` [getForms, searchForms] | `form/list` / `form/count` | ✓ | ✓ | ✓ |
 | `form_create` · `form_update` · `form_status_update` · `form_delete` [createForm, updateForm, setFormStatus, deleteForm] | `form/create` · `form/update` · `form/status/update` · `form/delete` | ✓ | | |
+| `form_fields_patch` (ops by field id: add, update, remove, move, sections; template properties; optional expected `editToken`) | `form/get` with `editor`, then `form/update` under its token | ✓ | | |
 | `forms_tree_get` [getFormsTree] · `form_linked_get` [getLinkedForms] | `form/tree/get` · its subtree, or `form/get` with `parents` | ✓ | ✓ | ✓ |
 | `form_accounts_list` [getFormAccounts] | `account_form/list` | ✓ | ✓ | ✓ |
 | `form_account_create` [createFormAccount] (pair by name or ids; also opened on the template's existing actors, 500 per call) · `form_account_delete` [removeFormAccount] | `account_form/list` + atomic `batch` of `account/create` + `account_form/create`, then `actor/filter/list` + `batch` of `account_actor/create` · `account_form/delete` | ✓ | | |
@@ -256,20 +257,20 @@ catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, 
 for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `users_search`, `access_rules_get`,
 `access_rules_save`, `attachment_upload` and `attachment_read`, and for a saved playbook and a link to what was made
 `skills_find`, `skill_get` and `build_link`, and for accounts, Account Templates, chats and cards `account_create`,
-`accounts_list`, `transfer_create`, `transaction_create`, `form_create`, `form_update`, `form_account_create`,
-`chat_open` and `actor_attach`, and for a Smart Form's business logic `corezoid_project_create` and
+`accounts_list`, `transfer_create`, `transaction_create`, `form_create`, `form_fields_patch`, `form_update`,
+`form_account_create`, `chat_open` and `actor_attach`, and for a Smart Form's business logic `corezoid_project_create` and
 `corezoid_project_get`, `layer_viewport` to show the user what the answer is about, `hole_close` to close a placeholder
-and `actor_delete` for a delete named outside a layer: 50 in all (`smart_form_folders_create` is there because a form of more
+and `actor_delete` for a delete named outside a layer: 51 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page; `internal/mcpserver/console.go` says why each later one is). `console-full` adds every other actor, form, graph, access, reaction, user,
 attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
-transcript tool, hole reopen, Pencil drawing, layer settings and nodes opened in place (188 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+transcript tool, hole reopen, Pencil drawing, layer settings and nodes opened in place (189 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Tool groups: every console tool in `tools/list` carries `_meta: {"simulator-ai/groups": [...]}`, so the Hermes relay
 can give a run `core` and only the domains its request needs (`internal/mcpserver/console_groups.go`; a tool may sit
 in several groups, each group with `core` is enough for its domain). The baseline without the relay is the plain
-`console` profile, the 50 tools named in `consoleCoreTools`, not the union of groups: `core`, `graph`, `smart_forms`,
-`forms`, `finance`, `people` and `files` together contain those 50 and more (the graph edits, the Smart Form history,
+`console` profile, the 51 tools named in `consoleCoreTools`, not the union of groups: `core`, `graph`, `smart_forms`,
+`forms`, `finance`, `people` and `files` together contain those 51 and more (the graph edits, the Smart Form history,
 ...). Sizes are the tools' `tools/list` entries (`go test ./internal/mcpserver -run GroupSizes -v`, which also keeps each group within 55 KiB;
 output schemas carry no `additionalProperties: false`, which only cost context):
 
@@ -278,7 +279,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | `core` | 14 | 22.9 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
 | `graph` | 43 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings, nodes opened in place (at the 55 KiB bound: the next graph tool needs a split) |
 | `smart_forms` | 21 | 23.9 | Smart Form pages, data template, releases, history, trash, test runs, its Corezoid project |
-| `forms` | 12 | 21.4 | Account Templates: create, change, tree, their accounts, records filtered by data |
+| `forms` | 13 | 24.2 | Account Templates: create, change field by field, tree, their accounts, records filtered by data |
 | `finance` | 18 | 26.6 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
 | `finance_setup` | 40 | 47.5 | currencies and account names, formulas, tags, triggers, counters, limits and status, atomic posts, by-ref variants |
 | `people` | 19 | 22.4 | access, access requests, users, chats, cards on an actor, reactions, agents |
@@ -288,7 +289,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | `charts` | 5 | 10.9 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 188 | 247.7 | |
+| all (`console-full`) | 189 | 250.6 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
