@@ -42,13 +42,19 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
 "What is on this graph/layer" means that layer's placements, never a workspace search. In a
 URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
 
-- `layer_get {layerId}`: nodes `{laId, actorId, title, formId, position, cell, blockId, hole, open}`
-  and edges `{laId, edgeId, source, target, name, hole}`, up to 500 per kind; `hasMore` → next
-  `offset`; `anisotropy` is the layer's setting.
+- `layer_get {layerId}`: compact nodes `{laId, actorId, title, formId, cell, blockId, hole, open}`
+  and edges `{laId, edgeId, laIdSource, laIdTarget, name, hole}` (an edge's actors are the
+  `actorId`s of its nodes), 100 per kind; `hasMore` comes with `total` (the layer's counts) →
+  next `offset`, or find the one actor with `layer_actors_search`; `anisotropy` is the layer's
+  setting. `full: true` adds each node's `position` and each edge's `source`/`target` (limit 200):
+  ask for it only when you need exact coordinates.
 - `console-full`: `layer_stats_get` (counts of nodes, edges, holes; not a snapshot),
-  `layer_placements_list` / `layer_edges_list` (pages with full actors and layer settings),
-  `layer_placements_all` (every node at once), `layer_skeleton_get` (a large layer, or a box),
-  `layer_actors_search {actorId, query}`.
+  `layer_placements_list` / `layer_edges_list` (pages with actors and layer settings),
+  `layer_placements_all` (a summary of every node: count, templates, box, and the first 150),
+  `layer_skeleton_get` (positions of a large layer, at most 150 of each with the box: read a
+  region with `x1,y1,x2,y2`), `layer_actors_search {actorId, query}`. These answer compact too
+  (no pictures, shapes or timestamps); `full: true` returns everything — on a large layer that is
+  megabytes, never needed for an answer.
 - Around one actor: `graph_get {actorId}` (every edge and the actor at its other end);
   `graph_list {actorId, type: "children"|"parents"|"linked"}` walks one relation page by page.
 - A short page does not prove the end: follow `hasMore`/`offset` under a finite budget and say
@@ -214,7 +220,7 @@ graph (a circle round a node, an arrow to it, a frame, an underline, a quick ske
 edges stay the way to model a process.
 
 - Coordinates are graph units (x right, y down, 50 per cell). Read the nodes you draw around with
-  `layer_get` (`position` is a node's centre; a plain node is about one cell). With
+  `layer_get {full: true}` (`position` is a node's centre; a plain node is about one cell). With
   `cell: "C, 7"` every coordinate is relative to that cell's centre.
 - A stroke is `kind: line` with `points` (two or more; `smooth` bends it through them,
   `closed` joins the end back to the start, `arrowStart` / `arrowEnd` add filled heads),

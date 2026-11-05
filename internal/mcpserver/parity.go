@@ -33,6 +33,8 @@ type parityTool struct {
 	Idempotent bool
 	// Strip drops these keys (a dot path into the result object) from the answer the model sees.
 	Strip []string
+	// Compact shrinks the answer unless the call sends full true (the tool then takes full).
+	Compact compactor
 }
 
 // rowFields is the compact projection of list rows and graph nodes unless the caller sends fields.
@@ -50,6 +52,9 @@ func addParity(s *server.MCPServer, c *publicapi.Client, tools []parityTool) {
 		schema, err := contracts.ParityInputSchema(t.Method)
 		if err == nil && (len(t.Defaults) > 0 || len(t.Params) > 0) {
 			schema, err = narrow(schema, t.Defaults, t.Params)
+		}
+		if err == nil && t.Compact != nil {
+			schema, err = withFull(schema)
 		}
 		if err != nil {
 			panic(err) // pinned build artifact, never remote input
@@ -70,6 +75,8 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 		if err != nil {
 			return failure(err), nil
 		}
+		full := string(args["full"]) == "true"
+		delete(args, "full")
 		for k, v := range t.Defaults {
 			if _, ok := args[k]; !ok {
 				args[k], _ = json.Marshal(v)
@@ -91,6 +98,9 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 		v, err := c.Pass(ctx, t.Method, args)
 		if err == nil && len(t.Strip) > 0 {
 			v, err = strip(v, t.Strip)
+		}
+		if err == nil && t.Compact != nil && !full {
+			v = t.Compact(v)
 		}
 		return passResult(v, err), nil
 	}

@@ -122,6 +122,8 @@ type LayerGetInput struct {
 	LayerID string `json:"layerId"`
 	Limit   *int64 `json:"limit,omitempty"`
 	Offset  int64  `json:"offset,omitempty"`
+	// Full answers every row as before: positions and edge endpoints' actor ids.
+	Full bool `json:"full,omitempty"`
 }
 
 // LayerViewNode is a compact node placement for readback: the laId edges are drawn between.
@@ -178,6 +180,8 @@ type LayerView struct {
 	Edges      []LayerViewEdge `json:"edges"`
 	HasMore    bool            `json:"hasMore"`
 	Anisotropy bool            `json:"anisotropy"`
+	// Total counts the layer's placements when this page does not hold them all.
+	Total *LayerTotals `json:"total,omitempty"`
 }
 
 type layerPageRequest struct {
@@ -361,7 +365,10 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 	if e := consoleOnly(c); e != nil {
 		return LayerView{}, e
 	}
-	limit := int64(200)
+	limit := int64(layerGetCompactLimit)
+	if in.Full {
+		limit = layerGetFullLimit
+	}
 	if in.Limit != nil {
 		limit = *in.Limit
 	}
@@ -419,6 +426,14 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 			edge.Name = p.LayerSettings.Name
 		}
 		v.Edges = append(v.Edges, edge)
+	}
+	if !in.Full {
+		compactLayerView(&v)
+	}
+	if v.HasMore {
+		if v.Total, e = c.layerTotals(ctx, in.LayerID); e != nil {
+			return LayerView{}, e
+		}
 	}
 	return v, nil
 }

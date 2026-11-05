@@ -209,7 +209,7 @@ func parity(c *client, stamp string) error {
 			Target string `json:"target"`
 		} `json:"edges"`
 	}
-	if err := c.tool("layer_get", map[string]any{"layerId": layer.ID}, &withHole); err != nil {
+	if err := c.tool("layer_get", map[string]any{"layerId": layer.ID, "full": true}, &withHole); err != nil {
 		return err
 	}
 	holeShown, linkShown := false, false
