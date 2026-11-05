@@ -19,8 +19,10 @@ type PlacementsCreated struct {
 	GraphCreatedPlacements
 	// Moved is how many placements the make-room moved.
 	Moved int `json:"moved,omitempty"`
-	// Opened is the open state of a node placed with expand.
+	// Opened is the open state of a node placed with expand; Covers what its box lies over when the
+	// layer does not make room.
 	Opened *LayerNodeOpen `json:"opened,omitempty"`
+	Covers string         `json:"covers,omitempty"`
 	// Warning says what could not be checked.
 	Warning string `json:"warning,omitempty"`
 }
@@ -39,6 +41,7 @@ type roomPlan struct {
 	moved      int
 	open       *openPatch
 	opened     *LayerNodeOpen
+	covers     string
 	warning    string
 }
 
@@ -61,6 +64,7 @@ func (c *Client) planRoom(ctx context.Context, in PlacementsCreateInput) (roomPl
 		return roomPlan{}, err
 	}
 	var plan roomPlan
+	start := room
 	if room.Partial {
 		plan.warning = fmt.Sprintf("the layer has more than %d placements: only the first were checked for room", maxRoomPages*1000)
 	}
@@ -77,32 +81,34 @@ func (c *Client) planRoom(ctx context.Context, in PlacementsCreateInput) (roomPl
 		if left := after.conflicts(boxes, 0); d == nil || len(left) > 0 {
 			return roomPlan{}, fmt.Errorf("occupied: %s, and making room does not clear %s: place elsewhere", cellsOf(taken), areaCells(area))
 		}
-		plan.directives, plan.moved, room = append(plan.directives, *d), room.moved(d, 0), after
+		plan.directives, room = append(plan.directives, *d), after
 	}
 	for i, p := range in.Nodes {
 		if !p.Expand {
 			continue
 		}
-		if err := c.planBornOpen(ctx, p, room, &plan); err != nil {
+		if room, err = c.planBornOpen(ctx, p, room, &plan); err != nil {
 			return roomPlan{}, fmt.Errorf("node %d: %w", i, err)
 		}
 	}
+	plan.moved = start.movedTo(room)
 	return plan, nil
 }
 
-// planBornOpen plans the open bag of a node placed with expand, and its push with anisotropy.
-func (c *Client) planBornOpen(ctx context.Context, p NodePlacement, room layerRoom, plan *roomPlan) error {
+// planBornOpen plans the open bag of a node placed with expand and, with anisotropy, its push; it
+// answers the layer after the push. Without anisotropy the box lies over its neighbours: covers.
+func (c *Client) planBornOpen(ctx context.Context, p NodePlacement, room layerRoom, plan *roomPlan) (layerRoom, error) {
 	kind := p.openAs
 	if kind == "" {
 		actor, err := call[map[string]any, struct {
 			FormID int64 `json:"formId"`
 		}](ctx, c, "actor/get", map[string]any{"accId": c.config.Workspace, "actorId": p.ActorID, "fields": []string{"id", "formId"}})
 		if err != nil {
-			return fmt.Errorf("actor/get %s: %w", p.ActorID, err)
+			return room, fmt.Errorf("actor/get %s: %w", p.ActorID, err)
 		}
 		forms, err := c.nestedForms(ctx)
 		if err != nil {
-			return err
+			return room, err
 		}
 		kind = nestedKindOf(actor.FormID, openSettings{}, forms)
 	}
@@ -111,11 +117,14 @@ func (c *Client) planBornOpen(ctx context.Context, p NodePlacement, room layerRo
 	patch, d := expandPlan(n, kind, nil, room.Anisotropy)
 	n.Settings = n.Settings.with(patch)
 	if d != nil {
-		plan.directives, plan.moved, room = append(plan.directives, *d), plan.moved+room.moved(d, 0), room.after(d, 0)
+		plan.directives, room = append(plan.directives, *d), room.after(d, 0)
 	}
 	plan.open = &patch
 	plan.opened = &LayerNodeOpen{ExpandType: patch.ExpandType, Area: areaCells(n.box())}
-	return nil
+	if covered := room.conflicts([]graphRect{n.box()}, 0); len(covered) > 0 {
+		plan.covers = cellsOf(covered)
+	}
+	return room, nil
 }
 
 // bornOpenItem creates a node placement with its open bag.

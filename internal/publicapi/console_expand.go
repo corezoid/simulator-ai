@@ -159,12 +159,11 @@ func (c *Client) ExpandNode(ctx context.Context, in NodeExpandInput) (NodeExpand
 		return NodeExpanded{}, err
 	}
 	out.Changed = true
-	if dir != nil {
-		out.Moved = room.moved(dir, in.LaID)
-	}
+	after := room.after(dir, in.LaID)
+	out.Moved = room.movedTo(after)
 	n.Settings = n.Settings.with(patch)
 	out.Expanded = n.Settings.Expand
-	return describeOpen(out, n, room.after(dir, in.LaID)), nil
+	return describeOpen(out, n, after), nil
 }
 
 // describeOpen fills the open state's type, box and what the box lies over.

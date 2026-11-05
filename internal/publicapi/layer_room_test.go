@@ -71,13 +71,18 @@ func TestFootprints(t *testing.T) {
 		{"laId":7,"id":"g","position":{"x":0,"y":0},"layerSettings":{"drawing":{"shape":"ink"}}},
 		{"laId":8,"id":"h","position":{"x":0,"y":0},"hole":true},
 		{"laId":9,"id":"i","accessDenied":true,"position":{"x":50,"y":50}},
-		{"laId":10,"id":"j"}
+		{"laId":10,"id":"j"},
+		{"laId":11,"id":"k","position":{"x":0,"y":0},"actor":{"id":"k","pictureObject":{"type":"avatar","img":"x"}}},
+		{"laId":12,"id":"l","position":{"x":0,"y":0},"actor":{"id":"l","pictureObject":{"type":"napkin","img":"data:x"}}},
+		{"laId":13,"id":"m","position":{"x":0,"y":0},"actor":{"id":"m","pictureObject":{"type":"image","img":""}}}
 	]`), &nodes); err != nil {
 		t.Fatal(err)
 	}
 	want := map[int64]string{
 		1: `{"X":75,"Y":25,"W":50,"H":50}`, 2: `{"X":-325,"Y":-225,"W":650,"H":450}`, 3: `{"X":400,"Y":-50,"W":200,"H":100}`,
 		8: `{"X":-25,"Y":-25,"W":50,"H":50}`, 9: `{"X":25,"Y":25,"W":50,"H":50}`,
+		// An avatar or an image without a source is still an actor; a napkin is a picture.
+		11: `{"X":-25,"Y":-25,"W":50,"H":50}`, 13: `{"X":-25,"Y":-25,"W":50,"H":50}`,
 	}
 	for _, n := range nodes {
 		box, ok := n.footprint()

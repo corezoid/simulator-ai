@@ -197,7 +197,12 @@ anisotropy on, `layer_placements_create` makes room for the new nodes first (the
 apart along a seam through their area: a tall area inserts columns, a wide one rows) and reports
 `moved`; with it off, the call is refused and names the taken cells: pick free ones from
 `layer_get`. `layer_draw` pictures are marks over the graph: they neither take cells nor move
-anything. Tell the user when placing or opening moved other nodes.
+anything. Tell the user when placing or opening moved other nodes (`moved`), and what an open box
+lies over when the layer does not make room (`covers`).
+
+Known limit: the room is planned from a read of the layer just before the write. Someone moving
+or opening nodes on the same layer in the Graph Editor at that moment is not seen, so the push and
+their change can overlap; read the layer again (`layer_get`) when the user is editing it too.
 
 ## Draw by hand (Pencil, `console-full`)
 

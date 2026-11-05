@@ -144,6 +144,14 @@ func (c *Client) CreateChart(ctx context.Context, in ChartCreateInput) (ChartCre
 	if err != nil {
 		return ChartCreated{}, err
 	}
+	// Placed open, as the Graph Editor's Chart row places it: refused on a taken cell or, with the
+	// layer's anisotropy, its neighbours pushed out of the chart's box (layer_place.go). The room is
+	// checked before any actor is made, so a refusal leaves nothing behind.
+	at := PlacementsCreateInput{LayerID: in.LayerID, Nodes: []NodePlacement{{ActorID: "chart", Position: in.Position, Expand: true, openAs: nestedChart}}}
+	room, err := c.planRoom(ctx, at)
+	if err != nil {
+		return ChartCreated{}, fmt.Errorf("place the chart on layer %s: %w", in.LayerID, err)
+	}
 	dashboards, err := c.systemFormID(ctx, "Dashboards")
 	if err != nil {
 		return ChartCreated{}, err
@@ -178,9 +186,8 @@ func (c *Client) CreateChart(ctx context.Context, in ChartCreateInput) (ChartCre
 		return ChartCreated{}, orphan(fmt.Errorf("create the chart actor: %w", err), "ActorFilters actor", newFilter)
 	}
 	out.ChartID = *chart.ID
-	// Placed open, as the Graph Editor's Chart row places it: on a taken cell or, with the layer's
-	// anisotropy, with its neighbours pushed out of the chart's box (layer_place.go).
-	placed, err := c.CreatePlacements(ctx, PlacementsCreateInput{LayerID: in.LayerID, Nodes: []NodePlacement{{ActorID: out.ChartID, Position: in.Position, Expand: true, openAs: nestedChart}}})
+	at.Nodes[0].ActorID = out.ChartID
+	placed, err := c.placeNodes(ctx, at, &room)
 	if err == nil && len(placed.Nodes) != 1 {
 		err = errors.New("graph/layer/actors/manage returned no placement")
 	}

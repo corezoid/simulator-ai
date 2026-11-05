@@ -15,7 +15,9 @@ import "math"
 //     one cell, so edges and hit-testing do not change;
 //   - expandPushed: whether this open state made room (the layer's anisotropy when it opened); a
 //     close, and a resize while open, mirror it, so every push gets exactly one pull. Absent reads
-//     as pushed: nodes opened before the key existed were opened by a client that always pushed.
+//     as pushed: nodes opened before the key existed were opened by a client that always pushed —
+//     except a chart without nestedFrame, which the plugin's earlier chart_create opened in place
+//     without pushing anybody (the plugin's one deviation from the Graph Editor's reading).
 //
 // Where the sources disagree (recorded, not resolved):
 //   - offset: legacy (EXP_NODE.offset) and the Graph Editor write how far the box reaches past the
@@ -178,8 +180,16 @@ func nestedBoxAt(x, y float64, f NestedFrame) graphRect {
 		W: float64(f.Width) * gridCell, H: float64(f.Height) * gridCell}
 }
 
-// pushed reports whether an open node made room when it opened (absent reads as yes).
-func (s openSettings) pushed() bool { return s.ExpandPushed == nil || *s.ExpandPushed }
+// pushed reports whether an open node made room when it opened. Absent reads as yes (the Graph
+// Editor's rule: its earlier clients always pushed), except for the plugin's own earlier charts:
+// chart_create wrote {expand, expandType: chart, width, height} with no nestedFrame and pushed
+// nobody, so pulling the layer back for one would draw it into the chart's box.
+func (s openSettings) pushed() bool {
+	if s.ExpandPushed != nil {
+		return *s.ExpandPushed
+	}
+	return !(s.ExpandType == "chart" && s.NestedFrame == nil)
+}
 
 // openNode is a placement as opening needs it: its centre, collapsed body and open state.
 type openNode struct {

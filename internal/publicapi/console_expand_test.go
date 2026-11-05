@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -9,10 +10,28 @@ import (
 // expandBackend is a layer with one node to open (laId 7 at B, 4) and a neighbour (laId 8 at K, 4);
 // anisotropy is the layer's setting, node the stored placement row.
 func expandBackend(t *testing.T, anisotropy, node string) (*Client, *[]rpcCall) {
-	batch := `{"isAtomic":true,"list":[{"id":"0","result":{}},{"id":"1","result":{}}]}`
+	items := 2
 	if anisotropy == "false" && !strings.Contains(node, "expand") {
-		batch = `{"isAtomic":true,"list":[{"id":"0","result":{}}]}` // a quiet open sends no offset
+		items = 1 // a quiet open sends no offset
 	}
+	return expandBackendN(t, anisotropy, node, items)
+}
+
+// atomicReply answers a batch of n items; the last one carries result.
+func atomicReply(n int, result string) string {
+	list := make([]string, n)
+	for i := range list {
+		r := "{}"
+		if i == n-1 {
+			r = result
+		}
+		list[i] = fmt.Sprintf(`{"id":"%d","result":%s}`, i, r)
+	}
+	return `{"isAtomic":true,"list":[` + strings.Join(list, ",") + `]}`
+}
+
+func expandBackendN(t *testing.T, anisotropy, node string, items int) (*Client, *[]rpcCall) {
+	batch := atomicReply(items, "{}")
 	return rpcBackend(t, func(method string) string {
 		switch method {
 		case "graph/layer/elements/list":
@@ -137,6 +156,10 @@ func TestExpandNodeRefusalsAndNoOps(t *testing.T) {
 
 // placeBackend is a layer whose only node holds A, 1; the manage answer is one node.
 func placeBackend(t *testing.T, anisotropy string) (*Client, *[]rpcCall) {
+	return placeBackendN(t, anisotropy, 2)
+}
+
+func placeBackendN(t *testing.T, anisotropy string, items int) (*Client, *[]rpcCall) {
 	return rpcBackend(t, func(method string) string {
 		switch method {
 		case "actor/get":
@@ -148,7 +171,7 @@ func placeBackend(t *testing.T, anisotropy string) (*Client, *[]rpcCall) {
 		case "graph/layer/actors/manage":
 			return `{"nodes":[{"laId":11,"id":"a1"}],"edges":[]}`
 		case "batch":
-			return `{"isAtomic":true,"list":[{"id":"0","result":{}},{"id":"1","result":{"nodes":[{"laId":11,"id":"a1"}],"edges":[]}}]}`
+			return atomicReply(items, `{"nodes":[{"laId":11,"id":"a1"}],"edges":[]}`)
 		}
 		return `{}`
 	})
@@ -236,5 +259,54 @@ func TestLayerGetShowsOpenNodes(t *testing.T) {
 	}
 	if !v.Anisotropy || len(v.Nodes) != 2 || jsonOf(t, v.Nodes[0].Open) != `{"expandType":"chart","area":"-F, -4 - G, 5"}` || v.Nodes[1].Open != nil {
 		t.Fatal(jsonOf(t, v))
+	}
+}
+
+// A chart the plugin's earlier chart_create opened ({expand, chart, width, height}, no nestedFrame,
+// no expandPushed) pushed nobody: closing or resizing it pulls nobody either.
+func TestOldPluginChartIsNotPulled(t *testing.T) {
+	old := `{"laId":7,"id":"a","position":{"x":50,"y":150},"layerSettings":{"expand":true,"expandType":"chart","width":650,"height":450},"actor":{"id":"a","formId":3}}`
+	no := false
+	for _, in := range []NodeExpandInput{{LayerID: "L", LaID: 7, Expand: &no}, {LayerID: "L", LaID: 7, Width: 15, Height: 9}} {
+		c, calls := expandBackendN(t, "true", old, 1)
+		out, err := c.ExpandNode(context.Background(), in)
+		if err != nil || out.Moved != 0 {
+			t.Fatal(err, out)
+		}
+		if b := lastBatch(t, *calls); strings.Contains(b, "actors/offset") {
+			t.Fatal("old chart pulled the layer:", b)
+		}
+	}
+	if (openSettings{ExpandType: "chart"}).pushed() || !(openSettings{ExpandType: "layer"}).pushed() {
+		t.Error("pushed() default")
+	}
+	framed := stored(-6, -4, 13, 9)
+	framed.ExpandType = "chart"
+	if !framed.pushed() {
+		t.Error("a Graph Editor chart (with nestedFrame, no expandPushed) is read as not pushed")
+	}
+}
+
+// A node born open on a layer without anisotropy lies over its neighbours and says so.
+func TestPlacementBornOpenCovers(t *testing.T) {
+	c, _ := placeBackend(t, "false")
+	out, err := c.CreatePlacements(context.Background(), PlacementsCreateInput{LayerID: "L", Nodes: []NodePlacement{{ActorID: "a1", Position: GraphPoint{X: 200}, Expand: true}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Moved != 0 || out.Covers != "A, 1 (laId 1)" || out.Opened == nil {
+		t.Fatal(jsonOf(t, out))
+	}
+}
+
+// A node moved by both the make-room for a taken cell and a born-open push counts once.
+func TestMovedCountsEachNodeOnce(t *testing.T) {
+	c, calls := placeBackendN(t, "true", 3)
+	out, err := c.CreatePlacements(context.Background(), PlacementsCreateInput{LayerID: "L", Nodes: []NodePlacement{{ActorID: "a1", Position: GraphPoint{}, Expand: true}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Moved != 1 || out.Covers != "" || strings.Count(lastBatch(t, *calls), "actors/offset") != 2 {
+		t.Fatal(jsonOf(t, out))
 	}
 }

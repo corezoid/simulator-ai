@@ -109,6 +109,7 @@ type consolePlacements struct {
 	Edges   []publicapi.GraphCreatedPlacementEdge `json:"edges"`
 	Moved   int                                   `json:"moved,omitempty"`
 	Opened  *publicapi.LayerNodeOpen              `json:"opened,omitempty"`
+	Covers  string                                `json:"covers,omitempty"`
 	Warning string                                `json:"warning,omitempty"`
 }
 
@@ -141,7 +142,7 @@ func gridPlacements(c *publicapi.Client) func(context.Context, publicapi.Placeme
 		if err != nil {
 			return consolePlacements{}, err
 		}
-		out := consolePlacements{Nodes: make([]placedNode, len(placed.Nodes)), Edges: placed.Edges, Moved: placed.Moved, Opened: placed.Opened, Warning: placed.Warning}
+		out := consolePlacements{Nodes: make([]placedNode, len(placed.Nodes)), Edges: placed.Edges, Moved: placed.Moved, Opened: placed.Opened, Covers: placed.Covers, Warning: placed.Warning}
 		for i, n := range placed.Nodes {
 			at := in.Nodes[i].Position // manage answers nodes in input order
 			if n.Position != nil {

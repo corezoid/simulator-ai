@@ -45,10 +45,21 @@ type layerNodeFull struct {
 	AreaPicture   json.RawMessage        `json:"areaPicture"`
 	LayerSettings *placementSettingsWire `json:"layerSettings"`
 	Actor         *struct {
-		FormID        *int64          `json:"formId"`
-		Title         *string         `json:"title"`
-		PictureObject json.RawMessage `json:"pictureObject"`
+		FormID        *int64             `json:"formId"`
+		Title         *string            `json:"title"`
+		PictureObject *pictureObjectWire `json:"pictureObject"`
 	} `json:"actor"`
+}
+
+// pictureObjectWire is an actor's picture object. Only a legacy bitmap, a type image or napkin
+// with a source, makes the placement a picture (normalize.ts legacyImageObject); an avatar does not.
+type pictureObjectWire struct {
+	Type string `json:"type"`
+	Img  string `json:"img"`
+}
+
+func (p *pictureObjectWire) bitmap() bool {
+	return p != nil && (p.Type == "image" || p.Type == "napkin") && p.Img != ""
 }
 
 func present(raw json.RawMessage) bool {
@@ -74,7 +85,7 @@ func (n layerNodeFull) kind() string {
 		return "flowchart"
 	case present(s.Drawing):
 		return "drawing"
-	case present(s.Image) || present(n.AreaPicture) || n.Actor != nil && present(n.Actor.PictureObject):
+	case present(s.Image) || present(n.AreaPicture) || n.Actor != nil && n.Actor.PictureObject.bitmap():
 		return "image"
 	case len(n.Polygon) > 2:
 		return "markup"
@@ -244,11 +255,12 @@ func (r layerRoom) after(d *OffsetDirective, skip int64) layerRoom {
 	return out
 }
 
-// moved counts the placements the directive moves.
-func (r layerRoom) moved(d *OffsetDirective, skip int64) int {
+// movedTo counts the placements whose position differs in the later layer (after's order is the
+// receiver's), each once however many directives moved it.
+func (r layerRoom) movedTo(later layerRoom) int {
 	n := 0
-	for _, o := range r.Occupants {
-		if _, _, ok := d.moves(o.X, o.Y); ok && o.LaID != skip {
+	for i, o := range r.Occupants {
+		if i < len(later.Occupants) && (later.Occupants[i].X != o.X || later.Occupants[i].Y != o.Y) {
 			n++
 		}
 	}

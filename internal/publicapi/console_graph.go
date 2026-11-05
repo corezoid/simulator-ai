@@ -275,6 +275,11 @@ func (c *Client) CreateEdge(ctx context.Context, in EdgeCreateInput) (GraphCreat
 // room first (layer_place.go): an occupied area is refused, or on a layer with anisotropy made room
 // for in the same atomic batch.
 func (c *Client) CreatePlacements(ctx context.Context, in PlacementsCreateInput) (PlacementsCreated, error) {
+	return c.placeNodes(ctx, in, nil)
+}
+
+// placeNodes places with the room plan given (made before the nodes' actors existed), or makes one.
+func (c *Client) placeNodes(ctx context.Context, in PlacementsCreateInput, given *roomPlan) (PlacementsCreated, error) {
 	if e := consoleOnly(c); e != nil {
 		return PlacementsCreated{}, e
 	}
@@ -301,7 +306,9 @@ func (c *Client) CreatePlacements(ctx context.Context, in PlacementsCreateInput)
 		items = append(items, GraphPlacementItem{Action: "create", Data: GraphPlacementData{ID: p.EdgeID, Type: "edge", LaIDSource: &src, LaIDTarget: &dst}})
 	}
 	var plan roomPlan
-	if len(in.Nodes) > 0 {
+	if given != nil {
+		plan = *given
+	} else if len(in.Nodes) > 0 {
 		var err error
 		if plan, err = c.planRoom(ctx, in); err != nil {
 			return PlacementsCreated{}, err
@@ -320,7 +327,7 @@ func (c *Client) CreatePlacements(ctx context.Context, in PlacementsCreateInput)
 	if e != nil {
 		return PlacementsCreated{}, e
 	}
-	return PlacementsCreated{GraphCreatedPlacements: r, Moved: plan.moved, Opened: plan.opened, Warning: plan.warning}, nil
+	return PlacementsCreated{GraphCreatedPlacements: r, Moved: plan.moved, Opened: plan.opened, Covers: plan.covers, Warning: plan.warning}, nil
 }
 
 // UpdatePositions moves node placements on a layer; all or none are applied.
