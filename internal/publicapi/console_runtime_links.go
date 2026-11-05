@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// Runtime links (sim-api docs/ai-console.md "Посилання"). The person is always inside a ui-kit
+// Runtime links (sim-api docs/simulator-ai-architecture.md "Посилання"). The person is always inside a ui-kit
 // runtime Smart Form, /sf/<appKey>/…, where the legacy web app routes open nothing. So a link is
 // built against the current Smart Form: its appKey (from the request's context, the /sf/<key> of
 // its route) or its appId (route/key/get), the path by public route/build, and the state of a
