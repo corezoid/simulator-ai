@@ -132,6 +132,11 @@ func consoleTool[P, R any](s *server.MCPServer, name, description, schema string
 }
 
 func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, description, schema string, write bool, run func(context.Context, P) (R, error)) {
+	// AddTool replaces a tool of the same name silently: a second console registration is a bug
+	// (the later one would win with whatever schema and handler it carries).
+	if s.GetTool(name) != nil {
+		panic("console tool registered twice: " + name)
+	}
 	t := mcp.NewTool(name, mcp.WithDescription(description), mcp.WithRawInputSchema(json.RawMessage(schema)), output,
 		mcp.WithReadOnlyHintAnnotation(!write), mcp.WithDestructiveHintAnnotation(destructiveTools[name]), mcp.WithIdempotentHintAnnotation(!write || idempotentTools[name]))
 	s.AddTool(t, func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -142,6 +147,9 @@ func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, 
 		v, e := run(ctx, a)
 		if raw, ok := any(v).(json.RawMessage); ok {
 			return passResult(raw, e), nil
+		}
+		if file, ok := any(v).(publicapi.AttachmentContent); ok && e == nil {
+			return withFile(result(v, e), file), nil
 		}
 		return result(v, e), nil
 	})

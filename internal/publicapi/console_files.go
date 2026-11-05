@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 // Files move over sim-api's HTTP routes, not JSON-RPC: POST /api/2.0/rest/upload (multipart, ufs
@@ -165,9 +164,20 @@ type AttachmentContent struct {
 	ContentType string `json:"contentType"`
 	Size        int64  `json:"size"`
 	SizeAtLeast bool   `json:"sizeAtLeast,omitempty"` // the file is larger than size
-	Text        string `json:"text,omitempty"`
-	Truncated   bool   `json:"truncated,omitempty"`
-	Binary      bool   `json:"binary,omitempty"`
+	// Kind is what was read: text, image, pdf, docx, xlsx or binary (type and size only).
+	Kind      string `json:"kind"`
+	Text      string `json:"text,omitempty"` // a text file, or the text taken out of a pdf, docx or xlsx
+	Truncated bool   `json:"truncated,omitempty"`
+	Binary    bool   `json:"binary,omitempty"`
+	// Inline says image blocks follow: the image (Data), or a scanned PDF's page images (Pages).
+	// TooLarge: an image over the inline limit. Scanned: a PDF without a text layer.
+	Inline   bool `json:"inline,omitempty"`
+	TooLarge bool `json:"tooLarge,omitempty"`
+	Scanned  bool `json:"scanned,omitempty"`
+	// Note says why a PDF's text was not read, or not all of it (too large, a stream bomb, too slow).
+	Note  string   `json:"note,omitempty"`
+	Data  []byte   `json:"-"`
+	Pages [][]byte `json:"-"` // JPEG
 }
 
 // ReadAttachment downloads a file by its storage key (fileName). A file ufs is still scanning is
@@ -215,46 +225,6 @@ func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (At
 		}
 		return AttachmentContent{}, fmt.Errorf("download failed (http %d)", resp.StatusCode)
 	}
-}
-
-func readContent(name string, resp *http.Response) (AttachmentContent, error) {
-	out := AttachmentContent{FileName: name, ContentType: resp.Header.Get("Content-Type"), Size: resp.ContentLength}
-	if !textual(out.ContentType) {
-		out.Binary = true
-		if out.Size < 0 { // no Content-Length: count, up to the bound
-			n, err := io.Copy(io.Discard, io.LimitReader(resp.Body, maxDownloadBytes+1))
-			if err != nil {
-				return AttachmentContent{}, errors.New("cannot read the file")
-			}
-			out.Size, out.SizeAtLeast = min(n, maxDownloadBytes), n > maxDownloadBytes
-		}
-		return out, nil
-	}
-	head, err := io.ReadAll(io.LimitReader(resp.Body, maxReadText+1))
-	if err != nil {
-		return AttachmentContent{}, errors.New("cannot read the file")
-	}
-	if out.Size < 0 {
-		rest, err := io.Copy(io.Discard, io.LimitReader(resp.Body, maxDownloadBytes+1))
-		if err != nil {
-			return AttachmentContent{}, errors.New("cannot read the file")
-		}
-		n := int64(len(head)) + rest
-		out.Size, out.SizeAtLeast = min(n, maxDownloadBytes), n > maxDownloadBytes
-	}
-	if len(head) > maxReadText {
-		head, out.Truncated = head[:maxReadText], true
-		// The cut may split the last character.
-		for i := 0; i < 3 && !utf8.Valid(head); i++ {
-			head = head[:len(head)-1]
-		}
-	}
-	if !utf8.Valid(head) {
-		out.Binary = true
-		return out, nil
-	}
-	out.Text = string(head)
-	return out, nil
 }
 
 func textual(contentType string) bool {

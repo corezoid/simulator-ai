@@ -30,13 +30,33 @@ the stand's limit, or a stand that does not accept uploads from this run.
 Upload first, then `reaction_create {rootActorId, type: "comment", description, attachmentIds:
 [id]}`. To hang uploaded files on an actor later: `attachment_attach {actorId, attachmentIds}`.
 
+## Files attached to the request
+
+In AI Console the request may come with files: the prompt's "Attachments of the request" block
+lists each one as `- attachment <id>, fileName "<key>", title "<title>" (<type>, <size>)`.
+**Read every attached file first**, with `attachment_read {fileName: "<key>"}`, before answering
+or acting on the request: the user attached it
+because the answer depends on it. Then work from what it says, naming the file you read.
+
 ## Find and read
 
 - `attachments_by_actor_list {actorId}` lists one actor's files; `attachments_list` lists every
   file you can see (filter by uploader with `people`).
-- `attachment_read {fileName}` returns `contentType`, `size`, and for a text file (text, JSON,
-  XML, YAML, CSV) its `text`, at most 100 KiB (`truncated` when longer). A binary file returns
-  only `binary: true` with type and size: describe it, do not invent its content.
+- `attachment_read {fileName}` gives you the content; `kind` says which:
+
+| kind | What comes back |
+| --- | --- |
+| `text` (text, JSON, XML, YAML, CSV) | `text`, at most 100 KiB (`truncated` when longer) |
+| `image` (png, jpeg, gif, webp) | the image itself as an image block, up to 5 MiB: look at it |
+| `pdf` | its text layer as `text`; a scan without one (`scanned`) gives up to 4 page images as image blocks when its pages are JPEG, else only a note that its content is not available: say so and ask for a text version |
+| `docx`, `xlsx` | `text` (a spreadsheet: `## <sheet>` then rows, cells tab-separated), at most 100 KiB |
+| `binary` | only type and size: describe it, do not invent its content |
+
+  A PDF over 10 MiB, or one whose streams unpack too far or take too long, gives no text (or
+  only its first pages), and `note` says why. Read only the files the request needs: every image
+  goes along with each later step.
+  `tooLarge` means the image was over 5 MiB and was not sent: say so and ask for a
+  smaller one or to open it in Simulator.
 - A file still being scanned is retried for several seconds. A stand serving files from ufs
   answers "not found" while it scans, so a read right after the upload may report "no such
   file, or its antivirus scan has not finished" (after about 3 s): try again a little later. A quarantined file is

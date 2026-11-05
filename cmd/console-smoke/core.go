@@ -86,6 +86,9 @@ func core(c *client, stamp string) error {
 	if err := coreCells(c, actors[0].ID, actors[1].ID); err != nil {
 		return err
 	}
+	if err := coreFiles(c, actors[0].ID, stamp); err != nil {
+		return err
+	}
 	chat, err := coreChat(c, actors[0].ID)
 	if err != nil {
 		return err
