@@ -169,11 +169,13 @@ type AttachmentContent struct {
 	Text      string `json:"text,omitempty"` // a text file, or the text taken out of a pdf, docx or xlsx
 	Truncated bool   `json:"truncated,omitempty"`
 	Binary    bool   `json:"binary,omitempty"`
-	// Inline says the image or PDF itself rides along as an MCP content block (Data); TooLarge that
-	// it was over the inline limit, so only its text (a PDF) or its type and size came back.
-	Inline   bool   `json:"inline,omitempty"`
-	TooLarge bool   `json:"tooLarge,omitempty"`
-	Data     []byte `json:"-"`
+	// Inline says image blocks follow: the image (Data), or a scanned PDF's page images (Pages).
+	// TooLarge: an image over the inline limit. Scanned: a PDF without a text layer.
+	Inline   bool     `json:"inline,omitempty"`
+	TooLarge bool     `json:"tooLarge,omitempty"`
+	Scanned  bool     `json:"scanned,omitempty"`
+	Data     []byte   `json:"-"`
+	Pages    [][]byte `json:"-"` // JPEG
 }
 
 // ReadAttachment downloads a file by its storage key (fileName). A file ufs is still scanning is

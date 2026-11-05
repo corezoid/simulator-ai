@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"image/jpeg"
 	"image/png"
 	"net/http"
 	"net/http/httptest"
@@ -47,6 +48,23 @@ func pdfBytes(text string) []byte {
 	return b.Bytes()
 }
 
+// scanBytes is a PDF of n pages that are JPEG images only (/DCTDecode), no text layer.
+func scanBytes(t *testing.T, n int) []byte {
+	var page bytes.Buffer
+	if err := jpeg.Encode(&page, image.NewGray(image.Rect(0, 0, 4, 6)), nil); err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n")
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&b, "%d 0 obj\n<< /Type /XObject /Subtype /Image /Width 4 /Height 6 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /DecodeParms << /ColorTransform 0 >> /Length %d >>\nstream\n", i+2, page.Len())
+		b.Write(page.Bytes())
+		b.WriteString("\nendstream\nendobj\n")
+	}
+	b.WriteString("trailer\n<< /Root 1 0 R >>\n%%EOF\n")
+	return b.Bytes()
+}
+
 func zipBytes(t *testing.T, parts map[string]string) []byte {
 	var b bytes.Buffer
 	z := zip.NewWriter(&b)
@@ -83,7 +101,7 @@ func xlsxBytes(t *testing.T) []byte {
 }
 
 func TestReadAttachmentContentByKind(t *testing.T) {
-	pic, doc := pngBytes(t), pdfBytes("Invoice 42 paid")
+	pic := pngBytes(t)
 	files := map[string]struct {
 		contentType string
 		body        []byte
@@ -91,8 +109,9 @@ func TestReadAttachmentContentByKind(t *testing.T) {
 		"png":      {"image/png", pic},
 		"sniffed":  {"application/octet-stream", pic},
 		"huge":     {"image/jpeg", append([]byte("\xff\xd8\xff"), make([]byte, MaxInlineBytes)...)},
-		"pdf":      {"application/pdf", doc},
+		"pdf":      {"application/pdf", pdfBytes("Invoice 42 paid")},
 		"brokenpd": {"application/pdf", []byte("%PDF-1.4 not really")},
+		"scan":     {"application/pdf", scanBytes(t, 6)},
 		"docx":     {docxType, docxBytes(t)},
 		"barezip":  {"application/zip", xlsxBytes(t)},
 		"csv":      {"text/csv", []byte("a,b\n1,2\n")},
@@ -122,11 +141,18 @@ func TestReadAttachmentContentByKind(t *testing.T) {
 	if got := read("huge"); got.Kind != "image" || got.Inline || !got.TooLarge || got.Data != nil || !strings.Contains(got.AttachmentNote(), "5 MiB") {
 		t.Errorf("huge: %+v", got)
 	}
-	if got := read("pdf"); got.Kind != "pdf" || !got.Inline || !bytes.Equal(got.Data, doc) || !strings.Contains(got.Text, "Invoice 42 paid") {
+	// A PDF is its text: Hermes passes no PDF block to the model.
+	if got := read("pdf"); got.Kind != "pdf" || got.Inline || got.Data != nil || got.Pages != nil || got.Scanned || !strings.Contains(got.Text, "Invoice 42 paid") {
 		t.Errorf("pdf: %+v %q", got.Kind, got.Text)
 	}
-	if got := read("brokenpd"); got.Kind != "pdf" || !got.Inline || got.Text != "" {
-		t.Errorf("a PDF without a readable text layer still goes as a document: %+v", got)
+	// A scan: its JPEG pages, at most four.
+	if got := read("scan"); got.Kind != "pdf" || !got.Scanned || !got.Inline || len(got.Pages) != maxPageImages || !strings.Contains(got.AttachmentNote(), "first 4 page images") {
+		t.Errorf("scan: %+v", got)
+	} else if _, err := jpeg.DecodeConfig(bytes.NewReader(got.Pages[0])); err != nil {
+		t.Errorf("a page is not the JPEG: %v", err)
+	}
+	if got := read("brokenpd"); got.Kind != "pdf" || !got.Scanned || got.Inline || !strings.Contains(got.AttachmentNote(), "not available") {
+		t.Errorf("a PDF with neither text nor JPEG pages: %+v", got)
 	}
 	if got := read("docx"); got.Kind != "docx" || got.Text != "Договір\t № 7\nСума: 100\nUSD" || got.Data != nil {
 		t.Errorf("docx: %q", got.Text)

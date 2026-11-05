@@ -14,11 +14,17 @@ import (
 )
 
 // What attachment_read gives the model of a file (legacy readAttachment, and more): a text file's
-// text; an image or a PDF itself, as an MCP content block, up to MaxInlineBytes; the text of a PDF,
-// a .docx or a .xlsx, taken out without converters; of any other file its type and size.
+// text; an image itself, as an MCP image block, up to MaxInlineBytes; the text of a PDF, a .docx or
+// a .xlsx, taken out without converters, and of a scanned PDF its page images; of any other file
+// its type and size. Hermes passes image blocks to the model and nothing else binary (an embedded
+// PDF it parks in a file the agent cannot read), so documents become text and images.
 
-// MaxInlineBytes bounds an image or a PDF sent along as a content block.
-const MaxInlineBytes = 5 << 20
+// MaxInlineBytes bounds an image sent along as a content block; maxPageImages the pages of a scan
+// (Hermes passes up to four images of one tool result to the model).
+const (
+	MaxInlineBytes = 5 << 20
+	maxPageImages  = 4
+)
 
 const (
 	docxType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -47,12 +53,14 @@ func readContent(name string, resp *http.Response) (AttachmentContent, error) {
 			out.ContentType, out.Data = imageType(media, body), body
 		}
 	case kind == "pdf" && whole:
+		// Hermes hands the model an image block, never a PDF one: a PDF is its text, and a scan
+		// without text its page images.
 		out.Kind, out.ContentType = "pdf", "application/pdf"
-		out.Inline, out.TooLarge = len(body) <= MaxInlineBytes, len(body) > MaxInlineBytes
-		if out.Inline {
-			out.Data = body
-		}
 		out.Text, out.Truncated = cutText(pdfText(body))
+		if out.Text == "" {
+			out.Pages = scanPages(body, maxPageImages)
+			out.Inline, out.Scanned = len(out.Pages) > 0, true
+		}
 	case (kind == "docx" || kind == "xlsx") && whole:
 		text, err := officeText(kind, body)
 		if err != nil {
@@ -158,14 +166,18 @@ func pdfText(body []byte) (text string) {
 	return strings.TrimSpace(strings.ToValidUTF8(string(b), ""))
 }
 
-// AttachmentNote is the line an image or PDF block goes with, and what the model is told when the
-// file was too large to send.
+// AttachmentNote is the line image blocks go with, and what the model is told when nothing of the
+// file could be sent.
 func (a AttachmentContent) AttachmentNote() string {
 	switch {
+	case a.Inline && a.Kind == "image":
+		return fmt.Sprintf("Image %q (%s, %d bytes) follows as an image block.", a.FileName, a.ContentType, a.Size)
 	case a.Inline:
-		return fmt.Sprintf("%s %q (%s, %d bytes) follows as a content block.", strings.ToUpper(a.Kind[:1])+a.Kind[1:], a.FileName, a.ContentType, a.Size)
+		return fmt.Sprintf("The PDF %q has no text layer (a scan): its first %d page images follow as image blocks.", a.FileName, len(a.Pages))
 	case a.TooLarge:
-		return fmt.Sprintf("The %s is larger than the %d MiB inline limit, so it is not sent: ask the user to open it in Simulator or to share a smaller one.", a.Kind, MaxInlineBytes>>20)
+		return fmt.Sprintf("The image is larger than the %d MiB inline limit, so it is not sent: ask the user to open it in Simulator or to share a smaller one.", MaxInlineBytes>>20)
+	case a.Scanned:
+		return "The PDF has no text layer (a scan) and its pages are not JPEG images that can be sent, so its content is not available: ask the user for a text version or to describe it."
 	}
 	return ""
 }

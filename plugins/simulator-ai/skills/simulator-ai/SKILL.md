@@ -69,9 +69,10 @@ Workspace
   the user has open, with route and page): "here", "this" and "the current" mean those, so use
   them instead of asking. New actors, links and placements go on the current layer unless the
   user names another; never create a new layer for them.
-- Files attached to the request (the prompt's "Attachments of the request"): read each with
-  `attachment_read {fileName}` first, before answering (`simulator-ai-attachments`); images and
-  PDFs come back as content blocks, documents and spreadsheets as text.
+- Files attached to the request (the prompt's "Attachments of the request", each with its
+  `fileName`): read each with `attachment_read {fileName}` first, before answering
+  (`simulator-ai-attachments`); images come back as image blocks, PDFs, documents and
+  spreadsheets as text (a scanned PDF as its page images).
 - "Show me" on the layer the user has open: `layer_viewport` moves their own view (pan to a
   cell, zoom, fit, focus an actor, 2D/3D, open a layer); `openTabs: 0` means it is not open.
 - Name a place on a layer by its Graph Editor cell, `"C, 7"` (column, row as on the rulers),

@@ -33,8 +33,9 @@ Upload first, then `reaction_create {rootActorId, type: "comment", description, 
 ## Files attached to the request
 
 In AI Console the request may come with files: the prompt's "Attachments of the request" block
-lists each one (id, title, type, size, fileName). **Read every attached file first**, with
-`attachment_read {fileName}`, before answering or acting on the request: the user attached it
+lists each one as `- attachment <id>, fileName "<key>", title "<title>" (<type>, <size>)`.
+**Read every attached file first**, with `attachment_read {fileName: "<key>"}`, before answering
+or acting on the request: the user attached it
 because the answer depends on it. Then work from what it says, naming the file you read.
 
 ## Find and read
@@ -47,11 +48,11 @@ because the answer depends on it. Then work from what it says, naming the file y
 | --- | --- |
 | `text` (text, JSON, XML, YAML, CSV) | `text`, at most 100 KiB (`truncated` when longer) |
 | `image` (png, jpeg, gif, webp) | the image itself as an image block, up to 5 MiB: look at it |
-| `pdf` | the document as an embedded `application/pdf` resource, up to 5 MiB, and `text` when it has a text layer (a scan has none: read the document block) |
+| `pdf` | its text layer as `text`; a scan without one (`scanned`) gives up to 4 page images as image blocks when its pages are JPEG, else only a note that its content is not available: say so and ask for a text version |
 | `docx`, `xlsx` | `text` (a spreadsheet: `## <sheet>` then rows, cells tab-separated), at most 100 KiB |
 | `binary` | only type and size: describe it, do not invent its content |
 
-  `tooLarge` means the image or PDF was over 5 MiB and was not sent: say so and ask for a
+  `tooLarge` means the image was over 5 MiB and was not sent: say so and ask for a
   smaller one or to open it in Simulator.
 - A file still being scanned is retried for several seconds. A stand serving files from ufs
   answers "not found" while it scans, so a read right after the upload may report "no such

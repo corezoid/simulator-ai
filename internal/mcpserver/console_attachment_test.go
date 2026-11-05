@@ -1,10 +1,13 @@
 package mcpserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,12 +16,17 @@ import (
 	"github.com/corezoid/simulator-ai/internal/publicapi"
 )
 
-// attachment_read hands the model the file itself: an image as an image block, a PDF as an
-// embedded resource, each after the structured answer and a note; a text file stays text only.
+// attachment_read hands the model what Hermes can pass on: an image as an image block after the
+// structured answer and a note; a PDF as its text, never a PDF block; a text file as text only.
 func TestAttachmentReadSendsContentBlocks(t *testing.T) {
+	var page bytes.Buffer
+	if err := jpeg.Encode(&page, image.NewGray(image.Rect(0, 0, 2, 2)), nil); err != nil {
+		t.Fatal(err)
+	}
 	files := map[string][2]string{
 		"pic":  {"image/png", "\x89PNG\r\n\x1a\nfake"},
-		"doc":  {"application/pdf", "%PDF-1.4 no text layer"},
+		"doc":  {"application/pdf", "%PDF-1.4 no text layer, no pages"},
+		"scan": {"application/pdf", fmt.Sprintf("%%PDF-1.4\n2 0 obj\n<< /Subtype /Image /Filter /DCTDecode /Length %d >>\nstream\n%s\nendstream\nendobj\n", page.Len(), page.String())},
 		"note": {"text/plain", "hello"},
 	}
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,14 +54,21 @@ func TestAttachmentReadSendsContentBlocks(t *testing.T) {
 		return reply.Result.Content
 	}
 	pic := read("pic")
-	if len(pic) != 3 || pic[0]["type"] != "text" || !strings.Contains(pic[1]["text"].(string), "follows as a content block") ||
+	if len(pic) != 3 || pic[0]["type"] != "text" || !strings.Contains(pic[1]["text"].(string), "follows as an image block") ||
 		pic[2]["type"] != "image" || pic[2]["mimeType"] != "image/png" || pic[2]["data"] != base64.StdEncoding.EncodeToString([]byte(files["pic"][1])) {
 		t.Fatalf("image: %v", pic)
 	}
 	doc := read("doc")
-	resource, _ := doc[len(doc)-1]["resource"].(map[string]any)
-	if doc[len(doc)-1]["type"] != "resource" || resource["mimeType"] != "application/pdf" || resource["uri"] != "simulator://attachment/doc" || resource["blob"] != base64.StdEncoding.EncodeToString([]byte(files["doc"][1])) {
-		t.Fatalf("pdf: %v", doc)
+	if len(doc) != 2 || doc[1]["type"] != "text" || !strings.Contains(doc[1]["text"].(string), "not available") {
+		t.Fatalf("a scan without JPEG pages: %v", doc)
+	}
+	for _, block := range doc {
+		if block["type"] == "resource" {
+			t.Fatal("a PDF block Hermes would not pass on:", block)
+		}
+	}
+	if scan := read("scan"); len(scan) != 3 || scan[2]["type"] != "image" || scan[2]["mimeType"] != "image/jpeg" || scan[2]["data"] != base64.StdEncoding.EncodeToString(page.Bytes()) {
+		t.Fatalf("a scan's JPEG page: %v", scan)
 	}
 	if note := read("note"); len(note) != 1 || !strings.Contains(note[0]["text"].(string), `"text":"hello"`) {
 		t.Fatalf("text: %v", note)

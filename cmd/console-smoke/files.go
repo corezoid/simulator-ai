@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"slices"
 	"strings"
@@ -17,15 +18,19 @@ type fileRead struct {
 	Text     string `json:"text"`
 	Inline   bool   `json:"inline"`
 	TooLarge bool   `json:"tooLarge"`
+	Scanned  bool   `json:"scanned"`
 }
 
-// coreFiles uploads a PNG and a PDF with a text layer onto an actor and reads each back: the image
-// as an image block, the PDF as a document resource with its text.
+// coreFiles uploads a PNG, a PDF with a text layer and a scanned PDF (a JPEG page) onto an actor
+// and reads each back: the image as an image block, the PDF as its text, the scan as its page.
 func coreFiles(c *client, actor, stamp string) error {
-	var pic bytes.Buffer
+	var pic, page bytes.Buffer
 	img := image.NewRGBA(image.Rect(0, 0, 8, 8))
 	img.Set(1, 1, color.RGBA{R: 255, A: 255})
 	if err := png.Encode(&pic, img); err != nil {
+		return err
+	}
+	if err := jpeg.Encode(&page, img, nil); err != nil {
 		return err
 	}
 	phrase := "Smoke invoice " + stamp
@@ -33,10 +38,11 @@ func coreFiles(c *client, actor, stamp string) error {
 		name  string
 		body  []byte
 		kind  string
-		block string
+		block string // the content block after the structured answer, none for text only
 	}{
 		{"smoke-" + stamp + ".png", pic.Bytes(), "image", "image"},
-		{"smoke-" + stamp + ".pdf", smokePDF(phrase), "pdf", "resource"},
+		{"smoke-" + stamp + ".pdf", smokePDF(phrase), "pdf", ""},
+		{"smoke-scan-" + stamp + ".pdf", smokeScan(page.Bytes()), "pdf", "image"},
 	} {
 		var up struct {
 			FileName string `json:"fileName"`
@@ -48,11 +54,12 @@ func coreFiles(c *client, actor, stamp string) error {
 		if err != nil {
 			return err
 		}
-		if read.Kind != f.kind || !read.Inline || !slices.Contains(c.blocks, f.block) {
-			return fmt.Errorf("attachment_read %s: kind %s inline %v blocks %v, want %s with a %s block", f.name, read.Kind, read.Inline, c.blocks, f.kind, f.block)
+		inline := f.block != ""
+		if read.Kind != f.kind || read.Inline != inline || inline && !slices.Contains(c.blocks, f.block) || slices.Contains(c.blocks, "resource") {
+			return fmt.Errorf("attachment_read %s: kind %s inline %v blocks %v, want %s with block %q", f.name, read.Kind, read.Inline, c.blocks, f.kind, f.block)
 		}
-		if f.kind == "pdf" && !strings.Contains(read.Text, phrase) {
-			return fmt.Errorf("attachment_read %s: text %q lacks %q", f.name, read.Text, phrase)
+		if f.kind == "pdf" && !inline && !strings.Contains(read.Text, phrase) || inline && f.kind == "pdf" && !read.Scanned {
+			return fmt.Errorf("attachment_read %s: text %q scanned %v", f.name, read.Text, read.Scanned)
 		}
 	}
 	return nil
@@ -68,6 +75,17 @@ func readScanned(c *client, fileName string) (fileRead, error) {
 		}
 		time.Sleep(5 * time.Second)
 	}
+}
+
+// smokeScan is a one-page PDF whose page is a JPEG image and nothing else.
+func smokeScan(page []byte) []byte {
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
+	b.WriteString("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /Im1 4 0 R >> >> >>\nendobj\n")
+	fmt.Fprintf(&b, "4 0 obj\n<< /Type /XObject /Subtype /Image /Width 8 /Height 8 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length %d >>\nstream\n", len(page))
+	b.Write(page)
+	b.WriteString("\nendstream\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n")
+	return b.Bytes()
 }
 
 // smokePDF is a one-page PDF whose text layer says text.
