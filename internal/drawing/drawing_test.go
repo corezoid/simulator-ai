@@ -2,6 +2,7 @@ package drawing
 
 import (
 	"bytes"
+	"context"
 	"image"
 	"image/png"
 	"math"
@@ -27,7 +28,7 @@ func near(a, b float64) bool { return math.Abs(a-b) < 1e-9 }
 // The box is the ink's extent padded by half the width, centred, as sessionInkBox boxes a session,
 // and the raster is two pixels per unit of it.
 func TestRenderBoxAndInk(t *testing.T) {
-	p, err := Render([]Stroke{{Points: []Point{{100, 50}, {200, 50}}, Width: 4, Color: "#ff0000"}})
+	p, err := Render(context.Background(), []Stroke{{Points: []Point{{100, 50}, {200, 50}}, Width: 4, Color: "#ff0000"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func TestRenderBoxAndInk(t *testing.T) {
 }
 
 func TestDefaultsAreThePen(t *testing.T) {
-	p, err := Render([]Stroke{{Points: []Point{{0, 0}, {10, 0}}}})
+	p, err := Render(context.Background(), []Stroke{{Points: []Point{{0, 0}, {10, 0}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +69,7 @@ func TestDashPieces(t *testing.T) {
 	if len(dots) != 4 || !near(dots[1][0].X, 8) || !near(dots[2][0].X, 10) || !near(dots[2][0].Y, 6) {
 		t.Fatalf("dots %v", dots)
 	}
-	p, err := Render([]Stroke{{Points: line, Style: "dashed", Width: 2}})
+	p, err := Render(context.Background(), []Stroke{{Points: line, Style: "dashed", Width: 2}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +81,7 @@ func TestDashPieces(t *testing.T) {
 }
 
 func TestArrowHeadsGrowTheBox(t *testing.T) {
-	p, err := Render([]Stroke{{Points: []Point{{0, 0}, {100, 0}}, Width: 2, ArrowEnd: true}})
+	p, err := Render(context.Background(), []Stroke{{Points: []Point{{0, 0}, {100, 0}}, Width: 2, ArrowEnd: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +103,7 @@ func TestArrowHeadsGrowTheBox(t *testing.T) {
 }
 
 func TestShapes(t *testing.T) {
-	p, err := Render([]Stroke{{Kind: "rect", Center: &Point{10, 10}, W: 40, H: 20, Width: 2}, {Kind: "ellipse", Center: &Point{10, 10}, W: 10, H: 10, Width: 1}})
+	p, err := Render(context.Background(), []Stroke{{Kind: "rect", Center: &Point{10, 10}, W: 40, H: 20, Width: 2}, {Kind: "ellipse", Center: &Point{10, 10}, W: 10, H: 10, Width: 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +147,7 @@ func TestRefusals(t *testing.T) {
 		{[]Stroke{{Points: []Point{{0, 0}, {MaxSide + 1, 0}}}}, "draw it smaller"},
 		{[]Stroke{{Points: []Point{{0, 0}, {math.NaN(), 0}}}}, "finite"},
 	} {
-		if _, err := Render(tc.strokes); err == nil || !strings.Contains(err.Error(), tc.want) {
+		if _, err := Render(context.Background(), tc.strokes); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%+v: %v, want %q", tc.strokes, err, tc.want)
 		}
 	}

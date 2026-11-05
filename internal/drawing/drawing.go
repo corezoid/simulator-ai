@@ -24,11 +24,19 @@ const (
 	DefaultColor = "#667085" // actorHues.slate
 )
 
-// Limits of one drawing: the raster stays a few megapixels and its PNG an upload.
+// Limits of one drawing, all checked before anything is cut or painted: the raster stays a few
+// megapixels (MaxArea), its PNG an upload, and the work of one call bounded whatever the input.
 const (
-	MaxStrokes = 100
-	MaxPoints  = 20000
-	MaxSide    = 2000 // graph units, so at most 4000 px a side
+	MaxStrokes      = 100
+	MaxStrokePoints = 2000  // given points of one line, before smoothing
+	MaxPoints       = 20000 // all lines' points after smoothing and the rect and ellipse outlines
+	MaxSide         = 2000  // graph units, so at most 4000 px a side
+	MaxArea         = 2e6   // square graph units of the box: 8 megapixels
+	// MaxInk is the graph units of line in all. It bounds the dash pieces (a dot per 8 units) and,
+	// with MaxWidth, the pixels painting visits: each row of a segment visits only the band its
+	// width reaches, so at most about MaxInk*Scale x (MaxWidth*Scale + 2) pixels, plus a dot's
+	// square per dotted period (about 15 million in all).
+	MaxInk = 50000
 )
 
 // arrowHeadRatio and arrowHalfAngle are the arrow mark's head (style/defaults.ts arrowHeadRatio,
@@ -83,17 +91,29 @@ type ink struct {
 }
 
 // resolve checks the strokes and turns each into ink; the returned box is the union of every
-// polyline padded by half its width and of every head.
+// polyline padded by half its width and of every head. Every limit is checked on the outlines,
+// before a line is cut into dashes or a pixel is allocated.
 func resolve(strokes []Stroke) ([]ink, Box, error) {
 	if len(strokes) == 0 || len(strokes) > MaxStrokes {
 		return nil, Box{}, fmt.Errorf("1..%d strokes required", MaxStrokes)
 	}
+	given := 0
+	for i, s := range strokes {
+		if len(s.Points) > MaxStrokePoints {
+			return nil, Box{}, fmt.Errorf("stroke %d: more than %d points", i, MaxStrokePoints)
+		}
+		if given += len(s.Points); given > MaxPoints {
+			return nil, Box{}, fmt.Errorf("more than %d points in all: draw fewer or simpler strokes", MaxPoints)
+		}
+	}
 	total := 0
+	inkLength := 0.0
 	minX, minY, maxX, maxY := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	grow := func(p Point, pad float64) {
 		minX, minY = math.Min(minX, p.X-pad), math.Min(minY, p.Y-pad)
 		maxX, maxY = math.Max(maxX, p.X+pad), math.Max(maxY, p.Y+pad)
 	}
+	lines := make([][]Point, len(strokes))
 	out := make([]ink, 0, len(strokes))
 	for i, s := range strokes {
 		line, err := outline(s)
@@ -107,7 +127,7 @@ func resolve(strokes []Stroke) ([]ink, Box, error) {
 		if width == 0 {
 			width = DefaultWidth
 		}
-		if width < MinWidth || width > MaxWidth {
+		if !(width >= MinWidth && width <= MaxWidth) {
 			return nil, Box{}, fmt.Errorf("stroke %d: width %v outside %d..%d graph units", i, width, MinWidth, MaxWidth)
 		}
 		color := s.Color
@@ -117,14 +137,11 @@ func resolve(strokes []Stroke) ([]ink, Box, error) {
 		if !hexColor.MatchString(color) {
 			return nil, Box{}, fmt.Errorf("stroke %d: color must be #RRGGBB", i)
 		}
-		pattern, dashed := dashes[s.Style]
-		if s.Style != "" && s.Style != "solid" && !dashed {
+		if _, dashed := dashes[s.Style]; s.Style != "" && s.Style != "solid" && !dashed {
 			return nil, Box{}, fmt.Errorf("stroke %d: style is solid, dashed or dotted", i)
 		}
-		k := ink{rgba: rgbaOf(color), radius: width / 2, butt: s.Style == "dashed", pieces: [][]Point{line}}
-		if dashed {
-			k.pieces = dash(line, pattern)
-		}
+		inkLength += travel(line)
+		k := ink{rgba: rgbaOf(color), radius: width / 2, butt: s.Style == "dashed"}
 		if s.ArrowEnd {
 			k.heads = appendHead(k.heads, line, len(line)-1, -1, width)
 		}
@@ -139,11 +156,23 @@ func resolve(strokes []Stroke) ([]ink, Box, error) {
 				grow(p, 0)
 			}
 		}
+		lines[i] = line
 		out = append(out, k)
 	}
 	box := Box{X: (minX + maxX) / 2, Y: (minY + maxY) / 2, W: maxX - minX, H: maxY - minY}
-	if box.W > MaxSide || box.H > MaxSide {
+	switch {
+	case box.W > MaxSide || box.H > MaxSide:
 		return nil, Box{}, fmt.Errorf("the drawing spans %.0f x %.0f graph units, over %d: draw it smaller or in parts", box.W, box.H, MaxSide)
+	case box.W*box.H > MaxArea:
+		return nil, Box{}, fmt.Errorf("the drawing's box is %.0f x %.0f graph units, over %.0f square units: draw it smaller or in parts", box.W, box.H, float64(MaxArea))
+	case inkLength > MaxInk:
+		return nil, Box{}, fmt.Errorf("%.0f graph units of line in all, over %d: draw fewer or shorter strokes", inkLength, MaxInk)
+	}
+	for i, s := range strokes {
+		out[i].pieces = [][]Point{lines[i]}
+		if pattern, dashed := dashes[s.Style]; dashed {
+			out[i].pieces = dash(lines[i], pattern)
+		}
 	}
 	return out, box, nil
 }
@@ -242,6 +271,9 @@ func dash(line []Point, pattern []float64) [][]Point {
 	for i := 1; i < len(line); i++ {
 		a, b := line[i-1], line[i]
 		seg := math.Hypot(b.X-a.X, b.Y-a.Y)
+		if seg < 1e-9 {
+			continue // a repeated point: nothing to measure along, and at() would divide by zero
+		}
 		pos := 0.0
 		for seg-pos > 1e-9 || left == 0 {
 			at := func(d float64) Point { return Point{a.X + (b.X-a.X)*d/seg, a.Y + (b.Y-a.Y)*d/seg} }

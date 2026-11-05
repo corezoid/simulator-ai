@@ -181,7 +181,8 @@ edges stay the way to model a process.
 - Not possible: fill, erasing, text, images. Words go in a text node (`layer_placements_manage`
   with `isTextNode`, or a titled actor); a sketch that needs a fill is outlines only.
 - One call is one picture: draw a group of marks that belong together in one call, unrelated
-  marks in separate calls so they can be moved apart. At most 2000 × 2000 units.
+  marks in separate calls so they can be moved apart. One picture is at most 2000 units a side,
+  2,000,000 square units (e.g. 2000 × 1000) and 50,000 units of line in all.
 - The layer's default form names the picture actor's template; a layer without one needs
   `formId` (ask which template, `forms_list`). `title` names it. Delete it like any actor.
 

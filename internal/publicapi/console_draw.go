@@ -62,7 +62,7 @@ func (c *Client) DrawOnLayer(ctx context.Context, in LayerDrawInput) (LayerDrawn
 		}
 		strokes = shifted(strokes, origin)
 	}
-	pic, err := drawing.Render(strokes)
+	pic, err := drawing.Render(ctx, strokes)
 	if err != nil {
 		return LayerDrawn{}, err
 	}
