@@ -57,7 +57,7 @@ mechanism. No default production endpoint or workspace is assumed:
 - `SIMULATOR_AI_API_KEY`: API-user key; never paste it into chat, a tool call or committed config.
 - `SIMULATOR_AI_AUTHORIZATION`: instead of the API key, a complete `Authorization` header value —
   `Bearer <token>`, `Simulator <jwt>` or `ApiKey <key>` — for a host that starts this process per request under
-  the requesting user's own credential (the Hermes relay in sim-api `docs/hermes-local.md`). Not with
+  the requesting user's own credential (the Hermes relay: sim-api `docs/simulator-ai-architecture.md`, Т2). Not with
   `SIMULATOR_AI_API_KEY`, `SIMULATOR_AI_DELEGATED_TOKEN` or `delegated-read`.
 - `SIMULATOR_AI_ACTOR`: optional host-bound target for `reactions-read` or `graph-read`; exposes
   only the respective reaction/layer statistics tool with empty arguments. Leave unset for workspace mode.
@@ -214,7 +214,7 @@ retried for about 3 seconds and then reports "no such file, or its antivirus sca
 
 Skill procedures and agent profiles are descriptions users write: `skill_get` and `agent_get` return them as data, and
 their tool descriptions tell the model not to take instructions from them. `build_link` builds a link inside the current
-Smart Form when given its `appKey` (the Console context's `/sf/<key>`) or `appId` (sim-api `docs/ai-console.md`
+Smart Form when given its `appKey` (the Console context's `/sf/<key>`) or `appId` (sim-api `docs/simulator-ai-architecture.md`
 "Посилання"): `route/build` on that key with the start Smart Form's route of the entity (`workspace.actors`,
 `workspace.graphs-edit`, `workspace.events`, `workspace.chats`, `workspace.templates-edit`, the lists) or a `route` of
 the form's own, plus the block state as `#b=<blockId>:<route>` (both parts encodeURIComponent), root-relative. Without
@@ -246,6 +246,9 @@ children with `graph_list` and read their `accounts_list`). Out of scope by the 
 by form.
 
 ## AI Console profile
+
+How the AI Console uses this plugin end to end (router, run credential, Hermes relay, limits) is one document:
+sim-api `docs/simulator-ai-architecture.md`.
 
 Every tool schema rides in the model context on every turn, so `SIMULATOR_AI_PROFILE=console` is the core
 catalog of the Console scenarios: `actor_get`, `actor_create`, `actors_create`, `actor_update`, `actors_search`,
