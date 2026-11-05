@@ -1,0 +1,11 @@
+{
+  "id": "parity/getReactionsStats",
+  "legacyRevision": "f11283155e3471091798abc640de7a0d0553c4a5",
+  "normalization": "Remove only the legacy outer data envelope; preserve per-type integers, absent keys and explicit zero. Oracle follows getActorReactionsStatsReq aggregation; not a claimed live legacy-server run.",
+  "cases": [
+    {"name":"visible","legacy":{"data":{"comment":2,"view":1}},"expected":{"comment":2,"view":1}},
+    {"name":"execute","legacy":{"data":{"comment":3,"view":1}},"expected":{"comment":3,"view":1}},
+    {"name":"empty","legacy":{"data":{}},"expected":{}},
+    {"name":"explicit-zero","legacy":{"data":{"comment":0}},"expected":{"comment":0}}
+  ]
+}

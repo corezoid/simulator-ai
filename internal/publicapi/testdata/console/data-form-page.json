@@ -1,0 +1,192 @@
+{
+  "id": "index",
+  "schemaVersion": "2.0",
+  "tree": {
+    "children": [
+      {
+        "children": [
+          {
+            "id": "startLabel",
+            "props": {
+              "text": "Start"
+            },
+            "type": "Label"
+          },
+          {
+            "actions": {
+              "onChange": [
+                {
+                  "mode": "set",
+                  "path": "request.start",
+                  "type": "state",
+                  "value": "{{ {\"startDate\": $event.startDate, \"endDate\": $event.endDate} }}"
+                }
+              ]
+            },
+            "id": "start",
+            "props": {
+              "mode": "single",
+              "value": "{{ vm.request.start }}"
+            },
+            "type": "DatePicker"
+          },
+          {
+            "id": "startError",
+            "props": {
+              "error": true,
+              "text": "{{ vm.errors.request.start }}"
+            },
+            "type": "Label"
+          },
+          {
+            "actions": {
+              "onChange": [
+                {
+                  "mode": "set",
+                  "path": "request.days",
+                  "type": "state",
+                  "value": "{{ $event.value }}"
+                }
+              ]
+            },
+            "id": "days",
+            "props": {
+              "helperText": "{{ vm.errors.request.days }}",
+              "label": "Days",
+              "required": false,
+              "type": "float",
+              "value": "{{ vm.request.days }}"
+            },
+            "type": "TextInput"
+          },
+          {
+            "actions": {
+              "onChange": [
+                {
+                  "mode": "set",
+                  "path": "request.kind",
+                  "type": "state",
+                  "value": "{{ $event.value }}"
+                }
+              ]
+            },
+            "id": "kind",
+            "props": {
+              "helperText": "{{ vm.errors.request.kind }}",
+              "label": "Kind",
+              "options": [
+                {
+                  "label": "Paid",
+                  "value": "Paid"
+                },
+                {
+                  "label": "Unpaid",
+                  "value": "Unpaid"
+                }
+              ],
+              "required": false,
+              "value": "{{ vm.request.kind }}"
+            },
+            "type": "Select"
+          },
+          {
+            "actions": {
+              "onChange": [
+                {
+                  "mode": "set",
+                  "path": "request.comment",
+                  "type": "state",
+                  "value": "{{ $event.value }}"
+                }
+              ]
+            },
+            "id": "comment",
+            "props": {
+              "helperText": "{{ vm.errors.request.comment }}",
+              "label": "Comment",
+              "required": false,
+              "value": "{{ vm.request.comment }}"
+            },
+            "type": "TextInput"
+          },
+          {
+            "actions": {
+              "onClick": [
+                {
+                  "form": "request",
+                  "type": "form.validate"
+                },
+                {
+                  "cond": "vm.valid.request = true",
+                  "then": [
+                    {
+                      "formId": "request",
+                      "onError": [
+                        {
+                          "helperText": "{{ $error.message }}",
+                          "level": "error",
+                          "title": "Not sent",
+                          "type": "notify"
+                        }
+                      ],
+                      "simapiExtraParams": {
+                        "accId": "ws",
+                        "appId": "app-1",
+                        "formData": "{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" and $v != null })]) }}",
+                        "formId": 77,
+                        "successMessage": "Saved"
+                      },
+                      "simapiMethod": "form/submit",
+                      "type": "form.submit",
+                      "via": "simapi"
+                    }
+                  ],
+                  "type": "if"
+                }
+              ]
+            },
+            "id": "submit",
+            "props": {
+              "title": "Send",
+              "type": "filled",
+              "variant": "primary"
+            },
+            "type": "Button"
+          }
+        ],
+        "id": "request",
+        "props": {
+          "fields": [
+            {
+              "label": "Start",
+              "name": "start",
+              "required": true
+            },
+            {
+              "label": "Days",
+              "name": "days",
+              "required": false
+            },
+            {
+              "label": "Kind",
+              "name": "kind",
+              "required": false
+            },
+            {
+              "label": "Comment",
+              "name": "comment",
+              "required": false
+            }
+          ],
+          "valueKey": "request"
+        },
+        "type": "Form"
+      }
+    ],
+    "id": "root",
+    "props": {
+      "direction": "vertical"
+    },
+    "type": "Stack"
+  }
+}

@@ -1,0 +1,493 @@
+{
+  "version": "1",
+  "generatedAt": "2026-09-22T12:37:55.216Z",
+  "tags": [
+    {
+      "tag": "actor",
+      "description": "Renders a clickable chip that deep-links to an actor detail page inside the actors graph. The id attribute must be the full UUID of the target actor.",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "description": "UUID of the referenced actor."
+        },
+        {
+          "name": "elementId",
+          "type": "string",
+          "required": false,
+          "description": "DOM element id used to restore cursor position in the editor after a round-trip through HTML. Set by htmlToBbCode when useElementId=true."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[actor=a4a7f284-2763-4bce-8b1b-c10bddd207ca]Actor Name[/actor]"
+    },
+    {
+      "tag": "event",
+      "description": "Renders a clickable chip that deep-links to an event (actor) view page.",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "description": "UUID of the referenced event/actor."
+        },
+        {
+          "name": "elementId",
+          "type": "string",
+          "required": false,
+          "description": "DOM element id used to restore cursor position in the editor after a round-trip through HTML. Set by htmlToBbCode when useElementId=true."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[event=b2c3d4e5-1111-2222-3333-444455556666]Event Title[/event]"
+    },
+    {
+      "tag": "graph",
+      "description": "Renders a clickable chip that deep-links to a graph folder (actors graph canvas).",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "description": "UUID of the referenced graph folder."
+        },
+        {
+          "name": "elementId",
+          "type": "string",
+          "required": false,
+          "description": "DOM element id used to restore cursor position in the editor after a round-trip through HTML. Set by htmlToBbCode when useElementId=true."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[graph=c3d4e5f6-1111-2222-3333-aabbccddeeff]My Graph[/graph]"
+    },
+    {
+      "tag": "graphLayer",
+      "description": "Renders a clickable chip that deep-links to a specific layer inside a graph folder. The id encodes either a plain layerId UUID or a composite \"graphFolderUUID_layerUUID\" string.",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true,
+          "description": "Layer identifier: a plain UUID (root layer) or \"graphFolderUUID_layerUUID\" composite for a nested layer."
+        },
+        {
+          "name": "elementId",
+          "type": "string",
+          "required": false,
+          "description": "DOM element id used to restore cursor position in the editor after a round-trip through HTML. Set by htmlToBbCode when useElementId=true."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[graphLayer=d4e5f6a7-0000-0000-0000-112233445566_e5f6a7b8-0000-0000-0000-aabbccddee00]Layer Name[/graphLayer]"
+    },
+    {
+      "tag": "user",
+      "description": "Renders an inline @mention mark for a workspace user. Displayed as a non-editable highlighted element.",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "Numeric ID of the referenced user."
+        },
+        {
+          "name": "elementId",
+          "type": "string",
+          "required": false,
+          "description": "DOM element id used to restore cursor position in the editor after a round-trip through HTML. Set by htmlToBbCode when useElementId=true."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[user=12345]Jane Doe[/user]"
+    },
+    {
+      "tag": "application",
+      "description": "Renders a clickable chip linking to a script/application detail page.",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "description": "UUID of the referenced application/script."
+        },
+        {
+          "name": "elementId",
+          "type": "string",
+          "required": false,
+          "description": "DOM element id used to restore cursor position in the editor after a round-trip through HTML. Set by htmlToBbCode when useElementId=true."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[application=a1b2c3d4-1111-2222-3333-998877665544]My App[/application]"
+    },
+    {
+      "tag": "file",
+      "description": "Renders a clickable chip that links to a downloadable file stored in the system.",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "description": "UUID of the referenced file (used to build the /download/:id URL)."
+        },
+        {
+          "name": "elementId",
+          "type": "string",
+          "required": false,
+          "description": "DOM element id used to restore cursor position in the editor after a round-trip through HTML. Set by htmlToBbCode when useElementId=true."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[file=b2c3d4e5-1111-2222-3333-aabbccddeeff]document.pdf[/file]"
+    },
+    {
+      "tag": "chat",
+      "description": "Renders an inline non-editable mark linking to a chat room. Does not support elementId (unlike other entity chips).",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "description": "UUID of the referenced chat room."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[chat=c3d4e5f6-1111-2222-3333-112233445566]Support Chat[/chat]"
+    },
+    {
+      "tag": "quote",
+      "description": "Renders an inline quotation mark referencing a specific message or entity. Displayed as a non-editable mark with the quoted text.",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "description": "UUID of the entity being quoted."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["reaction", "event-card", "layer-comment"],
+      "example": "[quote=d4e5f6a7-1111-2222-3333-001122334455]Quoted text[/quote]"
+    },
+    {
+      "tag": "smarttag",
+      "description": "Renders an inline #hashtag-style mark linking to a smart-tag entity.",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "description": "UUID of the smart-tag entity."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment"],
+      "example": "[smarttag=e5f6a7b8-1111-2222-3333-aabbccddeeff]ProjectAlpha[/smarttag]"
+    },
+    {
+      "tag": "md",
+      "description": "Wraps a block of Markdown source text. When enableMarkdown=true is passed to bbCodeToHtml the content is rendered via Utils.markdownToHtml; otherwise it is emitted inside a <markdown> element as-is.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card"],
+      "example": "[md]## Heading\n\nSome **bold** text.[/md]"
+    },
+    {
+      "tag": "img",
+      "description": "Embeds an image stored in the system, addressed by the path the attachment is stored under. Optional width and height attributes (integers, pixels) constrain display size.",
+      "attributes": [
+        {
+          "name": "ref",
+          "type": "string",
+          "required": true,
+          "description": "Path the uploaded file is stored under, appended to /api/1.0/download/ to build the URL."
+        },
+        {
+          "name": "width",
+          "type": "integer",
+          "required": false,
+          "description": "Display width in pixels."
+        },
+        {
+          "name": "height",
+          "type": "integer",
+          "required": false,
+          "description": "Display height in pixels."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[img=c26122dc-6a29-4131-924d-9bb607e21573/2024/8/28/XAgV6sVyghgErOLy width=640 height=480]Alt text[/img]"
+    },
+    {
+      "tag": "imgSrc",
+      "description": "Embeds an image by its address rather than by a stored attachment. Displayed exactly like [img]; only where the file comes from differs.",
+      "attributes": [
+        {
+          "name": "src",
+          "type": "url",
+          "required": true,
+          "description": "Address of the image. A site-relative path is allowed; a data-URI is not."
+        },
+        {
+          "name": "width",
+          "type": "integer",
+          "required": false,
+          "description": "Display width in pixels."
+        },
+        {
+          "name": "height",
+          "type": "integer",
+          "required": false,
+          "description": "Display height in pixels."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[imgSrc=https://example.com/photo.jpg width=640 height=480]Alt text[/imgSrc]"
+    },
+    {
+      "tag": "url",
+      "description": "Renders an external hyperlink. The href is taken from the tag attribute; the content becomes the visible link text.",
+      "attributes": [
+        {
+          "name": "href",
+          "type": "url",
+          "required": true,
+          "description": "Destination URL."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "[url=https://example.com]Visit Example[/url]"
+    },
+    {
+      "tag": "color",
+      "description": "Applies a foreground text color. Accepts any CSS color value (named color, hex, rgb, hsl). Supports arbitrary nesting.",
+      "attributes": [
+        {
+          "name": "value",
+          "type": "css-color",
+          "required": true,
+          "description": "Any CSS color value, e.g. \"red\", \"#ff0000\", \"rgb(255,0,0)\"."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "[color=red]Red text[/color]"
+    },
+    {
+      "tag": "size",
+      "description": "Sets the font size of the wrapped text. Bare numbers are treated as pixels; values with units (em, rem, %) are passed through as-is.",
+      "attributes": [
+        {
+          "name": "value",
+          "type": "css-font-size",
+          "required": true,
+          "description": "Font size value, e.g. \"14\", \"1.2em\", \"120%\"."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "[size=18]Large text[/size]"
+    },
+    {
+      "tag": "bg",
+      "description": "Applies a background color to the wrapped text via a CSS inline style.",
+      "attributes": [
+        {
+          "name": "value",
+          "type": "css-color",
+          "required": true,
+          "description": "Any CSS color value for the background."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "[bg=#ffff00]Highlighted[/bg]"
+    },
+    {
+      "tag": "b",
+      "description": "Renders the content in bold (<b> element).",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "[b]Bold text[/b]"
+    },
+    {
+      "tag": "i",
+      "description": "Renders the content in italic (<i> element).",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "[i]Italic text[/i]"
+    },
+    {
+      "tag": "u",
+      "description": "Renders the content with an underline (<u> element).",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "[u]Underlined text[/u]"
+    },
+    {
+      "tag": "h1",
+      "description": "Renders the content as an HTML <h1> heading.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[h1]Top-level Heading[/h1]"
+    },
+    {
+      "tag": "h2",
+      "description": "Renders the content as an HTML <h2> heading.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[h2]Section Heading[/h2]"
+    },
+    {
+      "tag": "h3",
+      "description": "Renders the content as an HTML <h3> heading.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[h3]Sub-section Heading[/h3]"
+    },
+    {
+      "tag": "h4",
+      "description": "Renders the content as an HTML <h4> heading.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[h4]Minor Heading[/h4]"
+    },
+    {
+      "tag": "h5",
+      "description": "Renders the content as an HTML <h5> heading.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[h5]Small Heading[/h5]"
+    },
+    {
+      "tag": "h6",
+      "description": "Renders the content as an HTML <h6> heading.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[h6]Smallest Heading[/h6]"
+    },
+    {
+      "tag": "ul",
+      "description": "Wraps an unordered list. Must contain [*] list-item markers as direct children. Supports nesting.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[ul][*]First item[*]Second item[/ul]"
+    },
+    {
+      "tag": "ol",
+      "description": "Wraps an ordered (numbered) list. Must contain [*] list-item markers as direct children. Supports nesting. An optional number after = sets the number of the first item, and the items after it count up from there; without it the list starts at 1.",
+      "attributes": [
+        {
+          "name": "start",
+          "type": "integer",
+          "required": false,
+          "description": "Number of the first item: a whole number, 0 or more. Omitted means 1, so [ol=1] is the same list as [ol]."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[ol=3][*]Step three[*]Step four[/ol]"
+    },
+    {
+      "tag": "*",
+      "description": "List item marker. Must appear inside a [ul] or [ol] block. Self-closing — the item runs until the next [*] or end of the list.",
+      "attributes": [],
+      "selfClosing": true,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[ul][*]First item[*]Second item[/ul]"
+    },
+    {
+      "tag": "br",
+      "description": "Inserts a line break (<br/>) at the current position. Self-closing — no content and no closing tag.",
+      "attributes": [],
+      "selfClosing": true,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "Line one[br]Line two"
+    },
+    {
+      "tag": "hr",
+      "description": "A horizontal line across the text, separating what comes before it from what comes after it. It stands on a line of its own: text written right before or right after it on the same line is shown above and below the line. Self-closing — no content and no closing tag. Inside [code], [icode] and [md] it is shown as the characters [hr]; in a [md] block a line is written the Markdown way, as --- on a line of its own.",
+      "attributes": [],
+      "selfClosing": true,
+      "context": ["actor-description", "reaction", "event-card"],
+      "example": "First part[hr]Second part"
+    },
+    {
+      "tag": "span",
+      "description": "Applies arbitrary inline HTML attributes (typically style) to the wrapped text. The entire attribute string is passed verbatim to the generated <span> element.",
+      "attributes": [
+        {
+          "name": "attrs",
+          "type": "html-attributes",
+          "required": false,
+          "description": "Raw HTML attribute string, e.g. style=\"color:red;font-size:14px\"."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "event-card", "layer-comment"],
+      "example": "[span style=\"color:purple;font-weight:bold\"]Styled text[/span]"
+    },
+    {
+      "tag": "s",
+      "description": "Renders the content struck through (<s> element).",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card", "layer-comment", "form-label"],
+      "example": "[s]Struck text[/s]"
+    },
+    {
+      "tag": "code",
+      "description": "A block of code on lines of its own, shown in a monospaced font. The content is shown exactly as written: tags inside it are not applied, so [b] inside a code block is shown as the characters [b], and line breaks are kept. The block ends at the first [/code]. An optional language after = is shown as a label above the block.",
+      "attributes": [
+        {
+          "name": "lang",
+          "type": "string",
+          "required": false,
+          "description": "Language of the code, shown as a label above the block, e.g. \"ts\" or \"sql\". At most 100 characters, without ] or line breaks. Omitted means no label."
+        }
+      ],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card"],
+      "example": "[code=ts]const total = price * quantity;\nconsole.log(total);[/code]"
+    },
+    {
+      "tag": "icode",
+      "description": "Inline code: a short run of characters inside a line of text, shown in a monospaced font. The content is shown exactly as written: tags inside it are not applied. It ends at the first [/icode].",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card"],
+      "example": "Run [icode]npm install[/icode] first."
+    },
+    {
+      "tag": "blockquote",
+      "description": "Renders the content as a quoted block (<blockquote> element) on lines of its own. It may hold formatted text, headings and lists. Not to be confused with [quote], which is an inline chip referencing a message.",
+      "attributes": [],
+      "selfClosing": false,
+      "context": ["actor-description", "reaction", "event-card"],
+      "example": "[blockquote]Quoted passage[/blockquote]"
+    }
+  ]
+}

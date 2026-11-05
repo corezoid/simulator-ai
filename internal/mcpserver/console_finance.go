@@ -1,0 +1,24 @@
+package mcpserver
+
+import (
+	"github.com/corezoid/simulator-ai/internal/publicapi"
+	"github.com/mark3labs/mcp-go/server"
+)
+
+// pairByName names an account pair by account name and currency, or by their ids.
+const pairByName = `"accountName":{"type":"string","minLength":1,"maxLength":255},"currencyName":{"type":"string","minLength":1,"maxLength":255},"nameId":{"type":"string","minLength":1,"maxLength":255},"currencyId":{"type":"integer","minimum":1},"takeOwnership":{"type":"boolean"}`
+
+// addConsoleAccounts registers the account tools that take a pair by its names (legacy createAccount
+// and createFormAccount); they run before the parity catalogs, so they own these names.
+func addConsoleAccounts(s *server.MCPServer, c *publicapi.Client) {
+	consoleTool(s, "account_create", "Open an account on an actor, as the actor's Accounts tab does: the pair is its account name and currency by NAME (\"open a Default USD account\": accountName Default, currencyName USD) or by nameId and currencyId. A missing name or currency is created and the pair registered with you as owner (see account_pair_create for a pair nobody was given access to: takeOwnership). accountType fact (default; the balance transfers and transactions move), plan (a target), min, max or avg (statistics of the fact account); plan true also opens the plan twin of a fact account. minLimit/maxLimit bound the balance; counterType amount (default) or counter, uniqCounter, systemCounter. All in one atomic batch; a pair the actor already has is answered as it is (existed). Returns {actorId, nameId, currencyId, accounts [{accountType, credit, debit, existed}]}: credit and debit are the account row ids transfers and transactions take. Needs modify on the actor.",
+		`{"type":"object","properties":{"actorId":{"type":"string","minLength":1,"maxLength":255},`+pairByName+`,"accountType":{"type":"string","enum":["fact","plan","min","max","avg"]},"plan":{"type":"boolean"},"counterType":{"type":"string","enum":["amount","counter","uniqCounter","systemCounter"]},"minLimit":{"type":"number"},"maxLimit":{"type":"number"}},"required":["actorId"],"additionalProperties":false}`, true, c.OpenAccount)
+	consoleTool(s, "form_account_create", "Give every actor of an account template (Account Template) an account: binds the pair, by account name and currency NAME or by nameId and currencyId (a missing name or currency is created, as in account_create), to the template so each actor created from it opens the account, and opens it on the template's existing actors you see as well (skipExisting true leaves them). accountType fact (default) or plan; minLimit/maxLimit whole numbers. A pair already bound is kept (wasBound). One call opens it on up to 500 existing actors: nextOffset means repeat the call with offset nextOffset. Returns {formId, bindingId, nameId, currencyId, wasBound, opened, hadIt, failed [{actorId, error}], nextOffset}. Needs modify on the template (and on each actor for the existing ones).",
+		`{"type":"object","properties":{"formId":{"type":"integer","minimum":1},`+pairByName+`,"accountType":{"type":"string","enum":["fact","plan"]},"minLimit":{"type":"integer"},"maxLimit":{"type":"integer"},"skipExisting":{"type":"boolean"},"offset":{"type":"integer","minimum":0}},"required":["formId"],"additionalProperties":false}`, true, c.BindFormAccount)
+}
+
+// addConsoleFinance registers the finance tool a single public method does not cover.
+func addConsoleFinance(s *server.MCPServer, c *publicapi.Client) {
+	consoleTool(s, "account_pair_create", "Find or register a workspace account pair by NAME, before opening it on actors (account_create) or recording values: the account name and the currency are looked up and only the missing ones created (symbol, precision, type only for a new currency; creating needs the accounts:management permission). A new pair is registered with you as its owner (registered true). An existing pair that is shared stays as it is: your access is what its rules give (to post you need modify), and one you may not see is refused. An existing pair nobody was given access to is refused (its balances can then only be read through each actor, and nothing posted) unless takeOwnership is true, which makes you its only subject and hides its balances from everyone else: ask the user first. Returns {nameId, currencyId, registered}.",
+		`{"type":"object","properties":{"accountName":{"type":"string","minLength":1,"maxLength":255},"currencyName":{"type":"string","minLength":1,"maxLength":255},"symbol":{"type":"string","maxLength":32},"precision":{"type":"integer","minimum":0,"maximum":18},"type":{"type":"string","enum":["number","percent","currency","dateTime","seconds"]},"takeOwnership":{"type":"boolean"}},"required":["accountName","currencyName"],"additionalProperties":false}`, true, c.CreateAccountPair)
+}

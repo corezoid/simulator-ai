@@ -1,0 +1,8 @@
+package mcpserver
+
+// taskTools start a graph export or import as a background task; task_get follows it.
+var taskTools = []parityTool{
+	{Name: "graph_export_create", Method: "task/export/create", Description: "Export graphs, actors or account templates into a .graph archive as a background task: actors (graph or actor ids), forms (template ids) or allWorkspace, one required. ops: leave out a flag to keep the worker's default (attachments, connectorsToAccounts and accountToActors on; transactions, balances, processes, users, systemCounters off); ask the user which data to include. Needs the import_export:management permission. Returns the task {id, status: created}: follow it with task_get; a completed export has the archive in details.file and a downloadUrl, a secret link for the user who asked only."},
+	{Name: "graph_import_create", Method: "task/import/create", Destructive: true, Params: []string{"fileName", "title", "users", "ops", "dataReplace", "with"},
+		Description: "Import a .graph archive into this workspace as a background task: fileName from graph_file_upload, or details.file.fileName of an export (re-import). ops sets per kind what happens to a ref that exists here: reuse (merges into the existing object), replace (a copy under a prefixed ref) or error; ask the user, showing these choices. users maps source participants onto ones here; dataReplace renames named actors or templates. Smart Forms in it are imported without Corezoid credentials. Needs import_export:management. Follow the task with task_get: a completed import names the root graph it created in details.graph (its id); details.actor is only an actor dataReplace named. Confirm with the user first."},
+}

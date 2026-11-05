@@ -1,0 +1,20 @@
+package mcpserver
+
+// reactionTools are the legacy reaction tools (getReactions, createReaction, updateReaction,
+// deleteReaction, markReactionsRead) on public methods; pinned reactions are out of scope (no such thing in sim-api).
+var reactionTools = []parityTool{
+	{Name: "reactions_list", Method: "reaction/list", Params: []string{"rootActorId", "view", "orderBy", "orderValue", "limit", "offset", "pagination", "cursor", "direction", "parentId", "types", "ownerIds", "from", "to", "with"}, Description: "Read the reactions under an actor (rootActorId): comments, done, sign, reject, rating and the rest, with readTime (when another participant last read them). view flat lists all in time order, tree top-level with replies, thread one thread (parentId); one page per call (limit/offset, or pagination cursor with cursor/direction); types and ownerIds filter (types with cursor paging only); with adds user (the author) and attachments. Needs view on the actor."},
+	{Name: "reactions_count", Method: "reaction/count", Description: "Count the reactions reactions_list with cursor paging would return for the same filters (view defaults to flat)."},
+	{Name: "reaction_create", Method: "reaction/create", Params: []string{"rootActorId", "type", "description", "data", "parentId", "attachmentIds", "hidden", "notify", "appId", "appSettings", "with"}, Description: "Post a reaction under an actor (rootActorId): type comment with description as its text (a message to people goes into their chat: chat_open; an actor, form or Smart Form added to an actor is actor_attach, not a reaction), or done, reject, sign, ds, freeze, rating, view; parentId replies to a reaction; attachmentIds hangs uploaded files (attachment_upload) on it; hidden shows it only to users with execute on the actor; data.rid (a string) makes a retry idempotent. Participants are notified unless notify is false. Needs view on the actor plus the privilege the type demands (sign for sign, execute for done)."},
+	{Name: "reaction_update", Method: "reaction/update", Description: "Change a reaction you posted (actorId under rootActorId). description and appId are written as sent, so resend the text you keep; data, appSettings, hidden and extra change only when sent (extra replaces the whole object)."},
+	{Name: "reactions_mark_read", Method: "reaction/read/update", Description: "Mark the reactions under an actor (rootActorId) read for you: time is the Unix second up to which you have read the thread (what reactions_list readTime shows others), count how many of your unread ones that covers (the unread counter drops by it)."},
+	{Name: "reaction_delete", Method: "reaction/delete", Description: "Remove a reaction you posted (actorId under rootActorId). Removing a freeze unfreezes the actor; a ds can never be removed. Destructive: confirm with the user first."},
+}
+
+// userTools are the legacy getWorkspaces, getUsers and searchUsers (one tool), and getUser on public
+// methods.
+var userTools = []parityTool{
+	{Name: "users_search", Method: "user/list", Description: "Find workspace members (people and API users) by name or login (query); without query, list them one page at a time (limit, default 20, max 200; offset). Each id is the userId of access rules, reactions and actor fields."},
+	{Name: "user_get", Method: "user/get", Description: "Read one workspace member by userId: nick, type, status, logins and roles."},
+	{Name: "workspaces_list", Method: "workspace/list", Description: "List the workspaces you belong to (query finds them by name), one page at a time (limit, default 20, max 100; offset). Every other tool works in the host workspace only."},
+}

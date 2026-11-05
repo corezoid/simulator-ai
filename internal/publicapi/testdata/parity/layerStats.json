@@ -1,0 +1,85 @@
+{
+  "id": "parity/layerStats",
+  "legacyRevision": "f11283155e3471091798abc640de7a0d0553c4a5",
+  "legacyHandlerRevision": "cd9a1051d11ea0124c000fcdfb53d7d428d38141",
+  "normalization": "Only remove outer data. Six fields follow getLayerStats and layerStatsReq source. This is a source-derived oracle, not a live legacy-server result. Current recipient privacy cases are separately identified; historical shared counter leakage is not reproduced.",
+  "legacyCases": [
+    {
+      "name": "empty",
+      "legacy": {
+        "data": {
+          "nodes": 0,
+          "edges": 0,
+          "holes": 0,
+          "holesClosed": 0,
+          "edgeHoles": 0,
+          "edgeHolesClosed": 0
+        }
+      },
+      "expected": {
+        "nodes": 0,
+        "edges": 0,
+        "holes": 0,
+        "holesClosed": 0,
+        "edgeHoles": 0,
+        "edgeHolesClosed": 0
+      }
+    },
+    {
+      "name": "unrestricted",
+      "legacy": {
+        "data": {
+          "nodes": 7,
+          "edges": 12,
+          "holes": 3,
+          "holesClosed": 3,
+          "edgeHoles": 3,
+          "edgeHolesClosed": 3
+        }
+      },
+      "expected": {
+        "nodes": 7,
+        "edges": 12,
+        "holes": 3,
+        "holesClosed": 3,
+        "edgeHoles": 3,
+        "edgeHolesClosed": 3
+      }
+    }
+  ],
+  "cases": [
+    {
+      "name": "empty",
+      "expected": {
+        "nodes": 0,
+        "edges": 0,
+        "holes": 0,
+        "holesClosed": 0,
+        "edgeHoles": 0,
+        "edgeHolesClosed": 0
+      }
+    },
+    {
+      "name": "apiEligible",
+      "expected": {
+        "nodes": 5,
+        "edges": 8,
+        "holes": 1,
+        "holesClosed": 1,
+        "edgeHoles": 1,
+        "edgeHolesClosed": 1
+      }
+    },
+    {
+      "name": "apiRepeated",
+      "expected": {
+        "nodes": 6,
+        "edges": 8,
+        "holes": 1,
+        "holesClosed": 1,
+        "edgeHoles": 1,
+        "edgeHolesClosed": 1
+      }
+    }
+  ]
+}

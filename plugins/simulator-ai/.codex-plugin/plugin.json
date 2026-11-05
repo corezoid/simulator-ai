@@ -1,0 +1,7 @@
+{
+  "name": "simulator-ai",
+  "version": "0.1.0-dev.4",
+  "description": "Public Simulator metadata tools and opt-in recoverable Smart Forms profile; host agent only.",
+  "skills": "./skills/",
+  "mcpServers": "./.codex-mcp.json"
+}

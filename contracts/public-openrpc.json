@@ -1,0 +1,3359 @@
+{
+  "openrpc": "1.3.2",
+  "info": {
+    "title": "Simulator.Company API",
+    "version": "2.0.0-beta",
+    "description": "The Simulator.Company API lets an integration read and change a workspace: its **actors** (every\nobject is an actor — a record built from an **account template**), the **edges** that link actors into a\ngraph, the **accounts** and **transactions** that carry balances, and the **reactions**,\n**attachments** and **access rules** around them.\n\nThis is the **public integration contract** (beta). Every method here is a support promise:\nincompatible changes come with a documented migration and a compatibility window.\n\n## Names in the API\n\nThe API keeps older names for two entities the product renames: an **account template** is a\n*form* in method and field names (`form/*`, `formId`, `forms`), and a **Smart Form** is an\n*application* (`application/*`, `app_*`). This reference uses the product names in prose and the\nAPI names in code.\n\n## Making a request\n\nThe API is [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over HTTPS. There is one endpoint —\nevery method is a `POST` to it, and the method name travels in the body:\n\n```http\nPOST /api/2.0/rpc\nContent-Type: application/json\nAuthorization: ApiKey <key>\n\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"method\": \"actor/get\",\n  \"params\": { \"accId\": \"f54fd368-6ebf-427a-89a3-72283e320f6a\", \"actorId\": \"a55cd656-e33e-425c-9971-b0a258bfd914\" }\n}\n```\n\n- `id` **must be a string**. It is echoed in the response so you can match answers to calls.\n- `params` is always an object of named parameters.\n- The reference shows each method at its own anchor (`/rpc#actor/get`); the fragment is only an\n  anchor — every call goes to `/api/2.0/rpc`.\n\nA response carries either `result` or `error`, never both:\n\n```json\n{ \"jsonrpc\": \"2.0\", \"id\": \"1\", \"result\": { \"id\": \"a55cd656-e33e-425c-9971-b0a258bfd914\", \"title\": \"Order #1042\" } }\n```\n\n## Authentication\n\nSend credentials in the `Authorization` header.\n\n| Scheme | Header | Acts as |\n|--------|--------|---------|\n| API key | `Authorization: ApiKey <key>` | The API user the key was issued for, in **one** workspace |\n| User token | `Authorization: Bearer <token>` | A person, through their SuperAdmin (account.corezoid.com) OAuth session |\n\nAn **API key** is bound to the workspace it was issued in, so every call made with it must name\nthat workspace in `accId`; a method that takes no `accId` cannot be called with a key. A key also\ncarries **scopes**, and each method lists the scope it needs (see below). A **user token** is not\nscope-checked: the call runs with that person's own access.\n\nEither way, authentication only gets you to the method. What you can see and change is decided per\nobject by its **access rules** (`view`, `modify`, `remove`, `sign`, `execute`); a call on an object\nthe caller has no access to fails with `accessDenied`.\n\n## Scopes\n\n| Scope | Grants |\n|-------|--------|\n| `actors.readonly` / `actors.management` | Read / change actors, edges, graphs and layers, accounts, counters, transactions, reactions, access rules and Smart Forms |\n| `forms.readonly` / `forms.management` | Read / change account templates |\n| `transfers.readonly` / `transfers.management` | Read / create transfers between accounts |\n| `attachments.readonly` / `attachments.management` | Read / change file attachments |\n| `workspaces.readonly` | Read the workspace, its users and groups |\n\n## Identifiers\n\n| Value | Format | Example |\n|-------|--------|---------|\n| `accId` — workspace | UUID string | `f54fd368-6ebf-427a-89a3-72283e320f6a` |\n| `actorId`, `edgeId`, account `nameId` | UUID string | `a55cd656-e33e-425c-9971-b0a258bfd914` |\n| `formId`, `currencyId`, `userId` | integer | `19` |\n| `ref` | your own string key, unique within an account template | `order-1042` |\n\nMost entities can be addressed by your own `ref` instead of their id — see the `…/by-ref/…` methods.\nRefs make imports safe to retry: a second create with the same `ref` in the same account template is refused\ninstead of creating a duplicate.\n\n## Shaping responses\n\nList and get methods accept two response-only parameters:\n\n- **`fields`** — a projection: keep only these keys (`data.<key>` narrows a template field). It never\n  adds anything.\n- **`with`** — opt into related entities that are not on the record itself, e.g. `owner`,\n  `attachments`, `attachments:user`. It never changes the type of a field that is already there.\n\nLists page with `limit` and `offset`. A list never reports a total; ask the sibling `…/count`\nmethod with the same filter.\n\n## Errors\n\nOn failure `result` is absent and `error` is set. **The HTTP status is still 200** — check the body.\n\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"error\": {\n    \"code\": 1,\n    \"message\": \"access denied: no view access to the actor\",\n    \"data\": { \"reason\": \"accessDenied\", \"reqId\": \"d3b07384d113edec49eaa6238ad5ff00\" }\n  }\n}\n```\n\nBranch on `error.data.reason`, never on `message` — reasons are stable, messages are not.\n\n| Reason | Code | Meaning |\n|--------|------|---------|\n| `invalidParams` | -32602 | A parameter is missing or malformed; `message` names it |\n| `notAuthorized` | 1 | Missing, expired or wrong credentials, or a key used outside its workspace |\n| `accessDenied` | 1 | Authenticated, but the access rules do not allow this |\n| `notAllowed` | 1 | The operation is not allowed here: the method is not available to this kind of caller, or the object refuses it (a read-only production environment, a system folder that cannot be renamed or deleted) |\n| `notFound` | 1 | The object does not exist (or you cannot see it) |\n| `alreadyExists` | 1 | A create collided with an object that already exists |\n| `actorLocked` | 1 | Another write holds the actor; retry shortly |\n| `timeout` | -32000 | The call ran out of time; it may or may not have been applied |\n| `methodNotFound` | -32601 | No such method, or it is not part of the public API |\n\nQuote `data.reqId` when you report a problem.\n\n## Batches\n\n[`batch`](#tag/batch) runs several calls in one request, in order — each item sees what the earlier\nones wrote, and an item can use an earlier result (`\"useRefs\": true`, then `\"$0.id\"`). With\n`\"isAtomic\": true` the whole batch commits or rolls back together; only methods marked safe for\natomic batches are accepted there.\n\n## Drawing a graph\n\nA graph is drawn with ordinary actors and edges: the graph and each of its layers are actors of the\n`Graphs` and `Layers` system account templates, and a layer is the canvas that places actors and edges at\npositions.\n\n1. **Look up the workspace's ids once.** `form/system/list` returns the `Graphs` and `Layers`\n   templates (their ids differ per workspace); `edge_type/get` with `name: \"hierarchy\"` returns the\n   edge type that links a graph to its layers and the editor uses for drawn links.\n2. **Create the canvas** in one atomic batch: an `actor/create` of the `Graphs` template, an\n   `actor/create` of the `Layers` template, and an `edge/create` of the hierarchy type from the graph to\n   the layer. The layer actor's id is the `actorId` of every `graph/layer/…` method.\n3. **Create and place the content** in one atomic batch: the actors (`actor/create`), the edges\n   between them (`edge/create`), then `graph/layer/actors/manage` placing the actors at positions\n   (graph units, y downward, snapped to 50), then a second `graph/layer/actors/manage` placing the\n   edges between the placements the first one returned (`\"$<i>.nodes.<n>.laId\"`).\n4. **Style it** with `graph/layer/actor_settings/save` and `graph/layer/edge_settings/save`, and set\n   a background with `graph/layer/picture/update`.\n\nRead it back with `graph/layer/actors/list` and `graph/layer/edges/list` (or\n`graph/layer/skeleton/get` for a large layer), and walk the stored relations with `graph/get`.\n`graph/layer/actors/manage` shows the full batch. To show a layer live to the people who have it\nopen, start a presentation with `graph/layer/presentation/start`.\n\n## Building a Smart Form\n\nA Smart Form (an *application* in the API) is an actor of the `Scripts` system template with a **develop** and a\n**production** environment, each a folder tree of page configs, locale, view model, styles and\nscripts. You edit develop; a release copies it into production, which is what users open.\n\n1. **Create it** with `application/create` (`cduVersion: 2`, a `ref`): both environments come\n   seeded with a start page. `application/install` creates one from a template instead.\n2. **Write the pages** in develop with `app_folder/create` and `app_file/create` /\n   `app_file/update` — page configs are checked against the CDU component catalog when saved.\n   `application/struct` shows the tree and the ids. One page should declare the root route (`/`)\n   for the short URL to open something.\n3. **Connect the backend** (optional) with `application/env/update` for each environment, or let\n   `corezoid/project/create` give the Smart Form a Corezoid project of its own.\n4. **Preview** develop with `page/render` (`envTitle: \"develop\"`).\n5. **Publish** with `release/create` from develop to production. The release checks every page and\n   route; the first one also gives the Smart Form its short URL key (`route/key/set` picks it yourself).\n6. **Open it**: `route/key/get` returns the key, `<app>/sf/<appKey>` is the address, and\n   `page/render` / `page/submit` serve and submit its pages. `release/rollback` returns production\n   to an earlier release."
+  },
+  "methods": [
+    {
+      "name": "actor/get",
+      "summary": "Retrieves details of a specific actor by ID",
+      "description": "Returns one actor by its id: its title, the account template it was built from, and its\ntemplate field values (`data`).\n\nThe caller needs `view` access to the actor. By default the response carries the actor's own\ncolumns only; related information is opt-in through `with` (unknown values are ignored):\n\n| `with` value | Adds |\n|--------------|------|\n| `owner` | `owner` and `ownerId` — the actor's owner |\n| `user` | `user` — the user who created the actor |\n| `privs` | `privs` — what the **caller** may do with this actor |\n| `access`, `defaultAccess` | the actor's access rules / its account template's default rules |\n| `attachments`, `attachments:user` | attached files (and who attached them) |\n| `lastReaction`, `lastComment` (`:user`) | the most recent reaction / comment |\n| `reactionsStats`, `unreadReactions`, `unread`, `starred` | reaction counters and the caller's read state |\n| `executionState` | the approval workflow stage, for actors with sign/execute rules |\n| `notificationSettings` | the caller's notification settings for this actor |\n| `meeting` | the live call on the actor: room, participants, last transcript line |\n| `forms` | every account template attached to the actor, in order (templates the caller cannot view come back as `accessDenied` stubs) |\n| `avatar` | what an avatar needs beyond `picture`: `systemObjType`/`systemObjId` (what a system actor is the twin of: a user or the workspace), for a user actor that user's SuperAdmin id `systemObjSAId`, and the account template's `formPicture`/`formType` (the fallback). A source that does not apply or no longer exists is omitted |\n\nUse `fields` to cut the answer down, e.g. `[\"id\", \"title\", \"data.amount\"]` returns only those\nkeys and only the `amount` field of `data`.\n\nTo look an actor up by your own key instead of its id, use `actor/by-ref/get`.",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Projection: keep only these keys; data.<key> keeps one template field"
+          }
+        },
+        {
+          "name": "with",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Related data to add: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting, forms, avatar"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "access": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "logins": {
+                    "type": "array",
+                    "description": "Logins: login, type and create_time of each (e-mail, phone, OAuth provider); password hashes, API key tokens and webhook URLs are never returned"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "The subject's display name"
+                  },
+                  "privs": {
+                    "type": "object",
+                    "properties": {
+                      "ds": {
+                        "type": "boolean",
+                        "description": "Is asked to sign the object with a digital signature"
+                      },
+                      "execute": {
+                        "type": "boolean",
+                        "description": "Is asked to carry out (execute) the object"
+                      },
+                      "modify": {
+                        "type": "boolean",
+                        "description": "Can change the object and its access rules"
+                      },
+                      "remove": {
+                        "type": "boolean",
+                        "description": "Can delete the object"
+                      },
+                      "sign": {
+                        "type": "boolean",
+                        "description": "Is asked to approve (sign) the object"
+                      },
+                      "view": {
+                        "type": "boolean",
+                        "description": "Can see the object"
+                      }
+                    },
+                    "description": "Privileges granted; only the true ones are present"
+                  },
+                  "reactionOrders": {
+                    "type": "object",
+                    "properties": {
+                      "ds": {
+                        "type": "integer",
+                        "description": "Order (from 1) in which this subject gives a digital signature",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      },
+                      "execute": {
+                        "type": "integer",
+                        "description": "Order (from 1) in which this subject executes",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      },
+                      "sign": {
+                        "type": "integer",
+                        "description": "Order (from 1) in which this subject signs; equal orders sign in parallel",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      }
+                    },
+                    "description": "Signing order per stage; absent when the subject is unordered"
+                  },
+                  "saId": {
+                    "type": "integer",
+                    "description": "The subject's SuperAdmin (account.corezoid.com) id"
+                  },
+                  "userId": {
+                    "type": "integer",
+                    "description": "Subject the rule is for: a user, group or API user id"
+                  },
+                  "userType": {
+                    "type": "string",
+                    "description": "Subject type: user, group or api"
+                  }
+                }
+              },
+              "description": "Access rules of the actor (opt-in via with:[\"access\"]; with:[\"access:compact\"] leaves out each subject's logins)"
+            },
+            "accessDenied": {
+              "type": "boolean",
+              "description": "Graph reads only: the caller has no view access to this actor, so the node carries only its id"
+            },
+            "appId": {
+              "type": "string",
+              "description": "Smart Form identifier"
+            },
+            "appSettings": {
+              "type": "object",
+              "description": "Settings for the actor's Smart Form"
+            },
+            "attachments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "accId": {
+                    "type": "string",
+                    "description": "Workspace identifier"
+                  },
+                  "bucket": {
+                    "type": "string",
+                    "description": "Storage bucket holding the file (livekit for a meeting recording)"
+                  },
+                  "createdAt": {
+                    "type": "integer",
+                    "description": "Upload timestamp (Unix seconds)"
+                  },
+                  "externalId": {
+                    "type": "integer",
+                    "description": "Identifier of the file in the file storage service"
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "description": "Storage key of the file, used to download it"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "Attachment identifier"
+                  },
+                  "removeAt": {
+                    "type": "integer",
+                    "description": "When a temporary file expires (Unix seconds)"
+                  },
+                  "sign": {
+                    "type": "boolean",
+                    "description": "Whether this is the archive an e-signature was requested over"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "description": "File size in bytes"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Antivirus scan verdict: pending, clean, infected or error; absent for files stored before scanning"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Display file name, with extension"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "MIME type of the file"
+                  },
+                  "updatedAt": {
+                    "type": "integer",
+                    "description": "Last update timestamp (Unix seconds)"
+                  },
+                  "user": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "description": "User identifier in this platform"
+                      },
+                      "nick": {
+                        "type": "string",
+                        "description": "Display name"
+                      },
+                      "saId": {
+                        "type": "integer",
+                        "description": "User identifier in SuperAdmin"
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "Subject type: user, group, api, anonymous or system"
+                      }
+                    },
+                    "description": "User who uploaded the file; present with the :user sub-selection"
+                  },
+                  "userId": {
+                    "type": "integer",
+                    "description": "User who uploaded the file (0 for files the system stored)"
+                  }
+                }
+              },
+              "description": "Attached files (opt-in via with:[\"attachments\"] or with:[\"attachments:user\"])"
+            },
+            "balances": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "accountName": {
+                    "type": "string",
+                    "description": "Account name"
+                  },
+                  "balance": {
+                    "type": "object",
+                    "properties": {
+                      "accountsExist": {
+                        "type": "boolean",
+                        "description": "Whether the actor has this account at all (false means no account, not a zero balance)"
+                      },
+                      "actorId": {
+                        "type": "string",
+                        "description": "Actor the account belongs to"
+                      },
+                      "credit": {
+                        "type": "number",
+                        "description": "Credit total"
+                      },
+                      "debit": {
+                        "type": "number",
+                        "description": "Debit total"
+                      },
+                      "series": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "t": {
+                              "type": "integer",
+                              "description": "Bucket start, Unix milliseconds"
+                            },
+                            "v": {
+                              "type": "number",
+                              "description": "Net amount (credit minus debit) in the bucket"
+                            }
+                          }
+                        },
+                        "description": "Net movement per time bucket; only when requested and a period is set"
+                      },
+                      "vector": {
+                        "type": "string",
+                        "description": "Trend arrow: up or down"
+                      }
+                    },
+                    "description": "Debit/credit balance of this actor in the account"
+                  },
+                  "currencyId": {
+                    "type": "integer",
+                    "description": "Currency identifier"
+                  },
+                  "currencyName": {
+                    "type": "string",
+                    "description": "Currency name"
+                  },
+                  "currencyType": {
+                    "type": "string",
+                    "description": "Currency type"
+                  },
+                  "nameId": {
+                    "type": "string",
+                    "description": "Account name identifier"
+                  },
+                  "precision": {
+                    "type": "integer",
+                    "description": "Currency precision"
+                  },
+                  "symbol": {
+                    "type": "string",
+                    "description": "Currency symbol"
+                  }
+                }
+              },
+              "description": "Balances of the accounts configured on the layer"
+            },
+            "cardActorId": {
+              "type": "string",
+              "description": "Card actor identifier"
+            },
+            "color": {
+              "type": "string",
+              "description": "Color code (hex format)"
+            },
+            "createdAt": {
+              "type": "integer",
+              "description": "Creation time (Unix seconds)"
+            },
+            "data": {
+              "type": "object",
+              "description": "Template field values, keyed by field id"
+            },
+            "defaultAccess": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "logins": {
+                    "type": "array",
+                    "description": "Logins: login, type and create_time of each (e-mail, phone, OAuth provider); password hashes, API key tokens and webhook URLs are never returned"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "The subject's display name"
+                  },
+                  "privs": {
+                    "type": "object",
+                    "properties": {
+                      "ds": {
+                        "type": "boolean",
+                        "description": "Is asked to sign the object with a digital signature"
+                      },
+                      "execute": {
+                        "type": "boolean",
+                        "description": "Is asked to carry out (execute) the object"
+                      },
+                      "modify": {
+                        "type": "boolean",
+                        "description": "Can change the object and its access rules"
+                      },
+                      "remove": {
+                        "type": "boolean",
+                        "description": "Can delete the object"
+                      },
+                      "sign": {
+                        "type": "boolean",
+                        "description": "Is asked to approve (sign) the object"
+                      },
+                      "view": {
+                        "type": "boolean",
+                        "description": "Can see the object"
+                      }
+                    },
+                    "description": "Privileges granted; only the true ones are present"
+                  },
+                  "reactionOrders": {
+                    "type": "object",
+                    "properties": {
+                      "ds": {
+                        "type": "integer",
+                        "description": "Order (from 1) in which this subject gives a digital signature",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      },
+                      "execute": {
+                        "type": "integer",
+                        "description": "Order (from 1) in which this subject executes",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      },
+                      "sign": {
+                        "type": "integer",
+                        "description": "Order (from 1) in which this subject signs; equal orders sign in parallel",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      }
+                    },
+                    "description": "Signing order per stage; absent when the subject is unordered"
+                  },
+                  "saId": {
+                    "type": "integer",
+                    "description": "The subject's SuperAdmin (account.corezoid.com) id"
+                  },
+                  "userId": {
+                    "type": "integer",
+                    "description": "Subject the rule is for: a user, group or API user id"
+                  },
+                  "userType": {
+                    "type": "string",
+                    "description": "Subject type: user, group or api"
+                  }
+                }
+              },
+              "description": "Access rules every actor of this account template inherits (opt-in via with:[\"defaultAccess\"])"
+            },
+            "deletedAt": {
+              "type": "integer",
+              "description": "Soft-delete timestamp; null for live actors, set by actor/deleted/list"
+            },
+            "description": {
+              "type": "string",
+              "description": "Actor description"
+            },
+            "endDate": {
+              "type": "integer",
+              "description": "End of the actor's period (Unix seconds); defaults to the creation time"
+            },
+            "executionState": {
+              "type": "object",
+              "properties": {
+                "activeStage": {
+                  "type": "string",
+                  "description": "Current stage: sign, ds or execute; absent once complete"
+                },
+                "canActNow": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "Order levels whose subjects may act now"
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Whether the actor has an ordered sign/execute workflow"
+                },
+                "workflow": {
+                  "type": "object",
+                  "description": "Per-stage order levels, keyed by stage"
+                }
+              },
+              "description": "Sign/ds/execute workflow-order state (opt-in via with:[\"executionState\"])"
+            },
+            "formId": {
+              "type": "integer",
+              "description": "Account template the actor was built from (its primary template)"
+            },
+            "formPicture": {
+              "type": "string",
+              "description": "Account template picture, the avatar fallback (opt-in via with:[\"avatar\"])"
+            },
+            "formTitle": {
+              "type": "string",
+              "description": "Title of the actor's account template (opt-in via with:[\"formTitle\"] on actor/filter/list and actor/search/list)"
+            },
+            "formType": {
+              "type": "string",
+              "description": "Account template type (opt-in via with:[\"avatar\"])"
+            },
+            "forms": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "accessDenied": {
+                    "type": "boolean",
+                    "description": "Whether the caller cannot view this account template (only id and sorting are then meaningful)"
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "Account template color (hex)"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "Account template identifier"
+                  },
+                  "isDefault": {
+                    "type": "boolean",
+                    "description": "Whether the account template is a workspace default template"
+                  },
+                  "isRoot": {
+                    "type": "boolean",
+                    "description": "Whether this is the actor's primary account template (its formId)"
+                  },
+                  "parentId": {
+                    "type": "integer",
+                    "description": "Parent account template in the template tree"
+                  },
+                  "sorting": {
+                    "type": "integer",
+                    "description": "Position of the account template on the actor (ascending)"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Account template title"
+                  }
+                }
+              },
+              "description": "Ordered account templates attached to the actor (opt-in via with:[\"forms\"])"
+            },
+            "freeze": {
+              "type": "boolean",
+              "description": "Whether object is frozen"
+            },
+            "freezeExpiration": {
+              "type": "integer",
+              "description": "Freeze expiration timestamp"
+            },
+            "geoName": {
+              "type": "string",
+              "description": "Actor location name"
+            },
+            "geoPosition": {
+              "type": "object",
+              "properties": {
+                "lat": {
+                  "type": "number",
+                  "description": "Latitude in decimal degrees (-90 to 90)"
+                },
+                "lon": {
+                  "type": "number",
+                  "description": "Longitude in decimal degrees (-180 to 180)"
+                }
+              },
+              "description": "Actor location coordinates"
+            },
+            "hole": {
+              "type": "boolean",
+              "description": "Whether the actor is a graph hole placeholder"
+            },
+            "id": {
+              "type": "string",
+              "description": "Actor id"
+            },
+            "lastComment": {
+              "type": "object",
+              "properties": {
+                "createdAt": {
+                  "type": "integer",
+                  "description": "Creation timestamp"
+                },
+                "data": {
+                  "type": "object",
+                  "description": "JSON data payload"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Description of the object"
+                },
+                "endDate": {
+                  "type": "integer",
+                  "description": "End date"
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Unique identifier"
+                },
+                "metaInfo": {
+                  "type": "object",
+                  "description": "Additional metadata information"
+                },
+                "parentId": {
+                  "type": "string",
+                  "description": "Parent element identifier"
+                },
+                "picture": {
+                  "type": "string",
+                  "description": "Picture/image URL"
+                },
+                "startDate": {
+                  "type": "integer",
+                  "description": "Start date"
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "description": "Last update timestamp"
+                },
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "User identifier in this platform"
+                    },
+                    "nick": {
+                      "type": "string",
+                      "description": "Display name"
+                    },
+                    "saId": {
+                      "type": "integer",
+                      "description": "User identifier in SuperAdmin"
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Subject type: user, group, api, anonymous or system"
+                    }
+                  },
+                  "description": "User details"
+                },
+                "userId": {
+                  "type": "integer",
+                  "description": "User identifier"
+                }
+              },
+              "description": "Most recent visible comment, including replies (opt-in via with:[\"lastComment\"] or with:[\"lastComment:user\"])"
+            },
+            "lastReaction": {
+              "type": "object",
+              "properties": {
+                "createdAt": {
+                  "type": "integer",
+                  "description": "Creation timestamp"
+                },
+                "data": {
+                  "type": "object",
+                  "description": "JSON data payload"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Description of the object"
+                },
+                "endDate": {
+                  "type": "integer",
+                  "description": "End date"
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Unique identifier"
+                },
+                "metaInfo": {
+                  "type": "object",
+                  "description": "Additional metadata information"
+                },
+                "parentId": {
+                  "type": "string",
+                  "description": "Parent element identifier"
+                },
+                "picture": {
+                  "type": "string",
+                  "description": "Picture/image URL"
+                },
+                "startDate": {
+                  "type": "integer",
+                  "description": "Start date"
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "description": "Last update timestamp"
+                },
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "description": "User identifier in this platform"
+                    },
+                    "nick": {
+                      "type": "string",
+                      "description": "Display name"
+                    },
+                    "saId": {
+                      "type": "integer",
+                      "description": "User identifier in SuperAdmin"
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Subject type: user, group, api, anonymous or system"
+                    }
+                  },
+                  "description": "User details"
+                },
+                "userId": {
+                  "type": "integer",
+                  "description": "User identifier"
+                }
+              },
+              "description": "Most recent reaction (opt-in via with:[\"lastReaction\"] or with:[\"lastReaction:user\"])"
+            },
+            "meeting": {
+              "type": "object",
+              "properties": {
+                "lastTranscription": {
+                  "type": "object",
+                  "properties": {
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "fileName": {
+                            "type": "string",
+                            "description": "Stored file name"
+                          },
+                          "id": {
+                            "type": "integer",
+                            "description": "Attachment identifier"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Display title of the file"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "File type"
+                          }
+                        }
+                      },
+                      "description": "Files the line refers to"
+                    },
+                    "eventType": {
+                      "type": "string",
+                      "description": "System event the line records (join, leave, handRaise, recording, …); absent on spoken lines"
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Stable line identifier (UUID); absent on lines written by the legacy server"
+                    },
+                    "isSystemMessage": {
+                      "type": "boolean",
+                      "description": "Whether the line is a system event rather than speech"
+                    },
+                    "parentId": {
+                      "type": "string",
+                      "description": "Identifier of the quoted line"
+                    },
+                    "parentSaId": {
+                      "type": "integer",
+                      "description": "SuperAdmin id of the quoted line's speaker"
+                    },
+                    "parentText": {
+                      "type": "string",
+                      "description": "Text of the quoted line"
+                    },
+                    "parentUserId": {
+                      "type": "integer",
+                      "description": "Platform user id of the quoted line's speaker"
+                    },
+                    "parentUserMetaInfo": {
+                      "type": "object",
+                      "description": "Profile metadata of the quoted line's speaker"
+                    },
+                    "parentUserNick": {
+                      "type": "string",
+                      "description": "Display name of the quoted line's speaker"
+                    },
+                    "reactionId": {
+                      "type": "string",
+                      "description": "Reaction (comment) the line was posted as, if any"
+                    },
+                    "saId": {
+                      "type": "integer",
+                      "description": "SuperAdmin id of the speaker"
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "Spoken or system text of the line"
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "description": "When the line was spoken (Unix seconds)"
+                    },
+                    "userId": {
+                      "type": "integer",
+                      "description": "Platform user id of the speaker"
+                    },
+                    "userMetaInfo": {
+                      "type": "object",
+                      "description": "Speaker's profile metadata (display-name/avatar overrides)"
+                    },
+                    "userNick": {
+                      "type": "string",
+                      "description": "Display name of the speaker"
+                    }
+                  },
+                  "description": "Newest line of the live transcript, or null"
+                },
+                "participants": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "description": "User identifier in this platform"
+                      },
+                      "nick": {
+                        "type": "string",
+                        "description": "Display name"
+                      },
+                      "saId": {
+                        "type": "integer",
+                        "description": "User identifier in SuperAdmin"
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "Subject type: user, group, api, anonymous or system"
+                      }
+                    }
+                  },
+                  "description": "Platform users connected to the room (one entry per device)"
+                },
+                "room": {
+                  "type": "object",
+                  "properties": {
+                    "activeRecording": {
+                      "type": "boolean",
+                      "description": "Whether the room is being recorded"
+                    },
+                    "creationTime": {
+                      "type": "integer",
+                      "description": "When the room was created (Unix seconds)"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "recording": {
+                          "type": "object",
+                          "properties": {
+                            "egressId": {
+                              "type": "string",
+                              "description": "Recording (egress) identifier"
+                            },
+                            "fileName": {
+                              "type": "string",
+                              "description": "File the recording is written to"
+                            },
+                            "startedAt": {
+                              "type": "integer",
+                              "description": "When the recording started (Unix seconds)"
+                            },
+                            "startedById": {
+                              "type": "integer",
+                              "description": "Platform user id of who started the recording"
+                            },
+                            "title": {
+                              "type": "string",
+                              "description": "Title the recording will be filed under"
+                            }
+                          },
+                          "description": "The recording in progress, if any"
+                        },
+                        "recordingStartBy": {
+                          "type": "object",
+                          "properties": {
+                            "apiCount": {
+                              "type": "integer",
+                              "description": "Groups only: number of API users in the group"
+                            },
+                            "createdAt": {
+                              "type": "integer",
+                              "description": "Creation time, Unix seconds"
+                            },
+                            "id": {
+                              "type": "integer",
+                              "description": "User identifier in this platform"
+                            },
+                            "isMember": {
+                              "type": "boolean",
+                              "description": "Groups only: whether the caller is a member"
+                            },
+                            "isOwner": {
+                              "type": "boolean",
+                              "description": "Groups only: whether the caller owns the group"
+                            },
+                            "isTest": {
+                              "type": "boolean",
+                              "description": "Whether this is a test account"
+                            },
+                            "lang": {
+                              "type": "string",
+                              "description": "Interface language code"
+                            },
+                            "logins": {
+                              "type": "array",
+                              "description": "Logins: login, type and create_time of each (e-mail, phone, OAuth provider); password hashes, API key tokens and webhook URLs are never returned"
+                            },
+                            "metaInfo": {
+                              "type": "object",
+                              "description": "Free-form profile metadata"
+                            },
+                            "nick": {
+                              "type": "string",
+                              "description": "Display name"
+                            },
+                            "saId": {
+                              "type": "integer",
+                              "description": "User identifier in SuperAdmin"
+                            },
+                            "status": {
+                              "type": "string",
+                              "description": "Account status"
+                            },
+                            "type": {
+                              "type": "string",
+                              "description": "Subject type: user, group, api, anonymous or system"
+                            },
+                            "updatedAt": {
+                              "type": "integer",
+                              "description": "Last update time, Unix seconds"
+                            },
+                            "userCount": {
+                              "type": "integer",
+                              "description": "Groups only: number of users in the group"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "description": "Row version (read-only)"
+                            }
+                          },
+                          "description": "User who started the current recording"
+                        },
+                        "transcriptionLang": {
+                          "type": "string",
+                          "description": "Language of the live transcription"
+                        }
+                      },
+                      "description": "Room metadata: recording and transcription state"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Room name"
+                    }
+                  },
+                  "description": "The live LiveKit room, or null when no call is running"
+                }
+              },
+              "description": "The actor's live meeting: room, participants, last transcript line (opt-in via with:[\"meeting\"])"
+            },
+            "metaInfo": {
+              "type": "object",
+              "description": "Additional metadata information"
+            },
+            "notificationSettings": {
+              "type": "object",
+              "properties": {
+                "createdAt": {
+                  "type": "integer",
+                  "description": "Creation timestamp"
+                },
+                "snooze": {
+                  "type": "integer",
+                  "description": "Snooze period in minutes (null if not snoozed)"
+                }
+              },
+              "description": "The caller's notification settings for this actor (opt-in via with:[\"notificationSettings\"])"
+            },
+            "owner": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "User identifier in this platform"
+                },
+                "nick": {
+                  "type": "string",
+                  "description": "Display name"
+                },
+                "saId": {
+                  "type": "integer",
+                  "description": "User identifier in SuperAdmin"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Subject type: user, group, api, anonymous or system"
+                }
+              },
+              "description": "Owner details (opt-in via with:[\"owner\"])"
+            },
+            "ownerId": {
+              "type": "integer",
+              "description": "Owner identifier (opt-in via with:[\"owner\"] or fields:[\"ownerId\"])"
+            },
+            "picture": {
+              "type": "string",
+              "description": "Picture/image URL"
+            },
+            "pictureObject": {
+              "type": "object",
+              "description": "Picture object configuration"
+            },
+            "privs": {
+              "type": "object",
+              "properties": {
+                "ds": {
+                  "type": "boolean",
+                  "description": "Is asked to sign the object with a digital signature"
+                },
+                "execute": {
+                  "type": "boolean",
+                  "description": "Is asked to carry out (execute) the object"
+                },
+                "modify": {
+                  "type": "boolean",
+                  "description": "Can change the object and its access rules"
+                },
+                "remove": {
+                  "type": "boolean",
+                  "description": "Can delete the object"
+                },
+                "sign": {
+                  "type": "boolean",
+                  "description": "Is asked to approve (sign) the object"
+                },
+                "view": {
+                  "type": "boolean",
+                  "description": "Can see the object"
+                }
+              },
+              "description": "What the caller may do with this actor (opt-in via with:[\"privs\"])"
+            },
+            "reactionsStats": {
+              "type": "object",
+              "description": "Reaction counters by reaction type (opt-in via with:[\"reactionsStats\"])"
+            },
+            "readonly": {
+              "type": "boolean",
+              "description": "Whether the actor is read-only: attachments cannot be added to or removed from it"
+            },
+            "ref": {
+              "type": "string",
+              "description": "Your own key for the actor, unique within its account template"
+            },
+            "starred": {
+              "type": "boolean",
+              "description": "Whether the caller starred the actor (opt-in via with:[\"starred\"])"
+            },
+            "startDate": {
+              "type": "integer",
+              "description": "Start of the actor's period (Unix seconds); defaults to the creation time"
+            },
+            "status": {
+              "type": "string",
+              "description": "Approval status, e.g. verified, pending or rejected"
+            },
+            "systemObjId": {
+              "type": "string",
+              "description": "Linked system object id (opt-in via with:[\"avatar\"])"
+            },
+            "systemObjSAId": {
+              "type": "integer",
+              "description": "SuperAdmin id of the linked user, for its SA avatar URL (opt-in via with:[\"avatar\"])"
+            },
+            "systemObjType": {
+              "type": "string",
+              "description": "Linked system object type ('user' for a user actor) (opt-in via with:[\"avatar\"])"
+            },
+            "title": {
+              "type": "string",
+              "description": "Actor title"
+            },
+            "unread": {
+              "type": "boolean",
+              "description": "Whether the calling user has never viewed this actor"
+            },
+            "unreadReactions": {
+              "type": "integer",
+              "description": "Number of reactions the caller has not read (opt-in via with:[\"unreadReactions\"])"
+            },
+            "updatedAt": {
+              "type": "integer",
+              "description": "Last update time (Unix seconds)"
+            },
+            "user": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "User identifier in this platform"
+                },
+                "nick": {
+                  "type": "string",
+                  "description": "Display name"
+                },
+                "saId": {
+                  "type": "integer",
+                  "description": "User identifier in SuperAdmin"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Subject type: user, group, api, anonymous or system"
+                }
+              },
+              "description": "User who created the actor (opt-in via with:[\"user\"])"
+            },
+            "userId": {
+              "type": "integer",
+              "description": "User who created the actor"
+            }
+          }
+        }
+      },
+      "paramStructure": "by-name",
+      "tags": [
+        {
+          "name": "actor"
+        }
+      ],
+      "examples": [
+        {
+          "name": "Get an actor",
+          "params": [
+            {
+              "name": "accId",
+              "value": "f54fd368-6ebf-427a-89a3-72283e320f6a"
+            },
+            {
+              "name": "actorId",
+              "value": "a55cd656-e33e-425c-9971-b0a258bfd914"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "color": "#8ca285",
+              "createdAt": 1763389591,
+              "data": {
+                "amount": 1840.5,
+                "customer": "Northwind Traders",
+                "deliveryDate": 1763856000
+              },
+              "description": "Office chairs, 12 pcs",
+              "endDate": 1763389591,
+              "formId": 19,
+              "id": "a55cd656-e33e-425c-9971-b0a258bfd914",
+              "ref": "order-1042",
+              "startDate": 1763389591,
+              "status": "verified",
+              "title": "Order #1042",
+              "updatedAt": 1763475991,
+              "userId": 997760298
+            }
+          }
+        },
+        {
+          "name": "With owner and the caller's privileges",
+          "description": "Privileges the caller does not hold are omitted from `privs`.",
+          "params": [
+            {
+              "name": "accId",
+              "value": "f54fd368-6ebf-427a-89a3-72283e320f6a"
+            },
+            {
+              "name": "actorId",
+              "value": "a55cd656-e33e-425c-9971-b0a258bfd914"
+            },
+            {
+              "name": "fields",
+              "value": [
+                "id",
+                "title",
+                "data.amount"
+              ]
+            },
+            {
+              "name": "with",
+              "value": [
+                "owner",
+                "privs"
+              ]
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "data": {
+                "amount": 1840.5
+              },
+              "id": "a55cd656-e33e-425c-9971-b0a258bfd914",
+              "owner": {
+                "id": 997760298,
+                "nick": "Olena Koval",
+                "saId": 18234,
+                "type": "user"
+              },
+              "ownerId": 997760298,
+              "privs": {
+                "modify": true,
+                "view": true
+              },
+              "title": "Order #1042"
+            }
+          }
+        },
+        {
+          "name": "With the attached account templates",
+          "params": [
+            {
+              "name": "accId",
+              "value": "f54fd368-6ebf-427a-89a3-72283e320f6a"
+            },
+            {
+              "name": "actorId",
+              "value": "a55cd656-e33e-425c-9971-b0a258bfd914"
+            },
+            {
+              "name": "fields",
+              "value": [
+                "id",
+                "title"
+              ]
+            },
+            {
+              "name": "with",
+              "value": [
+                "forms"
+              ]
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "forms": [
+                {
+                  "color": "#8ca285",
+                  "id": 19,
+                  "isRoot": true,
+                  "sorting": 0,
+                  "title": "Orders"
+                },
+                {
+                  "color": "#7a9cc6",
+                  "id": 33,
+                  "isRoot": false,
+                  "sorting": 1,
+                  "title": "Delivery details"
+                }
+              ],
+              "id": "a55cd656-e33e-425c-9971-b0a258bfd914",
+              "title": "Order #1042"
+            }
+          }
+        },
+        {
+          "name": "With the avatar sources of a user actor",
+          "params": [
+            {
+              "name": "accId",
+              "value": "f54fd368-6ebf-427a-89a3-72283e320f6a"
+            },
+            {
+              "name": "actorId",
+              "value": "c3d9e1f4-7a2b-4c6d-8e0f-1a2b3c4d5e6f"
+            },
+            {
+              "name": "fields",
+              "value": [
+                "id",
+                "title",
+                "picture"
+              ]
+            },
+            {
+              "name": "with",
+              "value": [
+                "avatar"
+              ]
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "formType": "system",
+              "id": "c3d9e1f4-7a2b-4c6d-8e0f-1a2b3c4d5e6f",
+              "systemObjId": "997760298",
+              "systemObjSAId": 18234,
+              "systemObjType": "user",
+              "title": "Olena Koval"
+            }
+          }
+        }
+      ],
+      "x-scope": "actors.readonly",
+      "x-audience": "public"
+    },
+    {
+      "name": "form/get",
+      "summary": "Retrieves details of a specific account template",
+      "description": "Returns one account template (account templates are called *forms* in the API): its settings\nand, in `form`, the full template body — the `sections` with every template field an actor of\nthis template carries. A field's `id` is the key of its value in actor `data`.\n\nThe caller needs `view` access to the account template. Optional includes via `with`:\n\n| `with` value | Adds |\n|--------------|------|\n| `editor` | `canModify`, `editToken` (pass it to `form/update` as `expectedEditToken`) and `accountTemplateEditor` |\n| `parents` | `parents` — the ancestor chain, immediate parent first; ancestors the caller cannot view are `accessDenied` stubs, and a complete chain ends with a template without `parentId` |\n\nTo look an account template up by your own key, use `form/by-ref/get`.",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "formId",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "Account template identifier",
+            "minimum": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "with",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional includes. Supported: 'editor' (write capability/token), 'parents' (full ancestor chain)"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "access": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Reserved; currently never returned"
+            },
+            "accessDenied": {
+              "type": "boolean",
+              "description": "Whether the current user has no view access to this ancestor template"
+            },
+            "accountTemplateEditor": {
+              "type": "object",
+              "properties": {
+                "editTokenVersion": {
+                  "type": "string",
+                  "description": "Opaque edit-token protocol version"
+                },
+                "losslessUpdate": {
+                  "type": "boolean",
+                  "description": "Whether account template updates preserve unrecognized JSON fields and scalar encodings"
+                },
+                "optionResolver": {
+                  "type": "boolean",
+                  "description": "Whether typed dynamic option resolution is available"
+                },
+                "protocolVersion": {
+                  "type": "string",
+                  "description": "Account Template Editor protocol version"
+                },
+                "supportedOptionSources": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Option source types the resolver executes; all others fail closed as unsupported"
+                }
+              },
+              "description": "Template editor capabilities of this server (with editor)"
+            },
+            "canModify": {
+              "type": "boolean",
+              "description": "Whether the current user may modify this non-system account template"
+            },
+            "canRemove": {
+              "type": "boolean",
+              "description": "Whether the current user may delete this non-system account template (form/list only)"
+            },
+            "collapsed": {
+              "type": "boolean",
+              "description": "Whether the account template is shown collapsed in the template editor"
+            },
+            "color": {
+              "type": "string",
+              "description": "Color code (hex format)"
+            },
+            "createdAt": {
+              "type": "integer",
+              "description": "Creation time (Unix seconds)"
+            },
+            "description": {
+              "type": "string",
+              "description": "Account template description"
+            },
+            "editToken": {
+              "type": "string",
+              "description": "Opaque optimistic-concurrency token for the full account template write footprint"
+            },
+            "form": {
+              "type": "object",
+              "description": "The template body: sections with their fields, settings and other editor keys (not returned by form/list)"
+            },
+            "id": {
+              "type": "integer",
+              "description": "Account template id"
+            },
+            "isDefault": {
+              "type": "boolean",
+              "description": "Whether this is a workspace default account template"
+            },
+            "isTemplate": {
+              "type": "boolean",
+              "description": "Whether the account template is live; false once it is deleted"
+            },
+            "ownerId": {
+              "type": "integer",
+              "description": "User who owns the account template"
+            },
+            "ownerName": {
+              "type": "string",
+              "description": "Owner's nick (form/list only); absent when the owner's user row is gone or could not be read"
+            },
+            "parentId": {
+              "type": "integer",
+              "description": "Parent account template in the template tree"
+            },
+            "parents": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "Full ancestor chain, immediate-parent-first (only when with contains 'parents'); empty array for a root template"
+            },
+            "picture": {
+              "type": "string",
+              "description": "Picture/image URL"
+            },
+            "position": {
+              "type": "object",
+              "description": "Position of the account template in the template editor"
+            },
+            "ref": {
+              "type": "string",
+              "description": "Your own key for the account template, unique within the workspace"
+            },
+            "status": {
+              "type": "string",
+              "description": "Approval status: verified, rejected or pending"
+            },
+            "title": {
+              "type": "string",
+              "description": "Account template title"
+            },
+            "type": {
+              "type": "string",
+              "description": "Kind of a platform-owned account template (system or connector); absent for custom templates"
+            },
+            "updatedAt": {
+              "type": "integer",
+              "description": "Last update time (Unix seconds)"
+            }
+          }
+        }
+      },
+      "paramStructure": "by-name",
+      "tags": [
+        {
+          "name": "form"
+        }
+      ],
+      "examples": [
+        {
+          "name": "Get an account template",
+          "params": [
+            {
+              "name": "accId",
+              "value": "f54fd368-6ebf-427a-89a3-72283e320f6a"
+            },
+            {
+              "name": "formId",
+              "value": 19
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "collapsed": false,
+              "color": "#8ca285",
+              "createdAt": 1741251600,
+              "description": "Customer orders",
+              "form": {
+                "color": "#8ca285",
+                "description": "Customer orders",
+                "ref": "orders",
+                "sections": [
+                  {
+                    "content": [
+                      {
+                        "class": "edit",
+                        "id": "customer",
+                        "required": true,
+                        "title": "Customer",
+                        "visibility": "visible"
+                      },
+                      {
+                        "class": "edit",
+                        "id": "amount",
+                        "title": "Amount",
+                        "type": "float",
+                        "visibility": "visible"
+                      },
+                      {
+                        "class": "calendar",
+                        "id": "deliveryDate",
+                        "title": "Delivery date",
+                        "visibility": "visible"
+                      }
+                    ],
+                    "title": "Order"
+                  }
+                ],
+                "settings": {},
+                "title": "Orders"
+              },
+              "id": 19,
+              "isDefault": false,
+              "isTemplate": true,
+              "ownerId": 997760298,
+              "parentId": 17,
+              "ref": "orders",
+              "status": "verified",
+              "title": "Orders",
+              "updatedAt": 1762942800
+            }
+          }
+        },
+        {
+          "name": "With the edit token and the parent chain",
+          "params": [
+            {
+              "name": "accId",
+              "value": "f54fd368-6ebf-427a-89a3-72283e320f6a"
+            },
+            {
+              "name": "formId",
+              "value": 19
+            },
+            {
+              "name": "with",
+              "value": [
+                "editor",
+                "parents"
+              ]
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "accountTemplateEditor": {
+                "editTokenVersion": "v1",
+                "losslessUpdate": true,
+                "optionResolver": true,
+                "protocolVersion": "v1",
+                "supportedOptionSources": [
+                  "manual",
+                  "accountNames",
+                  "currencies",
+                  "forms"
+                ]
+              },
+              "canModify": true,
+              "collapsed": false,
+              "color": "#8ca285",
+              "createdAt": 1741251600,
+              "description": "Customer orders",
+              "editToken": "v1:LVvrkc8vWWHFgXGS_IiqfK8KTbvf_e72FohAFZJk_fs",
+              "form": {
+                "color": "#8ca285",
+                "description": "Customer orders",
+                "ref": "orders",
+                "sections": [
+                  {
+                    "content": [
+                      {
+                        "class": "edit",
+                        "id": "customer",
+                        "required": true,
+                        "title": "Customer",
+                        "visibility": "visible"
+                      },
+                      {
+                        "class": "edit",
+                        "id": "amount",
+                        "title": "Amount",
+                        "type": "float",
+                        "visibility": "visible"
+                      },
+                      {
+                        "class": "calendar",
+                        "id": "deliveryDate",
+                        "title": "Delivery date",
+                        "visibility": "visible"
+                      }
+                    ],
+                    "title": "Order"
+                  }
+                ],
+                "settings": {},
+                "title": "Orders"
+              },
+              "id": 19,
+              "isDefault": false,
+              "isTemplate": true,
+              "ownerId": 997760298,
+              "parentId": 17,
+              "parents": [
+                {
+                  "collapsed": false,
+                  "color": "#c9a96e",
+                  "createdAt": 1741251500,
+                  "form": {
+                    "color": "#c9a96e",
+                    "ref": "sales",
+                    "sections": [],
+                    "title": "Sales"
+                  },
+                  "id": 17,
+                  "isDefault": false,
+                  "isTemplate": true,
+                  "ownerId": 997760298,
+                  "ref": "sales",
+                  "title": "Sales",
+                  "updatedAt": 1741251500
+                }
+              ],
+              "ref": "orders",
+              "status": "verified",
+              "title": "Orders",
+              "updatedAt": 1762942800
+            }
+          }
+        }
+      ],
+      "x-scope": "forms.readonly",
+      "x-audience": "public"
+    },
+    {
+      "name": "graph/layer/actors/list",
+      "summary": "Lists actor placements of a layer with pagination",
+      "description": "Lists the actors placed on a layer, most recently placed first, one page at a time. Each row is a\n**placement**: its `laId`, where it sits (`position` in graph units and the same point as a\n`cellPosition`), how it is drawn (`layerSettings`, `polygon`, `areaPicture`) and, in `actor`, the\nactor itself with the shape of `actor/get`.\n\nThe caller needs `view` access to the layer actor (`actorId`). A placement whose actor the caller\ncannot view is still listed, as a stub of `laId`, `id`, `position` and `accessDenied: true`, so the\nlayer's layout stays whole. One actor can be placed on a layer more than once; each placement is\nits own row. `limit` is at most 1000 (default 50); page with `offset`. `fields` and `with`\nshape `actor` as in `actor/get` — `with: [\"formTitle\"]` adds the account template's title.\n\n`hole: true` marks a placeholder for an actor that is not known yet; `closedHole` marks a placement\nthat closed one (see the [graph tag](#tag/graph)). The edges between placements are listed by\n`graph/layer/edges/list`; the counts are in `graph/layer/stats/get`. To fetch only some\nplacements by `laId`, use `graph/layer/elements/list`; to read a large layer's layout fast, use\n`graph/layer/skeleton/get`.",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Layer actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "type": "integer",
+            "description": "Maximum number of items to return",
+            "default": 50,
+            "minimum": 1,
+            "maximum": 1000,
+            "x-validation-rules": [
+              "min=1",
+              "max=1000"
+            ]
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "type": "integer",
+            "description": "Number of items to skip",
+            "minimum": 0,
+            "x-validation-rules": [
+              "min=0"
+            ]
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Projection of each placement's actor, as in actor/get"
+          }
+        },
+        {
+          "name": "with",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Related entities to include in node responses (formTitle adds each node's account template title, avatar its avatar sources)"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "list": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "accessDenied": {
+                    "type": "boolean",
+                    "description": "Whether the caller has no view access to the actor; the placement then carries only laId, id and position"
+                  },
+                  "actor": {
+                    "type": "object",
+                    "properties": {
+                      "access": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "logins": {
+                              "type": "array",
+                              "description": "Logins: login, type and create_time of each (e-mail, phone, OAuth provider); password hashes, API key tokens and webhook URLs are never returned"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "The subject's display name"
+                            },
+                            "privs": {
+                              "type": "object",
+                              "properties": {
+                                "ds": {
+                                  "type": "boolean",
+                                  "description": "Is asked to sign the object with a digital signature"
+                                },
+                                "execute": {
+                                  "type": "boolean",
+                                  "description": "Is asked to carry out (execute) the object"
+                                },
+                                "modify": {
+                                  "type": "boolean",
+                                  "description": "Can change the object and its access rules"
+                                },
+                                "remove": {
+                                  "type": "boolean",
+                                  "description": "Can delete the object"
+                                },
+                                "sign": {
+                                  "type": "boolean",
+                                  "description": "Is asked to approve (sign) the object"
+                                },
+                                "view": {
+                                  "type": "boolean",
+                                  "description": "Can see the object"
+                                }
+                              },
+                              "description": "Privileges granted; only the true ones are present"
+                            },
+                            "reactionOrders": {
+                              "type": "object",
+                              "properties": {
+                                "ds": {
+                                  "type": "integer",
+                                  "description": "Order (from 1) in which this subject gives a digital signature",
+                                  "minimum": 1,
+                                  "x-validation-rules": [
+                                    "min=1"
+                                  ]
+                                },
+                                "execute": {
+                                  "type": "integer",
+                                  "description": "Order (from 1) in which this subject executes",
+                                  "minimum": 1,
+                                  "x-validation-rules": [
+                                    "min=1"
+                                  ]
+                                },
+                                "sign": {
+                                  "type": "integer",
+                                  "description": "Order (from 1) in which this subject signs; equal orders sign in parallel",
+                                  "minimum": 1,
+                                  "x-validation-rules": [
+                                    "min=1"
+                                  ]
+                                }
+                              },
+                              "description": "Signing order per stage; absent when the subject is unordered"
+                            },
+                            "saId": {
+                              "type": "integer",
+                              "description": "The subject's SuperAdmin (account.corezoid.com) id"
+                            },
+                            "userId": {
+                              "type": "integer",
+                              "description": "Subject the rule is for: a user, group or API user id"
+                            },
+                            "userType": {
+                              "type": "string",
+                              "description": "Subject type: user, group or api"
+                            }
+                          }
+                        },
+                        "description": "Access rules of the actor (opt-in via with:[\"access\"]; with:[\"access:compact\"] leaves out each subject's logins)"
+                      },
+                      "accessDenied": {
+                        "type": "boolean",
+                        "description": "Graph reads only: the caller has no view access to this actor, so the node carries only its id"
+                      },
+                      "appId": {
+                        "type": "string",
+                        "description": "Smart Form identifier"
+                      },
+                      "appSettings": {
+                        "type": "object",
+                        "description": "Settings for the actor's Smart Form"
+                      },
+                      "attachments": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "accId": {
+                              "type": "string",
+                              "description": "Workspace identifier"
+                            },
+                            "bucket": {
+                              "type": "string",
+                              "description": "Storage bucket holding the file (livekit for a meeting recording)"
+                            },
+                            "createdAt": {
+                              "type": "integer",
+                              "description": "Upload timestamp (Unix seconds)"
+                            },
+                            "externalId": {
+                              "type": "integer",
+                              "description": "Identifier of the file in the file storage service"
+                            },
+                            "fileName": {
+                              "type": "string",
+                              "description": "Storage key of the file, used to download it"
+                            },
+                            "id": {
+                              "type": "integer",
+                              "description": "Attachment identifier"
+                            },
+                            "removeAt": {
+                              "type": "integer",
+                              "description": "When a temporary file expires (Unix seconds)"
+                            },
+                            "sign": {
+                              "type": "boolean",
+                              "description": "Whether this is the archive an e-signature was requested over"
+                            },
+                            "size": {
+                              "type": "integer",
+                              "description": "File size in bytes"
+                            },
+                            "status": {
+                              "type": "string",
+                              "description": "Antivirus scan verdict: pending, clean, infected or error; absent for files stored before scanning"
+                            },
+                            "title": {
+                              "type": "string",
+                              "description": "Display file name, with extension"
+                            },
+                            "type": {
+                              "type": "string",
+                              "description": "MIME type of the file"
+                            },
+                            "updatedAt": {
+                              "type": "integer",
+                              "description": "Last update timestamp (Unix seconds)"
+                            },
+                            "user": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "integer",
+                                  "description": "User identifier in this platform"
+                                },
+                                "nick": {
+                                  "type": "string",
+                                  "description": "Display name"
+                                },
+                                "saId": {
+                                  "type": "integer",
+                                  "description": "User identifier in SuperAdmin"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "description": "Subject type: user, group, api, anonymous or system"
+                                }
+                              },
+                              "description": "User who uploaded the file; present with the :user sub-selection"
+                            },
+                            "userId": {
+                              "type": "integer",
+                              "description": "User who uploaded the file (0 for files the system stored)"
+                            }
+                          }
+                        },
+                        "description": "Attached files (opt-in via with:[\"attachments\"] or with:[\"attachments:user\"])"
+                      },
+                      "balances": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "accountName": {
+                              "type": "string",
+                              "description": "Account name"
+                            },
+                            "balance": {
+                              "type": "object",
+                              "properties": {
+                                "accountsExist": {
+                                  "type": "boolean",
+                                  "description": "Whether the actor has this account at all (false means no account, not a zero balance)"
+                                },
+                                "actorId": {
+                                  "type": "string",
+                                  "description": "Actor the account belongs to"
+                                },
+                                "credit": {
+                                  "type": "number",
+                                  "description": "Credit total"
+                                },
+                                "debit": {
+                                  "type": "number",
+                                  "description": "Debit total"
+                                },
+                                "series": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "t": {
+                                        "type": "integer",
+                                        "description": "Bucket start, Unix milliseconds"
+                                      },
+                                      "v": {
+                                        "type": "number",
+                                        "description": "Net amount (credit minus debit) in the bucket"
+                                      }
+                                    }
+                                  },
+                                  "description": "Net movement per time bucket; only when requested and a period is set"
+                                },
+                                "vector": {
+                                  "type": "string",
+                                  "description": "Trend arrow: up or down"
+                                }
+                              },
+                              "description": "Debit/credit balance of this actor in the account"
+                            },
+                            "currencyId": {
+                              "type": "integer",
+                              "description": "Currency identifier"
+                            },
+                            "currencyName": {
+                              "type": "string",
+                              "description": "Currency name"
+                            },
+                            "currencyType": {
+                              "type": "string",
+                              "description": "Currency type"
+                            },
+                            "nameId": {
+                              "type": "string",
+                              "description": "Account name identifier"
+                            },
+                            "precision": {
+                              "type": "integer",
+                              "description": "Currency precision"
+                            },
+                            "symbol": {
+                              "type": "string",
+                              "description": "Currency symbol"
+                            }
+                          }
+                        },
+                        "description": "Balances of the accounts configured on the layer"
+                      },
+                      "cardActorId": {
+                        "type": "string",
+                        "description": "Card actor identifier"
+                      },
+                      "color": {
+                        "type": "string",
+                        "description": "Color code (hex format)"
+                      },
+                      "createdAt": {
+                        "type": "integer",
+                        "description": "Creation time (Unix seconds)"
+                      },
+                      "data": {
+                        "type": "object",
+                        "description": "Template field values, keyed by field id"
+                      },
+                      "defaultAccess": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "logins": {
+                              "type": "array",
+                              "description": "Logins: login, type and create_time of each (e-mail, phone, OAuth provider); password hashes, API key tokens and webhook URLs are never returned"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "The subject's display name"
+                            },
+                            "privs": {
+                              "type": "object",
+                              "properties": {
+                                "ds": {
+                                  "type": "boolean",
+                                  "description": "Is asked to sign the object with a digital signature"
+                                },
+                                "execute": {
+                                  "type": "boolean",
+                                  "description": "Is asked to carry out (execute) the object"
+                                },
+                                "modify": {
+                                  "type": "boolean",
+                                  "description": "Can change the object and its access rules"
+                                },
+                                "remove": {
+                                  "type": "boolean",
+                                  "description": "Can delete the object"
+                                },
+                                "sign": {
+                                  "type": "boolean",
+                                  "description": "Is asked to approve (sign) the object"
+                                },
+                                "view": {
+                                  "type": "boolean",
+                                  "description": "Can see the object"
+                                }
+                              },
+                              "description": "Privileges granted; only the true ones are present"
+                            },
+                            "reactionOrders": {
+                              "type": "object",
+                              "properties": {
+                                "ds": {
+                                  "type": "integer",
+                                  "description": "Order (from 1) in which this subject gives a digital signature",
+                                  "minimum": 1,
+                                  "x-validation-rules": [
+                                    "min=1"
+                                  ]
+                                },
+                                "execute": {
+                                  "type": "integer",
+                                  "description": "Order (from 1) in which this subject executes",
+                                  "minimum": 1,
+                                  "x-validation-rules": [
+                                    "min=1"
+                                  ]
+                                },
+                                "sign": {
+                                  "type": "integer",
+                                  "description": "Order (from 1) in which this subject signs; equal orders sign in parallel",
+                                  "minimum": 1,
+                                  "x-validation-rules": [
+                                    "min=1"
+                                  ]
+                                }
+                              },
+                              "description": "Signing order per stage; absent when the subject is unordered"
+                            },
+                            "saId": {
+                              "type": "integer",
+                              "description": "The subject's SuperAdmin (account.corezoid.com) id"
+                            },
+                            "userId": {
+                              "type": "integer",
+                              "description": "Subject the rule is for: a user, group or API user id"
+                            },
+                            "userType": {
+                              "type": "string",
+                              "description": "Subject type: user, group or api"
+                            }
+                          }
+                        },
+                        "description": "Access rules every actor of this account template inherits (opt-in via with:[\"defaultAccess\"])"
+                      },
+                      "deletedAt": {
+                        "type": "integer",
+                        "description": "Soft-delete timestamp; null for live actors, set by actor/deleted/list"
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Actor description"
+                      },
+                      "endDate": {
+                        "type": "integer",
+                        "description": "End of the actor's period (Unix seconds); defaults to the creation time"
+                      },
+                      "executionState": {
+                        "type": "object",
+                        "properties": {
+                          "activeStage": {
+                            "type": "string",
+                            "description": "Current stage: sign, ds or execute; absent once complete"
+                          },
+                          "canActNow": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            },
+                            "description": "Order levels whose subjects may act now"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Whether the actor has an ordered sign/execute workflow"
+                          },
+                          "workflow": {
+                            "type": "object",
+                            "description": "Per-stage order levels, keyed by stage"
+                          }
+                        },
+                        "description": "Sign/ds/execute workflow-order state (opt-in via with:[\"executionState\"])"
+                      },
+                      "formId": {
+                        "type": "integer",
+                        "description": "Account template the actor was built from (its primary template)"
+                      },
+                      "formPicture": {
+                        "type": "string",
+                        "description": "Account template picture, the avatar fallback (opt-in via with:[\"avatar\"])"
+                      },
+                      "formTitle": {
+                        "type": "string",
+                        "description": "Title of the actor's account template (opt-in via with:[\"formTitle\"] on actor/filter/list and actor/search/list)"
+                      },
+                      "formType": {
+                        "type": "string",
+                        "description": "Account template type (opt-in via with:[\"avatar\"])"
+                      },
+                      "forms": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "accessDenied": {
+                              "type": "boolean",
+                              "description": "Whether the caller cannot view this account template (only id and sorting are then meaningful)"
+                            },
+                            "color": {
+                              "type": "string",
+                              "description": "Account template color (hex)"
+                            },
+                            "id": {
+                              "type": "integer",
+                              "description": "Account template identifier"
+                            },
+                            "isDefault": {
+                              "type": "boolean",
+                              "description": "Whether the account template is a workspace default template"
+                            },
+                            "isRoot": {
+                              "type": "boolean",
+                              "description": "Whether this is the actor's primary account template (its formId)"
+                            },
+                            "parentId": {
+                              "type": "integer",
+                              "description": "Parent account template in the template tree"
+                            },
+                            "sorting": {
+                              "type": "integer",
+                              "description": "Position of the account template on the actor (ascending)"
+                            },
+                            "title": {
+                              "type": "string",
+                              "description": "Account template title"
+                            }
+                          }
+                        },
+                        "description": "Ordered account templates attached to the actor (opt-in via with:[\"forms\"])"
+                      },
+                      "freeze": {
+                        "type": "boolean",
+                        "description": "Whether object is frozen"
+                      },
+                      "freezeExpiration": {
+                        "type": "integer",
+                        "description": "Freeze expiration timestamp"
+                      },
+                      "geoName": {
+                        "type": "string",
+                        "description": "Actor location name"
+                      },
+                      "geoPosition": {
+                        "type": "object",
+                        "properties": {
+                          "lat": {
+                            "type": "number",
+                            "description": "Latitude in decimal degrees (-90 to 90)"
+                          },
+                          "lon": {
+                            "type": "number",
+                            "description": "Longitude in decimal degrees (-180 to 180)"
+                          }
+                        },
+                        "description": "Actor location coordinates"
+                      },
+                      "hole": {
+                        "type": "boolean",
+                        "description": "Whether the actor is a graph hole placeholder"
+                      },
+                      "id": {
+                        "type": "string",
+                        "description": "Actor id"
+                      },
+                      "lastComment": {
+                        "type": "object",
+                        "properties": {
+                          "createdAt": {
+                            "type": "integer",
+                            "description": "Creation timestamp"
+                          },
+                          "data": {
+                            "type": "object",
+                            "description": "JSON data payload"
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "Description of the object"
+                          },
+                          "endDate": {
+                            "type": "integer",
+                            "description": "End date"
+                          },
+                          "id": {
+                            "type": "string",
+                            "description": "Unique identifier"
+                          },
+                          "metaInfo": {
+                            "type": "object",
+                            "description": "Additional metadata information"
+                          },
+                          "parentId": {
+                            "type": "string",
+                            "description": "Parent element identifier"
+                          },
+                          "picture": {
+                            "type": "string",
+                            "description": "Picture/image URL"
+                          },
+                          "startDate": {
+                            "type": "integer",
+                            "description": "Start date"
+                          },
+                          "updatedAt": {
+                            "type": "integer",
+                            "description": "Last update timestamp"
+                          },
+                          "user": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "User identifier in this platform"
+                              },
+                              "nick": {
+                                "type": "string",
+                                "description": "Display name"
+                              },
+                              "saId": {
+                                "type": "integer",
+                                "description": "User identifier in SuperAdmin"
+                              },
+                              "type": {
+                                "type": "string",
+                                "description": "Subject type: user, group, api, anonymous or system"
+                              }
+                            },
+                            "description": "User details"
+                          },
+                          "userId": {
+                            "type": "integer",
+                            "description": "User identifier"
+                          }
+                        },
+                        "description": "Most recent visible comment, including replies (opt-in via with:[\"lastComment\"] or with:[\"lastComment:user\"])"
+                      },
+                      "lastReaction": {
+                        "type": "object",
+                        "properties": {
+                          "createdAt": {
+                            "type": "integer",
+                            "description": "Creation timestamp"
+                          },
+                          "data": {
+                            "type": "object",
+                            "description": "JSON data payload"
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "Description of the object"
+                          },
+                          "endDate": {
+                            "type": "integer",
+                            "description": "End date"
+                          },
+                          "id": {
+                            "type": "string",
+                            "description": "Unique identifier"
+                          },
+                          "metaInfo": {
+                            "type": "object",
+                            "description": "Additional metadata information"
+                          },
+                          "parentId": {
+                            "type": "string",
+                            "description": "Parent element identifier"
+                          },
+                          "picture": {
+                            "type": "string",
+                            "description": "Picture/image URL"
+                          },
+                          "startDate": {
+                            "type": "integer",
+                            "description": "Start date"
+                          },
+                          "updatedAt": {
+                            "type": "integer",
+                            "description": "Last update timestamp"
+                          },
+                          "user": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "User identifier in this platform"
+                              },
+                              "nick": {
+                                "type": "string",
+                                "description": "Display name"
+                              },
+                              "saId": {
+                                "type": "integer",
+                                "description": "User identifier in SuperAdmin"
+                              },
+                              "type": {
+                                "type": "string",
+                                "description": "Subject type: user, group, api, anonymous or system"
+                              }
+                            },
+                            "description": "User details"
+                          },
+                          "userId": {
+                            "type": "integer",
+                            "description": "User identifier"
+                          }
+                        },
+                        "description": "Most recent reaction (opt-in via with:[\"lastReaction\"] or with:[\"lastReaction:user\"])"
+                      },
+                      "meeting": {
+                        "type": "object",
+                        "properties": {
+                          "lastTranscription": {
+                            "type": "object",
+                            "properties": {
+                              "attachments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "fileName": {
+                                      "type": "string",
+                                      "description": "Stored file name"
+                                    },
+                                    "id": {
+                                      "type": "integer",
+                                      "description": "Attachment identifier"
+                                    },
+                                    "title": {
+                                      "type": "string",
+                                      "description": "Display title of the file"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "description": "File type"
+                                    }
+                                  }
+                                },
+                                "description": "Files the line refers to"
+                              },
+                              "eventType": {
+                                "type": "string",
+                                "description": "System event the line records (join, leave, handRaise, recording, …); absent on spoken lines"
+                              },
+                              "id": {
+                                "type": "string",
+                                "description": "Stable line identifier (UUID); absent on lines written by the legacy server"
+                              },
+                              "isSystemMessage": {
+                                "type": "boolean",
+                                "description": "Whether the line is a system event rather than speech"
+                              },
+                              "parentId": {
+                                "type": "string",
+                                "description": "Identifier of the quoted line"
+                              },
+                              "parentSaId": {
+                                "type": "integer",
+                                "description": "SuperAdmin id of the quoted line's speaker"
+                              },
+                              "parentText": {
+                                "type": "string",
+                                "description": "Text of the quoted line"
+                              },
+                              "parentUserId": {
+                                "type": "integer",
+                                "description": "Platform user id of the quoted line's speaker"
+                              },
+                              "parentUserMetaInfo": {
+                                "type": "object",
+                                "description": "Profile metadata of the quoted line's speaker"
+                              },
+                              "parentUserNick": {
+                                "type": "string",
+                                "description": "Display name of the quoted line's speaker"
+                              },
+                              "reactionId": {
+                                "type": "string",
+                                "description": "Reaction (comment) the line was posted as, if any"
+                              },
+                              "saId": {
+                                "type": "integer",
+                                "description": "SuperAdmin id of the speaker"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Spoken or system text of the line"
+                              },
+                              "timestamp": {
+                                "type": "integer",
+                                "description": "When the line was spoken (Unix seconds)"
+                              },
+                              "userId": {
+                                "type": "integer",
+                                "description": "Platform user id of the speaker"
+                              },
+                              "userMetaInfo": {
+                                "type": "object",
+                                "description": "Speaker's profile metadata (display-name/avatar overrides)"
+                              },
+                              "userNick": {
+                                "type": "string",
+                                "description": "Display name of the speaker"
+                              }
+                            },
+                            "description": "Newest line of the live transcript, or null"
+                          },
+                          "participants": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "integer",
+                                  "description": "User identifier in this platform"
+                                },
+                                "nick": {
+                                  "type": "string",
+                                  "description": "Display name"
+                                },
+                                "saId": {
+                                  "type": "integer",
+                                  "description": "User identifier in SuperAdmin"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "description": "Subject type: user, group, api, anonymous or system"
+                                }
+                              }
+                            },
+                            "description": "Platform users connected to the room (one entry per device)"
+                          },
+                          "room": {
+                            "type": "object",
+                            "properties": {
+                              "activeRecording": {
+                                "type": "boolean",
+                                "description": "Whether the room is being recorded"
+                              },
+                              "creationTime": {
+                                "type": "integer",
+                                "description": "When the room was created (Unix seconds)"
+                              },
+                              "metadata": {
+                                "type": "object",
+                                "properties": {
+                                  "recording": {
+                                    "type": "object",
+                                    "properties": {
+                                      "egressId": {
+                                        "type": "string",
+                                        "description": "Recording (egress) identifier"
+                                      },
+                                      "fileName": {
+                                        "type": "string",
+                                        "description": "File the recording is written to"
+                                      },
+                                      "startedAt": {
+                                        "type": "integer",
+                                        "description": "When the recording started (Unix seconds)"
+                                      },
+                                      "startedById": {
+                                        "type": "integer",
+                                        "description": "Platform user id of who started the recording"
+                                      },
+                                      "title": {
+                                        "type": "string",
+                                        "description": "Title the recording will be filed under"
+                                      }
+                                    },
+                                    "description": "The recording in progress, if any"
+                                  },
+                                  "recordingStartBy": {
+                                    "type": "object",
+                                    "properties": {
+                                      "apiCount": {
+                                        "type": "integer",
+                                        "description": "Groups only: number of API users in the group"
+                                      },
+                                      "createdAt": {
+                                        "type": "integer",
+                                        "description": "Creation time, Unix seconds"
+                                      },
+                                      "id": {
+                                        "type": "integer",
+                                        "description": "User identifier in this platform"
+                                      },
+                                      "isMember": {
+                                        "type": "boolean",
+                                        "description": "Groups only: whether the caller is a member"
+                                      },
+                                      "isOwner": {
+                                        "type": "boolean",
+                                        "description": "Groups only: whether the caller owns the group"
+                                      },
+                                      "isTest": {
+                                        "type": "boolean",
+                                        "description": "Whether this is a test account"
+                                      },
+                                      "lang": {
+                                        "type": "string",
+                                        "description": "Interface language code"
+                                      },
+                                      "logins": {
+                                        "type": "array",
+                                        "description": "Logins: login, type and create_time of each (e-mail, phone, OAuth provider); password hashes, API key tokens and webhook URLs are never returned"
+                                      },
+                                      "metaInfo": {
+                                        "type": "object",
+                                        "description": "Free-form profile metadata"
+                                      },
+                                      "nick": {
+                                        "type": "string",
+                                        "description": "Display name"
+                                      },
+                                      "saId": {
+                                        "type": "integer",
+                                        "description": "User identifier in SuperAdmin"
+                                      },
+                                      "status": {
+                                        "type": "string",
+                                        "description": "Account status"
+                                      },
+                                      "type": {
+                                        "type": "string",
+                                        "description": "Subject type: user, group, api, anonymous or system"
+                                      },
+                                      "updatedAt": {
+                                        "type": "integer",
+                                        "description": "Last update time, Unix seconds"
+                                      },
+                                      "userCount": {
+                                        "type": "integer",
+                                        "description": "Groups only: number of users in the group"
+                                      },
+                                      "version": {
+                                        "type": "integer",
+                                        "description": "Row version (read-only)"
+                                      }
+                                    },
+                                    "description": "User who started the current recording"
+                                  },
+                                  "transcriptionLang": {
+                                    "type": "string",
+                                    "description": "Language of the live transcription"
+                                  }
+                                },
+                                "description": "Room metadata: recording and transcription state"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Room name"
+                              }
+                            },
+                            "description": "The live LiveKit room, or null when no call is running"
+                          }
+                        },
+                        "description": "The actor's live meeting: room, participants, last transcript line (opt-in via with:[\"meeting\"])"
+                      },
+                      "metaInfo": {
+                        "type": "object",
+                        "description": "Additional metadata information"
+                      },
+                      "notificationSettings": {
+                        "type": "object",
+                        "properties": {
+                          "createdAt": {
+                            "type": "integer",
+                            "description": "Creation timestamp"
+                          },
+                          "snooze": {
+                            "type": "integer",
+                            "description": "Snooze period in minutes (null if not snoozed)"
+                          }
+                        },
+                        "description": "The caller's notification settings for this actor (opt-in via with:[\"notificationSettings\"])"
+                      },
+                      "owner": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "User identifier in this platform"
+                          },
+                          "nick": {
+                            "type": "string",
+                            "description": "Display name"
+                          },
+                          "saId": {
+                            "type": "integer",
+                            "description": "User identifier in SuperAdmin"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "Subject type: user, group, api, anonymous or system"
+                          }
+                        },
+                        "description": "Owner details (opt-in via with:[\"owner\"])"
+                      },
+                      "ownerId": {
+                        "type": "integer",
+                        "description": "Owner identifier (opt-in via with:[\"owner\"] or fields:[\"ownerId\"])"
+                      },
+                      "picture": {
+                        "type": "string",
+                        "description": "Picture/image URL"
+                      },
+                      "pictureObject": {
+                        "type": "object",
+                        "description": "Picture object configuration"
+                      },
+                      "privs": {
+                        "type": "object",
+                        "properties": {
+                          "ds": {
+                            "type": "boolean",
+                            "description": "Is asked to sign the object with a digital signature"
+                          },
+                          "execute": {
+                            "type": "boolean",
+                            "description": "Is asked to carry out (execute) the object"
+                          },
+                          "modify": {
+                            "type": "boolean",
+                            "description": "Can change the object and its access rules"
+                          },
+                          "remove": {
+                            "type": "boolean",
+                            "description": "Can delete the object"
+                          },
+                          "sign": {
+                            "type": "boolean",
+                            "description": "Is asked to approve (sign) the object"
+                          },
+                          "view": {
+                            "type": "boolean",
+                            "description": "Can see the object"
+                          }
+                        },
+                        "description": "What the caller may do with this actor (opt-in via with:[\"privs\"])"
+                      },
+                      "reactionsStats": {
+                        "type": "object",
+                        "description": "Reaction counters by reaction type (opt-in via with:[\"reactionsStats\"])"
+                      },
+                      "readonly": {
+                        "type": "boolean",
+                        "description": "Whether the actor is read-only: attachments cannot be added to or removed from it"
+                      },
+                      "ref": {
+                        "type": "string",
+                        "description": "Your own key for the actor, unique within its account template"
+                      },
+                      "starred": {
+                        "type": "boolean",
+                        "description": "Whether the caller starred the actor (opt-in via with:[\"starred\"])"
+                      },
+                      "startDate": {
+                        "type": "integer",
+                        "description": "Start of the actor's period (Unix seconds); defaults to the creation time"
+                      },
+                      "status": {
+                        "type": "string",
+                        "description": "Approval status, e.g. verified, pending or rejected"
+                      },
+                      "systemObjId": {
+                        "type": "string",
+                        "description": "Linked system object id (opt-in via with:[\"avatar\"])"
+                      },
+                      "systemObjSAId": {
+                        "type": "integer",
+                        "description": "SuperAdmin id of the linked user, for its SA avatar URL (opt-in via with:[\"avatar\"])"
+                      },
+                      "systemObjType": {
+                        "type": "string",
+                        "description": "Linked system object type ('user' for a user actor) (opt-in via with:[\"avatar\"])"
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "Actor title"
+                      },
+                      "unread": {
+                        "type": "boolean",
+                        "description": "Whether the calling user has never viewed this actor"
+                      },
+                      "unreadReactions": {
+                        "type": "integer",
+                        "description": "Number of reactions the caller has not read (opt-in via with:[\"unreadReactions\"])"
+                      },
+                      "updatedAt": {
+                        "type": "integer",
+                        "description": "Last update time (Unix seconds)"
+                      },
+                      "user": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "User identifier in this platform"
+                          },
+                          "nick": {
+                            "type": "string",
+                            "description": "Display name"
+                          },
+                          "saId": {
+                            "type": "integer",
+                            "description": "User identifier in SuperAdmin"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "Subject type: user, group, api, anonymous or system"
+                          }
+                        },
+                        "description": "User who created the actor (opt-in via with:[\"user\"])"
+                      },
+                      "userId": {
+                        "type": "integer",
+                        "description": "User who created the actor"
+                      }
+                    },
+                    "description": "Actor details (absent when access is denied)"
+                  },
+                  "areaPicture": {
+                    "type": "object",
+                    "properties": {
+                      "height": {
+                        "type": "number",
+                        "description": "Picture height in graph units",
+                        "x-validation-rules": [
+                          "required",
+                          "gt=0"
+                        ]
+                      },
+                      "img": {
+                        "type": "string",
+                        "description": "Picture URL",
+                        "minLength": 1,
+                        "x-validation-rules": [
+                          "required",
+                          "min=1"
+                        ]
+                      },
+                      "width": {
+                        "type": "number",
+                        "description": "Picture width in graph units",
+                        "x-validation-rules": [
+                          "required",
+                          "gt=0"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "width",
+                      "height",
+                      "img"
+                    ],
+                    "description": "Area picture stretched over the placement"
+                  },
+                  "cellPosition": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "string",
+                        "description": "Column: A–Z for the first 26 columns right of the origin, then A1–Z1, A2…; a leading minus left of it (-A is the first)"
+                      },
+                      "y": {
+                        "type": "number",
+                        "description": "Row: 1, 2, … from the origin down; -1, -2, … above it"
+                      }
+                    },
+                    "description": "The same position as a grid cell"
+                  },
+                  "closedHole": {
+                    "type": "object",
+                    "properties": {
+                      "closingProgress": {
+                        "type": "object",
+                        "properties": {
+                          "matched": {
+                            "type": "integer",
+                            "description": "Hole conditions the closing actor satisfies"
+                          },
+                          "total": {
+                            "type": "integer",
+                            "description": "Non-empty data fields on the hole, each one a condition"
+                          }
+                        },
+                        "description": "How many of the hole's conditions the closing actor meets; null when the hole has none"
+                      },
+                      "holeActorId": {
+                        "type": "string",
+                        "description": "Identifier of the hole actor closed by this placement"
+                      }
+                    },
+                    "description": "The hole this placement closed, when it was dropped onto one"
+                  },
+                  "createdAt": {
+                    "type": "integer",
+                    "description": "When the actor was placed (Unix seconds)"
+                  },
+                  "hole": {
+                    "type": "boolean",
+                    "description": "Whether the placed actor is a hole: a placeholder for an actor not known yet"
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Actor identifier"
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId); one actor can be placed on a layer more than once"
+                  },
+                  "layerSettings": {
+                    "type": "object",
+                    "properties": {
+                      "anisotropy": {
+                        "type": "boolean",
+                        "description": "Whether anisotropic texture filtering is enabled"
+                      },
+                      "expand": {
+                        "type": "boolean",
+                        "description": "Whether the node is open in place, showing the content named by expandType"
+                      },
+                      "expandType": {
+                        "type": "string",
+                        "description": "What an expanded node shows: cardView, chart, layer, profile, script (a Smart Form), actor (an actor page) or text",
+                        "enum": [
+                          "cardView",
+                          "chart",
+                          "layer",
+                          "profile",
+                          "script",
+                          "actor",
+                          "text"
+                        ],
+                        "x-validation-rules": [
+                          "oneof=cardView chart layer profile script actor text"
+                        ]
+                      },
+                      "flaskView": {
+                        "type": "boolean",
+                        "description": "Whether the node is rendered as a flask"
+                      },
+                      "fullScreen": {
+                        "type": "boolean",
+                        "description": "Whether the expanded node is in full screen"
+                      },
+                      "height": {
+                        "type": "number",
+                        "description": "Box height in graph units; same meaning as width",
+                        "x-validation-rules": [
+                          "gte=1"
+                        ]
+                      },
+                      "image": {
+                        "type": "object",
+                        "properties": {
+                          "crop": {
+                            "type": "object",
+                            "properties": {
+                              "h": {
+                                "type": "number",
+                                "description": "Height as a fraction of the source height",
+                                "x-validation-rules": [
+                                  "gt=0",
+                                  "lte=1"
+                                ]
+                              },
+                              "w": {
+                                "type": "number",
+                                "description": "Width as a fraction of the source width",
+                                "x-validation-rules": [
+                                  "gt=0",
+                                  "lte=1"
+                                ]
+                              },
+                              "x": {
+                                "type": "number",
+                                "description": "Left edge as a fraction of the source width",
+                                "x-validation-rules": [
+                                  "gte=0",
+                                  "lte=1"
+                                ]
+                              },
+                              "y": {
+                                "type": "number",
+                                "description": "Top edge as a fraction of the source height",
+                                "x-validation-rules": [
+                                  "gte=0",
+                                  "lte=1"
+                                ]
+                              }
+                            },
+                            "description": "Visible window into the source image"
+                          },
+                          "fit": {
+                            "type": "string",
+                            "description": "How the bitmap fills its box (contain, cover, fill)",
+                            "enum": [
+                              "contain",
+                              "cover",
+                              "fill"
+                            ],
+                            "x-validation-rules": [
+                              "oneof=contain cover fill"
+                            ]
+                          },
+                          "naturalHeight": {
+                            "type": "number",
+                            "description": "Intrinsic height of the source image in pixels",
+                            "x-validation-rules": [
+                              "gt=0"
+                            ]
+                          },
+                          "naturalWidth": {
+                            "type": "number",
+                            "description": "Intrinsic width of the source image in pixels",
+                            "x-validation-rules": [
+                              "gt=0"
+                            ]
+                          }
+                        },
+                        "description": "Image framing of this placement"
+                      },
+                      "isCardView": {
+                        "type": "boolean",
+                        "description": "Whether the node is rendered as a card"
+                      },
+                      "isTextNode": {
+                        "type": "boolean",
+                        "description": "Whether the node is a text node"
+                      },
+                      "labelStyle": {
+                        "type": "object",
+                        "properties": {
+                          "align": {
+                            "type": "string",
+                            "description": "Horizontal alignment",
+                            "enum": [
+                              "left",
+                              "center",
+                              "right"
+                            ],
+                            "x-validation-rules": [
+                              "oneof=left center right"
+                            ]
+                          },
+                          "bold": {
+                            "type": "boolean",
+                            "description": "Bold weight"
+                          },
+                          "color": {
+                            "type": "string",
+                            "description": "Ink color, #RRGGBB",
+                            "x-validation-rules": [
+                              "hexcolor"
+                            ]
+                          },
+                          "fontSize": {
+                            "type": "number",
+                            "description": "Font size, graph units",
+                            "x-validation-rules": [
+                              "gt=0"
+                            ]
+                          },
+                          "italic": {
+                            "type": "boolean",
+                            "description": "Italic style"
+                          }
+                        },
+                        "description": "Text-node typography override"
+                      },
+                      "offset": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number",
+                            "description": "X coordinate on the layer"
+                          },
+                          "y": {
+                            "type": "number",
+                            "description": "Y coordinate on the layer"
+                          }
+                        },
+                        "description": "How far an expanded node reaches past its cell. Typed here as {x, y}, while legacy clients and the graph editor store {top, right, bottom, left}: such a value reads back as {x: 0, y: 0}, and one sent here is stored as {x: 0, y: 0}. Do not send it"
+                      },
+                      "opacity": {
+                        "type": "number",
+                        "description": "Placement opacity (0..1)",
+                        "x-validation-rules": [
+                          "gte=0",
+                          "lte=1"
+                        ]
+                      },
+                      "pin": {
+                        "type": "boolean",
+                        "description": "Whether the node is pinned to this layer (cannot be dragged)"
+                      },
+                      "profile": {
+                        "type": "boolean",
+                        "description": "Whether the profile view is shown"
+                      },
+                      "rotation": {
+                        "type": "number",
+                        "description": "Clockwise rotation of an image placement, degrees",
+                        "x-validation-rules": [
+                          "gte=-360",
+                          "lte=360"
+                        ]
+                      },
+                      "sizeGrade": {
+                        "type": "string",
+                        "description": "Node size grade: S1 (one cell, the default), S2 or S3"
+                      },
+                      "textFrame": {
+                        "type": "object",
+                        "description": "Text frame geometry (front-end managed)"
+                      },
+                      "textHeight": {
+                        "type": "number",
+                        "description": "Text-node box height, graph units",
+                        "x-validation-rules": [
+                          "gte=1"
+                        ]
+                      },
+                      "textNodeScale": {
+                        "type": "number",
+                        "description": "Text-node font scale multiplier",
+                        "x-validation-rules": [
+                          "gt=0"
+                        ]
+                      },
+                      "textSizing": {
+                        "type": "string",
+                        "description": "Text box sizing mode",
+                        "enum": [
+                          "auto",
+                          "fixedWidth",
+                          "fixed"
+                        ],
+                        "x-validation-rules": [
+                          "oneof=auto fixedWidth fixed"
+                        ]
+                      },
+                      "textWidth": {
+                        "type": "number",
+                        "description": "Text-node box width, graph units",
+                        "x-validation-rules": [
+                          "gte=1"
+                        ]
+                      },
+                      "userId": {
+                        "type": "integer",
+                        "description": "Author shown on a comment node: user id"
+                      },
+                      "userNick": {
+                        "type": "string",
+                        "description": "Author shown on a comment node: display name"
+                      },
+                      "width": {
+                        "type": "number",
+                        "description": "Box width in graph units: of a resizable placement (text, image), or of an actor's expanded content",
+                        "x-validation-rules": [
+                          "gte=1"
+                        ]
+                      },
+                      "zIndex": {
+                        "type": "integer",
+                        "description": "Stacking order: a higher value is drawn on top"
+                      }
+                    },
+                    "description": "Placement display settings"
+                  },
+                  "polygon": {
+                    "type": "array",
+                    "items": {
+                      "type": "array"
+                    },
+                    "description": "Polygon geometry as [x, y] points"
+                  },
+                  "position": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number",
+                        "description": "X coordinate on the layer"
+                      },
+                      "y": {
+                        "type": "number",
+                        "description": "Y coordinate on the layer"
+                      }
+                    },
+                    "description": "Position on the layer in graph units"
+                  },
+                  "starred": {
+                    "type": "boolean",
+                    "description": "Whether the caller starred this placement"
+                  }
+                }
+              },
+              "description": "Actor placements, most recently placed first"
+            }
+          }
+        }
+      },
+      "paramStructure": "by-name",
+      "tags": [
+        {
+          "name": "graph"
+        }
+      ],
+      "examples": [
+        {
+          "name": "The newest placements",
+          "description": "The newest placement is an actor the caller cannot see.",
+          "params": [
+            {
+              "name": "accId",
+              "value": "f54fd368-6ebf-427a-89a3-72283e320f6a"
+            },
+            {
+              "name": "actorId",
+              "value": "b1e6c3a8-7d24-4f9b-8e05-3a9d2c6f1b74"
+            },
+            {
+              "name": "limit",
+              "value": 2
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "list": [
+                {
+                  "accessDenied": true,
+                  "id": "7c1e9a24-5f3b-4d68-b0e2-9a4d6c8f1e35",
+                  "laId": 48813,
+                  "position": {
+                    "x": 400,
+                    "y": 100
+                  }
+                },
+                {
+                  "actor": {
+                    "color": "#d08c60",
+                    "createdAt": 1741252900,
+                    "data": {},
+                    "endDate": 1741252900,
+                    "formId": 27,
+                    "id": "e2b7d4c1-58a9-4f06-b3e2-7c9a1d0f5e84",
+                    "ref": "northwind",
+                    "startDate": 1741252900,
+                    "title": "Northwind Traders",
+                    "updatedAt": 1741252900,
+                    "userId": 997760298
+                  },
+                  "cellPosition": {
+                    "x": "I",
+                    "y": 1
+                  },
+                  "createdAt": 1763650120,
+                  "id": "e2b7d4c1-58a9-4f06-b3e2-7c9a1d0f5e84",
+                  "laId": 48812,
+                  "layerSettings": {
+                    "expand": false,
+                    "isCardView": true
+                  },
+                  "position": {
+                    "x": 400,
+                    "y": 0
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The next page, actors cut down to their title and account template",
+          "params": [
+            {
+              "name": "accId",
+              "value": "f54fd368-6ebf-427a-89a3-72283e320f6a"
+            },
+            {
+              "name": "actorId",
+              "value": "b1e6c3a8-7d24-4f9b-8e05-3a9d2c6f1b74"
+            },
+            {
+              "name": "limit",
+              "value": 2
+            },
+            {
+              "name": "offset",
+              "value": 2
+            },
+            {
+              "name": "fields",
+              "value": [
+                "id",
+                "title"
+              ]
+            },
+            {
+              "name": "with",
+              "value": [
+                "formTitle"
+              ]
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "list": [
+                {
+                  "actor": {
+                    "formTitle": "Orders",
+                    "id": "a55cd656-e33e-425c-9971-b0a258bfd914",
+                    "title": "Order #1042"
+                  },
+                  "cellPosition": {
+                    "x": "E",
+                    "y": 3
+                  },
+                  "createdAt": 1763650060,
+                  "id": "a55cd656-e33e-425c-9971-b0a258bfd914",
+                  "laId": 48811,
+                  "position": {
+                    "x": 200,
+                    "y": 100
+                  },
+                  "starred": true
+                },
+                {
+                  "actor": {
+                    "formTitle": "Warehouses",
+                    "id": "3f0c6a52-8b1e-4d7a-9c21-5e4b7d2a9f10",
+                    "title": "Kyiv warehouse"
+                  },
+                  "cellPosition": {
+                    "x": "A",
+                    "y": 1
+                  },
+                  "createdAt": 1763650000,
+                  "id": "3f0c6a52-8b1e-4d7a-9c21-5e4b7d2a9f10",
+                  "laId": 48810,
+                  "position": {
+                    "x": 0,
+                    "y": 0
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "x-scope": "actors.readonly",
+      "x-audience": "public"
+    }
+  ]
+}

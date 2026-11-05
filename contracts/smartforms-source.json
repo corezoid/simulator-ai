@@ -1,0 +1,6 @@
+{
+  "source": "public sim-api OpenRPC projection",
+  "projectionSha256": "abd3323ef7977c5ca3b44e80fecd704a9cd868131184c87efe8711f3023f83ec",
+  "methods": 13,
+  "refresh": "Select these exact public method descriptors (name, params, result, x-audience, x-scope) from the reviewed local public API artifact. Do not copy deployment metadata or private contracts. Update typed projections and contract tests together."
+}

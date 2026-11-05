@@ -1,0 +1,30 @@
+package mcpserver
+
+// graphTools are the legacy graph tools on single public methods (getEdge, updateEdge, deleteEdge,
+// getEdgeTypes, getLayerActorsPaginated, getLayerActors, manageLayerActors, moveActors,
+// cleanGraphLayer, existLayerElement, layerStats, searchLayerActors, getRelatedActors,
+// getLinkedActors, getActorLinks). createLink, massLink, deleteEdgesByNodes, updateLayerPositions,
+// getAllLayerPlacements, compactGraphLayout and pruneLongEdges have their own tools.
+var graphTools = []parityTool{
+	{Name: "edge_get", Method: "edge/get", Description: "Read one edge: type, source, target, label, linked actor, curve style, pinned."},
+	{Name: "edge_exist", Method: "edge/by-node/get", Description: "Check whether an edge of a type joins two actors (legacy existLink): list holds the source -> target edge first, then with bidirected the target -> source one; an empty list means there is none."},
+	{Name: "edge_update", Method: "edge/update", Description: "Change an edge's label (name), linked actor, curve style or pinned flag; only sent keys change."},
+	{Name: "edge_endpoints_update", Method: "edge/endpoints/update", Description: "Re-point an edge to another source and/or target actor, keeping its id and placements."},
+	{Name: "layer_edge_settings_save", Method: "graph/layer/edge_settings/save", Description: "Change how one edge placement looks on a layer (actorId the layer, laEdgeId the edge's laId from layer_get): lineStyle solid|dashed|dotted, width (integer from 1), color #RRGGBB, curveStyle, name (a label on this layer only), routingPoints. Sent keys merge into the stored ones; the edge and its other placements keep their look."},
+	{Name: "edge_delete", Method: "edge/delete", Description: "Delete an edge and its placements on every layer. Destructive: confirm with the user first."},
+	{Name: "edge_types_list", Method: "edge_type/list", Description: "List the workspace's edge types (id, name, isSystem, isTree) one page at a time; hierarchy is the usual one."},
+	{Name: "layer_placements_list", Method: "graph/layer/actors/list", Defaults: rowFields, Local: fullLocal, Shape: compactUnlessFull(placementRows), Description: "Read one page of a layer's node placements, newest first: laId, position, layerSettings (shape, picture, cellPosition with full) and the actor (id, title, formId unless you pass fields). limit up to 1000; a denied actor is a stub with accessDenied. Edges: layer_edges_list; all nodes: layer_placements_all."},
+	{Name: "layer_edges_list", Method: "graph/layer/edges/list", Local: fullLocal, Shape: compactUnlessFull(edgeRows), Description: "Read one page of a layer's edge placements: laId, laIdSource, laIdTarget, layerSettings and the edge's type, ends and label (full: all its keys). limit up to 1000."},
+	{Name: "layer_skeleton_get", Method: "graph/layer/skeleton/get", Local: fullLocal, Shape: compactUnlessFull(skeleton), Description: "Read a large layer's layout fast: node and edge placements (laId, id, position), optionally inside a box (x1,y1,x2,y2 graph units); at most 150 nodes and the edges between them, total and the nodes' box (truncated: read a region by box; full: all)."},
+	{Name: "layer_placements_manage", Method: "graph/layer/actors/manage", Description: "Add or remove placements on a layer in one transaction (1-500 items, deletes first): create node {id, position}, create edge {id, laIdSource, laIdTarget}, delete node/edge {id, laId?}. For flowchart blocks use layer_placements_create, which keeps them on the grid."},
+	{Name: "layer_actors_move", Method: "graph/layer/actors/move", Description: "Move placements from one layer to another, with their edges between moved nodes; 1-10 items name actors (and laId) with an optional new position."},
+	{Name: "layer_clean", Method: "graph/layer/clean", Description: "Remove every placement from a layer; actors and edges themselves stay. Destructive: confirm with the user first."},
+	{Name: "layer_element_exist", Method: "graph/layer/element/exist", Description: "Check whether an actor (type node) or edge (type edge) is already placed on a layer, before placing it again."},
+	{Name: "layer_stats_get", Method: "graph/layer/stats/get", Description: "Count a layer's nodes, edges and holes."},
+	{Name: "layer_actors_search", Method: "graph/layer/actors/search/list", Defaults: rowFields, Local: fullLocal, Shape: compactUnlessFull(placementRows), Description: "Search the actors placed on a layer by title (query); one page per call, id, title and formId per actor unless you pass fields."},
+	{Name: "graph_list", Method: "graph/list", Hierarchy: true, Defaults: rowFields, Description: "Walk one relation of an actor page by page (getRelatedActors): type children, parents or linked, along edgeTypeId (default hierarchy), filtered by the neighbours' formId/exceptFormId, title and dates, sorted by orderBy/orderValue; id, title, formId unless you pass fields. Over every edge type: graph_get."},
+	{Name: "hole_conditions_get", Method: "actor/hole/conditions/get", Description: "Dry run of hole_close for actorId: matched/total of the hole's conditions, each with its values and verdict, structural issues (fatal even with forceMerge), modify rights."},
+	{Name: "hole_reopen", Method: "actor/hole/revert", Description: "Undo hole_close: actorId is the CLOSER; the hole returns to its placements with the closer's current links and the closer leaves the layer (not deleted). layerId, holeActorId narrow it."},
+	{Name: "edge_hole_reopen", Method: "edge/hole/revert", Description: "Undo edge_hole_close: edgeId is the CLOSING edge; the placeholder link returns. layerId, holeEdgeId narrow it."},
+	{Name: "graph_get", Method: "graph/get", Defaults: rowFields, Description: "One step of the graph around an actor (getActorLinks; over all edge types getLinkedActors): the edges touching it, either direction, and the actors at their ends, oldest first; edgeTypeIds and pinned filter edges; sysLinkTypes adds synthetic relations (workspace, creator, owner, layers, layerActors). Nodes: id, title, formId unless you pass fields."},
+}

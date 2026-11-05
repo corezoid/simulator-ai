@@ -1,0 +1,7 @@
+{
+  "source": "public sim-api OpenRPC projection",
+  "revision": "0178ed493ecc5e24b389c57d596fd22b48e618c9",
+  "projectionSha256": "daf32b7355e6c06dccf45121cb40677293c1fa84a87f8c6d5b27c462e1390b6d",
+  "methods": 6,
+  "nativePlacementSource": "simulator-ui-kit 2e73d8c1d114d3334d3648d0a9ed93a47364e2eb graph-layer flowchartCommands.ts / geometry/flowchartShape.ts"
+}

@@ -1,0 +1,1669 @@
+{
+  "openrpc": "1.3.2",
+  "methods": [
+    {
+      "name": "app_file/create",
+      "params": [
+        {
+          "name": "operationId",
+          "schema": {
+            "type": "string",
+            "description": "Optional retry key: 1-128 ASCII letters/digits/underscore/dot/colon/hyphen, starting with a letter or digit. Explicit empty or null is invalid. Scoped to installation, authenticated principal, workspace and app_file/create. Same normalized request returns the original committed result; changed request returns operationConflict. Receipt and files commit together. Read back with app_file/operation/get. Omit to retain non-idempotent legacy behavior.",
+            "minLength": 1,
+            "maxLength": 128,
+            "x-validation-rules": [
+              "min=1",
+              "max=128"
+            ]
+          }
+        },
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "items",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "folderId": {
+                  "type": "integer",
+                  "description": "Live, writable folder of this Smart Form to create the file in",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "required",
+                    "min=1"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "description": "File text; omit for an empty file. A page config must pass the CDU catalog"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "File name, e.g. config, locale, viewModel; the renderer finds files by name. Not unique within the folder",
+                  "x-validation-rules": [
+                    "required"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Media type, stored as sent: application/json for JSON files, text/css for the LESS stylesheet",
+                  "x-validation-rules": [
+                    "required"
+                  ]
+                }
+              },
+              "required": [
+                "folderId",
+                "title",
+                "type"
+              ]
+            },
+            "description": "Files to create, one per item; created in one transaction",
+            "x-validation-rules": [
+              "required",
+              "min=1",
+              "dive"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "folderId": {
+                    "type": "integer",
+                    "description": "Containing folder id"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "File id"
+                  },
+                  "objType": {
+                    "type": "string",
+                    "description": "Always \"file\""
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "File source (opaque text: page config JSON, LESS, etc.)"
+                  },
+                  "sourceHash": {
+                    "type": "string",
+                    "description": "Lowercase sha256 hex of the source revision being returned. Operation lookup and keyed replay may return a historical revision; use a fresh file read for current state. Send the hash of the revision an edit is based on as ifMatchHash on app_file/update. File-version history rows instead describe the state before their write."
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "File title"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "File type (mime-ish, e.g. application/json)"
+                  }
+                }
+              },
+              "description": "File objects"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "app_file/operation/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id; requires current Modify access, even for a previously successful operation",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "method",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Original write method: app_file/create or app_file/update",
+            "enum": [
+              "app_file/create",
+              "app_file/update"
+            ],
+            "x-validation-rules": [
+              "required",
+              "oneof=app_file/create app_file/update"
+            ]
+          }
+        },
+        {
+          "name": "operationId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Original operationId, scoped to this installation, authenticated principal, workspace and method. Another principal cannot read it. Missing receipt is notFound; an expired retained key is operationResultExpired and must never be re-executed with a new key.",
+            "maxLength": 128,
+            "x-validation-rules": [
+              "required",
+              "max=128"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "folderId": {
+                    "type": "integer",
+                    "description": "Containing folder id"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "File id"
+                  },
+                  "objType": {
+                    "type": "string",
+                    "description": "Always \"file\""
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "File source (opaque text: page config JSON, LESS, etc.)"
+                  },
+                  "sourceHash": {
+                    "type": "string",
+                    "description": "Lowercase sha256 hex of the source revision being returned. Operation lookup and keyed replay may return a historical revision; use a fresh file read for current state. Send the hash of the revision an edit is based on as ifMatchHash on app_file/update. File-version history rows instead describe the state before their write."
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "File title"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "File type (mime-ish, e.g. application/json)"
+                  }
+                }
+              },
+              "description": "File objects"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "app_file/update",
+      "params": [
+        {
+          "name": "environmentPreconditions",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "envId": {
+                  "type": "integer",
+                  "description": "Environment of this Smart Form, from application/env/list; each environment may occur only once",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "required",
+                    "min=1"
+                  ]
+                },
+                "environmentHash": {
+                  "type": "string",
+                  "description": "Opaque content fingerprint from application/snapshot/get; covers source, metadata and mutation revision, including legacy ABA writes. Not credentials/settings.",
+                  "x-validation-rules": [
+                    "required",
+                    "len=64",
+                    "hexadecimal",
+                    "lowercase"
+                  ]
+                }
+              },
+              "required": [
+                "envId",
+                "environmentHash"
+              ]
+            },
+            "description": "Optional full-content CAS: 1-16 unique environments with hashes from application/snapshot/get. Requires operationId, plus ifMatchHash on every item. Must cover every source and destination environment. Checked under locks only on first execution; stale/uncovered environment is appEnvironmentChanged. Array order is normalized for retry identity. Omit/null for existing source-only CAS; empty array is invalid.",
+            "x-validation-rules": [
+              "min=1",
+              "max=16",
+              "dive"
+            ]
+          }
+        },
+        {
+          "name": "operationId",
+          "schema": {
+            "type": "string",
+            "description": "Optional retry key with app_file/create semantics, scoped to app_file/update. Explicit empty or null is invalid. Requires ifMatchHash on every item. A matching committed retry returns the original result without reapplying CAS or writes; current auth and actor Modify still apply. Changed request returns operationConflict. Omit for legacy behavior.",
+            "minLength": 1,
+            "maxLength": 128,
+            "x-validation-rules": [
+              "min=1",
+              "max=128"
+            ]
+          }
+        },
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "items",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "folderId": {
+                  "type": "integer",
+                  "description": "Live folder of the same Smart Form to move the file into; omit to keep",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "min=1"
+                  ]
+                },
+                "id": {
+                  "type": "integer",
+                  "description": "File to change",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "required",
+                    "min=1"
+                  ]
+                },
+                "ifMatchHash": {
+                  "type": "string",
+                  "description": "Optimistic-concurrency precondition: the sourceHash (lowercase sha256 hex of source) of the revision this edit is based on, as returned by app_file/get, app_file/update, app_file/create or application/struct. When set and it is not the hash of the file's current source, the WHOLE batch is refused with error code 1, reason appFileSourceMismatch, and data.reasonParams.files = [{id, title, source, sourceHash}] carrying the current server state of every mismatching file. Omit for last-write-wins."
+                },
+                "source": {
+                  "type": "string",
+                  "description": "New file text; omit to keep the current source. A page config must pass the CDU catalog"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "File name, always written: send the current one to keep it. A system file cannot be renamed",
+                  "x-validation-rules": [
+                    "required"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Media type, always written: send the current one to keep it",
+                  "x-validation-rules": [
+                    "required"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "type"
+              ]
+            },
+            "description": "Files to change, one per item; applied in one transaction",
+            "x-validation-rules": [
+              "required",
+              "min=1",
+              "dive"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "folderId": {
+                    "type": "integer",
+                    "description": "Containing folder id"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "File id"
+                  },
+                  "objType": {
+                    "type": "string",
+                    "description": "Always \"file\""
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "File source (opaque text: page config JSON, LESS, etc.)"
+                  },
+                  "sourceHash": {
+                    "type": "string",
+                    "description": "Lowercase sha256 hex of the source revision being returned. Operation lookup and keyed replay may return a historical revision; use a fresh file read for current state. Send the hash of the revision an edit is based on as ifMatchHash on app_file/update. File-version history rows instead describe the state before their write."
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "File title"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "File type (mime-ish, e.g. application/json)"
+                  }
+                }
+              },
+              "description": "File objects"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "app_folder/create",
+      "params": [
+        {
+          "name": "operationId",
+          "schema": {
+            "type": "string",
+            "description": "Optional retry key with app_file/create rules; explicit empty/null is invalid. Scoped to authenticated principal, installation, workspace and app_folder/create. Receipt and folders commit together. Same normalized input returns the original folders after reauthorizing; changed input is operationConflict. Recover through app_folder/operation/get. Omit for existing non-idempotent behavior.",
+            "minLength": 1,
+            "maxLength": 128,
+            "x-validation-rules": [
+              "min=1",
+              "max=128"
+            ]
+          }
+        },
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "items",
+          "required": true,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "folderId": {
+                  "type": "integer",
+                  "description": "Parent folder: the environment's root folder (rootFolderId of application/env/list) or a folder below it. It also decides the environment",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "required",
+                    "min=1"
+                  ]
+                },
+                "isStatic": {
+                  "type": "boolean",
+                  "description": "Editor flag, stored and carried into releases; the server attaches no behavior to it"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Folder name; the renderer finds pages/<page>/, definitions/ and styles/ by name. Not unique within the parent",
+                  "x-validation-rules": [
+                    "required"
+                  ]
+                }
+              },
+              "required": [
+                "folderId",
+                "title"
+              ]
+            },
+            "description": "Folders to create, one per item; created in one transaction",
+            "x-validation-rules": [
+              "required",
+              "min=1",
+              "dive"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "folders": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "folderId": {
+                    "type": "integer",
+                    "description": "Parent folder id (null at env root)"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "Folder id"
+                  },
+                  "isStatic": {
+                    "type": "boolean",
+                    "description": "Whether the folder is static"
+                  },
+                  "objType": {
+                    "type": "string",
+                    "description": "Always \"folder\""
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Folder title"
+                  }
+                }
+              },
+              "description": "Folder objects"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "app_folder/operation/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id; current Modify required even after a successful operation",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "operationId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Original app_folder/create operationId in this installation/principal/workspace. Missing receipt is notFound; retained key with removed result is operationResultExpired, never a new creation.",
+            "maxLength": 128,
+            "x-validation-rules": [
+              "required",
+              "max=128"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "folders": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "folderId": {
+                    "type": "integer",
+                    "description": "Parent folder id (null at env root)"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "Folder id"
+                  },
+                  "isStatic": {
+                    "type": "boolean",
+                    "description": "Whether the folder is static"
+                  },
+                  "objType": {
+                    "type": "string",
+                    "description": "Always \"folder\""
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Folder title"
+                  }
+                }
+              },
+              "description": "Folder objects"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "application/create",
+      "params": [
+        {
+          "name": "operationId",
+          "schema": {
+            "type": "string",
+            "description": "Optional retry key with app_file/create rules; explicit empty/null is invalid. Keyed creation requires corezoidCredentials omitted/null; configure credentials separately after creation. Actor identity, seed content and receipt commit atomically. Same key/input returns the original result after checking current Modify on the created actor; changed input is operationConflict. Read back with application/operation/get. Omit for existing unkeyed behavior.",
+            "minLength": 1,
+            "maxLength": 128,
+            "x-validation-rules": [
+              "min=1",
+              "max=128"
+            ]
+          }
+        },
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "ref",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form short name, unique among the workspace's Smart Forms: ^[0-9a-zA-Z_-]{5,255}$. Pages are addressed by it (scriptRef), and the first production release suggests the short-URL key from it",
+            "minLength": 5,
+            "maxLength": 255,
+            "x-validation-rules": [
+              "required",
+              "min=5",
+              "max=255"
+            ]
+          }
+        },
+        {
+          "name": "title",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Title",
+            "maxLength": 255,
+            "x-validation-rules": [
+              "required",
+              "max=255"
+            ]
+          }
+        },
+        {
+          "name": "description",
+          "schema": {
+            "type": "string",
+            "description": "Description"
+          }
+        },
+        {
+          "name": "sharedWith",
+          "schema": {
+            "type": "string",
+            "description": "Who may open the Smart Form: userList (its access list; the default), allWorkspaceUsers, allRegisteredUsers, anyone (guests too)",
+            "enum": [
+              "userList",
+              "allWorkspaceUsers",
+              "allRegisteredUsers",
+              "anyone"
+            ],
+            "x-validation-rules": [
+              "oneof=userList allWorkspaceUsers allRegisteredUsers anyone"
+            ]
+          }
+        },
+        {
+          "name": "cduVersion",
+          "schema": {
+            "type": "integer",
+            "description": "Page protocol: send 2 for a Smart Form rendered with page/render and served by short URLs. Absent means the legacy protocol"
+          }
+        },
+        {
+          "name": "corezoidCredentials",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "develop": {
+                "type": "object",
+                "description": "Credentials of the develop environment: {procId, companyId, apiLogin, apiSecret}"
+              },
+              "production": {
+                "type": "object",
+                "description": "Credentials of the production environment, same shape"
+              }
+            },
+            "description": "Corezoid credentials per environment; either may be left out and set later with application/env/update"
+          }
+        },
+        {
+          "name": "picture",
+          "schema": {
+            "type": "string",
+            "description": "Avatar: a storage file name from POST /api/2.0/rest/upload",
+            "maxLength": 255,
+            "x-validation-rules": [
+              "max=255"
+            ]
+          }
+        },
+        {
+          "name": "color",
+          "schema": {
+            "type": "string",
+            "description": "Actor color; defaults to the Scripts system template's",
+            "maxLength": 32,
+            "x-validation-rules": [
+              "max=32"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "application": {
+              "type": "object",
+              "properties": {
+                "accId": {
+                  "type": "string",
+                  "description": "Workspace id"
+                },
+                "color": {
+                  "type": "string",
+                  "description": "Actor color"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "description": "Unix seconds"
+                },
+                "data": {
+                  "type": "object",
+                  "description": "Actor data: cduVersion (2 = rendered with page/render), sharedWith ([{value}]), and corezoid when an install linked a Corezoid project"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Description"
+                },
+                "formId": {
+                  "type": "integer",
+                  "description": "The workspace's Scripts system template, which every Smart Form is an actor of"
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Smart Form actor id"
+                },
+                "picture": {
+                  "type": "string",
+                  "description": "Avatar: a storage file name"
+                },
+                "ref": {
+                  "type": "string",
+                  "description": "Smart Form short name: the scriptRef that page/render and technical URLs address it by"
+                },
+                "status": {
+                  "type": "string",
+                  "description": "Actor status"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Title"
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "description": "Unix seconds"
+                }
+              },
+              "description": "Smart Form actor at creation. Receipt/readback is historical; use application/get for current metadata."
+            },
+            "envs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "actorId": {
+                    "type": "string",
+                    "description": "Smart Form actor id"
+                  },
+                  "corezoidCredentials": {
+                    "type": "object",
+                    "description": "The Corezoid process this environment calls for page data and submits: {procId, companyId, apiLogin, apiSecret}, plus projectId and stageId when an install or corezoid/project/bind wrote them. {} when none is set \u2014 and in application/env/list for a caller without modify. apiSecret is returned only by application/env/list and application/env/update"
+                  },
+                  "createdAt": {
+                    "type": "integer",
+                    "description": "Unix seconds"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "Environment id"
+                  },
+                  "isSystem": {
+                    "type": "boolean",
+                    "description": "True for the two environments every Smart Form is created with"
+                  },
+                  "ownerId": {
+                    "type": "integer",
+                    "description": "User who created the environment"
+                  },
+                  "readonly": {
+                    "type": "boolean",
+                    "description": "True for production: its folders and files are written only by a release (release/create), never by app_folder/* or app_file/*"
+                  },
+                  "rootFolderId": {
+                    "type": "integer",
+                    "description": "Root folder of the environment's file tree: the folderId for app_folder/create and app_file/create at the top level. Absent in application/create's answer \u2014 read it with application/env/list"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "develop or production"
+                  },
+                  "updatedAt": {
+                    "type": "integer",
+                    "description": "Unix seconds"
+                  }
+                }
+              },
+              "description": "Its develop and production environments at creation, without apiSecret. Keyed creation/readback has empty credentials and never includes settings added later; use application/env/list for current state."
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "application/env/list",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "canModify": {
+              "type": "boolean",
+              "description": "Whether the caller has modify on the Smart Form; without it every corezoidCredentials is {}"
+            },
+            "envs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "actorId": {
+                    "type": "string",
+                    "description": "Smart Form actor id"
+                  },
+                  "corezoidCredentials": {
+                    "type": "object",
+                    "description": "The Corezoid process this environment calls for page data and submits: {procId, companyId, apiLogin, apiSecret}, plus projectId and stageId when an install or corezoid/project/bind wrote them. {} when none is set \u2014 and in application/env/list for a caller without modify. apiSecret is returned only by application/env/list and application/env/update"
+                  },
+                  "createdAt": {
+                    "type": "integer",
+                    "description": "Unix seconds"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "Environment id"
+                  },
+                  "isSystem": {
+                    "type": "boolean",
+                    "description": "True for the two environments every Smart Form is created with"
+                  },
+                  "ownerId": {
+                    "type": "integer",
+                    "description": "User who created the environment"
+                  },
+                  "readonly": {
+                    "type": "boolean",
+                    "description": "True for production: its folders and files are written only by a release (release/create), never by app_folder/* or app_file/*"
+                  },
+                  "rootFolderId": {
+                    "type": "integer",
+                    "description": "Root folder of the environment's file tree: the folderId for app_folder/create and app_file/create at the top level. Absent in application/create's answer \u2014 read it with application/env/list"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "develop or production"
+                  },
+                  "updatedAt": {
+                    "type": "integer",
+                    "description": "Unix seconds"
+                  }
+                }
+              },
+              "description": "develop and production, in creation order"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.readonly",
+      "x-audience": "public"
+    },
+    {
+      "name": "application/operation/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "operationId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Original application/create operationId for this installation, principal and workspace. Requires current Modify access to the actor bound to the receipt. Returns historical creation data, not current settings or credentials; missing receipt is notFound, retained key without result is operationResultExpired.",
+            "maxLength": 128,
+            "x-validation-rules": [
+              "required",
+              "max=128"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "application": {
+              "type": "object",
+              "properties": {
+                "accId": {
+                  "type": "string",
+                  "description": "Workspace id"
+                },
+                "color": {
+                  "type": "string",
+                  "description": "Actor color"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "description": "Unix seconds"
+                },
+                "data": {
+                  "type": "object",
+                  "description": "Actor data: cduVersion (2 = rendered with page/render), sharedWith ([{value}]), and corezoid when an install linked a Corezoid project"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Description"
+                },
+                "formId": {
+                  "type": "integer",
+                  "description": "The workspace's Scripts system template, which every Smart Form is an actor of"
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Smart Form actor id"
+                },
+                "picture": {
+                  "type": "string",
+                  "description": "Avatar: a storage file name"
+                },
+                "ref": {
+                  "type": "string",
+                  "description": "Smart Form short name: the scriptRef that page/render and technical URLs address it by"
+                },
+                "status": {
+                  "type": "string",
+                  "description": "Actor status"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Title"
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "description": "Unix seconds"
+                }
+              },
+              "description": "Smart Form actor at creation. Receipt/readback is historical; use application/get for current metadata."
+            },
+            "envs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "actorId": {
+                    "type": "string",
+                    "description": "Smart Form actor id"
+                  },
+                  "corezoidCredentials": {
+                    "type": "object",
+                    "description": "The Corezoid process this environment calls for page data and submits: {procId, companyId, apiLogin, apiSecret}, plus projectId and stageId when an install or corezoid/project/bind wrote them. {} when none is set \u2014 and in application/env/list for a caller without modify. apiSecret is returned only by application/env/list and application/env/update"
+                  },
+                  "createdAt": {
+                    "type": "integer",
+                    "description": "Unix seconds"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "Environment id"
+                  },
+                  "isSystem": {
+                    "type": "boolean",
+                    "description": "True for the two environments every Smart Form is created with"
+                  },
+                  "ownerId": {
+                    "type": "integer",
+                    "description": "User who created the environment"
+                  },
+                  "readonly": {
+                    "type": "boolean",
+                    "description": "True for production: its folders and files are written only by a release (release/create), never by app_folder/* or app_file/*"
+                  },
+                  "rootFolderId": {
+                    "type": "integer",
+                    "description": "Root folder of the environment's file tree: the folderId for app_folder/create and app_file/create at the top level. Absent in application/create's answer \u2014 read it with application/env/list"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "develop or production"
+                  },
+                  "updatedAt": {
+                    "type": "integer",
+                    "description": "Unix seconds"
+                  }
+                }
+              },
+              "description": "Its develop and production environments at creation, without apiSecret. Keyed creation/readback has empty credentials and never includes settings added later; use application/env/list for current state."
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "application/snapshot/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor identifier; current View required",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "envId",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "Environment of this Smart Form, from application/env/list",
+            "minimum": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "environmentHash": {
+              "type": "string",
+              "description": "Opaque lowercase SHA-256 fingerprint of all persisted files/folders (including metadata, trash and disconnected rows) and the database content mutation revision. Couples with tree from the same locked snapshot. Does not fingerprint environment credentials or actor settings."
+            },
+            "tree": {
+              "type": "object",
+              "properties": {
+                "children": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  },
+                  "description": "Child folders and files"
+                },
+                "id": {
+                  "type": "integer",
+                  "description": "Object id"
+                },
+                "isStatic": {
+                  "type": "boolean",
+                  "description": "Static folder flag"
+                },
+                "isSystem": {
+                  "type": "boolean",
+                  "description": "System object flag"
+                },
+                "objType": {
+                  "type": "string",
+                  "description": "\"folder\" or \"file\""
+                },
+                "source": {
+                  "type": "string",
+                  "description": "File source (files only)"
+                },
+                "sourceHash": {
+                  "type": "string",
+                  "description": "Lowercase sha256 hex of the file's current source (files only); usable as ifMatchHash on app_file/update"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Object title"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "File type (files only)"
+                }
+              },
+              "description": "Live folder/file tree from the same snapshot; includes file sources. No environment credentials or checkpoint history."
+            }
+          }
+        }
+      },
+      "x-scope": "actors.readonly",
+      "x-audience": "public"
+    },
+    {
+      "name": "release/create",
+      "params": [
+        {
+          "name": "operationId",
+          "schema": {
+            "type": "string",
+            "description": "Optional retry key with app_file/create rules; explicit empty/null is invalid. Requires both expected environment hashes. Snapshot, materialization, active route and receipt commit in one transaction. Same key/input returns the original manifest after reauthorizing; changed input is operationConflict. Duplicate claim timeout is notAvailable with unresolved outcome: keep the same key and original input for lookup/retry. Omit for the existing unkeyed release flow.",
+            "minLength": 1,
+            "maxLength": 128,
+            "x-validation-rules": [
+              "min=1",
+              "max=128"
+            ]
+          }
+        },
+        {
+          "name": "expectedSourceEnvironmentHash",
+          "schema": {
+            "type": "string",
+            "description": "Content fingerprint from application/snapshot/get for sourceEnvId. Required with operationId; nonempty values require a key. Checked under lock only on first execution; mismatch is appEnvironmentChanged. Covers files/folders/revision, not credentials or actor settings.",
+            "x-validation-rules": [
+              "len=64",
+              "hexadecimal",
+              "lowercase"
+            ]
+          }
+        },
+        {
+          "name": "expectedTargetEnvironmentHash",
+          "schema": {
+            "type": "string",
+            "description": "Content fingerprint from application/snapshot/get for targetEnvId; required with operationId to prevent overwriting a concurrent release/content edit. Replays return their original result without checking current hashes again.",
+            "x-validation-rules": [
+              "len=64",
+              "hexadecimal",
+              "lowercase"
+            ]
+          }
+        },
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "sourceEnvId",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "Env to take the content from (an env id from application/env/list)",
+            "minimum": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "targetEnvId",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "Env whose content is replaced; must differ from sourceEnvId",
+            "minimum": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "actorId": {
+              "type": "string",
+              "description": "The Smart Form actor the release belongs to"
+            },
+            "archivedAt": {
+              "type": "integer",
+              "description": "When the release stopped being active, Unix seconds"
+            },
+            "createdAt": {
+              "type": "integer",
+              "description": "When the release was made, Unix seconds"
+            },
+            "description": {
+              "type": "string",
+              "description": "Release description; a rollback copies the restored release's"
+            },
+            "envId": {
+              "type": "integer",
+              "description": "Target environment: the env whose content the release replaced"
+            },
+            "id": {
+              "type": "integer",
+              "description": "Release id"
+            },
+            "linkId": {
+              "type": "string",
+              "description": "Remote deploy only: the peer link the release came through from another environment (remote/link/list); its title names the source, e.g. Remote \u00b7 sim-dev #14"
+            },
+            "parentReleaseId": {
+              "type": "integer",
+              "description": "Rollback only: the earlier release whose content this one restored"
+            },
+            "prunedByRetention": {
+              "type": "boolean",
+              "description": "Whether the snapshot was pruned at this returned revision. Only the newest 5 releases retain objects; receipt/replay may be historical, so use release/get before relying on current availability."
+            },
+            "releaseNumber": {
+              "type": "integer",
+              "description": "Number of the release within its env: 1, 2, 3, \u2026 (the vN of a rollback title)"
+            },
+            "sourceEnvId": {
+              "type": "integer",
+              "description": "Env the tree was taken from: the source env of a deploy; for a rollback, the env itself"
+            },
+            "status": {
+              "type": "string",
+              "description": "Status at the returned revision: active, archived, rolled_back or failed. A receipt/keyed replay is historical; use release/get to verify what the environment holds now."
+            },
+            "title": {
+              "type": "string",
+              "description": "Release title the server sets: Deploy from <source env> or Rolled back to v<N>"
+            },
+            "userId": {
+              "type": "integer",
+              "description": "User who deployed or rolled back"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "release/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "releaseId",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "Release id",
+            "minimum": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "actorId": {
+              "type": "string",
+              "description": "The Smart Form actor the release belongs to"
+            },
+            "archivedAt": {
+              "type": "integer",
+              "description": "When the release stopped being active, Unix seconds"
+            },
+            "createdAt": {
+              "type": "integer",
+              "description": "When the release was made, Unix seconds"
+            },
+            "description": {
+              "type": "string",
+              "description": "Release description; a rollback copies the restored release's"
+            },
+            "envId": {
+              "type": "integer",
+              "description": "Target environment: the env whose content the release replaced"
+            },
+            "id": {
+              "type": "integer",
+              "description": "Release id"
+            },
+            "linkId": {
+              "type": "string",
+              "description": "Remote deploy only: the peer link the release came through from another environment (remote/link/list); its title names the source, e.g. Remote \u00b7 sim-dev #14"
+            },
+            "parentReleaseId": {
+              "type": "integer",
+              "description": "Rollback only: the earlier release whose content this one restored"
+            },
+            "prunedByRetention": {
+              "type": "boolean",
+              "description": "Whether the snapshot was pruned at this returned revision. Only the newest 5 releases retain objects; receipt/replay may be historical, so use release/get before relying on current availability."
+            },
+            "releaseNumber": {
+              "type": "integer",
+              "description": "Number of the release within its env: 1, 2, 3, \u2026 (the vN of a rollback title)"
+            },
+            "sourceEnvId": {
+              "type": "integer",
+              "description": "Env the tree was taken from: the source env of a deploy; for a rollback, the env itself"
+            },
+            "status": {
+              "type": "string",
+              "description": "Status at the returned revision: active, archived, rolled_back or failed. A receipt/keyed replay is historical; use release/get to verify what the environment holds now."
+            },
+            "title": {
+              "type": "string",
+              "description": "Release title the server sets: Deploy from <source env> or Rolled back to v<N>"
+            },
+            "userId": {
+              "type": "integer",
+              "description": "User who deployed or rolled back"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.readonly",
+      "x-audience": "public"
+    },
+    {
+      "name": "release/operation/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id; current Modify required even after a successful release",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "operationId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Original release/create operationId, scoped to this authenticated principal/workspace/installation. Returns the original committed manifest, not current status or retention; use release/get for current state. Missing key is notFound; retained key with removed result is operationResultExpired, never a new release.",
+            "maxLength": 128,
+            "x-validation-rules": [
+              "required",
+              "max=128"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "actorId": {
+              "type": "string",
+              "description": "The Smart Form actor the release belongs to"
+            },
+            "archivedAt": {
+              "type": "integer",
+              "description": "When the release stopped being active, Unix seconds"
+            },
+            "createdAt": {
+              "type": "integer",
+              "description": "When the release was made, Unix seconds"
+            },
+            "description": {
+              "type": "string",
+              "description": "Release description; a rollback copies the restored release's"
+            },
+            "envId": {
+              "type": "integer",
+              "description": "Target environment: the env whose content the release replaced"
+            },
+            "id": {
+              "type": "integer",
+              "description": "Release id"
+            },
+            "linkId": {
+              "type": "string",
+              "description": "Remote deploy only: the peer link the release came through from another environment (remote/link/list); its title names the source, e.g. Remote \u00b7 sim-dev #14"
+            },
+            "parentReleaseId": {
+              "type": "integer",
+              "description": "Rollback only: the earlier release whose content this one restored"
+            },
+            "prunedByRetention": {
+              "type": "boolean",
+              "description": "Whether the snapshot was pruned at this returned revision. Only the newest 5 releases retain objects; receipt/replay may be historical, so use release/get before relying on current availability."
+            },
+            "releaseNumber": {
+              "type": "integer",
+              "description": "Number of the release within its env: 1, 2, 3, \u2026 (the vN of a rollback title)"
+            },
+            "sourceEnvId": {
+              "type": "integer",
+              "description": "Env the tree was taken from: the source env of a deploy; for a rollback, the env itself"
+            },
+            "status": {
+              "type": "string",
+              "description": "Status at the returned revision: active, archived, rolled_back or failed. A receipt/keyed replay is historical; use release/get to verify what the environment holds now."
+            },
+            "title": {
+              "type": "string",
+              "description": "Release title the server sets: Deploy from <source env> or Rolled back to v<N>"
+            },
+            "userId": {
+              "type": "integer",
+              "description": "User who deployed or rolled back"
+            }
+          }
+        }
+      },
+      "x-scope": "actors.management",
+      "x-audience": "public"
+    },
+    {
+      "name": "route/key/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Smart Form actor id, as in release/list",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "activeReleaseId": {
+              "type": "integer",
+              "description": "Production release the short URL serves right now. Absent with appKey, and also while the key has no active release (its first release not yet committed, or that release deleted): the key then resolves nothing."
+            },
+            "appKey": {
+              "type": "string",
+              "description": "The Smart Form's short key, canonical lowercase: its short URL is /sf/{appKey}. Absent when the Smart Form was never released to production or its key was retired."
+            },
+            "suggestedAppKey": {
+              "type": "string",
+              "description": "The key the Smart Form's ref suggests, to prefill the editor's key field: the ref lowercased, _ and spaces as -, other characters dropped, hyphens collapsed and trimmed. Present only when that is a valid, non-reserved key; whether it is free is route/key/check's answer. The first production release mints this key when it is free and no key was set."
+            }
+          }
+        }
+      },
+      "x-scope": "actors.readonly",
+      "x-audience": "public"
+    }
+  ]
+}
