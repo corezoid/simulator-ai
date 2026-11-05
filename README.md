@@ -119,7 +119,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 51 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 54 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -260,17 +260,18 @@ for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `u
 `accounts_list`, `transfer_create`, `transaction_create`, `form_create`, `form_fields_patch`, `form_update`,
 `form_account_create`, `chat_open` and `actor_attach`, and for a Smart Form's business logic `corezoid_project_create` and
 `corezoid_project_get`, `layer_viewport` to show the user what the answer is about, `hole_close` to close a placeholder
-and `actor_delete` for a delete named outside a layer: 51 in all (`smart_form_folders_create` is there because a form of more
+`actor_delete` for a delete named outside a layer, `smart_form_page_patch` to change part of a page and
+`smart_form_reference_grep` / `smart_form_reference_read` to look the CDU format up: 54 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page; `internal/mcpserver/console.go` says why each later one is). `console-full` adds every other actor, form, graph, access, reaction, user,
 attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
-transcript tool, hole reopen, Pencil drawing, layer settings and nodes opened in place (189 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+transcript tool, hole reopen, Pencil drawing, layer settings and nodes opened in place (192 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Tool groups: every console tool in `tools/list` carries `_meta: {"simulator-ai/groups": [...]}`, so the Hermes relay
 can give a run `core` and only the domains its request needs (`internal/mcpserver/console_groups.go`; a tool may sit
 in several groups, each group with `core` is enough for its domain). The baseline without the relay is the plain
-`console` profile, the 51 tools named in `consoleCoreTools`, not the union of groups: `core`, `graph`, `smart_forms`,
-`forms`, `finance`, `people` and `files` together contain those 51 and more (the graph edits, the Smart Form history,
+`console` profile, the 54 tools named in `consoleCoreTools`, not the union of groups: `core`, `graph`, `smart_forms`,
+`forms`, `finance`, `people` and `files` together contain those 54 and more (the graph edits, the Smart Form history,
 ...). Sizes are the tools' `tools/list` entries (`go test ./internal/mcpserver -run GroupSizes -v`, which also keeps each group within 55 KiB;
 output schemas carry no `additionalProperties: false`, which only cost context):
 
@@ -278,7 +279,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | --- | --: | --: | --- |
 | `core` | 14 | 22.9 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
 | `graph` | 43 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings, nodes opened in place (at the 55 KiB bound: the next graph tool needs a split) |
-| `smart_forms` | 21 | 23.9 | Smart Form pages, data template, releases, history, trash, test runs, its Corezoid project |
+| `smart_forms` | 24 | 30.3 | Smart Form pages, the CDU reference, data template, releases, history, trash, test runs, its Corezoid project |
 | `forms` | 13 | 24.2 | Account Templates: create, change field by field, tree, their accounts, records filtered by data |
 | `finance` | 18 | 26.6 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
 | `finance_setup` | 40 | 47.5 | currencies and account names, formulas, tags, triggers, counters, limits and status, atomic posts, by-ref variants |
@@ -289,7 +290,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | `charts` | 5 | 10.9 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 189 | 250.6 | |
+| all (`console-full`) | 191 | 254.2 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
@@ -329,9 +330,11 @@ another, never on a new one.
 | `layer_draw` (`console-full`) | `internal/drawing` PNG (2 px per unit, as the editor's Pencil confirm) → `rest/upload` → atomic `actor/create` (layer's `defForm`, `picture`, `pictureObject`) + `graph/layer/actors/manage` (`layerSettings.image`) + `attachment/attach` | `{actorId, laId, picture, position, cell, width, height}` |
 | `layer_settings_update` (`console-full`) | names → `account_name/list` / `account_currency/list`; `form/get` for the `defForm` title; one `actor/update` of the layer's `data` | `{layerId, keys}` |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
-| `smart_form_components` | `cdu/catalog/get` | with `brief` every type's kind, category and label; with `types` the props the validator applies, events, state and api |
+| `smart_form_components` | `cdu/catalog/get` | with `brief` every type's kind, category and label; with `types` or `kind` one line per prop, event, state key and api method (TypeScript-like, `$ref`s resolved, enums inlined, inherited HTML/aria/on* attributes left out; Stack+Form 60 KB of schema → 4.7 KB); `schema: true` the validator's JSON Schemas |
+| `smart_form_reference_grep` / `smart_form_reference_read` | `cdu/catalog/get` (all types, once per 10 minutes per process) for `components`; `protocol` and `examples` are embedded | plain text, grep-like: case-insensitive RE2 hits `doc:line: text` with context lines and the section heading (≈ 6 000 chars at most); reads by line or by section `doc/<section>` (8 000 chars a page); see "CDU reference" |
 | `smart_form_data_form_create` | `form/create` (data template) | formId and a ready page whose button submits via `form/submit` into it |
-| `smart_form_files_get` | `application/env/list` + `application/struct` (develop) | folders/files by path, optional sources, `developEnvId`, `productionEnvId` |
+| `smart_form_files_get` | `application/env/list` + `application/struct` (develop); with `paths` + `app_file/get` per named file | folders/files by path, optional sources (`paths`: only the named files and folders, each file with its source; `missing`), `developEnvId`, `productionEnvId` |
+| `smart_form_page_patch` | `application/env/list` + `application/struct` (by `path`) + `app_file/get` + `app_file/update` (`ifMatchHash` = the hash read) | RFC 6902 ops (add, replace, remove, move, copy, test; with `nodeId` relative to that tree node) on one develop JSON file (a page config or a definition `definitions/<name>`; a `$ref` instance takes no type, props, children or actions), all or none: `{appId, fileId, path, sourceHash, applied}`, never the source |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
 | `smart_form_folders_create` | `app_folder/create` | folders with ids (a page is `pages/<page>`) |
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
@@ -359,14 +362,36 @@ template title (its first 255 characters), so every record of a template without
 title; text of the agent holding `{{` is written as a JSONata string literal, so the renderer shows it as typed;
 the stand must serve `form/submit`. A submit needs View on the template, which only its creator has, so the page
 passes `appId`: `form/submit` then lets whoever may open that Smart Form (its `sharedWith`, as `smart_form_create`
-set it) submit into a template its released page names. Page writes refuse inputs with an action-less button but no Form, a Form that neither a form.submit names
-nor any action passes on (`vm.<valueKey>` in a `simapi.call`, `widget.call`, `bus.publish`, `navigate.local`/`navigate.route` or `copy`; their `onError`/`notify` follow-ups do not count), a `form/submit` without a template and a `formData`
+set it) submit into a template its released page names. Page writes refuse a `form/submit` without a template and a `formData`
 filter reading another Form, and set its `accId` to the host workspace and its `appId` to that Smart Form; other submits (via Corezoid, other
-methods) are left as they are. Then
-`smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`. Its
+methods) are left as they are. A page that sends nothing yet (inputs with an action-less button but no Form, a Form that neither a form.submit names
+nor any action passes on: `vm.<valueKey>` in a `simapi.call`, `widget.call`, `bus.publish`, `navigate.local`/`navigate.route` or `copy`, their `onError`/`notify` follow-ups not counting)
+is saved with `pending` naming what is missing, so a large page can be built section by section; `smart_form_release` reads the develop
+page configs (`application/struct` with sources) and refuses to release one still in that state. Then
+`smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`; a later change to a page is
+`smart_form_files_get {paths}` → `smart_form_reference_grep` / `smart_form_reference_read` (or
+`smart_form_components {types}`) → `smart_form_page_patch` by `nodeId`. Its
 `ready: true` (status `active`, snapshot kept, production env) comes with `marker: "appId: <appId>"`. The
 agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries
 no tool results) to put `appId` into the reply reaction with `appSettings.autorun`.
+
+### CDU reference
+
+The Console agent has no file system and Hermes spills a tool answer over 50 000 chars to a file it cannot
+read, so the CDU v2 format is three documents it greps and reads by line, as Claude Code greps the sources:
+
+| Document | Source | Size (develop, 2026-11-05) |
+| --- | --- | --: |
+| `components` | the stand's `cdu/catalog/get` (every type, the catalog sim-api validates against) in `smart_form_components`' compact lines, one `## <Type> (kind, category)` section per type, plus each type's purpose, children and the editor's prop examples from `cdureference/types.json` | 98 types, 1 974 lines, 183 KB |
+| `protocol` | sim-api `internal/cdu/catalog/contracts/<protocol>/page-config.schema.json` (keys, types, required) and the ui-kit help bundle `packages/cdu-catalog/cdu-help.json` (expression context, concepts); the definition rules a local stand showed (save, render, release) are the generator's own text | 315 lines, 30 KB |
+| `examples` | six CI-validated pages of ui-kit `docs/cdu-examples` (a form with validation, a wizard, a data grid, a Row/Col/Card/Tabs layout, a loop list, routes) split into their Smart Form files; `apps/cdu-lab` fixtures are block benches without a Form or a Table | 1 350 lines, 41 KB |
+
+`protocol`, `examples` and `types.json` live in `internal/mcpserver/cdureference`, written by
+`cmd/gen-cdu-reference` (`make generate`) from both repositories at `origin/develop` read through git
+(`SIM_API_DIR`, `UI_KIT_DIR`, default the checkouts next to this one); each records the two commits, and
+`make gen-check` regenerates at those commits (skipped where a checkout lacks them). Typical answers: grep
+`gap|spacing` 4.0 KB (Stack `size`, Row `gutter`, …), `DatePicker` 0.4 KB, then
+`components/DatePicker` 2.5 KB; `form\.submit` is cut at 6 KB with a note to narrow it.
 
 ### Live smoke on a local stand
 
@@ -424,7 +449,7 @@ without workspace roles sees only system templates.
 OpenRPC digest. [public-openrpc.json](contracts/public-openrpc.json) is a projection containing
 only the three public methods, copied from a locally generated public document. The Go
 client's request types and returned metadata types are generated from that pinned source.
-`make generate` updates code; `make gen-check` detects drift. Never import private/full RPC
+`make generate` updates code and the CDU reference documents; `make gen-check` detects drift. Never import private/full RPC
 snapshots or widen the catalog as a side effect of regeneration.
 
 To refresh after a reviewed backend contract change, export `cmd/api-contract -public` from

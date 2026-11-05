@@ -133,3 +133,40 @@ func TestPatchFormFieldsNeedsModify(t *testing.T) {
 		t.Fatal("patched outside the console profile")
 	}
 }
+
+// Review fixes: settings merge into the current ones, null section is "not given", a section the
+// patch empties is refused, and values the op does not touch are not re-validated.
+func TestPatchFormFieldsReviewRules(t *testing.T) {
+	legacy := `{"canModify":true,"editToken":"v1:t1","form":{"settings":{"hideAfterSend":false,"keep":1},"sections":[` +
+		`{"title":"main","content":[{"id":"old","class":"edit","type":"number","visibility":"shown","title":"Old"}]},{"title":"tech","content":[{"id":"t","class":"check"}]}]}}`
+	c, calls := patchBackend(t, legacy, `{"editToken":"v1:t2"}`)
+	raw := func(s string) json.RawMessage { return json.RawMessage(s) }
+	_, err := c.PatchFormFields(context.Background(), FormPatchInput{FormID: 7,
+		Ops:  []FormFieldOp{{Op: "update", ID: "old", Set: map[string]json.RawMessage{"title": raw(`"New"`)}}, {Op: "add", Field: map[string]json.RawMessage{"class": raw(`"check"`)}, Section: raw(`null`)}},
+		Form: map[string]json.RawMessage{"settings": raw(`{"hideAfterSend":true,"keep":null,"extra":"x"}`)}})
+	if err != nil {
+		t.Fatal("legacy values the op did not touch were re-validated:", err)
+	}
+	sent := sectionsSent(t, *calls)
+	if !strings.Contains(sent, `"settings":{"extra":"x","hideAfterSend":true}`) || !strings.Contains(sent, `{"class":"check","id":"t"},{"class":"check","id":"item_`) {
+		t.Fatalf("settings not merged or null section not the default: %s", sent)
+	}
+	for _, tc := range []struct {
+		ops  []FormFieldOp
+		want string
+	}{
+		{[]FormFieldOp{{Op: "remove", ID: "t"}}, `section 1 "tech" would have no fields`},
+		{[]FormFieldOp{{Op: "section_add", Title: strPtr("empty")}}, `section 2 "empty" would have no fields`},
+		{[]FormFieldOp{{Op: "update", ID: "old", Set: map[string]json.RawMessage{"class": raw(`"edit"`)}}}, `set.type "number" is not allowed`},
+		{[]FormFieldOp{{Op: "move", ID: "old", Section: raw(`null`)}}, "move needs section, before or after"},
+	} {
+		if _, err := c.PatchFormFields(context.Background(), FormPatchInput{FormID: 7, Ops: tc.ops}); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("want %q, got %v", tc.want, err)
+		}
+	}
+	if _, err := c.PatchFormFields(context.Background(), FormPatchInput{FormID: 7, Form: map[string]json.RawMessage{"settings": raw(`[1]`)}}); err == nil {
+		t.Error("settings that are not an object accepted")
+	}
+}
+
+func strPtr(s string) *string { return &s }

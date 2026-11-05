@@ -38,7 +38,19 @@ func (d *formDoc) apply(ops []FormFieldOp) ([]FormFieldChanged, error) {
 		}
 		out = append(out, ch)
 	}
+	for i, s := range d.secs {
+		if len(s.fields) == 0 && s.initial != 0 {
+			var title string
+			_ = json.Unmarshal(s.props["title"], &title)
+			return nil, fmt.Errorf("section %d %q would have no fields: a template section holds at least one (the editor's schema), so add a field to it or section_remove it; nothing was changed", i, title)
+		}
+	}
 	return out, nil
+}
+
+// given says whether an optional JSON argument was sent with a value: null is "not given".
+func given(raw json.RawMessage) bool {
+	return len(raw) > 0 && string(raw) != "null"
 }
 
 func (d *formDoc) applyOne(op FormFieldOp) (FormFieldChanged, error) {
@@ -59,7 +71,7 @@ func (d *formDoc) applyOne(op FormFieldOp) (FormFieldChanged, error) {
 		if err != nil {
 			return FormFieldChanged{}, err
 		}
-		if op.Section == nil && op.Before == "" && op.After == "" {
+		if !given(op.Section) && op.Before == "" && op.After == "" {
 			return FormFieldChanged{}, errors.New("move needs section, before or after")
 		}
 		f := d.secs[si].fields[fi]
@@ -82,7 +94,7 @@ func (d *formDoc) applyOne(op FormFieldOp) (FormFieldChanged, error) {
 			at = *op.At
 		}
 		title, _ := json.Marshal(*op.Title)
-		sec := formSection{props: map[string]json.RawMessage{"title": title}}
+		sec := formSection{props: map[string]json.RawMessage{"title": title}, initial: -1}
 		d.secs = append(d.secs[:at], append([]formSection{sec}, d.secs[at:]...)...)
 		return FormFieldChanged{Op: op.Op, Section: at}, nil
 	case "section_update":
@@ -133,7 +145,7 @@ func (d *formDoc) add(op FormFieldOp) (FormFieldChanged, error) {
 	}
 	if len(d.secs) == 0 {
 		title, _ := json.Marshal("main")
-		d.secs = append(d.secs, formSection{props: map[string]json.RawMessage{"title": title}})
+		d.secs = append(d.secs, formSection{props: map[string]json.RawMessage{"title": title}, initial: -1})
 	}
 	si, fi, err := d.target(op)
 	if err != nil {
@@ -205,7 +217,7 @@ func (d *formDoc) fieldIDs() string {
 }
 
 func (d *formDoc) sectionOf(op FormFieldOp) (int, error) {
-	if op.Section == nil {
+	if !given(op.Section) {
 		return 0, errors.New("section (index or title) is required")
 	}
 	return d.section(op.Section)
@@ -228,7 +240,7 @@ func (d *formDoc) target(op FormFieldOp) (int, int, error) {
 		return si, fi, nil
 	}
 	si := len(d.secs) - 1
-	if op.Section != nil {
+	if given(op.Section) {
 		var err error
 		if si, err = d.section(op.Section); err != nil {
 			return 0, 0, err
@@ -257,42 +269,50 @@ func newFieldID() string {
 	return fmt.Sprintf("item_%d%06d", time.Now().UnixMilli(), n.Int64())
 }
 
-// checkField validates a whole field after the op, so the error names the property, what it got
-// and what it takes. Only the keys the op gives must be known: a stored field keeps the legacy
-// keys it has. where is "field" or "set" for the error path.
+// checkField validates what the op changes in a field, so the error names the property, what it
+// got and what it takes. Values the op does not touch stay as stored, legacy ones included; a new
+// class re-checks the type and options it keeps. where is "field" or "set" for the error path.
 func checkField(f, given map[string]json.RawMessage, where string) error {
 	for k := range given {
 		if !contains(fieldKeys, k) {
 			return fmt.Errorf("%s.%s is not a field property; allowed: %s", where, k, strings.Join(fieldKeys, ", "))
 		}
 	}
+	changed := func(k string) bool { _, ok := given[k]; return ok }
 	var id, class string
-	if json.Unmarshal(f["id"], &id) != nil || strings.TrimSpace(id) == "" || len(id) > 255 || badFieldID.MatchString(id) {
+	if changed("id") && (json.Unmarshal(f["id"], &id) != nil || strings.TrimSpace(id) == "" || len(id) > 255 || badFieldID.MatchString(id)) {
 		return fmt.Errorf("%s.id must be a non-empty string up to 255 characters without '.', '[' or ']'", where)
 	}
-	if json.Unmarshal(f["class"], &class) != nil || !contains(fieldClasses, class) {
+	_ = json.Unmarshal(f["class"], &class)
+	if changed("class") && !contains(fieldClasses, class) {
 		return fmt.Errorf("%s.class %s is not a field class; allowed: %s", where, shown(f["class"]), strings.Join(fieldClasses, ", "))
 	}
-	if err := enumProp(f, "visibility", fieldVisibility, where); err != nil {
-		return err
+	if changed("visibility") {
+		if err := enumProp(f, "visibility", fieldVisibility, where); err != nil {
+			return err
+		}
 	}
-	if class == "edit" {
+	// A value depends on the class: a new class re-checks the type and options the field keeps.
+	if class == "edit" && (changed("type") || changed("class")) {
 		if err := enumProp(f, "type", editTypes, where); err != nil {
 			return err
 		}
 	}
 	for _, k := range []string{"title", "description", "regexp", "errorMsg", "align", "row"} {
-		if raw, ok := f[k]; ok && !isJSONString(raw) {
+		if raw := f[k]; changed(k) && !isJSONString(raw) {
 			return fmt.Errorf("%s.%s must be a string, got %s", where, k, shown(raw))
 		}
 	}
-	if raw, ok := f["required"]; ok && string(raw) != "true" && string(raw) != "false" {
+	if raw := f["required"]; changed("required") && string(raw) != "true" && string(raw) != "false" {
 		return fmt.Errorf("%s.required must be true or false, got %s", where, shown(raw))
 	}
-	if raw, ok := f["extra"]; ok && !isJSONString(raw) && !isJSONObject(raw) {
+	if raw := f["extra"]; changed("extra") && !isJSONString(raw) && !isJSONObject(raw) {
 		return fmt.Errorf("%s.extra must be an object (optionsSource, multiline, time, minDate, ...), got %s", where, shown(raw))
 	}
-	return checkOptions(f, class, where)
+	if changed("options") || changed("class") {
+		return checkOptions(f, class, where)
+	}
+	return nil
 }
 
 func checkOptions(f map[string]json.RawMessage, class, where string) error {

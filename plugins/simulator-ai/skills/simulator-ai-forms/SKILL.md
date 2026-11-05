@@ -65,8 +65,8 @@ source links the two by a hierarchy edge from this actor to the picked one;
    - `update {id, set: {property: value}, unset?: [property]}` (`set.id` is refused);
    - `remove {id}`, `move {id, section?|before?|after?}`;
    - `section_add {title, at?}`, `section_update {section, title}`, `section_remove {section}` (empty only).
-   `form` patches the template's own `title`, `description`, `color`, `ref`, `settings`, `tags`,
-   `parentId`. A stale `expectedEditToken` is refused (someone changed the template): read again
+   `form` patches the template's own `title`, `description`, `color`, `ref`, `tags`, `parentId`
+   and `settings` key by key (a key set to null is dropped; the other keys stay). A stale `expectedEditToken` is refused (someone changed the template): read again
    and redo the ops. A refused value names the property and the values it takes: fix that one op.
    `form_update` with whole `sections` is for rebuilding the structure from scratch only: never
    resend every field to change one. Renaming a field's title is safe; changing its id orphans the

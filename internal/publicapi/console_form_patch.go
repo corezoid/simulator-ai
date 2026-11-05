@@ -19,6 +19,7 @@ type FormPatchInput struct {
 	Ops               []FormFieldOp `json:"ops"`
 	// Form patches the template's own properties (title, description, color, ref, settings, tags,
 	// parentId) as form/update does: an omitted key keeps, null clears where the server allows it.
+	// settings merges key by key into the current ones (null drops a key); tags replace the list.
 	Form map[string]json.RawMessage `json:"form"`
 }
 
@@ -100,6 +101,13 @@ func (c *Client) PatchFormFields(ctx context.Context, in FormPatchInput) (FormPa
 	for k, v := range in.Form {
 		params[k] = v
 	}
+	if raw, ok := in.Form["settings"]; ok {
+		merged, e := mergeSettings(cur.Form, raw)
+		if e != nil {
+			return FormPatchResult{}, e
+		}
+		params["settings"] = merged
+	}
 	var changed []FormFieldChanged
 	var sections []map[string]json.RawMessage
 	if len(in.Ops) > 0 {
@@ -142,6 +150,30 @@ func (c *Client) PatchFormFields(ctx context.Context, in FormPatchInput) (FormPa
 	return out, nil
 }
 
+// mergeSettings lays the patch's settings keys over the template's current ones (null drops a
+// key): form/update replaces settings whole, and a patch of one key must not erase the rest.
+func mergeSettings(body, patch json.RawMessage) (json.RawMessage, error) {
+	var add map[string]json.RawMessage
+	if json.Unmarshal(patch, &add) != nil || add == nil {
+		return nil, errors.New("form.settings must be an object of the keys to change (null drops a key)")
+	}
+	var cur struct {
+		Settings map[string]json.RawMessage `json:"settings"`
+	}
+	_ = json.Unmarshal(body, &cur)
+	if cur.Settings == nil {
+		cur.Settings = map[string]json.RawMessage{}
+	}
+	for k, v := range add {
+		if string(v) == "null" {
+			delete(cur.Settings, k)
+		} else {
+			cur.Settings[k] = v
+		}
+	}
+	return json.Marshal(cur.Settings)
+}
+
 func staleTemplate(token string) error {
 	m := "the template changed since you read it (someone else edited it): read it again with form_get and redo the ops on what is there now"
 	if token != "" {
@@ -168,6 +200,9 @@ type formDoc struct {
 type formSection struct {
 	props  map[string]json.RawMessage
 	fields []map[string]json.RawMessage
+	// initial is the field count as read (-1: added by this patch); a section the patch leaves
+	// empty is refused, one stored empty is left as it is.
+	initial int
 }
 
 func parseFormBody(raw json.RawMessage) (*formDoc, error) {
@@ -188,6 +223,7 @@ func parseFormBody(raw json.RawMessage) (*formDoc, error) {
 			}
 		}
 		delete(sec.props, "content")
+		sec.initial = len(sec.fields)
 		d.secs = append(d.secs, sec)
 	}
 	return d, nil
