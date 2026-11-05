@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/corezoid/simulator-ai/internal/publicapi"
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // attachment_read hands the model what Hermes can pass on: an image as an image block after the
@@ -88,5 +89,19 @@ func TestAttachmentReadRegisteredOnce(t *testing.T) {
 		if !strings.Contains(tool.Description, "Attachments of the request") || strings.Contains(tool.Description, "embedded") || strings.Contains(schema, `"content"`) || !strings.Contains(schema, `"required":["fileName"]`) {
 			t.Fatalf("%s: %s / %s", profile, tool.Description, schema)
 		}
+	}
+}
+
+// A tool that panics answers an error and the server lives on (server.WithRecovery).
+func TestToolPanicIsAnError(t *testing.T) {
+	c, err := publicapi.New(publicapi.Config{Origin: "http://127.0.0.1:1", Workspace: "ws", Profile: "console", Authorization: "Bearer user"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := New(c)
+	s.AddTool(mcp.NewTool("boom"), func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) { panic("boom") })
+	reply, _ := json.Marshal(s.HandleMessage(context.Background(), json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"boom","arguments":{}}}`)))
+	if !strings.Contains(string(reply), "error") || !strings.Contains(string(reply), "boom") {
+		t.Fatal(string(reply))
 	}
 }

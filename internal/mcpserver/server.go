@@ -29,7 +29,7 @@ type LayerArgs struct {
 }
 
 func New(c *publicapi.Client) *server.MCPServer {
-	s := server.NewMCPServer("simulator-ai", Version, server.WithToolCapabilities(false), server.WithInputSchemaValidation())
+	s := server.NewMCPServer("simulator-ai", Version, server.WithToolCapabilities(false), server.WithInputSchemaValidation(), server.WithRecovery())
 	if c.ReactionActorBound() {
 		addReactionReads(s, c)
 		return s

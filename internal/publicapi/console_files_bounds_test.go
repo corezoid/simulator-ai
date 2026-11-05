@@ -131,13 +131,22 @@ func TestPDFBombsStopAtTheLimit(t *testing.T) {
 			var text, unread string
 			bounded(t, 3*time.Second, 64<<20, func() { text, unread = pdfText(doc) })
 			// Each bomb is read into until the budget stops it; the predictor is refused before.
-			if text != "" || strings.HasPrefix(name, "predictor") != !strings.Contains(unread, "64 MiB") {
+			if text != "" || strings.HasPrefix(name, "predictor") != !strings.Contains(unread, "32 MiB") {
 				t.Fatalf("text %.40q, unread %q", text, unread)
 			}
 		})
 	}
 	if text, unread := pdfText(pdfBytes("fine")); text != "fine" || unread != "" {
 		t.Fatalf("a plain PDF: %q %q", text, unread)
+	}
+}
+
+// A page tree that points at a missing object (here 2 0 R, the object numbered 9) is an empty
+// text, never a panic out of the handler.
+func TestPDFTextOfABrokenPageTree(t *testing.T) {
+	broken := bytes.Replace(pdfBytes("hello"), []byte("2 0 obj"), []byte("9 0 obj"), 1)
+	if text, _ := pdfText(broken); text != "" {
+		t.Fatalf("%q", text)
 	}
 }
 
