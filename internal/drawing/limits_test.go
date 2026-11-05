@@ -104,3 +104,20 @@ func TestDashSkipsRepeatedPoints(t *testing.T) {
 		}
 	}
 }
+
+// Huge coordinates once smoothed into Inf and NaN, which every bound let through: coordinates are
+// bounded on input, and a NaN box or length fails the bounds.
+func TestCoordinatesAreBounded(t *testing.T) {
+	refusedFast(t, []Stroke{{Points: []Point{{1e308, 0}, {-1e308, 0}, {1e308, 1}}, Smooth: true}}, "within ±1000000")
+	refusedFast(t, []Stroke{{Points: []Point{{MaxCoord + 1, 0}, {MaxCoord, 0}}}}, "within ±1000000")
+	refusedFast(t, []Stroke{{Kind: "ellipse", Center: &Point{0, 0}, W: 1e300, H: 1}}, "center")
+	nan := math.NaN()
+	if _, _, err := resolve([]Stroke{{Points: []Point{{0, 0}, {nan, 0}}}}); err == nil {
+		t.Fatal("NaN point accepted")
+	}
+	// Near the bound the stroke is ordinary: the box limit, not an overflow, refuses it.
+	refusedFast(t, []Stroke{{Points: []Point{{-MaxCoord, 0}, {MaxCoord, 0}}, Smooth: true}}, "draw it smaller")
+	if _, err := Render(context.Background(), []Stroke{{Points: []Point{{MaxCoord - 10, MaxCoord}, {MaxCoord, MaxCoord - 10}, {MaxCoord - 5, MaxCoord - 5}}, Smooth: true}}); err != nil {
+		t.Fatal(err)
+	}
+}

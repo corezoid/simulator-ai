@@ -145,7 +145,7 @@ func TestRefusals(t *testing.T) {
 		{[]Stroke{{Kind: "rect", W: 1, H: 1}}, "center"},
 		{[]Stroke{{Kind: "star", Center: &Point{0, 0}, W: 1, H: 1}}, "kind"},
 		{[]Stroke{{Points: []Point{{0, 0}, {MaxSide + 1, 0}}}}, "draw it smaller"},
-		{[]Stroke{{Points: []Point{{0, 0}, {math.NaN(), 0}}}}, "finite"},
+		{[]Stroke{{Points: []Point{{0, 0}, {math.NaN(), 0}}}}, "within"},
 	} {
 		if _, err := Render(context.Background(), tc.strokes); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%+v: %v, want %q", tc.strokes, err, tc.want)

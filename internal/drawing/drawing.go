@@ -37,6 +37,9 @@ const (
 	// width reaches, so at most about MaxInk*Scale x (MaxWidth*Scale + 2) pixels, plus a dot's
 	// square per dotted period (about 15 million in all).
 	MaxInk = 50000
+	// MaxCoord bounds every coordinate and size given: far beyond any layer, and small enough that
+	// no smoothing, outline or sum of them overflows to Inf or NaN.
+	MaxCoord = 1e6
 )
 
 // arrowHeadRatio and arrowHalfAngle are the arrow mark's head (style/defaults.ts arrowHeadRatio,
@@ -161,11 +164,12 @@ func resolve(strokes []Stroke) ([]ink, Box, error) {
 	}
 	box := Box{X: (minX + maxX) / 2, Y: (minY + maxY) / 2, W: maxX - minX, H: maxY - minY}
 	switch {
-	case box.W > MaxSide || box.H > MaxSide:
+	// Negated, so a NaN fails each bound instead of passing it.
+	case !(box.W <= MaxSide && box.H <= MaxSide):
 		return nil, Box{}, fmt.Errorf("the drawing spans %.0f x %.0f graph units, over %d: draw it smaller or in parts", box.W, box.H, MaxSide)
-	case box.W*box.H > MaxArea:
+	case !(box.W*box.H <= MaxArea):
 		return nil, Box{}, fmt.Errorf("the drawing's box is %.0f x %.0f graph units, over %.0f square units: draw it smaller or in parts", box.W, box.H, float64(MaxArea))
-	case inkLength > MaxInk:
+	case !(inkLength <= MaxInk):
 		return nil, Box{}, fmt.Errorf("%.0f graph units of line in all, over %d: draw fewer or shorter strokes", inkLength, MaxInk)
 	}
 	for i, s := range strokes {
@@ -181,7 +185,7 @@ func resolve(strokes []Stroke) ([]ink, Box, error) {
 func outline(s Stroke) ([]Point, error) {
 	for _, p := range s.Points {
 		if !finite(p.X) || !finite(p.Y) {
-			return nil, errors.New("points must be finite numbers")
+			return nil, fmt.Errorf("points must be numbers within ±%.0f graph units", float64(MaxCoord))
 		}
 	}
 	switch s.Kind {
@@ -219,7 +223,8 @@ func outline(s Stroke) ([]Point, error) {
 	return nil, errors.New("kind is line, rect or ellipse")
 }
 
-func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
+// finite is a coordinate or size within MaxCoord (false for NaN and Inf).
+func finite(v float64) bool { return math.Abs(v) <= MaxCoord }
 
 func travel(line []Point) float64 {
 	d := 0.0
