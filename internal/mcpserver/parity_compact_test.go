@@ -39,8 +39,8 @@ func TestEdgeRowsKeepTypeEndsAndLabel(t *testing.T) {
 func TestSkeletonCapsWithTotalsAndBox(t *testing.T) {
 	var nodes, edges []string
 	for i := 0; i < skeletonCap+5; i++ {
-		nodes = append(nodes, `{"laId":1,"id":"n","position":{"x":`+itoa(i*10)+`,"y":-`+itoa(i)+`},"cellPosition":{"x":"A","y":1}}`)
-		edges = append(edges, `{"laId":2,"id":"e","laIdSource":1,"laIdTarget":1}`)
+		nodes = append(nodes, `{"laId":`+itoa(i)+`,"id":"n","position":{"x":`+itoa(i*10)+`,"y":-`+itoa(i)+`},"cellPosition":{"x":"A","y":1}}`)
+		edges = append(edges, `{"laId":2,"id":"e","laIdSource":`+itoa(i)+`,"laIdTarget":`+itoa(i+1)+`}`)
 	}
 	got := skeleton(json.RawMessage(`{"nodes":[` + strings.Join(nodes, ",") + `],"edges":[` + strings.Join(edges, ",") + `]}`))
 	var out struct {
@@ -52,8 +52,10 @@ func TestSkeletonCapsWithTotalsAndBox(t *testing.T) {
 	if err := json.Unmarshal(got, &out); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Nodes) != skeletonCap || len(out.Edges) != skeletonCap || !out.Truncated || out.Total["nodes"] != skeletonCap+5 ||
-		out.Box["x2"] != float64((skeletonCap+4)*10) || out.Box["y1"] != -float64(skeletonCap+4) || out.Nodes[0]["cellPosition"] != nil {
+	// Nodes 0..149 are kept; edge i joins i and i+1, so edges 149.. reach a node left out.
+	if len(out.Nodes) != skeletonCap || len(out.Edges) != skeletonCap-1 || !out.Truncated || out.Total["nodes"] != skeletonCap+5 ||
+		out.Box["x2"] != float64((skeletonCap+4)*10) || out.Box["y1"] != -float64(skeletonCap+4) || out.Nodes[0]["cellPosition"] != nil ||
+		out.Edges[len(out.Edges)-1]["laIdTarget"] != float64(skeletonCap-1) {
 		t.Fatalf("%+v %v %v", out.Total, out.Box, out.Truncated)
 	}
 	small := string(skeleton(json.RawMessage(`{"nodes":[],"edges":null}`)))

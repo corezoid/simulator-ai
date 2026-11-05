@@ -44,14 +44,15 @@ URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
 
 - `layer_get {layerId}`: compact nodes `{laId, actorId, title, formId, cell, blockId, hole, open}`
   and edges `{laId, edgeId, laIdSource, laIdTarget, name, hole}` (an edge's actors are the
-  `actorId`s of its nodes), 100 per kind; `hasMore` comes with `total` (the layer's counts) →
+  `actorId`s of its nodes; `source`/`target` come when a node is off the page), 100 per kind;
+  `hasMore` comes with `total` (the layer's counts, when they answer in time) →
   next `offset`, or find the one actor with `layer_actors_search`; `anisotropy` is the layer's
   setting. `full: true` adds each node's `position` and each edge's `source`/`target` (limit 200):
   ask for it only when you need exact coordinates.
 - `console-full`: `layer_stats_get` (counts of nodes, edges, holes; not a snapshot),
   `layer_placements_list` / `layer_edges_list` (pages with actors and layer settings),
   `layer_placements_all` (a summary of every node: count, templates, box, and the first 150),
-  `layer_skeleton_get` (positions of a large layer, at most 150 of each with the box: read a
+  `layer_skeleton_get` (positions of a large layer, at most 150 nodes and the edges between them, with the box: read a
   region with `x1,y1,x2,y2`), `layer_actors_search {actorId, query}`. These answer compact too
   (no pictures, shapes or timestamps); `full: true` returns everything — on a large layer that is
   megabytes, never needed for an answer.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"sort"
+	"time"
 )
 
 // Large layers made the graph reads the biggest tool outputs of a Console dialog: every one rides in
@@ -24,28 +25,40 @@ type LayerTotals struct {
 }
 
 // compactLayerView keeps of each row what the next tool takes: nodes by laId, actorId and cell (the
-// address tools and users use; position comes with full), edges by laId and their node laIds (the
-// edge's own actor ids are the nodes' actorIds), a label only when there is one.
+// address tools and users use; position comes with full), edges by laId and their node laIds, a
+// label only when there is one. Nodes and edges page apart, so an edge whose node is not on this
+// page keeps its source/target actor ids; the others' are their nodes' actorIds.
 func compactLayerView(v *LayerView) {
+	onPage := map[int64]bool{}
 	for i := range v.Nodes {
 		v.Nodes[i].Position = nil
+		onPage[v.Nodes[i].LaID] = true
 	}
 	for i := range v.Edges {
 		e := &v.Edges[i]
-		e.Source, e.Target = "", ""
+		if e.LaIDSource != nil && e.LaIDTarget != nil && onPage[*e.LaIDSource] && onPage[*e.LaIDTarget] {
+			e.Source, e.Target = "", ""
+		}
 		if e.Name != nil && *e.Name == "" {
 			e.Name = nil
 		}
 	}
 }
 
-// layerTotals reads the layer's counters for a page that did not hold everything.
-func (c *Client) layerTotals(ctx context.Context, layerID string) (*LayerTotals, error) {
+// totalsTimeout bounds the layer counters a page waits for: they are a courtesy, not the answer.
+const totalsTimeout = 2 * time.Second
+
+// layerTotals reads the layer's counters for a page that did not hold everything — a separate
+// request from the page, as list and count are. It is a courtesy, not the answer: late or failed,
+// the page goes without a total.
+func (c *Client) layerTotals(ctx context.Context, layerID string) *LayerTotals {
+	ctx, cancel := context.WithTimeout(ctx, totalsTimeout)
+	defer cancel()
 	w, err := call[layerStatsRequest, layerStatsWire](ctx, c, "graph/layer/stats/get", layerStatsRequest{AccID: c.config.Workspace, ActorID: layerID})
 	if err != nil || w.Nodes == nil || w.Edges == nil {
-		return nil, err
+		return nil
 	}
-	return &LayerTotals{Nodes: *w.Nodes, Edges: *w.Edges}, nil
+	return &LayerTotals{Nodes: *w.Nodes, Edges: *w.Edges}
 }
 
 // PlacementsSummary sums up every node placement of a layer: how many, of which templates, and the

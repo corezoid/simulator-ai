@@ -40,6 +40,32 @@ func TestLayerGetCompactPageWithTotals(t *testing.T) {
 	}
 }
 
+// The counters are a courtesy: when they fail the page answers without a total. An edge whose node
+// is not on the page keeps its actor ids.
+func TestLayerGetTotalsBestEffortAndOffPageEdges(t *testing.T) {
+	c, _ := rpcBackend(t, func(method string) string {
+		switch method {
+		case "actor/get":
+			return `{"id":"L","data":{}}`
+		case "graph/layer/actors/list":
+			return `{"list":[{"laId":7,"id":"a","position":{"x":0,"y":0},"actor":{"id":"a"}}]}`
+		case "graph/layer/edges/list":
+			return `{"list":[{"laId":9,"id":"e","laIdSource":7,"laIdTarget":8,"edge":{"source":"a","target":"b"}},{"laId":10,"id":"f","laIdSource":7,"laIdTarget":7,"edge":{"source":"a","target":"a"}}]}`
+		case "graph/layer/stats/get":
+			return `"error":{"code":-32000,"message":"boom"}`
+		}
+		return `{}`
+	})
+	one := int64(1)
+	v, err := c.GetLayer(context.Background(), LayerGetInput{LayerID: "L", Limit: &one})
+	if err != nil || !v.HasMore || v.Total != nil {
+		t.Fatal(err, jsonOf(t, v))
+	}
+	if v.Edges[0].Source != "a" || v.Edges[0].Target != "b" || v.Edges[1].Source != "" {
+		t.Fatal(jsonOf(t, v.Edges))
+	}
+}
+
 func TestSummarizePlacementsFoldsTheTail(t *testing.T) {
 	var list []LayerPlacement
 	for f := int64(1); f <= maxSummaryForms+3; f++ {

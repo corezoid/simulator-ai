@@ -431,9 +431,7 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 		compactLayerView(&v)
 	}
 	if v.HasMore {
-		if v.Total, e = c.layerTotals(ctx, in.LayerID); e != nil {
-			return LayerView{}, e
-		}
+		v.Total = c.layerTotals(ctx, in.LayerID)
 	}
 	return v, nil
 }

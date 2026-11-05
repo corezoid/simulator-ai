@@ -10,8 +10,19 @@ import (
 type compactor func(json.RawMessage) json.RawMessage
 
 // fullParam is the schema of the full switch every compacted read takes.
-// The tool's description says what full adds: every byte of a schema rides in the model context.
-const fullParam = `{"type":"boolean"}`
+// fullLocal is the full switch every compacted read takes (a Local param, never sent); the tool's
+// description says what full adds: every byte of a schema rides in the model context.
+var fullLocal = map[string]json.RawMessage{"full": json.RawMessage(`{"type":"boolean"}`)}
+
+// compactUnlessFull is the Shape of a compacted read: the backend's answer as is with full true.
+func compactUnlessFull(c compactor) func(map[string]json.RawMessage, json.RawMessage) (json.RawMessage, error) {
+	return func(local map[string]json.RawMessage, v json.RawMessage) (json.RawMessage, error) {
+		if string(local["full"]) == "true" {
+			return v, nil
+		}
+		return c(v), nil
+	}
+}
 
 // skeletonCap bounds each kind of a compact skeleton; the rest is counted, and box narrows the read.
 const skeletonCap = 150
@@ -60,8 +71,10 @@ func edgeRows(v json.RawMessage) json.RawMessage {
 	})
 }
 
-// skeleton answers at most skeletonCap nodes and edges with exact positions, the totals and the box
-// every node centre lies in, so the model can read a region with x1,y1,x2,y2.
+// skeleton answers at most skeletonCap nodes with exact positions and the edges between them (at
+// most skeletonCap; an edge to a node not answered is left out), the backend's totals and the box
+// the centres of the nodes read lie in (the whole layer, or the x1,y1,x2,y2 zone asked for), so the
+// model can read a region next.
 func skeleton(v json.RawMessage) json.RawMessage {
 	var doc map[string][]jsonObj
 	if json.Unmarshal(v, &doc) != nil {
@@ -85,10 +98,23 @@ func skeleton(v json.RawMessage) json.RawMessage {
 	if box != nil {
 		out["box"] = map[string]float64{"x1": box[0], "y1": box[1], "x2": box[2], "y2": box[3]}
 	}
-	if len(nodes) > skeletonCap || len(edges) > skeletonCap {
-		out["truncated"] = true
-		nodes, edges = nodes[:min(len(nodes), skeletonCap)], edges[:min(len(edges), skeletonCap)]
+	if len(nodes) > skeletonCap {
+		nodes = nodes[:skeletonCap]
 	}
+	kept := map[string]bool{}
+	for _, n := range nodes {
+		kept[string(n["laId"])] = true
+	}
+	var between []jsonObj
+	for _, e := range edges {
+		if kept[string(e["laIdSource"])] && kept[string(e["laIdTarget"])] && len(between) < skeletonCap {
+			between = append(between, e)
+		}
+	}
+	if len(nodes) < len(doc["nodes"]) || len(between) < len(edges) {
+		out["truncated"] = true
+	}
+	edges = between
 	out["nodes"], out["edges"] = nonNil(nodes), nonNil(edges)
 	b, err := json.Marshal(out)
 	if err != nil {
@@ -137,19 +163,4 @@ func eachRow(v json.RawMessage, key string, fn func(jsonObj)) json.RawMessage {
 		return v
 	}
 	return b
-}
-
-// withFull adds the full switch to a tool's input schema.
-func withFull(schema json.RawMessage) (json.RawMessage, error) {
-	var doc map[string]json.RawMessage
-	var properties map[string]json.RawMessage
-	if err := json.Unmarshal(schema, &doc); err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(doc["properties"], &properties); err != nil {
-		return nil, err
-	}
-	properties["full"] = json.RawMessage(fullParam)
-	doc["properties"], _ = json.Marshal(properties)
-	return json.Marshal(doc)
 }
