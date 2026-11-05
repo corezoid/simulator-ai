@@ -31,6 +31,9 @@ The snapshot's root node id is the root folder id. `pages` is a child folder, `m
 and `config`, `locale`, `viewModel` are files inside `main`. The server validates on save and on
 release.
 
+In `console`, the whole protocol, every component and complete example pages are searchable:
+`smart_form_reference_grep` and `smart_form_reference_read`.
+
 This is a display-only starter. A form that saves records is `smart_form_data_form_create` in
 `console`; Corezoid-backed data and submits are `simulator-ai-smart-forms-logic`. Never put API
 keys or Corezoid credentials in view models or sources. The `smart-forms` profile does not run `page/render`

@@ -4,7 +4,7 @@ description: Create, edit and release CDU v2 Smart Forms (mini-apps) through the
 ---
 
 Use the installed `simulator-ai` catalog. In `console`: `smart_form_create`,
-`smart_form_components`, `smart_form_data_form_create`, `smart_form_files_get`,
+`smart_form_components`, `smart_form_reference_grep`, `smart_form_reference_read`, `smart_form_data_form_create`, `smart_form_files_get`,
 `smart_form_files_create`, `smart_form_files_update`, `smart_form_page_patch`, `smart_form_release`,
 `smart_form_release_get`, and `corezoid_project_create` / `corezoid_project_get` for its
 business logic. The `smart-forms` desktop profile has its own receipt-based tools
@@ -81,6 +81,20 @@ Form by hand. Inputs the user did not ask to keep still need somewhere to go (a 
 submit, step 5, or a navigation): ask which rather than making a data template. A page with inputs must save somewhere: a Form that nothing submits, a button
 without actions beside inputs, or a `form/submit` without its template is refused.
 
+## Look up the format (console)
+
+The CDU v2 reference reads like source files, a few lines at a time:
+
+- `smart_form_reference_grep {pattern}`: find a component, prop or action by idea, a
+  case-insensitive regex over `components` (every catalog type, one line per prop), `protocol`
+  (page config, nodes, expressions, bindings, actions) and `examples` (whole pages):
+  `gap|spacing`, `upload`, `date`, `form\.submit`, `\$locale`.
+- `smart_form_reference_read {doc}`: a type's block (`components/DatePicker`), an action
+  (`protocol/form.submit`), an example page (`examples/E12-conditional-validation`), or lines by
+  `offset`.
+- `smart_form_components {types, schema: true}`: the exact JSON Schema, only when a line is not
+  enough. Edit with `smart_form_page_patch` (below).
+
 ## Edit pages
 
 To change an existing page, touch only that page and only the components you change:
@@ -88,8 +102,9 @@ To change an existing page, touch only that page and only the components you cha
 1. `smart_form_files_get {appId, paths: ["pages/<page>/config"]}`: that file's source,
    `id` and `sourceHash` (a folder path such as `pages/<page>` gives everything under it).
    `withSource: true` returns every file's source: only for a whole-form review.
-2. `smart_form_components {types: [...]}` for the types you add or change: one line per prop,
-   enums inlined (`{brief: true}` lists every type first; `schema: true` the raw JSON Schemas).
+2. The types you add or change: `smart_form_reference_read {doc: "components/<Type>"}` or
+   `smart_form_components {types: [...]}`, one line per prop, enums inlined (`schema: true` the
+   raw JSON Schemas).
 3. `smart_form_page_patch {appId, path?, nodeId, ops}`: JSON Patch ops relative to the node
    with that `id`, e.g. `{nodeId: "root", ops: [{op: "add", path: "/props/size", value:
    "xl"}]}`; `add` to `/children/-` appends a child, `remove` with `""` drops the node. All

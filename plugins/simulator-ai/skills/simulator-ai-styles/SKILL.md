@@ -4,7 +4,8 @@ description: Style a CDU v2 Smart Form — its theme file (built-in or own theme
 ---
 
 Use the installed `simulator-ai` catalog (`smart_form_files_get`, `smart_form_files_create`,
-`smart_form_files_update`, `smart_form_page_patch`, `smart_form_release`, `smart_form_components`). Page layout is
+`smart_form_files_update`, `smart_form_page_patch`, `smart_form_release`, `smart_form_components`,
+`smart_form_reference_grep`, `smart_form_reference_read`). Page layout is
 `simulator-ai-smart-forms`; this skill owns the look.
 
 A CDU v2 page has **no CSS or Less**: components draw themselves from theme tokens, so the look
@@ -12,8 +13,10 @@ comes from two places only.
 
 1. **The app-root `theme` file** (one per environment, shipped by a release). It decides the
    palette, fonts and shape for every page.
-2. **Component props** such as size, variant, tone or surface. Take them only from
-   `smart_form_components {types: [...]}`: an unknown prop is refused on save. Never invent a
+2. **Component props** such as size, variant, tone or surface. Take them only from the catalog:
+   find one by idea with `smart_form_reference_grep {pattern: "gap|spacing"}` (or `color`,
+   `radius`), read a type with `smart_form_reference_read {doc: "components/<Type>"}`; exact
+   schemas `smart_form_components {types, schema: true}`. An unknown prop is refused on save. Never invent a
    `style`, `className` or colour prop. Spacing: a `Stack`'s `size` is the gap between its children,
    `space` its padding (`{size, sides}`); there is no `gap`.
 
