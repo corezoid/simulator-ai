@@ -49,7 +49,7 @@ func TestCreateDataFormBuildsAWiredPage(t *testing.T) {
 			t.Errorf("page lacks %s", want)
 		}
 	}
-	if wired, err := wireSubmits(out.Page, "ws", "app-1"); err != nil || wired != out.Page {
+	if wired, _, err := wireSubmits(out.Page, "ws", "app-1"); err != nil || wired != out.Page {
 		t.Fatal("the generated page fails its own wiring check or is rewritten:", err)
 	}
 	var page bytes.Buffer
@@ -116,21 +116,33 @@ func TestWireSubmits(t *testing.T) {
 	noTemplate := `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit"}]}}]}}`
 	good := `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"if","cond":"true","then":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"other","formId":5}}]}]}}]}}`
 	for name, tc := range map[string]struct{ source, err string }{
+		"no data template":           {noTemplate, "needs simapiExtraParams.formId"},
+		"a stale one of two submits": {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}},{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.leave, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "reads vm.request, not vm.leave"},
+		"an id out of int64 range":   {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":1e19}}]}}]}}`, "needs simapiExtraParams.formId"},
+		"an id of 2^63":              {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":9223372036854775808}}]}}]}}`, "needs simapiExtraParams.formId"},
+		"filter of a renamed Form":   {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "reads vm.request, not vm.leave"},
+	} {
+		if _, _, err := wireSubmits(tc.source, "ws", ""); err == nil || !strings.Contains(err.Error(), tc.err) || !strings.Contains(err.Error(), "smart_form_data_form_create") {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	// A submit not written yet is pending, not refused, so a page is built in parts; the release
+	// refuses it (unsentPage).
+	for name, tc := range map[string]struct{ source, err string }{
 		"D7: inputs and a button, no Form": {d7, "no Form node"},
 		"Form without a submit button":     {formOnly, `Form "request" has no button with form.submit`},
-		"no data template":                 {noTemplate, "needs simapiExtraParams.formId"},
-		"a stale one of two submits":       {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}},{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.leave, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "reads vm.request, not vm.leave"},
 		"a Form only validated":            {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.validate","form":"request"},{"type":"if","cond":"vm.valid.leave = true","then":[{"type":"notify","title":"ok"}]}]}}]}}`, "no action sends vm.leave"},
 		"a Form read by its id":            {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"simapi.call","method":"actor/create","params":{"data":"{{ vm.request }}"}}]}}]}}`, "no action sends vm.leave"},
 		"a Form only notified":             {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"if","cond":"vm.leave.days > 3","then":[{"type":"notify","title":"{{ vm.leave.days }} days"}]}]}}]}}`, "no action sends vm.leave"},
 		"a Form read in onError only":      {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"simapi.call","method":"actor/list","onError":[{"type":"notify","title":"{{ vm.leave.x }}"}]}]}}]}}`, "no action sends vm.leave"},
 		"a Form in a copy notify":          {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"copy","value":"{{ vm.other }}","notify":{"level":"info","title":"{{ vm.leave.x }}"}}]}}]}}`, "no action sends vm.leave"},
-		"an id out of int64 range":         {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":1e19}}]}}]}}`, "needs simapiExtraParams.formId"},
-		"an id of 2^63":                    {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":9223372036854775808}}]}}]}}`, "needs simapiExtraParams.formId"},
-		"filter of a renamed Form":         {`{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","props":{"valueKey":"leave"},"children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5,"formData":"{{ $merge([{}, $sift(vm.request, function($v){ $v != \"\" })]) }}"}}]}}]}}`, "reads vm.request, not vm.leave"},
 	} {
-		if _, err := wireSubmits(tc.source, "ws", ""); err == nil || !strings.Contains(err.Error(), tc.err) || !strings.Contains(err.Error(), "smart_form_data_form_create") {
-			t.Errorf("%s: %v", name, err)
+		out, pending, err := wireSubmits(tc.source, "ws", "")
+		if err != nil || out != tc.source || len(pending) != 1 || !strings.Contains(pending[0], tc.err) {
+			t.Errorf("%s: %v %v", name, pending, err)
+		}
+		if unsent := unsentPage(tc.source); len(unsent) != 1 || unsent[0] != pending[0] {
+			t.Errorf("%s: release check %v", name, unsent)
 		}
 	}
 	for name, legit := range map[string]string{
@@ -145,28 +157,28 @@ func TestWireSubmits(t *testing.T) {
 		"whole float template id":    `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":5.0}}]}}]}}`,
 		"expression template":        `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"b","type":"Button","actions":{"onClick":[{"type":"form.submit","formId":"request","via":"simapi","simapiMethod":"form/submit","simapiExtraParams":{"accId":"ws","formId":"{{ vm.templateId }}"}}]}}]}}`,
 	} {
-		out, err := wireSubmits(legit, "ws", "")
-		if err != nil || out != legit {
+		out, pending, err := wireSubmits(legit, "ws", "")
+		if err != nil || out != legit || len(pending) > 0 {
 			t.Errorf("%s: refused or rewritten: %v", name, err)
 		}
 	}
-	wired, err := wireSubmits(good, "ws", "app-1")
+	wired, _, err := wireSubmits(good, "ws", "app-1")
 	if err != nil || !strings.Contains(wired, `"accId": "ws"`) || strings.Contains(wired, `"other"`) || !strings.Contains(wired, `"appId": "app-1"`) {
 		t.Fatal("accId must be the host workspace and appId the written Smart Form:", wired, err)
 	}
 	// A template id above 2^53 survives the rewrite of accId.
 	big := strings.Replace(good, `"formId":5`, `"formId":9007199254740993`, 1)
-	if wired, err := wireSubmits(big, "ws", ""); err != nil || !strings.Contains(wired, `"formId": 9007199254740993`) {
+	if wired, _, err := wireSubmits(big, "ws", ""); err != nil || !strings.Contains(wired, `"formId": 9007199254740993`) {
 		t.Fatal("a large template id is rounded:", wired, err)
 	}
 	// A props schema or a mistaken node type holding an array or object is data, not a crash.
 	for _, odd := range []string{`{"schemaVersion":"2.0","id":"index","tree":{"id":"r","type":"Stack","props":{"schema":{"type":["string","null"]}}}}`, `{"schemaVersion":"2.0","id":"index","tree":{"id":"r","type":{"x":1}}}`} {
-		if out, err := wireSubmits(odd, "ws", ""); err != nil || out != odd {
+		if out, _, err := wireSubmits(odd, "ws", ""); err != nil || out != odd {
 			t.Errorf("%s: %v", odd, err)
 		}
 	}
 	for _, plain := range []string{`{"startPage":"index"}`, "a { color: red }", `{"schemaVersion":"2.0","id":"x","tree":{"id":"r","type":"Stack","children":[{"id":"l","type":"Label"}]}}`, `{"schemaVersion":"2.0","id":"x","tree":{}} trailing`} {
-		if out, err := wireSubmits(plain, "ws", ""); err != nil || out != plain {
+		if out, _, err := wireSubmits(plain, "ws", ""); err != nil || out != plain {
 			t.Errorf("%q changed or refused: %v", plain, err)
 		}
 	}

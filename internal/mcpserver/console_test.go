@@ -129,15 +129,15 @@ func TestConsoleCatalog(t *testing.T) {
 		"public_link_create,public_link_get,public_link_revoke,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,reactions_mark_read," +
 		"search_all,simulation_check,simulation_run,simulation_snapshot_get,skill_get,skills_find,smart_form_components,smart_form_create,smart_form_data_form_create," +
 		"smart_form_file_rollback,smart_form_file_version_get,smart_form_file_versions_list,smart_form_files_create,smart_form_files_get,smart_form_files_update," +
-		"smart_form_folders_create,smart_form_page_patch,smart_form_page_render,smart_form_page_submit,smart_form_release,smart_form_release_diff,smart_form_release_get," +
+		"smart_form_folders_create,smart_form_page_patch,smart_form_page_render,smart_form_page_submit,smart_form_reference_grep,smart_form_reference_read,smart_form_release,smart_form_release_diff,smart_form_release_get," +
 		"smart_form_release_rollback,smart_form_releases_list,smart_form_trash_list,smart_form_trash_restore,task_get,transaction_by_actor_ref_create," +
 		"transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter,transactions_filter_count,transactions_list," +
 		"transfer_by_ref_get,transfer_create,transfer_get,transfers_filter,transfers_filter_count,user_get,users_search,workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 189 {
+	if got := strings.Join(names, ","); got != want || len(names) != 191 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
-	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get"} {
+	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get", "smart_form_reference_grep", "smart_form_reference_read"} {
 		if !reads[name] {
 			t.Errorf("%s must be read-only", name)
 		}
@@ -177,7 +177,7 @@ func TestConsoleRequests(t *testing.T) {
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
 		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
 		{"smart_form_files_create", `{"appId":"app1","items":[{"folderId":102,"title":"locale","type":"application/json","source":"{}"}]}`, "app_file/create", `"items":[{"folderId":102`, `"id":104`},
-		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"appId: app1"}`},
+		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,application/struct,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"appId: app1"}`},
 		{"smart_form_release_get", `{"appId":"app1","releaseId":9}`, "application/env/list,release/get", `"releaseId":9`, `"ready":false`},
 	}
 	for _, tc := range cases {
@@ -332,7 +332,7 @@ func TestConsoleCoreCatalog(t *testing.T) {
 			t.Error("console has", name)
 		}
 	}
-	if len(names) != len(consoleCoreTools) || len(names) != 51 {
+	if len(names) != len(consoleCoreTools) || len(names) != 53 {
 		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
 	}
 }

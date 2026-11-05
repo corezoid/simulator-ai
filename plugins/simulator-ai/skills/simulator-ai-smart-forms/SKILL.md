@@ -4,7 +4,7 @@ description: Create, edit and release CDU v2 Smart Forms (mini-apps) through the
 ---
 
 Use the installed `simulator-ai` catalog. In `console`: `smart_form_create`,
-`smart_form_components`, `smart_form_data_form_create`, `smart_form_files_get`,
+`smart_form_components`, `smart_form_reference_grep`, `smart_form_reference_read`, `smart_form_data_form_create`, `smart_form_files_get`,
 `smart_form_files_create`, `smart_form_files_update`, `smart_form_page_patch`, `smart_form_release`,
 `smart_form_release_get`, and `corezoid_project_create` / `corezoid_project_get` for its
 business logic. The `smart-forms` desktop profile has its own receipt-based tools
@@ -78,8 +78,23 @@ is its padding (`{size, sides, customSize}`); there is no `gap` prop.
 
 For richer pages, extend the returned page with catalog components rather than writing the
 Form by hand. Inputs the user did not ask to keep still need somewhere to go (a Corezoid
-submit, step 5, or a navigation): ask which rather than making a data template. A page with inputs must save somewhere: a Form that nothing submits, a button
-without actions beside inputs, or a `form/submit` without its template is refused.
+submit, step 5, or a navigation): ask which rather than making a data template. A page with inputs must save somewhere: a `form/submit` without its template is refused; a
+Form that nothing submits yet, or a button without actions beside inputs, is saved with
+`pending` naming it, and `smart_form_release` refuses the page until it is wired.
+
+## Look up the format (console)
+
+The CDU v2 reference reads like source files, a few lines at a time:
+
+- `smart_form_reference_grep {pattern}`: find a component, prop or action by idea, a
+  case-insensitive regex over `components` (every catalog type, one line per prop), `protocol`
+  (page config, nodes, expressions, bindings, actions) and `examples` (whole pages):
+  `gap|spacing`, `upload`, `date`, `form\.submit`, `\$locale`.
+- `smart_form_reference_read {doc}`: a type's block (`components/DatePicker`), an action
+  (`protocol/form.submit`), an example page (`examples/E12-conditional-validation`), or lines by
+  `offset`.
+- `smart_form_components {types, schema: true}`: the exact JSON Schema, only when a line is not
+  enough. Edit with `smart_form_page_patch` (below).
 
 ## Edit pages
 
@@ -88,8 +103,9 @@ To change an existing page, touch only that page and only the components you cha
 1. `smart_form_files_get {appId, paths: ["pages/<page>/config"]}`: that file's source,
    `id` and `sourceHash` (a folder path such as `pages/<page>` gives everything under it).
    `withSource: true` returns every file's source: only for a whole-form review.
-2. `smart_form_components {types: [...]}` for the types you add or change: one line per prop,
-   enums inlined (`{brief: true}` lists every type first; `schema: true` the raw JSON Schemas).
+2. The types you add or change: `smart_form_reference_read {doc: "components/<Type>"}` or
+   `smart_form_components {types: [...]}`, one line per prop, enums inlined (`schema: true` the
+   raw JSON Schemas).
 3. `smart_form_page_patch {appId, path?, nodeId, ifMatchHash, ops}`: always pass the
    `sourceHash` you just read as `ifMatchHash`, so a change made since is refused, not lost.
    Ops are JSON Patch relative to the node with that `id`, e.g. `{nodeId: "root", ifMatchHash:
@@ -110,6 +126,49 @@ A new page is a folder `pages/<page>` holding its `config`: `smart_form_folders_
 {actorId: <appId>, items: [{folderId: <id of pages>, title: "<page>"}]}`, then
 `smart_form_files_create` the `config` (and `locale`) with the new folder's id. Reuse a folder
 that exists: titles are not unique.
+
+## Large pages: in parts, repeats as definitions
+
+Keep every write small, however long the turn may run:
+
+1. **Skeleton first.** Write the page with the root and one empty container per section, each
+   with an `id` (`{"id":"contacts","type":"Stack","children":[]}`), then fill one section per
+   `smart_form_page_patch {appId, nodeId: "<section id>", ifMatchHash: "<sourceHash>", ops:
+   [{op: "add", path: "/children/-", value: …}]}`, each with the `sourceHash` the previous write
+   returned. A Form may come before its submit button: until the button is in, the write
+   answers `pending` and a release is refused.
+2. **Repeats become definitions.** A subtree used twice or more (a field row, a card, a section
+   header) goes once into a file `definitions/<name>` (one node, `application/json`; the
+   `definitions` folder exists in a new form, so look first with `smart_form_files_get {appId,
+   paths: ["definitions"]}` and reuse what is there). Each use is an instance with its own `id`:
+   `{"id": "phone-row", "$ref": "#/definitions/<name>"}`.
+3. **What an instance may hold:** `id`, `if`, `visibility`, `for`, `slot`, `variant`, never
+   `type`, `props`, `children` or `actions`. Names sit directly in `definitions/` (no
+   subfolders). Vary content by data: `for` on the instance repeats the definition per item,
+   read inside as `$<as>`. Ids must be unique on a page and an instance without its own `id`
+   takes the definition root's, so give every instance one (ids inside a definition may repeat).
+4. **Edit once.** Change a definition with `smart_form_page_patch {appId, path:
+   "definitions/<name>", nodeId?, ifMatchHash, ops}`: every instance follows. Saving a page or a definition checks every page it
+   reaches: a missing or cyclic definition, a wrong prop inside one, a duplicate id or an
+   instance without id is refused at save, naming the page. Deleting or renaming a definition is
+   not checked: change the pages that use it first.
+
+Verified example. `definitions/field-row`:
+
+```json
+{"id":"row","type":"Stack","props":{"direction":"horizontal","size":"md"},"children":[
+ {"id":"row-label","type":"Label","props":{"text":"{{ $f.label }}"}},
+ {"id":"row-value","type":"Label","props":{"text":"{{ $lookup(vm.profile, $f.key) }}"}}]}
+```
+
+Two instances in the page tree (one row, then one per item of `vm.fields`):
+
+```json
+{"id":"name-row","$ref":"#/definitions/field-row","for":{"items":"[{'label':'Name','key':'name'}]","as":"f"}}
+{"id":"field-rows","$ref":"#/definitions/field-row","for":{"items":"vm.fields","as":"f","keyBy":"key"}}
+```
+
+The rules in full: `smart_form_reference_read {doc: "protocol/definitions"}`.
 
 ## Release and show it
 

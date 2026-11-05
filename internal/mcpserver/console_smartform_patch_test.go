@@ -163,3 +163,44 @@ func TestCompactCatalogEventsStateAPI(t *testing.T) {
 		t.Fatal("a brief answer is returned as it came:", string(out))
 	}
 }
+
+// paths ["definitions"] answers the folder, its subfolders (definitions/cards) and every
+// definition file with its source; a definition is patched by its path like a page.
+func TestSmartFormDefinitions(t *testing.T) {
+	tree := `"result":{"tree":{"id":100,"objType":"folder","title":"root","children":[{"id":101,"objType":"folder","title":"pages","children":[]},{"id":110,"objType":"folder","title":"definitions","children":[
+{"id":111,"objType":"file","title":"field-row","type":"application/json","sourceHash":"h"},{"id":112,"objType":"folder","title":"cards","children":[]}]}]}}`
+	def := `"result":{"id":111,"title":"field-row","type":"application/json","sourceHash":"` + readHash + `","source":"{\"id\":\"row\",\"type\":\"Stack\",\"children\":[{\"id\":\"row-label\",\"type\":\"Label\",\"props\":{\"text\":\"Label\"}}]}"}`
+	send, calls := consoleServer(t, map[string]string{"application/struct": tree, "app_file/get": def})
+	reply := callTool(send, "smart_form_files_get", `{"appId":"app1","paths":["definitions"]}`)
+	for _, want := range []string{`"path":"definitions","objType":"folder"`, `"path":"definitions/cards","objType":"folder"`, `"path":"definitions/field-row","objType":"file"`, `"source":"{`} {
+		if !strings.Contains(reply, want) {
+			t.Errorf("files_get definitions lacks %s:\n%s", want, reply)
+		}
+	}
+	if strings.Contains(reply, `"path":"pages"`) || strings.Count(methodsOf(*calls), "app_file/get") != 1 {
+		t.Fatal(methodsOf(*calls), reply)
+	}
+	*calls = nil
+	reply = callTool(send, "smart_form_page_patch", `{"appId":"app1","path":"definitions/field-row","nodeId":"row-label","ops":[{"op":"replace","path":"/props/text","value":"Name"}]}`)
+	if !strings.Contains(reply, `"path":"definitions/field-row"`) || !strings.Contains(reply, `"applied":["replace /children/0/props/text"]`) || !strings.HasSuffix(methodsOf(*calls), "app_file/get,app_file/update") {
+		t.Fatal(methodsOf(*calls), reply)
+	}
+}
+
+// A Form without its submit yet saves (a page built in parts) with pending saying so; the release
+// refuses the page until it sends what is typed.
+func TestSmartFormPendingSubmit(t *testing.T) {
+	formOnly := `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"c","type":"TextInput"}]}}`
+	send, calls := consoleServer(t, nil)
+	src, _ := json.Marshal(formOnly)
+	reply := callTool(send, "smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":`+string(src)+`}]}`)
+	if !strings.Contains(reply, `"pending":["file 0: Form "request" has no button with form.submit`) || !strings.Contains(methodsOf(*calls), "app_file/update") {
+		t.Fatal(methodsOf(*calls), reply)
+	}
+	tree := `"result":{"tree":{"id":100,"objType":"folder","title":"root","children":[{"id":101,"objType":"folder","title":"pages","children":[{"id":102,"objType":"folder","title":"index","children":[{"id":103,"objType":"file","title":"config","type":"application/json","source":` + string(src) + `}]}]}]}}`
+	send, calls = consoleServer(t, map[string]string{"application/struct": tree})
+	reply = callTool(send, "smart_form_release", `{"appId":"app1"}`)
+	if !strings.Contains(reply, `not released, a page would send nothing: pages/index/config: Form "request" has no button with form.submit`) || strings.Contains(methodsOf(*calls), "release/create") {
+		t.Fatal(methodsOf(*calls), reply)
+	}
+}

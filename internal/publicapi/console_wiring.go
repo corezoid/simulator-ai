@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -27,40 +28,61 @@ type pageFacts struct {
 	problems    []string
 }
 
-// wireSubmits checks a page config before it is stored and returns the source to store. It refuses
-// what made a Console form send nothing (acceptance D7): a Form node nothing consumes, and a button
-// without any action beside inputs on a page without a Form. A Form is consumed by a form.submit that
-// names it or by an action passing on vm.<its value key> (simapi.call, widget.call, bus.publish,
-// navigate, copy), wherever it sits (an actions key or a page binding). A form.submit
-// to form/submit must name its data template; its accId is set to the host workspace and its appId to
-// the Smart Form written (form/submit lets that form's audience submit). Other
-// submits (via corezoid, other methods) are the page author's and pass as they are. A generated
-// formData filter must read the values of the Form its submit names, or a renamed form would send
-// nothing. A source that is not a page config, or needs no accId, is stored byte for byte.
-func wireSubmits(source, workspace, appID string) (string, error) {
-	dec := json.NewDecoder(strings.NewReader(source))
-	dec.UseNumber() // an id above 2^53 is written back as it came
-	var doc any
-	if dec.Decode(&doc) != nil || dec.Decode(new(any)) != io.EOF {
-		return source, nil
+// wireSubmits checks a page config before it is stored and returns the source to store. A submit
+// that is wrong is refused: a form.submit to form/submit must name its data template (its accId is
+// set to the host workspace and its appId to the Smart Form written: form/submit lets that form's
+// audience submit), and a generated formData filter must read the values of the Form its submit
+// names, or a renamed form would send nothing. Other submits (via corezoid, other methods) are the
+// page author's and pass as they are. A submit that is missing yet is not refused here, so a large
+// page can be built section by section (a Form first, its button in a later write): it comes back
+// as pending, and smart_form_release refuses a page still in that state (unsent). A source that is
+// not a page config, or needs no accId, is stored byte for byte.
+func wireSubmits(source, workspace, appID string) (string, []string, error) {
+	doc, facts, ok := pageFactsOf(source, wiring{workspace, appID})
+	if !ok {
+		return source, nil, nil
 	}
-	if page, ok := doc.(map[string]any); !ok || page["tree"] == nil || page["schemaVersion"] == nil {
-		return source, nil
+	if problems := facts.broken(); len(problems) > 0 {
+		return "", nil, errors.New("page submit wiring: " + strings.Join(problems, "; ") + ". Create the data template and a ready page with smart_form_data_form_create")
 	}
-	facts := pageFacts{forms: map[string]string{}, submitted: map[string]bool{}}
-	facts.collect(doc, wiring{workspace, appID}, false)
-	if problems := facts.judge(); len(problems) > 0 {
-		return "", errors.New("page submit wiring: " + strings.Join(problems, "; ") + ". Create the data template and a ready page with smart_form_data_form_create")
-	}
+	pending := facts.unsent()
 	if !facts.changed {
-		return source, nil
+		return source, pending, nil
 	}
 	var out bytes.Buffer
 	enc := json.NewEncoder(&out)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	err := enc.Encode(doc)
-	return strings.TrimSuffix(out.String(), "\n"), err
+	return strings.TrimSuffix(out.String(), "\n"), pending, err
+}
+
+// pageFactsOf walks a page config; ok is false for a source that is not one.
+func pageFactsOf(source string, w wiring) (any, *pageFacts, bool) {
+	dec := json.NewDecoder(strings.NewReader(source))
+	dec.UseNumber() // an id above 2^53 is written back as it came
+	var doc any
+	if dec.Decode(&doc) != nil || dec.Decode(new(any)) != io.EOF {
+		return nil, nil, false
+	}
+	if page, ok := doc.(map[string]any); !ok || page["tree"] == nil || page["schemaVersion"] == nil {
+		return nil, nil, false
+	}
+	facts := &pageFacts{forms: map[string]string{}, submitted: map[string]bool{}}
+	facts.collect(doc, w, false)
+	return doc, facts, true
+}
+
+// unsentPage is what makes a stored page config send nothing (acceptance D7), checked before a
+// release: a Form node nothing consumes, and a button without any action beside inputs on a page
+// without a Form. A Form is consumed by a form.submit that names it or by an action passing on
+// vm.<its value key> (simapi.call, widget.call, bus.publish, navigate, copy), wherever it sits.
+func unsentPage(source string) []string {
+	_, facts, ok := pageFactsOf(source, wiring{})
+	if !ok {
+		return nil
+	}
+	return facts.unsent()
 }
 
 // wiring is what a form/submit of the written page is bound to.
@@ -138,9 +160,21 @@ func (f *pageFacts) submit(t map[string]any, w wiring) {
 	}
 }
 
-// judge lists what would make the page send nothing.
-func (f *pageFacts) judge() []string {
+// broken lists the submits that are wrong: refused at every write.
+func (f *pageFacts) broken() []string {
 	problems := f.problems
+	for _, s := range f.filters {
+		if key, ok := f.forms[s[0]]; ok && s[1] != key {
+			problems = append(problems, fmt.Sprintf("simapiExtraParams.formData of a form.submit of %q reads vm.%s, not vm.%s, the values of that Form", s[0], s[1], key))
+		}
+	}
+	return problems
+}
+
+// unsent lists what would make the page send nothing yet: pending while the page is built,
+// refused at release.
+func (f *pageFacts) unsent() []string {
+	var problems []string
 	if f.inputs > 0 && f.idleButtons > 0 && len(f.forms) == 0 {
 		problems = append(problems, "the page has inputs and a button with no actions but no Form node, so what is typed would not be sent (give a decorative button an action, or wrap the inputs in a Form with a form.submit button)")
 	}
@@ -149,11 +183,7 @@ func (f *pageFacts) judge() []string {
 			problems = append(problems, fmt.Sprintf("Form %q has no button with form.submit and no action sends vm.%s", id, key))
 		}
 	}
-	for _, s := range f.filters {
-		if key, ok := f.forms[s[0]]; ok && s[1] != key {
-			problems = append(problems, fmt.Sprintf("simapiExtraParams.formData of a form.submit of %q reads vm.%s, not vm.%s, the values of that Form", s[0], s[1], key))
-		}
-	}
+	sort.Strings(problems) // forms is a map
 	return problems
 }
 

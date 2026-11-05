@@ -1,10 +1,15 @@
 .PHONY: generate gen-check test vet build
 
+# gen-cdu-reference reads sim-api and simulator-ui-kit (SIM_API_DIR / UI_KIT_DIR, default: the
+# checkouts next to this one) at origin/develop; its -check regenerates at the commits recorded in
+# the documents and is skipped where those checkouts are not available.
 generate:
 	GOMAXPROCS=2 go run -p=1 ./cmd/gen-client
+	GOMAXPROCS=2 go run -p=1 ./cmd/gen-cdu-reference
 
 gen-check:
 	GOMAXPROCS=2 go run -p=1 ./cmd/gen-client -check
+	GOMAXPROCS=2 go run -p=1 ./cmd/gen-cdu-reference -check
 
 test: check-source gen-check
 	GOMAXPROCS=2 go test -p=1 -timeout=60s ./...
