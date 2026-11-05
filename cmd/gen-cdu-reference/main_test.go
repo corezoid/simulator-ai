@@ -90,7 +90,7 @@ func TestGenerate(t *testing.T) {
 		"actions?: {[key: string]: ClientAction[]}",
 		"### form.submit — Submit a form\nSends a form.\nIt does not validate.\nformId: Identifier — The Form node's id.\nonSuccess?: ClientAction[]\n",
 		"### notify — Show a toast\nAs sent.\ntitle?: string",
-		"$ref: string ^#/definitions/[a-z]+$ — A definition.\nContract: $ref excludes props.\nRules (checked on a stand", `{"id":"field-rows","$ref":"#/definitions/field-row"`, "$locale — The texts.\nvm — The page's data.", "### form — Form",
+		"$ref: string ^#/definitions/[a-z]+$ — A definition.\nContract: $ref excludes props.\nRules (sim-api: save", `{"id":"field-rows","$ref":"#/definitions/field-row"`, "$locale — The texts.\nvm — The page's data.", "### form — Form",
 	} {
 		if !strings.Contains(protocol, want) {
 			t.Errorf("protocol lacks %q:\n%s", want, protocol)

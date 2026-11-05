@@ -209,16 +209,18 @@ func idsWith(entries map[string]helpEntry, prefix string) []string {
 	return ids
 }
 
-// definitionRules are how sim-api treats definitions beyond what the schema says, as observed on a
-// local stand (sim-api 789b3bb3, 2026-11-05: saved, rendered with page/render and released).
+// definitionRules are how sim-api treats definitions beyond what the schema says: observed on a
+// local stand (sim-api 789b3bb3, 2026-11-05: save, page/render, release), with the save-time checks
+// of sim-api !526 (1089eb21).
 var definitionRules = []string{
-	"Rules (checked on a stand: save, page/render, release):",
-	"- A definition is a file definitions/<name> (application/json) in the app-root definitions folder, holding one node {id, type, props?, children?, actions?}. It is not checked when it is saved, only inside each page that uses it, when the page is rendered or released.",
-	"- An instance is {\"id\": \"<own id>\", \"$ref\": \"#/definitions/<name>\"} plus, if needed, if, visibility, for, slot or variant. A page saving an instance with type, props, children or actions is refused, and so is a nested name (#/definitions/cards/user): every definition sits directly in definitions/.",
+	"Rules (sim-api: save, page/render and release):",
+	"- A definition is a file definitions/<name> (application/json) in the app-root definitions folder, holding one node {id, type, props?, children?, actions?}. Names sit directly in definitions/: a nested name (#/definitions/cards/user) is refused by the $ref pattern.",
+	"- An instance is {\"id\": \"<own id>\", \"$ref\": \"#/definitions/<name>\"} plus, if needed, if, visibility, for, slot or variant. An instance with type, props, children or actions is refused on save.",
 	"- The definition replaces the instance, then the instance's own keys replace the definition's same top-level keys (id, if, visibility, for, …). Props cannot differ per instance: vary content through data, e.g. a for on the instance repeats the definition per item, which reads the item as $<as> ({{ $f.label }}), or expressions over vm.",
-	"- Give every instance its own id. Ids are not checked for uniqueness: two instances without id both render with the definition root's id, so widget.call, bindings and $block cannot tell them apart. A definition root without id needs an id on every instance, else render and release are refused (missing property 'id'). Ids inside a definition repeat in every instance.",
-	"- A missing definition or a cycle saves, but render and release are refused: unresolved definition at /tree/… (missing, invalid, or cyclic). Wrong props inside a definition are refused the same way, at the resolved node.",
-	"- Instances in overlay.open content and in bindings are resolved too. Changing the definition file (smart_form_page_patch path definitions/<name>) changes every instance at the next render and release.",
+	"- Saving a page config, or any file under definitions/, resolves every page it touches (the page written, and every page reaching a written definition through $ref, transitively). A missing or cyclic definition, wrong props inside one, or an instance left without an id is refused at save: invalid CDU source in page '<page>' with its definitions: ….",
+	"- Node ids must be unique on a page: duplicate node id \"x\" at <ptr> and <ptr> is refused at save. An instance without its own id takes its definition root's id, so give each instance its own id; nodes inside a definition are their own scope and may repeat across instances.",
+	"- A definition no page reaches is checked only as JSON; deleting or renaming a definition file is not checked, so first change the pages that use it.",
+	"- Instances in overlay.open content and in bindings are resolved too. Changing the definition file (smart_form_page_patch path definitions/<name>) changes every instance; the save checks every page using it.",
 	"Example: the file definitions/field-row",
 	`{"id":"row","type":"Stack","props":{"direction":"horizontal","size":"md"},"children":[{"id":"row-label","type":"Label","props":{"text":"{{ $f.label }}"}},{"id":"row-value","type":"Label","props":{"text":"{{ $lookup(vm.profile, $f.key) }}"}}]}`,
 	"and two instances in a page tree, the second repeated per item of vm.fields:",

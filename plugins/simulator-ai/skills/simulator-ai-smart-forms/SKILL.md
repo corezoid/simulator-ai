@@ -140,13 +140,15 @@ Keep every write small, however long the turn may run:
    paths: ["definitions"]}` and reuse what is there). Each use is an instance with its own `id`:
    `{"id": "phone-row", "$ref": "#/definitions/<name>"}`.
 3. **What an instance may hold:** `id`, `if`, `visibility`, `for`, `slot`, `variant`, never
-   `type`, `props`, `children` or `actions` (refused on save). Names sit directly in
-   `definitions/` (no subfolders). Vary content by data: `for` on the instance repeats the
-   definition per item, read inside as `$<as>`. Without its own `id` every instance gets the
-   definition root's `id`.
+   `type`, `props`, `children` or `actions`. Names sit directly in `definitions/` (no
+   subfolders). Vary content by data: `for` on the instance repeats the definition per item,
+   read inside as `$<as>`. Ids must be unique on a page and an instance without its own `id`
+   takes the definition root's, so give every instance one (ids inside a definition may repeat).
 4. **Edit once.** Change a definition with `smart_form_page_patch {path: "definitions/<name>",
-   nodeId?, ops}`: every instance follows. A missing or cyclic definition, or a wrong prop
-   inside one, saves but is refused at release: `smart_form_page_render` (develop) shows it first.
+   nodeId?, ops}`: every instance follows. Saving a page or a definition checks every page it
+   reaches: a missing or cyclic definition, a wrong prop inside one, a duplicate id or an
+   instance without id is refused at save, naming the page. Deleting or renaming a definition is
+   not checked: change the pages that use it first.
 
 Verified example. `definitions/field-row`:
 

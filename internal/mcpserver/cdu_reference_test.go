@@ -239,7 +239,7 @@ func TestReferenceEmbedded(t *testing.T) {
 		t.Fatal(err)
 	}
 	section := strings.Join(protocolDoc.Lines[w.lo:w.hi], "\n")
-	for _, want := range []string{"Contract: $ref is mutually exclusive with type/props/children/actions.", "Give every instance its own id", `"$ref":"#/definitions/field-row","for":`} {
+	for _, want := range []string{"Contract: $ref is mutually exclusive with type/props/children/actions.", "give each instance its own id", `"$ref":"#/definitions/field-row","for":`} {
 		if !strings.Contains(section, want) {
 			t.Errorf("protocol/definitions lacks %q", want)
 		}
