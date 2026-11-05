@@ -204,3 +204,25 @@ func TestPatchDefinitionsAndInstances(t *testing.T) {
 		t.Fatal("an instance may be replaced by an inline node:", out, err)
 	}
 }
+
+// remove "" of the node an overlay.open shows (its content, or the only node of a content list)
+// would leave an empty overlay: refused, naming the action to remove instead.
+func TestPatchOverlayContentRoot(t *testing.T) {
+	page := `{"schemaVersion":"2.0","id":"index","tree":{"id":"root","type":"Stack","children":[
+{"id":"open","type":"Button","actions":{"onClick":[{"type":"overlay.open","surface":"modal","id":"dlg","content":{"id":"dialog","type":"Modal","children":[{"id":"ok","type":"Button"}]}}]}}]},
+"bindings":[{"on":"x","do":[{"type":"overlay.open","content":[{"id":"side","type":"Label"}]},{"type":"overlay.open","content":[{"id":"a","type":"Label"},{"id":"b","type":"Label"}]}]}]}`
+	for _, id := range []string{"dialog", "side"} {
+		if _, _, _, err := patchSource(page, id, []PatchOp{{Op: "remove", Path: ""}}); err == nil || !strings.Contains(err.Error(), "leaves an empty overlay. Remove the overlay.open action instead") {
+			t.Errorf("%s: %v", id, err)
+		}
+	}
+	for _, id := range []string{"ok", "b"} { // a node inside the content, one of several
+		if _, _, _, err := patchSource(page, id, []PatchOp{{Op: "remove", Path: ""}}); err != nil {
+			t.Errorf("%s: %v", id, err)
+		}
+	}
+	out, _, _, err := patchSource(page, "dialog", []PatchOp{{Op: "replace", Path: "", Value: json.RawMessage(`{"id":"dialog","type":"Modal"}`)}})
+	if err != nil || !strings.Contains(out, `"content":{"id":"dialog","type":"Modal"}`) {
+		t.Fatal(out, err)
+	}
+}

@@ -116,6 +116,9 @@ type SmartFormFile struct {
 type SmartFormWritten struct {
 	AppID string          `json:"appId"`
 	Files []SmartFormFile `json:"files"`
+	// Pending is what a written page still lacks to send what is typed (a Form without its
+	// submit yet): saved, but smart_form_release refuses the page until it is wired.
+	Pending []string `json:"pending,omitempty"`
 }
 
 type SmartFormReleaseInput struct {
@@ -283,11 +286,11 @@ func (c *Client) narrowFiles(ctx context.Context, all SmartFormFiles, paths []st
 	return out, nil
 }
 
-func written(appID string, files Files, want int) (SmartFormWritten, error) {
+func written(appID string, files Files, want int, pending []string) (SmartFormWritten, error) {
 	if len(files.Files) != want {
 		return SmartFormWritten{}, errors.New("file write returned a different number of files")
 	}
-	out := SmartFormWritten{AppID: appID, Files: make([]SmartFormFile, len(files.Files))}
+	out := SmartFormWritten{AppID: appID, Files: make([]SmartFormFile, len(files.Files)), Pending: pending}
 	for i, f := range files.Files {
 		out.Files[i] = SmartFormFile{ID: f.ID, FolderID: f.FolderID, Title: f.Title, SourceHash: f.SourceHash}
 	}
@@ -302,28 +305,34 @@ func (c *Client) CreateSmartFormFiles(ctx context.Context, in SmartFormFilesCrea
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
-	if err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileCreate) *string { return configSource(it.Title, &it.Source) }); err != nil {
+	pending, err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileCreate) *string { return configSource(it.Title, &it.Source) })
+	if err != nil {
 		return SmartFormWritten{}, err
 	}
 	r, e := call[appFilesRequest[SmartFormFileCreate], Files](ctx, c, "app_file/create", appFilesRequest[SmartFormFileCreate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {
 		return SmartFormWritten{}, e
 	}
-	return written(in.AppID, r, len(in.Items))
+	return written(in.AppID, r, len(in.Items), pending)
 }
 
-// wireConfigSources runs wireSubmits on every page config source of items, in place.
-func wireConfigSources[T any](items []T, workspace, appID string, source func(*T) *string) error {
+// wireConfigSources runs wireSubmits on every page config source of items, in place, and returns
+// what the pages still lack, each prefixed by its item index.
+func wireConfigSources[T any](items []T, workspace, appID string, source func(*T) *string) ([]string, error) {
+	var pending []string
 	for i := range items {
 		if s := source(&items[i]); s != nil {
-			wired, err := wireSubmits(*s, workspace, appID)
+			wired, left, err := wireSubmits(*s, workspace, appID)
 			if err != nil {
-				return fmt.Errorf("file %d: %w", i, err)
+				return nil, fmt.Errorf("file %d: %w", i, err)
 			}
 			*s = wired
+			for _, p := range left {
+				pending = append(pending, fmt.Sprintf("file %d: %s", i, p))
+			}
 		}
 	}
-	return nil
+	return pending, nil
 }
 
 // configSource is the source of a page config file, nil for another file or no source.
@@ -342,14 +351,42 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
-	if err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) }); err != nil {
+	pending, err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) })
+	if err != nil {
 		return SmartFormWritten{}, err
 	}
 	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {
 		return SmartFormWritten{}, e
 	}
-	return written(in.AppID, r, len(in.Items))
+	return written(in.AppID, r, len(in.Items), pending)
+}
+
+// checkPagesSend refuses a release while a develop page config would send nothing (a Form
+// without its submit, inputs beside an action-less button): a write lets a page be built in parts,
+// a release ships it as it is.
+func (c *Client) checkPagesSend(ctx context.Context, appID string, dev int64) error {
+	r, e := call[structRequest, structWire](ctx, c, "application/struct", structRequest{AccID: c.config.Workspace, ActorID: appID, EnvID: dev, Fields: []string{"id", "title", "objType", "children", "source"}})
+	if e != nil {
+		return e
+	}
+	var problems []string
+	var walk func(n ContentNode, path string)
+	walk = func(n ContentNode, path string) {
+		if n.ObjType == "file" && strings.HasPrefix(path, "pages/") && n.Title == "config" && n.Source != nil {
+			for _, p := range unsentPage(*n.Source) {
+				problems = append(problems, path+": "+p)
+			}
+		}
+		for _, child := range n.Children {
+			walk(child, strings.TrimPrefix(path+"/"+child.Title, "/"))
+		}
+	}
+	walk(r.Tree, "")
+	if len(problems) > 0 {
+		return errors.New("not released, a page would send nothing: " + strings.Join(problems, "; ") + ". Add the form.submit button (or the action sending the values), or create the data template and a ready page with smart_form_data_form_create")
+	}
+	return nil
 }
 
 func released(appID string, r Release) SmartFormRelease {
@@ -368,6 +405,9 @@ func (c *Client) ReleaseSmartForm(ctx context.Context, in SmartFormInput) (Smart
 	}
 	dev, prod, e := c.envs(ctx, in.AppID)
 	if e != nil {
+		return SmartFormRelease{}, e
+	}
+	if e = c.checkPagesSend(ctx, in.AppID, dev); e != nil {
 		return SmartFormRelease{}, e
 	}
 	r, e := call[releaseCreateRequest, Release](ctx, c, "release/create", releaseCreateRequest{AccID: c.config.Workspace, ActorID: in.AppID, SourceEnvID: dev, TargetEnvID: prod})

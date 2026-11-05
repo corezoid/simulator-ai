@@ -64,12 +64,15 @@ func addSmartFormReference(s *server.MCPServer, c *publicapi.Client) {
 			if err != nil {
 				return "", err
 			}
-			windows := make([]docWindow, 0, len(docs))
-			for _, d := range docs {
-				name := d.Name
-				if a.Doc != "" {
-					name = a.Doc
+			names := []string{a.Doc} // an unknown doc or section is an error, as in read
+			if a.Doc == "" {
+				names = names[:0]
+				for _, d := range docs {
+					names = append(names, d.Name)
 				}
+			}
+			windows := make([]docWindow, 0, len(names))
+			for _, name := range names {
 				w, err := window(docs, name)
 				if err != nil {
 					return "", err
@@ -82,7 +85,7 @@ func addSmartFormReference(s *server.MCPServer, c *publicapi.Client) {
 			}
 			return grepReference(windows, notes, a.Pattern, context, a.Limit)
 		})
-	addTextTool(s, "smart_form_reference_read", "Read the CDU v2 reference by line: doc components, protocol or examples, or one section as doc/<section> (components/DatePicker, protocol/form.submit, examples/E12-conditional-validation). offset (a line number, as grep shows them) and limit (default 120) page through it; the answer has the line numbers, the document's total and the next offset. Without doc: the documents with their sizes and sections.",
+	addTextTool(s, "smart_form_reference_read", "Read the CDU v2 reference by line: doc components, protocol or examples, or one section as doc/<section> (components/DatePicker, protocol/form.submit, examples/E12-conditional-validation; a name two subsections share is doc/<section>/<subsection>: protocol/actions/notify). offset (a line number, as grep shows them) and limit (default 120) page through it; the answer has the line numbers, the document's total and the next offset. Without doc: the documents with their sizes and sections.",
 		`{"type":"object","properties":{"doc":{"type":"string","minLength":1,"maxLength":300},"offset":{"type":"integer","minimum":1},"limit":{"type":"integer","minimum":1,"maximum":400}},"additionalProperties":false}`,
 		func(ctx context.Context, a referenceReadArgs) (string, error) {
 			docs, notes, err := ref.docs(ctx, a.Doc)

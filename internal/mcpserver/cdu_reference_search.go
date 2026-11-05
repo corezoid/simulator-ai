@@ -49,28 +49,70 @@ func sectionID(line string) string {
 	return fields[0]
 }
 
-// window resolves "doc" or "doc/section" (a ## or ### heading's first word, any case).
+// section is one ## or ### heading of a document: name is its first word, path its unique address
+// (a ### heading under its ## one: actions/notify, responses/notify).
+type section struct {
+	name, path string
+	lo, hi     int
+}
+
+// sections lists a document's ## and ### headings with the lines each one covers.
+func sections(d referenceDoc) []section {
+	var out []section
+	parent := ""
+	for i, line := range d.Lines {
+		level := headingLevel(line)
+		if level < 2 {
+			continue
+		}
+		s := section{name: sectionID(line), path: sectionID(line), lo: i}
+		if level == 2 {
+			parent = s.name
+		} else if parent != "" {
+			s.path = parent + "/" + s.name
+		}
+		s.hi = i + 1
+		for s.hi < len(d.Lines) && (headingLevel(d.Lines[s.hi]) == 0 || headingLevel(d.Lines[s.hi]) > level) {
+			s.hi++
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// window resolves "doc", "doc/<section>" or "doc/<section>/<subsection>" (any case). A bare name
+// shared by two subsections (protocol/notify: a client and a response action) is refused with
+// their full addresses.
 func window(docs []referenceDoc, name string) (docWindow, error) {
-	docName, section, _ := strings.Cut(name, "/")
+	docName, want, _ := strings.Cut(name, "/")
 	for _, d := range docs {
 		if d.Name != docName {
 			continue
 		}
-		if section == "" {
+		if want == "" {
 			return docWindow{d, "", 0, len(d.Lines)}, nil
 		}
-		for i, line := range d.Lines {
-			level := headingLevel(line)
-			if level < 2 || !strings.EqualFold(sectionID(line), section) {
-				continue
+		all := sections(d)
+		var named []section
+		for _, s := range all {
+			if strings.EqualFold(s.path, want) {
+				return docWindow{d, s.path, s.lo, s.hi}, nil
 			}
-			end := i + 1
-			for end < len(d.Lines) && (headingLevel(d.Lines[end]) == 0 || headingLevel(d.Lines[end]) > level) {
-				end++
+			if strings.EqualFold(s.name, want) {
+				named = append(named, s)
 			}
-			return docWindow{d, sectionID(line), i, end}, nil
 		}
-		return docWindow{}, fmt.Errorf("%s has no section %s: grep \"^## \" with doc %q lists its sections", docName, section, docName)
+		switch len(named) {
+		case 0:
+			return docWindow{}, fmt.Errorf("%s has no section %s: grep \"^## \" with doc %q lists its sections", docName, want, docName)
+		case 1:
+			return docWindow{d, named[0].path, named[0].lo, named[0].hi}, nil
+		}
+		paths := make([]string, len(named))
+		for i, s := range named {
+			paths[i] = docName + "/" + s.path
+		}
+		return docWindow{}, fmt.Errorf("%s/%s names %d sections: use %s", docName, want, len(named), strings.Join(paths, " or "))
 	}
 	return docWindow{}, fmt.Errorf("no document %q: the documents are components, protocol and examples (doc/<section> reads one section)", docName)
 }

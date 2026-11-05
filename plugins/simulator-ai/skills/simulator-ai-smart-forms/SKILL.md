@@ -78,8 +78,9 @@ is its padding (`{size, sides, customSize}`); there is no `gap` prop.
 
 For richer pages, extend the returned page with catalog components rather than writing the
 Form by hand. Inputs the user did not ask to keep still need somewhere to go (a Corezoid
-submit, step 5, or a navigation): ask which rather than making a data template. A page with inputs must save somewhere: a Form that nothing submits, a button
-without actions beside inputs, or a `form/submit` without its template is refused.
+submit, step 5, or a navigation): ask which rather than making a data template. A page with inputs must save somewhere: a `form/submit` without its template is refused; a
+Form that nothing submits yet, or a button without actions beside inputs, is saved with
+`pending` naming it, and `smart_form_release` refuses the page until it is wired.
 
 ## Look up the format (console)
 
@@ -132,8 +133,10 @@ Keep every write small, however long the turn may run:
 
 1. **Skeleton first.** Write the page with the root and one empty container per section, each
    with an `id` (`{"id":"contacts","type":"Stack","children":[]}`), then fill one section per
-   `smart_form_page_patch {nodeId: "<section id>", ops: [{op: "add", path: "/children/-",
-   value: …}]}`.
+   `smart_form_page_patch {appId, nodeId: "<section id>", ifMatchHash: "<sourceHash>", ops:
+   [{op: "add", path: "/children/-", value: …}]}`, each with the `sourceHash` the previous write
+   returned. A Form may come before its submit button: until the button is in, the write
+   answers `pending` and a release is refused.
 2. **Repeats become definitions.** A subtree used twice or more (a field row, a card, a section
    header) goes once into a file `definitions/<name>` (one node, `application/json`; the
    `definitions` folder exists in a new form, so look first with `smart_form_files_get {appId,
@@ -144,8 +147,8 @@ Keep every write small, however long the turn may run:
    subfolders). Vary content by data: `for` on the instance repeats the definition per item,
    read inside as `$<as>`. Ids must be unique on a page and an instance without its own `id`
    takes the definition root's, so give every instance one (ids inside a definition may repeat).
-4. **Edit once.** Change a definition with `smart_form_page_patch {path: "definitions/<name>",
-   nodeId?, ops}`: every instance follows. Saving a page or a definition checks every page it
+4. **Edit once.** Change a definition with `smart_form_page_patch {appId, path:
+   "definitions/<name>", nodeId?, ifMatchHash, ops}`: every instance follows. Saving a page or a definition checks every page it
    reaches: a missing or cyclic definition, a wrong prop inside one, a duplicate id or an
    instance without id is refused at save, naming the page. Deleting or renaming a definition is
    not checked: change the pages that use it first.

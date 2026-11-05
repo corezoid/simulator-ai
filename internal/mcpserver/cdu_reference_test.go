@@ -141,6 +141,21 @@ func TestReferenceRead(t *testing.T) {
 	if _, err = window(docs, "manual"); err == nil {
 		t.Fatal("unknown document")
 	}
+	// A name two subsections share is refused with their addresses; the full one, or a ## section
+	// named like a ### one, is unambiguous.
+	if _, err = window(docs, "protocol/notify"); err == nil || !strings.Contains(err.Error(), "use protocol/actions/notify or protocol/responses/notify") {
+		t.Fatal(err)
+	}
+	for name, heading := range map[string]string{"protocol/responses/notify": "### notify — Show a toast", "protocol/Actions/notify": "### notify — Show a toast",
+		"protocol/patch": "## patch — JsonPatchOp", "protocol/responses/patch": "### patch — Patch the tree"} {
+		w, err = window(docs, name)
+		if err != nil || !strings.HasPrefix(w.doc.Lines[w.lo], heading) || w.hi-w.lo < 2 || w.hi-w.lo > 30 {
+			t.Errorf("%s: %v %d–%d", name, err, w.lo, w.hi)
+		}
+	}
+	if w, _ = window(docs, "protocol/responses/notify"); w.lo <= sectionLine(protocolDoc, "responses") {
+		t.Error("responses/notify is the response action")
+	}
 	w, _ = window(docs, "examples/E12-conditional-validation")
 	if out, _ = readReference(w, 0, 400); !strings.Contains(out, `"type": "Form"`) || !strings.Contains(out, "pages/E12-conditional-validation/config:") {
 		t.Fatalf("example section:\n%s", out[:300])
@@ -220,6 +235,12 @@ func TestReferenceTools(t *testing.T) {
 	// without the catalog the embedded documents still answer
 	send, _ = consoleServer(t, map[string]string{"cdu/catalog/get": `"error":{"code":-32000,"message":"denied"}`})
 	if text, isErr = toolText(t, send, "smart_form_reference_grep", `{"pattern":"form\\.submit"}`); isErr || !strings.HasPrefix(text, "components: not available") || !strings.Contains(text, "### form.submit") {
+		t.Fatal(text)
+	}
+	if text, isErr = toolText(t, send, "smart_form_reference_grep", `{"pattern":"x","doc":"manual"}`); !isErr || !strings.Contains(text, `no document "manual"`) {
+		t.Fatal("an unknown doc must fail grep as it fails read:", text)
+	}
+	if text, isErr = toolText(t, send, "smart_form_reference_grep", `{"pattern":"x","doc":"protocol/nope"}`); !isErr || !strings.Contains(text, "has no section nope") {
 		t.Fatal(text)
 	}
 	if _, isErr = toolText(t, send, "smart_form_reference_read", `{"doc":"components"}`); !isErr {

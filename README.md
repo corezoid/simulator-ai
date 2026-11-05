@@ -278,7 +278,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | --- | --: | --: | --- |
 | `core` | 14 | 22.9 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
 | `graph` | 43 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings, nodes opened in place (at the 55 KiB bound: the next graph tool needs a split) |
-| `smart_forms` | 24 | 29.8 | Smart Form pages, the CDU reference, data template, releases, history, trash, test runs, its Corezoid project |
+| `smart_forms` | 24 | 30.3 | Smart Form pages, the CDU reference, data template, releases, history, trash, test runs, its Corezoid project |
 | `forms` | 12 | 21.4 | Account Templates: create, change, tree, their accounts, records filtered by data |
 | `finance` | 18 | 26.6 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
 | `finance_setup` | 40 | 47.5 | currencies and account names, formulas, tags, triggers, counters, limits and status, atomic posts, by-ref variants |
@@ -289,7 +289,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | `charts` | 5 | 10.9 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 191 | 253.7 | |
+| all (`console-full`) | 191 | 254.2 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
@@ -361,10 +361,12 @@ template title (its first 255 characters), so every record of a template without
 title; text of the agent holding `{{` is written as a JSONata string literal, so the renderer shows it as typed;
 the stand must serve `form/submit`. A submit needs View on the template, which only its creator has, so the page
 passes `appId`: `form/submit` then lets whoever may open that Smart Form (its `sharedWith`, as `smart_form_create`
-set it) submit into a template its released page names. Page writes refuse inputs with an action-less button but no Form, a Form that neither a form.submit names
-nor any action passes on (`vm.<valueKey>` in a `simapi.call`, `widget.call`, `bus.publish`, `navigate.local`/`navigate.route` or `copy`; their `onError`/`notify` follow-ups do not count), a `form/submit` without a template and a `formData`
+set it) submit into a template its released page names. Page writes refuse a `form/submit` without a template and a `formData`
 filter reading another Form, and set its `accId` to the host workspace and its `appId` to that Smart Form; other submits (via Corezoid, other
-methods) are left as they are. Then
+methods) are left as they are. A page that sends nothing yet (inputs with an action-less button but no Form, a Form that neither a form.submit names
+nor any action passes on: `vm.<valueKey>` in a `simapi.call`, `widget.call`, `bus.publish`, `navigate.local`/`navigate.route` or `copy`, their `onError`/`notify` follow-ups not counting)
+is saved with `pending` naming what is missing, so a large page can be built section by section; `smart_form_release` reads the develop
+page configs (`application/struct` with sources) and refuses to release one still in that state. Then
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`; a later change to a page is
 `smart_form_files_get {paths}` → `smart_form_reference_grep` / `smart_form_reference_read` (or
 `smart_form_components {types}`) → `smart_form_page_patch` by `nodeId`. Its

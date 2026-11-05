@@ -31,6 +31,8 @@ type SmartFormPatched struct {
 	// Applied are the ops as run, with the absolute pointers a nodeId resolved to.
 	Applied   []string `json:"applied"`
 	Unchanged bool     `json:"unchanged,omitempty"`
+	// Pending is what the page still lacks to send what is typed (see SmartFormWritten).
+	Pending []string `json:"pending,omitempty"`
 }
 
 type appFileGetRequest struct {
@@ -92,7 +94,7 @@ func (c *Client) PatchSmartFormFile(ctx context.Context, in SmartFormPatchInput)
 	if e != nil {
 		return SmartFormPatched{}, e
 	}
-	out.SourceHash = w.Files[0].SourceHash
+	out.SourceHash, out.Pending = w.Files[0].SourceHash, w.Pending
 	return out, nil
 }
 
@@ -162,6 +164,9 @@ func nodeOp(doc any, nodeID string, op PatchOp, i int) (PatchOp, error) {
 	if e = instanceOp(doc, base, op, i); e != nil {
 		return op, e
 	}
+	if op.Op == "remove" && op.Path == "" && overlayRoot(doc, base) {
+		return op, fmt.Errorf("op %d: node %q is what an overlay.open shows: removing it leaves an empty overlay. Remove the overlay.open action instead, or replace the node (path \"\")", i, nodeID)
+	}
 	moves := op.Op == "move" || op.Op == "copy"
 	for _, p := range []string{op.Path, op.From} {
 		if p != "" && p[0] != '/' {
@@ -182,4 +187,22 @@ func nodeOp(doc any, nodeID string, op PatchOp, i int) (PatchOp, error) {
 		}
 	}
 	return abs, nil
+}
+
+// overlayRoot says the node at base is the whole content of an overlay.open: the content itself,
+// or the only node of a content list.
+func overlayRoot(doc any, base string) bool {
+	tokens, err := parsePointer(base)
+	if err != nil || len(tokens) == 0 {
+		return false
+	}
+	if tokens[len(tokens)-1] == "content" {
+		return true
+	}
+	if len(tokens) < 2 || tokens[len(tokens)-2] != "content" {
+		return false
+	}
+	list, _ := getAt(doc, tokens[:len(tokens)-1])
+	items, ok := list.([]any)
+	return ok && len(items) == 1
 }
