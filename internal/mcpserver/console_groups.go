@@ -35,18 +35,21 @@ var consoleGroups = map[string][]string{
 		"smart_form_page_render", "smart_form_page_submit", "corezoid_project_create", "corezoid_project_get"},
 	"forms": {"form_create", "form_update", "form_delete", "form_status_update", "forms_count", "forms_tree_get", "form_linked_get",
 		"form_accounts_list", "form_account_create", "form_account_delete", "actors_filter", "actors_filter_count"},
-	"finance": {"account_create", "accounts_list", "accounts_count", "account_get", "account_by_id_get", "account_update",
-		"account_status_update", "account_delete", "account_by_ref_create", "account_by_ref_get", "accounts_by_ref_list",
-		"account_pair_create", "account_pair_unregister", "account_amount_set", "account_formula_get", "account_formula_preview",
-		"account_formula_set", "currencies_list", "currency_get", "currency_create", "currency_update",
-		"account_names_list", "account_name_get", "account_name_create", "account_name_update",
-		"transaction_create", "transaction_by_actor_ref_create", "transaction_get", "transaction_by_ref_get", "transactions_list",
-		"account_transactions_list", "transactions_filter", "transactions_filter_count", "transaction_children_list", "atom_transaction_create",
-		"transfer_create", "transfer_get", "transfer_by_ref_get", "transfers_filter", "transfers_filter_count",
+	// finance is the everyday money of a request: an actor's accounts, a balance, a transfer, a
+	// transaction, their history; finance_setup the rest, which shapes the ledger.
+	"finance": {"account_create", "accounts_list", "account_get", "account_by_id_get", "account_pair_create",
+		"currencies_list", "account_names_list", "transfer_create", "transfer_get", "transfer_by_ref_get", "transfers_filter",
+		"transaction_create", "transaction_get", "transaction_by_ref_get", "transactions_list", "account_transactions_list",
+		"transactions_filter", "actor_system_get"},
+	"finance_setup": {"accounts_count", "account_update", "account_status_update", "account_delete", "account_by_ref_create",
+		"account_by_ref_get", "accounts_by_ref_list", "account_pair_unregister", "account_amount_set", "account_formula_get",
+		"account_formula_preview", "account_formula_set", "currency_get", "currency_create", "currency_update",
+		"account_name_get", "account_name_create", "account_name_update", "transaction_by_actor_ref_create",
+		"transactions_filter_count", "transaction_children_list", "atom_transaction_create", "transfers_filter_count",
 		"counter_get", "counter_by_period_get", "counter_increment", "counter_set",
 		"account_tags_list", "account_tag_add", "account_tags_set", "account_actor_tags_list", "account_actor_tags_count",
 		"account_triggers_list", "account_triggers_set", "account_actor_triggers_list", "account_actor_triggers_set",
-		"actor_field_triggers_list", "actor_field_triggers_set", "form_accounts_list", "form_account_create", "actor_system_get"},
+		"actor_field_triggers_list", "actor_field_triggers_set", "form_accounts_list", "form_account_create"},
 	"people": {"access_rules_get", "access_rules_save", "access_requests_list", "access_request_create", "access_request_confirm",
 		"access_request_cancel", "user_get", "workspaces_list", "search_all", "actor_system_get", "chat_open", "actor_attach",
 		"reaction_update", "reaction_delete", "reactions_count", "reactions_mark_read", "agents_find", "agent_get", "bbcode_tags_get"},
@@ -64,6 +67,9 @@ var consoleGroups = map[string][]string{
 // everyday scenarios (consoleCoreTools).
 var consoleCoreGroups = []string{"core", "graph", "smart_forms", "forms", "finance", "people", "files"}
 
+// Without the relay a run gets the plain console catalog (consoleCoreTools, 48 tools), not the
+// union of these groups, which is larger (their setup tools, e.g. graph edits).
+
 // toolGroups is each tool's groups, in the order of groupOrder.
 var toolGroups = func() map[string][]string {
 	out := map[string][]string{}
@@ -77,7 +83,7 @@ var toolGroups = func() map[string][]string {
 	return out
 }()
 
-var groupOrder = []string{"core", "graph", "smart_forms", "forms", "finance", "people", "files", "meetings", "jobs", "charts", "simulation", "corezoid"}
+var groupOrder = []string{"core", "graph", "smart_forms", "forms", "finance", "finance_setup", "people", "files", "meetings", "jobs", "charts", "simulation", "corezoid"}
 
 // tagGroups writes each console tool's groups into its _meta, keeping its handler.
 func tagGroups(s *server.MCPServer) {

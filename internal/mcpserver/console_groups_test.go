@@ -52,6 +52,10 @@ func TestConsoleGroups(t *testing.T) {
 	if len(union) != len(tools) {
 		t.Errorf("the groups hold %d tools, console-full %d", len(union), len(tools))
 	}
+	// The everyday money group stays small: most Console finance requests need only it.
+	if n := len(consoleGroups["finance"]); n > 18 {
+		t.Errorf("finance has %d tools; keep the setup ones in finance_setup", n)
+	}
 	everyday := map[string]bool{}
 	for _, g := range consoleCoreGroups {
 		for _, name := range consoleGroups[g] {
@@ -83,7 +87,7 @@ func TestConsoleGroupsInToolsList(t *testing.T) {
 	for _, tool := range list.Result.Tools {
 		got[tool.Name] = tool.Meta[groupsMeta]
 	}
-	if fmt.Sprint(got["actor_get"]) != "[core]" || fmt.Sprint(got["actor_system_get"]) != "[graph finance people]" || len(got) != 180 {
+	if fmt.Sprint(got["actor_get"]) != "[core]" || fmt.Sprint(got["actor_system_get"]) != "[graph finance people]" || fmt.Sprint(got["counter_set"]) != "[finance_setup]" || len(got) != 180 {
 		t.Fatalf("%d tools; actor_get %v, actor_system_get %v", len(got), got["actor_get"], got["actor_system_get"])
 	}
 	for name, tool := range consoleTools(t, "console").ListTools() {
