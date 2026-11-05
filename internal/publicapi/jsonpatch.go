@@ -17,19 +17,8 @@ type PatchOp struct {
 	Value json.RawMessage `json:"value,omitempty"`
 }
 
-// applyPatch applies ops to doc in order and returns the new document; the first failing op stops
-// it with an error naming that op's index and path. doc is changed in place: on an error the
-// caller discards it, so a patch applies all or nothing.
-func applyPatch(doc any, ops []PatchOp) (any, error) {
-	root := &doc
-	for i, op := range ops {
-		if err := applyOp(root, op); err != nil {
-			return nil, fmt.Errorf("op %d (%s %s): %w", i, op.Op, op.Path, err)
-		}
-	}
-	return *root, nil
-}
-
+// applyOp applies one operation to the document root points at. A patch applies all its ops or
+// none: patchSource stops at the first failing op and the caller discards the document.
 func applyOp(root *any, op PatchOp) error {
 	path, err := parsePointer(op.Path)
 	if err != nil {

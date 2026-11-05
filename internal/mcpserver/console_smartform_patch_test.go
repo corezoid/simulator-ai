@@ -87,7 +87,8 @@ func TestSmartFormPagePatchByFileID(t *testing.T) {
 
 func TestSmartFormFilesGetPaths(t *testing.T) {
 	send, calls := consoleServer(t, map[string]string{"app_file/get": pageFile})
-	reply := callTool(send, "smart_form_files_get", `{"appId":"app1","paths":["pages/index","pages/thanks"]}`)
+	// pages/index/config is named twice (by itself and under pages/index): one entry, not missing.
+	reply := callTool(send, "smart_form_files_get", `{"appId":"app1","paths":["pages/index","pages/index/config","pages/thanks"]}`)
 	if methodsOf(*calls) != "application/env/list,application/struct,app_file/get" {
 		t.Fatal(methodsOf(*calls))
 	}
@@ -96,7 +97,7 @@ func TestSmartFormFilesGetPaths(t *testing.T) {
 	}
 	if strings.Contains(reply, `"path":"pages",`) || !strings.Contains(reply, `{"id":102,"path":"pages/index","objType":"folder"}`) ||
 		!strings.Contains(reply, `"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"`+readHash+`","source":"{`) ||
-		!strings.Contains(reply, `"missing":["pages/thanks"]`) {
+		!strings.Contains(reply, `"missing":["pages/thanks"]`) || strings.Count(reply, `"path":"pages/index/config"`) != 2 /* text + structuredContent */ {
 		t.Fatal(reply)
 	}
 }
