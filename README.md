@@ -182,7 +182,7 @@ scenarios use (see "AI Console profile").
 | `agents_find` [findAgent] (members without query) · `agent_get` [getAgent] (a user's twin or any actor, with the profile) | `user/list`, or `form/system/get` (`System`) + `actor/search/list` (semantic, else text), or `actor/filter/list` of a `formId` · `actor/by-system_obj/get` or `actor/get` | ✓ | | |
 | `build_link` [buildLink] (actor, layer, form, chat, chart, … and a Smart Form route; with `appKey`/`appId` inside the current Smart Form) | `route/build` (`dynamic` on the current form's key, `route/key/get` for an `appId`) plus the block's `#b=` fragment; the legacy web app route table on `SIMULATOR_AI_ORIGIN` as the fallback; a Smart Form's short URL from `route/build` (its production release) | ✓ | | |
 | `bbcode_tags_get` [getBbcodeTags] | none: the BBCode catalog of simulator-ui-kit `packages/utils/src/bbcode/bbcode-tags.json`, built in | ✓ | | |
-| `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, `graph/layer/actors/manage` | ✓ | | |
+| `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, placed open as `layer_placements_create` does (room checked before the actors are made, made with anisotropy) | ✓ | | |
 | `chart_update` [updateChart] (settings, series or filter; with `laId` the placement's size) | `actor/get` + `form/system/get`, a new filter's `actor/create`, `actor/update`, `graph/layer/elements/list` + `graph/layer/actor_settings/save` | ✓ | | |
 | `smart_form_folders_create` (a new page's `pages/<page>`) | `app_folder/create` | ✓ | | |
 | `smart_form_releases_list` · `smart_form_release_diff` · `smart_form_release_rollback` | `release/list` · `release/diff` · `release/rollback` | ✓ | | |
@@ -262,7 +262,7 @@ for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `u
 and `actor_delete` for a delete named outside a layer: 50 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page; `internal/mcpserver/console.go` says why each later one is). `console-full` adds every other actor, form, graph, access, reaction, user,
 attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
-transcript tool, hole reopen, Pencil drawing and layer settings (187 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+transcript tool, hole reopen, Pencil drawing, layer settings and nodes opened in place (188 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Tool groups: every console tool in `tools/list` carries `_meta: {"simulator-ai/groups": [...]}`, so the Hermes relay
@@ -270,24 +270,25 @@ can give a run `core` and only the domains its request needs (`internal/mcpserve
 in several groups, each group with `core` is enough for its domain). The baseline without the relay is the plain
 `console` profile, the 50 tools named in `consoleCoreTools`, not the union of groups: `core`, `graph`, `smart_forms`,
 `forms`, `finance`, `people` and `files` together contain those 50 and more (the graph edits, the Smart Form history,
-...). Sizes are the tools' `tools/list` entries (`go test ./internal/mcpserver -run GroupSizes -v`, which also keeps each group within 55 KiB):
+...). Sizes are the tools' `tools/list` entries (`go test ./internal/mcpserver -run GroupSizes -v`, which also keeps each group within 55 KiB;
+output schemas carry no `additionalProperties: false`, which only cost context):
 
 | Group | Tools | KiB | For |
 | --- | --: | --: | --- |
-| `core` | 14 | 23.1 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
-| `graph` | 42 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings (at the 55 KiB bound: the next graph tool needs a split) |
-| `smart_forms` | 21 | 24.2 | Smart Form pages, data template, releases, history, trash, test runs, its Corezoid project |
+| `core` | 14 | 22.9 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
+| `graph` | 43 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings, nodes opened in place (at the 55 KiB bound: the next graph tool needs a split) |
+| `smart_forms` | 21 | 23.9 | Smart Form pages, data template, releases, history, trash, test runs, its Corezoid project |
 | `forms` | 12 | 21.4 | Account Templates: create, change, tree, their accounts, records filtered by data |
-| `finance` | 18 | 26.7 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
-| `finance_setup` | 40 | 47.6 | currencies and account names, formulas, tags, triggers, counters, limits and status, atomic posts, by-ref variants |
-| `people` | 19 | 22.6 | access, access requests, users, chats, cards on an actor, reactions, agents |
+| `finance` | 18 | 26.6 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
+| `finance_setup` | 40 | 47.5 | currencies and account names, formulas, tags, triggers, counters, limits and status, atomic posts, by-ref variants |
+| `people` | 19 | 22.4 | access, access requests, users, chats, cards on an actor, reactions, agents |
 | `files` | 7 | 7.2 | upload, attach, list, rename, detach, actor picture |
 | `meetings` | 4 | 4.1 | guest links, transcripts |
-| `jobs` | 4 | 6.4 | graph export and import |
-| `charts` | 5 | 11.0 | charts on a layer, with the account reads that give their nameId and currencyId |
+| `jobs` | 4 | 6.3 | graph export and import |
+| `charts` | 5 | 10.9 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 187 | 248.6 | |
+| all (`console-full`) | 188 | 247.7 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
@@ -317,9 +318,10 @@ another, never on a new one.
 | `flowchart_layout` | `form/flowchart-block/search` (read-only) | per node formId, data, grid position and layerSettings; `returnEdges` |
 | `layer_create` | `form/system/get` (`Layers`) + `actor/create` | layer actor |
 | `edge_create` | `edge_type/get` (default `hierarchy`) + `edge/create` | id, source, target, edgeTypeId, name |
-| `layer_placements_create` | `graph/layer/actors/manage` (create only); a flowchart node is border-snapped and gets the block's `areaPicture` | nodes `{laId, actorId, position}`, edges `{laId, edgeId, laIdSource, laIdTarget}` |
+| `layer_placements_create` | `actor/get` (the layer's `data.anisotropy`) + `graph/layer/actors/list` (what each placement holds: a cell, an open box, a block's box) + `graph/layer/actors/manage` (create only); a flowchart node is border-snapped and gets the block's `areaPicture`. A taken area is refused, or with anisotropy made room for: atomic `batch` of `graph/layer/actors/offset` (a seam through the area) + manage. `expand` on the only node places it open (the `layer_node_expand` bag, its push first) | nodes `{laId, actorId, position, cell}`, edges `{laId, edgeId, laIdSource, laIdTarget}`, `moved` (each node once), `opened {expandType, area}`, `covers` |
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
-| `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges with `cell`, `hasMore` |
+| `layer_get` | `actor/get` (`data.anisotropy`) + `graph/layer/edges/list` + `graph/layer/actors/list` | compact nodes/edges with `cell`, an open node's `open {expandType, area}`, `anisotropy`, `hasMore` |
+| `layer_node_expand` (`console-full`) | `graph/layer/elements/list` (the node) + the layer read above + `form/system/get` (`Scripts`, `Dashboards`) → atomic `batch` of `graph/layer/actor_settings/save` (`expand`, `expandType`, `flaskView`, `nestedFrame`, `expandPushed`, legacy `width`/`height`) + `graph/layer/actors/offset` (anisotropy; the close mirrors `expandPushed`), as simulator-ui-kit `expandOps` / `collapseOps` | `{laId, actorId, expanded, changed, expandType, area, pushed, moved, covers}` |
 | `layer_viewport` | `graph/viewport/command` (a ruler `cell` sent as its index: `"C, 7"` → `{x: 2, y: 6}`) | `commandId`, `openTabs` (0: the layer is not open, nothing moved) |
 | `hole_close` | `actor/hole/merge`, or `actor/get` (the hole) + atomic `actor/create` + `actor/hole/merge` | `{holeActorId, actorId, created, changes}` (+ `closingProgress`, `conditions` with `forceMerge`) |
 | `edge_hole_close` | `edge/hole/merge`, or `edge/get` (the hole) + atomic `edge/create` + `edge/hole/merge` | `{holeEdgeId, edgeId, created, changes}` |

@@ -86,6 +86,7 @@ func addConsole(s *server.MCPServer, c *publicapi.Client) {
 	addConsoleHoles(s, c)
 	addConsoleDraw(s, c)
 	addConsoleLayerSettings(s, c)
+	addConsoleExpand(s, c)
 }
 
 func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {
@@ -99,21 +100,21 @@ func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {
 			return graphplan.ConsoleBlocks(catalog, len(in.BlockIDs) > 0), nil
 		})
 	addFlowchartLayout(s, c)
-	consoleTool(s, "layer_create", "Create an empty layer (a canvas actor of the Layers system template), only when the user asks for a new layer or the request's Current context has none: otherwise create and place on the current layer. Returns the layer actor; its id is the layerId of the layer tools. Asked to visualize something in the chat, first ask how: a Smart Form showing a layer in a GraphEditor block (a flowchart, or plain actors on the layer), or plain text; never draw ASCII diagrams.",
+	consoleTool(s, "layer_create", "Create an empty layer (an actor of the Layers system template) only when the user asks for one or the request's Current context has none: otherwise work on the current layer. Its id is the layerId of the layer tools. Asked to visualize something in the chat, first ask how: a Smart Form showing a layer in a GraphEditor block (a flowchart, or plain actors), or plain text; never draw ASCII diagrams.",
 		`{"type":"object","properties":{"title":{"type":"string","minLength":1,"maxLength":1000},"description":{"type":"string","maxLength":10000}},"required":["title"],"additionalProperties":false}`, true, c.CreateLayer)
 	consoleTool(s, "edge_create", "Create ONE edge; for two or more use edges_create (one call). Link two actors with an edge (source -> target) of the named type, default hierarchy. name is the label drawn on the edge. The direction is kept: an existing edge of this type from source to target is returned unchanged, a reverse one is not reused. Tree edge types refuse a second parent and cycles. hole makes a placeholder edge (an edge to a hole actor need not be one). Returns id/source/target/edgeTypeId; draw it with layer_placements_create.",
 		`{"type":"object","properties":{"source":{"type":"string","minLength":1,"maxLength":255},"target":{"type":"string","minLength":1,"maxLength":255},"edgeType":{"type":"string","minLength":1,"maxLength":255},"name":{"type":"string","maxLength":1000},"curveStyle":{"type":"string","enum":["curved","rounded","roundedDownward","straight"]},"hole":{"type":"boolean"}},"required":["source","target"],"additionalProperties":false}`, true, c.CreateEdge)
-	consoleTool(s, "actors_create", "Create 2-100 actors in ONE call instead of repeated actor_create; use it for two or more. Each item as in actor_create: formId (templates may differ), title, optional description, data (field values; for a flowchart block formId, data and color from flowchart_layout), color (optional; without it a random colour of the editor palette), hole (a placeholder for an actor not known yet: its data fields are only the conditions that will close it). Atomic: all are created or none, and an error names the failed item's index. Returns actors [{id, title, formId, color, ...}] in input order. Does not place them on a layer.",
+	consoleTool(s, "actors_create", "Create 2-100 actors in ONE call instead of repeated actor_create; use it for two or more. Each item as in actor_create: formId (templates may differ), title, description, data (field values; for a flowchart block formId, data and color from flowchart_layout), color (else a random one of the editor palette), hole (a placeholder for an actor not known yet: its data fields are only the conditions that will close it). Atomic: all or none; an error names the failed item's index. Returns actors [{id, title, formId, color, ...}] in input order, not placed on a layer.",
 		`{"type":"object","properties":{"actors":{"type":"array","minItems":1,"maxItems":100,"items":`+actorItem+`}},"required":["actors"],"additionalProperties":false}`, true, c.CreateActors)
-	consoleTool(s, "edges_create", "Create 2-100 edges in ONE call instead of repeated edge_create; use it for two or more. Each item as in edge_create: source -> target (direction kept), optional edgeType name (default hierarchy), name (the label drawn on the edge), curveStyle, hole. Atomic: all are created or none, and an error names the failed item's index. Returns edges [{id, source, target, edgeTypeId, name}] in input order; draw them with layer_placements_create.",
+	consoleTool(s, "edges_create", "Create 2-100 edges in ONE call instead of repeated edge_create; use it for two or more. Each item as in edge_create: source -> target (direction kept), edgeType name (default hierarchy), name (its label), curveStyle, hole. Atomic: all or none; an error names the failed item's index. Returns edges [{id, source, target, edgeTypeId, name}] in input order; draw them with layer_placements_create.",
 		`{"type":"object","properties":{"edges":{"type":"array","minItems":1,"maxItems":100,"items":`+edgeItem+`}},"required":["edges"],"additionalProperties":false}`, true, c.CreateEdges)
-	consoleTool(s, "layer_placements_create", "Place existing actors (nodes) and edges on a layer in one transaction, 1-100 items. layerId is the current layer of the request's Current context unless the user names another. A position is the centre of the block in graph units (x right, y down, 50-unit cells); take flowchart positions from flowchart_layout. Instead of position a node may name its cell as the Graph Editor rulers do, cell \"<column>, <row>\" (\"C, 7\": column C, row 7; columns A..Z then A1..Z1, rows from 1 down, -A and -1 left and up of the origin; a bare \"C7\" is not a cell): it is placed at that cell's centre. Each placed node answers its cell; give cells, not coordinates, to the user. A flowchart node (layerSettings set, verbatim from flowchart_layout: resizing is not supported) is drawn like Graph Editor does: its corner is moved onto the nearest grid line and its shape is stored in color (the actor's own colour when you omit it). Edges need the laId of both node placements, so place nodes first, then edges in a second call. Returns nodes [{laId, actorId, position}] and edges [{laId, edgeId, laIdSource, laIdTarget}].",
-		`{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255},"nodes":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"actorId":{"type":"string","minLength":1,"maxLength":255},"position":`+point+`,"cell":`+cell+`,"layerSettings":`+nativeLayout+`,"color":{"type":"string","maxLength":32}},"required":["actorId"],"anyOf":[{"required":["position"]},{"required":["cell"]}],"additionalProperties":false}},"edges":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"edgeId":{"type":"string","minLength":1,"maxLength":255},"laIdSource":{"type":"integer","minimum":1},"laIdTarget":{"type":"integer","minimum":1}},"required":["edgeId","laIdSource","laIdTarget"],"additionalProperties":false}}},"required":["layerId"],"additionalProperties":false}`, true, gridPlacements(c))
+	consoleTool(s, "layer_placements_create", "Place existing actors (nodes) and edges on a layer in one transaction, 1-100 items. layerId is the current layer of the request's Current context unless the user names another. position: the block centre in graph units (x right, y down, 50-unit cells), or cell as the Graph Editor rulers name it (\"C, 7\": columns A..Z then A1..Z1, rows from 1 down, -A and -1 left and up of the origin; not \"C7\"). Each node answers its cell: give cells to the user. A flowchart node takes position and layerSettings verbatim from flowchart_layout (no resizing; corner onto the grid, shape stored in color). A node never lands on a taken cell or an open box: with the layer's anisotropy on (layer_get) the layer makes room (moved), off the call is refused. expand: one node placed open (layer_node_expand). Place nodes first, then edges (they need both laIds). Returns nodes [{laId, actorId, position, cell}], edges [{laId, edgeId, laIdSource, laIdTarget}].",
+		`{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255},"nodes":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"actorId":{"type":"string","minLength":1,"maxLength":255},"position":`+point+`,"cell":`+cell+`,"layerSettings":`+nativeLayout+`,"color":{"type":"string","maxLength":32},"expand":{"type":"boolean"}},"required":["actorId"],"anyOf":[{"required":["position"]},{"required":["cell"]}],"additionalProperties":false}},"edges":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"edgeId":{"type":"string","minLength":1,"maxLength":255},"laIdSource":{"type":"integer","minimum":1},"laIdTarget":{"type":"integer","minimum":1}},"required":["edgeId","laIdSource","laIdTarget"],"additionalProperties":false}}},"required":["layerId"],"additionalProperties":false}`, true, gridPlacements(c))
 	consoleTool(s, "layer_positions_update", "Move node placements (laId) on a layer to new x/y graph units, or each to the centre of a cell (\"C, 7\" as on the Graph Editor rulers) instead of x/y; all or none are applied, and a call fails when a target grid cell is taken. Edges follow their endpoints.",
 		`{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255},"items":{"type":"array","minItems":1,"maxItems":100,"items":{"type":"object","properties":{"laId":{"type":"integer","minimum":1},"x":{"type":"number"},"y":{"type":"number"},"cell":`+cell+`},"required":["laId"],"anyOf":[{"required":["x","y"]},{"required":["cell"]}],"additionalProperties":false}}},"required":["layerId","items"],"additionalProperties":false}`, true, c.UpdatePositions)
-	consoleTool(s, "layer_viewport", "Move the user's own Graph Editor view of a layer to show what you are talking about (nobody else's view moves, nothing is stored): action pan (to cell or x/y), zoom (zoom, 1 = 100 %; anchored at cell or x/y), fit (the whole layer), focus (actorId, optional zoom), mode2d / mode3d, openLayer (targetLayerId, in place of layerId). layerId is the current layer of the request's Current context. cell is the Graph Editor ruler address \"C, 7\"; x/y are graph units. Fields an action does not take are refused. Returns {commandId, openTabs}: openTabs 0 means the user does not have the layer open and nothing moved: say so.",
+	consoleTool(s, "layer_viewport", "Move the user's own Graph Editor view of a layer to show what you are talking about (nobody else's view moves, nothing is stored): action pan (to cell or x/y), zoom (1 = 100 %; at cell or x/y), fit (the whole layer), focus (actorId, optional zoom), mode2d / mode3d, openLayer (targetLayerId). layerId is the current layer of the request's Current context; cell a ruler address \"C, 7\", x/y graph units. Fields an action does not take are refused. openTabs 0 in the answer: the user does not have the layer open and nothing moved: say so.",
 		`{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255},"action":{"type":"string","enum":["pan","zoom","fit","focus","mode2d","mode3d","openLayer"]},"cell":`+cell+`,"x":{"type":"number"},"y":{"type":"number"},"zoom":{"type":"number","exclusiveMinimum":0,"maximum":100},"actorId":{"type":"string","minLength":1,"maxLength":255},"targetLayerId":{"type":"string","minLength":1,"maxLength":255},"transitionMs":{"type":"integer","minimum":0,"maximum":60000}},"required":["layerId","action"],"additionalProperties":false}`, false, c.MoveViewport)
-	consoleTool(s, "layer_get", "Read what is on a layer: node placements [{laId, actorId, title, formId, position, cell, blockId, hole, closedHole}] (cell is the Graph Editor ruler address of the position, \"C, 7\": name places to the user by it) and edge placements [{laId, edgeId, laIdSource, laIdTarget, source, target, name, hole, closedHole}], most recent first; hole marks a placeholder, closedHole a placement that closed one. Default/maximum limit 200/500 per kind; hasMore means read the next offset.",
+	consoleTool(s, "layer_get", "Read what is on a layer: node placements [{laId, actorId, title, formId, position, cell, blockId, hole, closedHole, open}] and edge placements [{laId, edgeId, laIdSource, laIdTarget, source, target, name, hole, closedHole}], most recent first. cell is the Graph Editor ruler address (\"C, 7\"): name places to the user by it. hole marks a placeholder, closedHole a placement that closed one; open an open node {expandType, area: the cells its box covers, keep new nodes out}. anisotropy: the layer makes room. Limit 200 (max 500) per kind; hasMore: read the next offset.",
 		`{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255},"limit":{"type":"integer","minimum":1,"maximum":500},"offset":{"type":"integer","minimum":0}},"required":["layerId"],"additionalProperties":false}`, false, c.GetLayer)
 }
 
@@ -147,6 +148,7 @@ func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, 
 	}
 	t := mcp.NewTool(name, mcp.WithDescription(description), mcp.WithRawInputSchema(json.RawMessage(schema)), output,
 		mcp.WithReadOnlyHintAnnotation(!write), mcp.WithDestructiveHintAnnotation(destructiveTools[name]), mcp.WithIdempotentHintAnnotation(!write || idempotentTools[name]))
+	looseOutput(&t)
 	s.AddTool(t, func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		a, e := decodeLimit[P](r, maxConsoleInput)
 		if e != nil {
@@ -161,4 +163,31 @@ func addConsoleTool[P, R any](s *server.MCPServer, output mcp.ToolOption, name, 
 		}
 		return result(v, e), nil
 	})
+}
+
+// looseOutput drops the closed-object marks reflection puts on every object of an output schema: a
+// result the server sends is not the model's to validate, and the marks only cost context (a group
+// rides in it whole; see maxGroupBytes).
+func looseOutput(t *mcp.Tool) {
+	if t.OutputSchema.AdditionalProperties == false {
+		t.OutputSchema.AdditionalProperties = nil
+	}
+	var walk func(v any)
+	walk = func(v any) {
+		switch v := v.(type) {
+		case map[string]any:
+			if v["additionalProperties"] == false {
+				delete(v, "additionalProperties")
+			}
+			for _, child := range v {
+				walk(child)
+			}
+		case []any:
+			for _, child := range v {
+				walk(child)
+			}
+		}
+	}
+	walk(t.OutputSchema.Properties)
+	walk(t.OutputSchema.Defs)
 }

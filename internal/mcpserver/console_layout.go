@@ -44,7 +44,7 @@ const layoutOutput = `{"type":"object","properties":{"nodes":{"type":"array","it
 
 // addFlowchartLayout registers the read-only grid layout of a flowchart; it writes nothing.
 func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
-	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(layoutOutput)), "flowchart_layout", "Lay out a flowchart before creating it: nodes [{key, blockId}] (kinds from flowchart_blocks_list) and directed edges [{source, target}] by key. Returns per node formId, color and data for actors_create (all blocks in one call), and position and layerSettings for layer_placements_create (all nodes in one call, then edges_create and the edge placements): ranks top to bottom, three free cells between blocks and ranks, every block on whole grid cells, no overlaps. returnEdges lists loop-back edges (\"source->target\"), kept but not used for ranking. Writes nothing.",
+	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(layoutOutput)), "flowchart_layout", "Lay out a flowchart before creating it: nodes [{key, blockId}] (kinds from flowchart_blocks_list), directed edges [{source, target}] by key. Returns per node formId, color and data for actors_create (all blocks in one call), position and layerSettings for layer_placements_create (all nodes in one call, then edges_create and their placements): ranks top to bottom, three free cells between blocks and ranks, blocks on whole cells, no overlaps. returnEdges: loop-back edges (\"source->target\") kept out of ranking. Writes nothing.",
 		`{"type":"object","properties":{"nodes":{"type":"array","minItems":1,"maxItems":100,"items":{"type":"object","properties":{"key":{"type":"string","minLength":1,"maxLength":64},"blockId":{"type":"string","minLength":1,"maxLength":128}},"required":["key","blockId"],"additionalProperties":false}},"edges":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"source":{"type":"string","minLength":1,"maxLength":64},"target":{"type":"string","minLength":1,"maxLength":64}},"required":["source","target"],"additionalProperties":false}}},"required":["nodes"],"additionalProperties":false}`, false,
 		func(ctx context.Context, in layoutInput) (layout, error) {
 			keys, kinds := map[string]bool{}, []string{}
@@ -105,8 +105,12 @@ type placedNode struct {
 }
 
 type consolePlacements struct {
-	Nodes []placedNode                          `json:"nodes"`
-	Edges []publicapi.GraphCreatedPlacementEdge `json:"edges"`
+	Nodes   []placedNode                          `json:"nodes"`
+	Edges   []publicapi.GraphCreatedPlacementEdge `json:"edges"`
+	Moved   int                                   `json:"moved,omitempty"`
+	Opened  *publicapi.LayerNodeOpen              `json:"opened,omitempty"`
+	Covers  string                                `json:"covers,omitempty"`
+	Warning string                                `json:"warning,omitempty"`
 }
 
 // gridPlacements places flowchart nodes as Graph Editor does: corner on a grid line and the block
@@ -138,7 +142,7 @@ func gridPlacements(c *publicapi.Client) func(context.Context, publicapi.Placeme
 		if err != nil {
 			return consolePlacements{}, err
 		}
-		out := consolePlacements{Nodes: make([]placedNode, len(placed.Nodes)), Edges: placed.Edges}
+		out := consolePlacements{Nodes: make([]placedNode, len(placed.Nodes)), Edges: placed.Edges, Moved: placed.Moved, Opened: placed.Opened, Covers: placed.Covers, Warning: placed.Warning}
 		for i, n := range placed.Nodes {
 			at := in.Nodes[i].Position // manage answers nodes in input order
 			if n.Position != nil {

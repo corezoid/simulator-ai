@@ -60,22 +60,6 @@ type chartLayerSettings struct {
 
 const chartWidth, chartHeight = 650, 450
 
-type chartPlacementData struct {
-	ID            string             `json:"id"`
-	Type          string             `json:"type"`
-	Position      GraphPoint         `json:"position"`
-	LayerSettings chartLayerSettings `json:"layerSettings"`
-}
-type chartPlacementItem struct {
-	Action string             `json:"action"`
-	Data   chartPlacementData `json:"data"`
-}
-type chartPlacementRequest struct {
-	AccID   string               `json:"accId"`
-	ActorID string               `json:"actorId"`
-	Items   []chartPlacementItem `json:"items"`
-}
-
 // chartActor is the projection the chart tools read of a chart or an ActorFilters actor.
 type chartActor struct {
 	ID     string `json:"id"`
@@ -160,6 +144,14 @@ func (c *Client) CreateChart(ctx context.Context, in ChartCreateInput) (ChartCre
 	if err != nil {
 		return ChartCreated{}, err
 	}
+	// Placed open, as the Graph Editor's Chart row places it: refused on a taken cell or, with the
+	// layer's anisotropy, its neighbours pushed out of the chart's box (layer_place.go). The room is
+	// checked before any actor is made, so a refusal leaves nothing behind.
+	at := PlacementsCreateInput{LayerID: in.LayerID, Nodes: []NodePlacement{{ActorID: "chart", Position: in.Position, Expand: true, openAs: nestedChart}}}
+	room, err := c.planRoom(ctx, at)
+	if err != nil {
+		return ChartCreated{}, fmt.Errorf("place the chart on layer %s: %w", in.LayerID, err)
+	}
 	dashboards, err := c.systemFormID(ctx, "Dashboards")
 	if err != nil {
 		return ChartCreated{}, err
@@ -194,9 +186,8 @@ func (c *Client) CreateChart(ctx context.Context, in ChartCreateInput) (ChartCre
 		return ChartCreated{}, orphan(fmt.Errorf("create the chart actor: %w", err), "ActorFilters actor", newFilter)
 	}
 	out.ChartID = *chart.ID
-	placed, err := call[chartPlacementRequest, GraphCreatedPlacements](ctx, c, "graph/layer/actors/manage", chartPlacementRequest{AccID: c.config.Workspace, ActorID: in.LayerID,
-		Items: []chartPlacementItem{{Action: "create", Data: chartPlacementData{ID: out.ChartID, Type: "node", Position: in.Position,
-			LayerSettings: chartLayerSettings{ExpandType: "chart", Expand: true, Width: chartWidth, Height: chartHeight}}}}})
+	at.Nodes[0].ActorID = out.ChartID
+	placed, err := c.placeNodes(ctx, at, &room)
 	if err == nil && len(placed.Nodes) != 1 {
 		err = errors.New("graph/layer/actors/manage returned no placement")
 	}
