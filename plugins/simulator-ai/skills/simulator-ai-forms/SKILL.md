@@ -11,6 +11,10 @@ tree reads and the rest of the account definitions need `console-full`. The reco
 A template is the schema of its actors: `sections[]`, each `{title, content[]}`, and each
 content item a field. The field `id` is the key of that field in every actor's `data`.
 
+Settings of system-form actors (a layer's Accounts on the graph and default form, an event's
+meeting and recurrence, a dashboard's source, a stream's order) are keys of their `data`:
+[references/system-form-settings.md](references/system-form-settings.md).
+
 ## Read
 
 - `forms_list {query?, type?}`: custom templates by default; `type: "system"` for Events,

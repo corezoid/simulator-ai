@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, count a layer, close holes or draw on it ("закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
+description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form), close holes or draw on it ("рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
@@ -144,6 +144,19 @@ a hole leaves the hole open.
 
 A new hole: `actors_create` with `hole: true` (data = the closing conditions), placed like any
 node; a placeholder link: `edges_create` with `hole: true`.
+
+## Layer settings
+
+A layer's own settings (the Graph Editor's layer settings) are keys of the layer actor's `data`,
+not of its placements: the default template of new objects (`defForm`), the default edge shape,
+anisotropy, outer edges, where it opens, and **Accounts on the graph** (the balances drawn on
+every actor of the layer, with their period). Change them with `layer_settings_update {layerId,
+…}` (`console-full`): only the sent keys change; `accounts` names pairs
+(`[{accountName, currency}]`, the whole list, `[]` hides them) and is resolved for you. Read them
+with `actor_get {actorId: <layerId>, fields: ["id", "data"]}`. Never say a layer setting cannot
+be changed before checking this list; keys, shapes and the other system forms' settings (events,
+dashboards, streams):
+[simulator-ai-forms references/system-form-settings.md](../simulator-ai-forms/references/system-form-settings.md).
 
 ## Draw by hand (Pencil, `console-full`)
 

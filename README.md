@@ -119,7 +119,7 @@ projection, shaped by `fields`/`with` where the method has them. There are no re
 preflight. `read` and `graph-read` get only reads; `graph-create`, `smart-forms`, `reactions-read` and
 `delegated-read` keep their own catalogs.
 
-`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 48 tools the Console
+`console` below means `console-full`; plain `console`, which Hermes runs, keeps only the 50 tools the Console
 scenarios use (see "AI Console profile").
 
 | Tool [legacy] | Public method | console | read | graph-read |
@@ -255,23 +255,24 @@ for a comment, a chat, a task or a file, `reactions_list`, `reaction_create`, `u
 `skills_find`, `skill_get` and `build_link`, and for accounts, Account Templates, chats and cards `account_create`,
 `accounts_list`, `transfer_create`, `transaction_create`, `form_create`, `form_update`, `form_account_create`,
 `chat_open` and `actor_attach`, and for a Smart Form's business logic `corezoid_project_create` and
-`corezoid_project_get`, and `layer_viewport` to show the user what the answer is about: 48 in all (`smart_form_folders_create` is there because a form of more
+`corezoid_project_get`, `layer_viewport` to show the user what the answer is about, `hole_close` to close a placeholder
+and `actor_delete` for a delete named outside a layer: 50 in all (`smart_form_folders_create` is there because a form of more
 than one page needs a folder per page; `internal/mcpserver/console.go` says why each later one is). `console-full` adds every other actor, form, graph, access, reaction, user,
 attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, graph export/import, guest link and
-transcript tool (180 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
+transcript tool, hole reopen, Pencil drawing and layer settings (187 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
 Tool groups: every console tool in `tools/list` carries `_meta: {"simulator-ai/groups": [...]}`, so the Hermes relay
 can give a run `core` and only the domains its request needs (`internal/mcpserver/console_groups.go`; a tool may sit
 in several groups, each group with `core` is enough for its domain). The baseline without the relay is the plain
-`console` profile, the 48 tools named in `consoleCoreTools`, not the union of groups: `core`, `graph`, `smart_forms`,
-`forms`, `finance`, `people` and `files` together contain those 48 and more (the graph edits, the Smart Form history,
+`console` profile, the 50 tools named in `consoleCoreTools`, not the union of groups: `core`, `graph`, `smart_forms`,
+`forms`, `finance`, `people` and `files` together contain those 50 and more (the graph edits, the Smart Form history,
 ...). Sizes are the tools' `tools/list` entries (`go test ./internal/mcpserver -run GroupSizes -v`, which also keeps each group within 55 KiB):
 
 | Group | Tools | KiB | For |
 | --- | --: | --: | --- |
 | `core` | 14 | 23.1 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
-| `graph` | 36 | 46.7 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits |
+| `graph` | 42 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings (at the 55 KiB bound: the next graph tool needs a split) |
 | `smart_forms` | 21 | 24.2 | Smart Form pages, data template, releases, history, trash, test runs, its Corezoid project |
 | `forms` | 12 | 21.4 | Account Templates: create, change, tree, their accounts, records filtered by data |
 | `finance` | 18 | 26.7 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
@@ -283,14 +284,18 @@ in several groups, each group with `core` is enough for its domain). The baselin
 | `charts` | 5 | 11.0 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 180 | 239.0 | |
+| all (`console-full`) | 187 | 248.6 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
 `flowchart_layout` gives each block its form's own colour or such a hue, and `layer_placements_create` paints a
 flowchart block with its actor's colour when the call has none. Holes: `actors_create`/`actor_create` with
 `hole` make a placeholder actor (its data fields are the conditions that close it), `edge_create`/`edges_create`
-with `hole` a placeholder edge, and `layer_get` marks `hole` and `closedHole` on nodes and edges.
+with `hole` a placeholder edge, and `layer_get` marks `hole` and `closedHole` on nodes and edges. `hole_close`
+closes an actor hole with an existing actor or a new one (atomic `actor/create` + `actor/hole/merge`; the new closer
+starts from the hole's template and data, its conditions), `edge_hole_close` a placeholder link with an existing edge
+or a new one from the hole's endpoints and type (`edge/create` + `edge/hole/merge`); `hole_conditions_get`,
+`hole_reopen` and `edge_hole_reopen` are the dry run and the reverts (`console-full`).
 
 `SIMULATOR_AI_PROFILE=console` is what Hermes runs per AI Console request under the initiator's own
 `SIMULATOR_AI_AUTHORIZATION`. It covers two Console answers: a flowchart drawn on a layer and a released
@@ -313,6 +318,10 @@ another, never on a new one.
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
 | `layer_get` | `graph/layer/actors/list` + `graph/layer/edges/list` | compact nodes/edges with `cell`, `hasMore` |
 | `layer_viewport` | `graph/viewport/command` (a ruler `cell` sent as its index: `"C, 7"` → `{x: 2, y: 6}`) | `commandId`, `openTabs` (0: the layer is not open, nothing moved) |
+| `hole_close` | `actor/hole/merge`, or `actor/get` (the hole) + atomic `actor/create` + `actor/hole/merge` | `{holeActorId, actorId, created, changes}` (+ `closingProgress`, `conditions` with `forceMerge`) |
+| `edge_hole_close` | `edge/hole/merge`, or `edge/get` (the hole) + atomic `edge/create` + `edge/hole/merge` | `{holeEdgeId, edgeId, created, changes}` |
+| `layer_draw` (`console-full`) | `internal/drawing` PNG (2 px per unit, as the editor's Pencil confirm) → `rest/upload` → atomic `actor/create` (layer's `defForm`, `picture`, `pictureObject`) + `graph/layer/actors/manage` (`layerSettings.image`) + `attachment/attach` | `{actorId, laId, picture, position, cell, width, height}` |
+| `layer_settings_update` (`console-full`) | names → `account_name/list` / `account_currency/list`; `form/get` for the `defForm` title; one `actor/update` of the layer's `data` | `{layerId, keys}` |
 | `smart_form_create` | `application/create` (`cduVersion: 2`) | appId, ref, developEnvId, productionEnvId |
 | `smart_form_components` | `cdu/catalog/get` | with `brief` every type's kind, category and label; with `types` the props the validator applies, events, state and api |
 | `smart_form_data_form_create` | `form/create` (data template) | formId and a ready page whose button submits via `form/submit` into it |
