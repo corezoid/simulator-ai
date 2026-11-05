@@ -17,7 +17,7 @@ import (
 
 const (
 	maxPDFTextBytes = 10 << 20 // a larger PDF is not parsed for its text
-	maxPDFInflate   = 64 << 20 // all of its streams decoded together
+	maxPDFInflate   = 32 << 20 // all of its streams decoded together (the tokenizer allocates ~10x)
 	maxPDFPages     = 200
 )
 
@@ -31,13 +31,13 @@ func pdfText(body []byte) (text, unread string) {
 		return "", "the PDF is larger than 10 MiB, so its text is not read"
 	}
 	limits := &pdf.Limits{Bytes: maxPDFInflate, Deadline: time.Now().Add(pdfTimeout)}
-	r, err := openPDF(body, limits)
+	r, pages, err := openPDF(body, limits)
 	if err != nil {
 		return "", limitReason(err)
 	}
 	var b strings.Builder
 	fonts := map[string]*pdf.Font{}
-	for i := 1; i <= min(r.NumPage(), maxPDFPages) && b.Len() <= maxReadText; i++ {
+	for i := 1; i <= pages && b.Len() <= maxReadText; i++ {
 		t, err := pageText(r, i, fonts)
 		if errors.Is(err, pdf.ErrLimit) {
 			unread = limitReason(err)
@@ -48,14 +48,18 @@ func pdfText(body []byte) (text, unread string) {
 	return strings.TrimSpace(strings.ToValidUTF8(b.String(), "")), unread
 }
 
-// openPDF opens the file within the limits; a malformed file is an error, never a panic.
-func openPDF(body []byte, limits *pdf.Limits) (r *pdf.Reader, err error) {
+// openPDF opens the file within the limits and counts its pages (at most maxPDFPages); a malformed
+// file is an error, never a panic: the page tree is resolved here, under recover.
+func openPDF(body []byte, limits *pdf.Limits) (r *pdf.Reader, pages int, err error) {
 	defer func() {
 		if x := recover(); x != nil {
-			r, err = nil, panicError(x)
+			r, pages, err = nil, 0, panicError(x)
 		}
 	}()
-	return pdf.NewReaderLimited(deadlineReader{bytes.NewReader(body), limits}, int64(len(body)), limits)
+	if r, err = pdf.NewReaderLimited(deadlineReader{bytes.NewReader(body), limits}, int64(len(body)), limits); err != nil {
+		return nil, 0, err
+	}
+	return r, min(r.NumPage(), maxPDFPages), nil
 }
 
 // pageText is one page's text; a page that cannot be read gives none, and a spent limit stops.
@@ -91,7 +95,7 @@ func panicError(x any) error {
 
 func limitReason(err error) string {
 	if errors.Is(err, pdf.ErrLimit) {
-		return "the PDF's streams unpack past 64 MiB or reading it took too long, so its text is not read further"
+		return "the PDF's streams unpack past 32 MiB or reading it took too long, so its text is not read further"
 	}
 	return ""
 }
