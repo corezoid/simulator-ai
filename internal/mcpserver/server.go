@@ -115,8 +115,9 @@ func New(c *publicapi.Client) *server.MCPServer {
 	}
 	if c.GraphReadsEnabled() {
 		addGraphReads(s, c)
-		// graph_edge_types_list and graph_layer_stats_get already cover these two here.
-		addParity(s, c, without(graphTools, "edge_types_list", "layer_stats_get"))
+		// graph_edge_types_list and graph_layer_stats_get already cover these two here; the hole dry
+		// run belongs with the console's hole_close.
+		addParity(s, c, without(graphTools, "edge_types_list", "layer_stats_get", "hole_conditions_get"))
 		addGraphEngines(s, c)
 	}
 	if c.ReactionReadsEnabled() {

@@ -1,11 +1,11 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours and holes — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, or count a layer ("створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
+description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form), close holes or draw on it ("рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
 `actors_create`, `edges_create`, `layer_create`, `layer_placements_create`,
-`layer_positions_update`, `layer_get`, `graph_get`); `console-full` adds every edit, delete
+`layer_positions_update`, `layer_get`, `graph_get`, `hole_close`); `console-full` adds every edit, delete
 and layer read below. The desktop `graph-read` / `graph-create` profiles have their own tools
 (last section). Actor `data` rules are `simulator-ai-actors`.
 
@@ -29,6 +29,7 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
   edge `laId`s are separate numbering.
 - A **hole** is a placeholder: an actor with `hole: true` (its data fields are the conditions
   that close it) or an edge with `hole: true`. `layer_get` marks `hole` and `closedHole`.
+  Closing one is its own operation (section Holes), never a new actor drawn over it.
 - A person on a graph is their twin actor: `actor_system_get {objType: "user", objId}`.
 
 ## Read a layer
@@ -113,6 +114,77 @@ first) also places special nodes through `layerSettings`: a text label (`isTextN
 (`isCardView`, `expand`, `expandType`), `labelStyle`, `opacity`, `rotation`, `zIndex`; and an
 image body (`areaPicture {img, width, height}`). Use it for flowchart blocks only through
 `layer_placements_create`, which keeps them on the grid.
+
+## Holes
+
+A hole stands on a layer for an actor (or a link) that is expected but not known yet. **Closing**
+it puts a real actor in its place: the closer takes the hole's placement and links, the hole
+stays in the workspace and can be reopened. "Close / fill these holes", "replace the
+placeholders with actors" always means these tools; an actor created and placed next to or over
+a hole leaves the hole open.
+
+1. Find them: `layer_get {layerId}` → nodes with `hole: true` (their `actorId` is the
+   `holeActorId`, their `laId` the `holeLaId`), edges with `hole: true` (their `edgeId` is the
+   `holeEdgeId`). A placement with `closedHole` is already closed.
+2. Close an actor hole: `hole_close {layerId, holeActorId, actorId}` with an existing actor the
+   user named (find it with `actors_search`), or `hole_close {layerId, holeActorId, newActor:
+   {title, data?}}` to create the closer in the same atomic call (template and data default to
+   the hole's own, so its conditions hold). Several holes: one `hole_close` per hole.
+3. Conditions: the hole's non-empty data fields. A closer that does not meet them is refused
+   with each condition and its verdict; tell the user which ones fail and offer to fix the
+   closer's data (`actor_update`) or close anyway (`forceMerge: true`, only on their yes).
+   Structural issues (the closer lacks a template the hole carries) are fatal.
+   `hole_conditions_get {holeActorId, actorId}` (`console-full`) is the dry run.
+4. Close a placeholder link: `edge_hole_close {layerId, holeEdgeId}` creates the real edge
+   between the same two actors in the hole's direction and type (`name` labels it), or takes an
+   existing one (`edgeId`; it must join the same actors in the same direction).
+5. Undo (`console-full`): `hole_reopen {actorId: <the closer>}` (optional `layerId`,
+   `holeActorId`), `edge_hole_reopen {edgeId: <the closing edge>}`. The closer is taken off the
+   layer, not deleted.
+
+A new hole: `actors_create` with `hole: true` (data = the closing conditions), placed like any
+node; a placeholder link: `edges_create` with `hole: true`.
+
+## Layer settings
+
+A layer's own settings (the Graph Editor's layer settings) are keys of the layer actor's `data`,
+not of its placements: the default template of new objects (`defForm`), the default edge shape,
+anisotropy, outer edges, where it opens, and **Accounts on the graph** (the balances drawn on
+every actor of the layer, with their period). Change them with `layer_settings_update {layerId,
+…}` (`console-full`): only the sent keys change; `accounts` names pairs
+(`[{accountName, currency}]`, the whole list, `[]` hides them) and is resolved for you. Read them
+with `actor_get {actorId: <layerId>, fields: ["id", "data"]}`. Never say a layer setting cannot
+be changed before checking this list; keys, shapes and the other system forms' settings (events,
+dashboards, streams):
+[simulator-ai-forms references/system-form-settings.md](../simulator-ai-forms/references/system-form-settings.md).
+
+## Draw by hand (Pencil, `console-full`)
+
+"Draw / sketch / circle / underline / point an arrow at …" on a layer is `layer_draw`: the
+Graph Editor's Pencil in words. All strokes of one call become ONE picture actor, placed where
+they lie and off the grid, the same object a confirmed Pencil session makes: it moves, resizes,
+links and deletes as a whole and cannot be edited stroke by stroke. Use it for marks over the
+graph (a circle round a node, an arrow to it, a frame, an underline, a quick sketch); actors and
+edges stay the way to model a process.
+
+- Coordinates are graph units (x right, y down, 50 per cell). Read the nodes you draw around with
+  `layer_get` (`position` is a node's centre; a plain node is about one cell). With
+  `cell: "C, 7"` every coordinate is relative to that cell's centre.
+- A stroke is `kind: line` with `points` (two or more; `smooth` bends it through them,
+  `closed` joins the end back to the start, `arrowStart` / `arrowEnd` add filled heads),
+  `rect` or `ellipse` (`center`, `w`, `h`, an outline). `color` `#RRGGBB` (default slate
+  `#667085`; the editor hues are good choices), `width` 1–20 (default 3), `style`
+  `solid|dashed|dotted`. Later strokes paint over earlier ones.
+- Circle a node: an `ellipse` at its `position`, `w`/`h` about 80–100. Point at it: a `line`
+  ending 40–50 units short of its centre with `arrowEnd`. A star, a check mark, a cloud: a
+  `line` through their points (`smooth` for round shapes).
+- Not possible: fill, erasing, text, images. Words go in a text node (`layer_placements_manage`
+  with `isTextNode`, or a titled actor); a sketch that needs a fill is outlines only.
+- One call is one picture: draw a group of marks that belong together in one call, unrelated
+  marks in separate calls so they can be moved apart. One picture is at most 2000 units a side,
+  2,000,000 square units (e.g. 2000 × 1000) and 50,000 units of line in all.
+- The layer's default form names the picture actor's template; a layer without one needs
+  `formId` (ask which template, `forms_list`). `title` names it. Delete it like any actor.
 
 ## Edit (`console-full` unless noted)
 

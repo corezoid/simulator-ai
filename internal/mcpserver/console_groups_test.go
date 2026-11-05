@@ -91,7 +91,7 @@ func TestConsoleGroupsInToolsList(t *testing.T) {
 	for _, tool := range list.Result.Tools {
 		got[tool.Name] = tool.Meta[groupsMeta]
 	}
-	if fmt.Sprint(got["actor_get"]) != "[core]" || fmt.Sprint(got["actor_system_get"]) != "[graph finance people]" || fmt.Sprint(got["counter_set"]) != "[finance_setup]" || len(got) != 180 {
+	if fmt.Sprint(got["actor_get"]) != "[core]" || fmt.Sprint(got["actor_system_get"]) != "[graph finance people]" || fmt.Sprint(got["counter_set"]) != "[finance_setup]" || len(got) != 187 {
 		t.Fatalf("%d tools; actor_get %v, actor_system_get %v", len(got), got["actor_get"], got["actor_system_get"])
 	}
 	for name, tool := range consoleTools(t, "console").ListTools() {

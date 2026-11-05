@@ -142,7 +142,7 @@ func TestParityCatalogs(t *testing.T) {
 			return !m.Write && (m.Domain == "actor" || m.Domain == "form")
 		}},
 		{"graph-read", func(m publicapi.ParityMethod, name string) bool {
-			return !m.Write && (m.Domain == "actor" || m.Domain == "form" || m.Domain == "graph") && name != "edge_types_list" && name != "layer_stats_get"
+			return !m.Write && (m.Domain == "actor" || m.Domain == "form" || m.Domain == "graph") && name != "edge_types_list" && name != "layer_stats_get" && name != "hole_conditions_get"
 		}},
 		{"graph-create", func(publicapi.ParityMethod, string) bool { return false }},
 		{"smart-forms", func(publicapi.ParityMethod, string) bool { return false }},

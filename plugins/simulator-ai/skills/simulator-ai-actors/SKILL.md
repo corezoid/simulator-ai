@@ -52,7 +52,8 @@ colour is picked. `geoPosition {lat, lon}` and `geoName` set a location. `appId`
 on a layer (`simulator-ai-graph`).
 
 A **hole** (`hole: true`) is a placeholder node; its data fields are the conditions that close
-it. `actor_update {hole: false}` turns it into a normal actor.
+it. Closing a hole on a layer with a real actor is `hole_close` (`simulator-ai-graph`, Holes);
+`actor_update {hole: false}` only turns the placeholder itself into a normal actor.
 
 ## Read and update
 

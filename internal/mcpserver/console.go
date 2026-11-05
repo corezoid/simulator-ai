@@ -37,6 +37,11 @@ var consoleCoreTools = map[string]bool{
 	"corezoid_project_create": true, "corezoid_project_get": true,
 	// Showing the user what the answer is about: their own Graph Editor view of the layer.
 	"layer_viewport": true,
+	// Closing a placeholder on the layer, which an actor created over it does not do.
+	"hole_close": true,
+	// Deleting an actor the user named: a request that names no domain gets this baseline, so
+	// without it "delete X" outside a layer had no tool (destructive: confirmed with the user).
+	"actor_delete": true,
 }
 
 // keepConsoleCore drops every tool outside consoleCoreTools.
@@ -78,6 +83,9 @@ func addConsole(s *server.MCPServer, c *publicapi.Client) {
 	addConsoleSmartForms(s, c)
 	addConsoleAccounts(s, c)
 	addConsoleActors(s, c)
+	addConsoleHoles(s, c)
+	addConsoleDraw(s, c)
+	addConsoleLayerSettings(s, c)
 }
 
 func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {

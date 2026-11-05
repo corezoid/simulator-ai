@@ -11975,6 +11975,233 @@
     }
    ],
    "summary": "Moves the caller's own open view of a graph layer: pan, zoom, fit, focus an actor, switch 2D/3D or open another layer"
+  },
+  {
+   "name": "actor/hole/conditions/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "holeActorId",
+     "required": true,
+     "schema": {
+      "description": "Identifier of the hole actor",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Identifier of the candidate closing actor",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Evaluates whether an actor can close a hole: every data condition with its verdict, without closing it"
+  },
+  {
+   "name": "actor/hole/merge",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "layerId",
+     "required": true,
+     "schema": {
+      "description": "Layer the hole is closed on",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "holeActorId",
+     "required": true,
+     "schema": {
+      "description": "Identifier of the hole actor being closed",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Identifier of the real actor that closes the hole",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "holeLaId",
+     "required": false,
+     "schema": {
+      "description": "Close only this hole placement; by default every placement of the hole on the layer is closed",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "targetLaId",
+     "required": false,
+     "schema": {
+      "description": "Reuse this existing placement of the closing actor instead of creating one (drag-and-drop flow); requires holeLaId",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "forceMerge",
+     "required": false,
+     "schema": {
+      "description": "Allow a partial data-condition match; structural incompatibilities remain fatal",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Closes a hole (placeholder node) on a layer with a real actor. A refusal's error.data.reason is holeConditionMismatch (reasonParams: progress, conditions) or holeIncompatible (reasonParams: issues, progress, conditions), each shaped as in actor/hole/conditions/get's result"
+  },
+  {
+   "name": "actor/hole/revert",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Identifier of the actor that closed the hole(s)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "layerId",
+     "required": false,
+     "schema": {
+      "description": "Revert only on this layer; by default every layer where this actor closed a hole",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "holeActorId",
+     "required": false,
+     "schema": {
+      "description": "Re-open only this hole; by default every hole this actor closed",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Re-opens the holes an actor closed, restoring the placeholders"
+  },
+  {
+   "name": "edge/hole/merge",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "layerId",
+     "required": true,
+     "schema": {
+      "description": "Layer the hole edge is closed on",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "holeEdgeId",
+     "required": true,
+     "schema": {
+      "description": "Identifier of the hole edge being closed",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeId",
+     "required": true,
+     "schema": {
+      "description": "Identifier of the real edge that closes the hole; must connect the same two actors",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Closes a hole (placeholder link) on a layer with a real edge"
+  },
+  {
+   "name": "edge/hole/revert",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "edgeId",
+     "required": true,
+     "schema": {
+      "description": "Identifier of the edge that closed the hole(s)",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "layerId",
+     "required": false,
+     "schema": {
+      "description": "Revert only on this layer; by default every layer where this edge closed a hole",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "holeEdgeId",
+     "required": false,
+     "schema": {
+      "description": "Re-open only this hole edge; by default every hole this edge closed",
+      "minLength": 1,
+      "type": "string"
+     }
+    }
+   ],
+   "summary": "Re-opens the edge-holes an edge closed, restoring the placeholder links"
   }
  ]
 }
