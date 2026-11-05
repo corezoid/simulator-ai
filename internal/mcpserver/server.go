@@ -73,6 +73,7 @@ func New(c *publicapi.Client) *server.MCPServer {
 		addConsoleRegistry(s, c)
 		addSimulation(s, c)
 		addConsoleCharts(s, c)
+		tagGroups(s)
 		if c.ConsoleCore() {
 			keepConsoleCore(s)
 		}

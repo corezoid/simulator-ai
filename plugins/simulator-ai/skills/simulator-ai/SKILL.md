@@ -93,7 +93,9 @@ and transactions, saved skills via `skills_find`/`skill_get`, and `build_link`).
 `console-full` adds the rest: actor status/delete/filter, template status and deletes, edges and layer edits (edge style too), access requests, reactions, attachments and actor
 pictures, the rest of finance, agents, charts, simulation, Smart Form release and file history, rollback, trash
 and test runs, Corezoid binding, graph export and import, meeting guest links and transcripts, and
-`bbcode_tags_get`. Desktop
+`bbcode_tags_get`. In AI Console a run may be given only some tool groups (core plus the domains
+of the request): when a tool a skill names is not in your catalog, say which part needs it
+instead of working around it. Desktop
 profiles (`read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`) are narrower.
 
 ## Skills
