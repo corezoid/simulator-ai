@@ -33,6 +33,11 @@ type parityTool struct {
 	Idempotent bool
 	// Strip drops these keys (a dot path into the result object) from the answer the model sees.
 	Strip []string
+	// Local are plugin-side params (name: JSON Schema) added to the method's own; the handler hands
+	// them to Shape and never sends them.
+	Local map[string]json.RawMessage
+	// Shape, when set, rewrites the backend's answer with the call's Local arguments.
+	Shape func(local map[string]json.RawMessage, v json.RawMessage) (json.RawMessage, error)
 }
 
 // rowFields is the compact projection of list rows and graph nodes unless the caller sends fields.
@@ -50,6 +55,9 @@ func addParity(s *server.MCPServer, c *publicapi.Client, tools []parityTool) {
 		schema, err := contracts.ParityInputSchema(t.Method)
 		if err == nil && (len(t.Defaults) > 0 || len(t.Params) > 0) {
 			schema, err = narrow(schema, t.Defaults, t.Params)
+		}
+		if err == nil && len(t.Local) > 0 {
+			schema, err = withLocal(schema, t.Local)
 		}
 		if err != nil {
 			panic(err) // pinned build artifact, never remote input
@@ -69,6 +77,13 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 		args, err := rawArguments(r)
 		if err != nil {
 			return failure(err), nil
+		}
+		local := map[string]json.RawMessage{}
+		for k := range t.Local {
+			if v, ok := args[k]; ok {
+				local[k] = v
+				delete(args, k)
+			}
 		}
 		for k, v := range t.Defaults {
 			if _, ok := args[k]; !ok {
@@ -91,6 +106,9 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 		v, err := c.Pass(ctx, t.Method, args)
 		if err == nil && len(t.Strip) > 0 {
 			v, err = strip(v, t.Strip)
+		}
+		if err == nil && t.Shape != nil {
+			v, err = t.Shape(local, v)
 		}
 		return passResult(v, err), nil
 	}
@@ -150,6 +168,26 @@ func passResult(v json.RawMessage, err error) *mcp.CallToolResult {
 		return mcp.NewToolResultStructuredOnly(map[string]json.RawMessage{"result": v})
 	}
 	return mcp.NewToolResultStructuredOnly(v)
+}
+
+// withLocal adds the plugin-side params to the method's input schema.
+func withLocal(schema json.RawMessage, local map[string]json.RawMessage) (json.RawMessage, error) {
+	var doc map[string]json.RawMessage
+	var properties map[string]json.RawMessage
+	if err := json.Unmarshal(schema, &doc); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(doc["properties"], &properties); err != nil {
+		return nil, err
+	}
+	for k, v := range local {
+		if _, taken := properties[k]; taken {
+			return nil, fmt.Errorf("local param %s shadows a method param", k)
+		}
+		properties[k] = v
+	}
+	doc["properties"], _ = json.Marshal(properties)
+	return json.Marshal(doc)
 }
 
 // narrow drops defaulted keys from the schema's required list (the handler fills them) and, with
