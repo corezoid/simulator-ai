@@ -172,7 +172,8 @@ func TestConsoleRequests(t *testing.T) {
 		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","cell":"C, 7"}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/manage", `"data":{"id":"a1","position":{"x":100,"y":300},"type":"node"}`, `"cell":"`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"cell":"-B, -1"}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":-100,"y":-50}}]`, `"updated":1`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"x":150,"y":0}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":150,"y":0}}]`, `"updated":1`},
-		{"layer_get", `{"layerId":"L"}`, "actor/get,graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":1000,"y":1000},"cell":"U, 21","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
+		{"layer_get", `{"layerId":"L","full":true}`, "actor/get,graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":1000,"y":1000},"cell":"U, 21","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
+		{"layer_get", `{"layerId":"L"}`, "actor/get,graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":100`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"cell":"U, 21","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
 		{"smart_form_create", `{"ref":"leave_form","title":"Leave request","sharedWith":"allWorkspaceUsers"}`, "application/create", `"cduVersion":2,"ref":"leave_form","sharedWith":"allWorkspaceUsers"`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
 		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
@@ -390,7 +391,7 @@ func TestLayerGetShowsHoles(t *testing.T) {
 		"graph/layer/edges/list":  `"result":{"list":[{"laId":9,"id":"e1","laIdSource":2,"laIdTarget":1,"edge":{"id":"e1","edgeTypeId":3,"source":"a2","target":"h1","hole":true},"closedHole":{"holeEdgeId":"e0"}}]}`,
 	})
 	reply := strings.ReplaceAll(send(`"method":"tools/call","params":{"name":"layer_get","arguments":{"layerId":"L"}}`), `\"`, `"`)
-	for _, want := range []string{`"actorId":"h1","title":"Expected","position":{"x":0,"y":0},"cell":"A, 1","hole":true`, `"closedHole":{"holeActorId":"h0","closingProgress":{"matched":1,"total":2}}`, `"target":"h1","hole":true,"closedHole":"e0"`} {
+	for _, want := range []string{`"actorId":"h1","title":"Expected","cell":"A, 1","hole":true`, `"closedHole":{"holeActorId":"h0","closingProgress":{"matched":1,"total":2}}`, `"laIdTarget":1,"hole":true,"closedHole":"e0"`} {
 		if !strings.Contains(reply, want) {
 			t.Errorf("layer_get lacks %s: %s", want, reply)
 		}

@@ -147,7 +147,7 @@ func graph(c *client, stamp string) error {
 		} `json:"nodes"`
 		Edges []json.RawMessage `json:"edges"`
 	}
-	if err := c.tool("layer_get", map[string]any{"layerId": layer.ID}, &view); err != nil {
+	if err := c.tool("layer_get", map[string]any{"layerId": layer.ID, "full": true}, &view); err != nil {
 		return err
 	}
 	if len(view.Nodes) != len(plan) || len(view.Edges) != len(links) {

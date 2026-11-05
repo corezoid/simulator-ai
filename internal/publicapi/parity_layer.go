@@ -21,6 +21,7 @@ type LayerPlacement struct {
 	Title    *string   `json:"title,omitempty"`
 	FormID   *int64    `json:"formId,omitempty"`
 	Position *Position `json:"position,omitempty"`
+	Cell     string    `json:"cell,omitempty"` // the compact answer's Graph Editor cell, "C, 7"
 }
 
 // AllNodePlacements reads every node placement of a layer.

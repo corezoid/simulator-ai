@@ -48,8 +48,45 @@ type batchResults struct {
 	Fail  int                     `json:"failed"`
 }
 type allPlacements struct {
-	List  []publicapi.LayerPlacement `json:"list"`
-	Count int                        `json:"count"`
+	List      []publicapi.LayerPlacement   `json:"list"`
+	Count     int                          `json:"count"`
+	Summary   *publicapi.PlacementsSummary `json:"summary,omitempty"`
+	Truncated bool                         `json:"truncated,omitempty"`
+}
+
+type allPlacementsInput struct {
+	LayerID string `json:"layerId"`
+	Limit   int    `json:"limit"`
+	Full    bool   `json:"full"`
+}
+
+// allPlacementsOutput is written by hand to keep the graph group within its bound.
+const allPlacementsOutput = `{"type":"object","properties":{"count":{"type":"integer"},"list":{"type":"array","items":{"type":"object","properties":{"laId":{"type":"integer"},"actorId":{"type":"string"},"title":{"type":"string"},"formId":{"type":"integer"},"cell":{"type":"string"},"position":{"type":"object"}}}},"summary":{"type":"object","properties":{"forms":{"type":"array"},"box":{"type":"object"}}},"truncated":{"type":"boolean"}}}`
+
+// allPlacementsLimit is the compact layer_placements_all page: past it the summary speaks.
+const allPlacementsLimit = 150
+
+// compactAll answers every placement with full; else the summary and the first limit rows by cell.
+func compactAll(list []publicapi.LayerPlacement, in allPlacementsInput) allPlacements {
+	out := allPlacements{List: list, Count: len(list)}
+	if in.Full {
+		return out
+	}
+	limit := allPlacementsLimit
+	if in.Limit > 0 {
+		limit = in.Limit
+	}
+	summary := publicapi.SummarizePlacements(list)
+	out.Summary = &summary
+	if len(list) > limit {
+		out.List, out.Truncated = list[:limit], true
+	}
+	rows := make([]publicapi.LayerPlacement, len(out.List))
+	for i, p := range out.List {
+		rows[i] = publicapi.CompactPlacement(p)
+	}
+	out.List = rows
+	return out
 }
 
 const (
@@ -101,11 +138,11 @@ func addGraphEngines(s *server.MCPServer, c *publicapi.Client) {
 			})
 	}
 	if c.ParityAllowed("graph/layer/actors/list") {
-		consoleTool(s, "layer_placements_all", "Read every node placement of a layer in one call (legacy getAllLayerPlacements): laId, actorId, title, formId, position; up to 20000 placements. For one page with full actors use layer_placements_list.",
-			`{"type":"object","properties":{`+layerArg+`},"required":["layerId"],"additionalProperties":false}`, false,
-			func(ctx context.Context, in layerInput) (allPlacements, error) {
+		addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(allPlacementsOutput)), "layer_placements_all", "Read every node placement of a layer (legacy getAllLayerPlacements): count, summary {forms [{formId, count}], box of the centres} and the first limit (default 150) rows {laId, actorId, title, formId, cell}; truncated: more exist (read a region with layer_skeleton_get box). full: every row with position, up to 20000",
+			`{"type":"object","properties":{`+layerArg+`,"limit":{"type":"integer","minimum":1,"maximum":20000},"full":{"type":"boolean"}},"required":["layerId"],"additionalProperties":false}`, false,
+			func(ctx context.Context, in allPlacementsInput) (allPlacements, error) {
 				list, err := c.AllNodePlacements(ctx, in.LayerID)
-				return allPlacements{List: list, Count: len(list)}, err
+				return compactAll(list, in), err
 			})
 	}
 	if c.ParityAllowed("graph/layer/actors/positions/update") {

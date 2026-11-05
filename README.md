@@ -267,6 +267,17 @@ attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, 
 transcript tool, hole reopen, Pencil drawing, layer settings and nodes opened in place (192 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
+Graph reads answer compact unless the call sends `full: true` (a large layer's reads were the biggest outputs of a
+dialog; every one rides in the context of each later step): `layer_get` as in the table below;
+`layer_placements_list` and `layer_actors_search` drop each row's `areaPicture` (a block's base64 SVG),
+`cellPosition`, `createdAt`, `layerSettings.shape`/`textFrame` and the actor's copy of the row id, and round
+positions; `layer_edges_list` keeps of each edge its type, ends, label and hole; `layer_skeleton_get` answers at
+most 150 nodes and the edges between them with `total`, the `box` every node centre lies in and `truncated`; `layer_placements_all`
+answers `count`, `summary {forms [{formId, count}], box}` and the first `limit` (150) rows by `cell`. Measured on
+the stand (characters of the tool result, compact / full): `layer_get` 26 992 / 63 995 (196 nodes, 173 edges) and
+32 417 / 73 563 (10 000 nodes); `layer_skeleton_get` 14 231 / 1 381 982 and `layer_placements_all`
+19 098 / 1 412 597 (10 000 nodes); `layer_placements_list` of a 38-block flowchart 7 510 / 38 972.
+
 Tool groups: every console tool in `tools/list` carries `_meta: {"simulator-ai/groups": [...]}`, so the Hermes relay
 can give a run `core` and only the domains its request needs (`internal/mcpserver/console_groups.go`; a tool may sit
 in several groups, each group with `core` is enough for its domain). The baseline without the relay is the plain
@@ -278,7 +289,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | Group | Tools | KiB | For |
 | --- | --: | --: | --- |
 | `core` | 14 | 22.9 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
-| `graph` | 43 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings, nodes opened in place (at the 55 KiB bound: the next graph tool needs a split) |
+| `graph` | 43 | 54.9 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings, nodes opened in place (at the 55 KiB bound: the next graph tool needs a split) |
 | `smart_forms` | 24 | 30.3 | Smart Form pages, the CDU reference, data template, releases, history, trash, test runs, its Corezoid project |
 | `forms` | 13 | 24.2 | Account Templates: create, change field by field, tree, their accounts, records filtered by data |
 | `finance` | 18 | 26.6 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
@@ -290,7 +301,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | `charts` | 5 | 10.9 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 191 | 254.2 | |
+| all (`console-full`) | 191 | 254.1 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
@@ -322,7 +333,7 @@ another, never on a new one.
 | `edge_create` | `edge_type/get` (default `hierarchy`) + `edge/create` | id, source, target, edgeTypeId, name |
 | `layer_placements_create` | `actor/get` (the layer's `data.anisotropy`) + `graph/layer/actors/list` (what each placement holds: a cell, an open box, a block's box) + `graph/layer/actors/manage` (create only); a flowchart node is border-snapped and gets the block's `areaPicture`. A taken area is refused, or with anisotropy made room for: atomic `batch` of `graph/layer/actors/offset` (a seam through the area) + manage. `expand` on the only node places it open (the `layer_node_expand` bag, its push first) | nodes `{laId, actorId, position, cell}`, edges `{laId, edgeId, laIdSource, laIdTarget}`, `moved` (each node once), `opened {expandType, area}`, `covers` |
 | `layer_positions_update` | `graph/layer/actors/positions/update` | updated count |
-| `layer_get` | `actor/get` (`data.anisotropy`) + `graph/layer/edges/list` + `graph/layer/actors/list` | compact nodes/edges with `cell`, an open node's `open {expandType, area}`, `anisotropy`, `hasMore` |
+| `layer_get` | `actor/get` (`data.anisotropy`) + `graph/layer/edges/list` + `graph/layer/actors/list` (+ `graph/layer/stats/get` when `hasMore`) | compact nodes `{laId, actorId, title, formId, cell, blockId, hole, open}` and edges `{laId, edgeId, laIdSource, laIdTarget, name, hole}` (+ `source`/`target` when a node is off the page), 100 per kind, `anisotropy`, `hasMore` with `total` (best effort: 2 s, none on an error); `full` adds `position` and edge `source`/`target` (limit 200) |
 | `layer_node_expand` (`console-full`) | `graph/layer/elements/list` (the node) + the layer read above + `form/system/get` (`Scripts`, `Dashboards`) → atomic `batch` of `graph/layer/actor_settings/save` (`expand`, `expandType`, `flaskView`, `nestedFrame`, `expandPushed`, legacy `width`/`height`) + `graph/layer/actors/offset` (anisotropy; the close mirrors `expandPushed`), as simulator-ui-kit `expandOps` / `collapseOps` | `{laId, actorId, expanded, changed, expandType, area, pushed, moved, covers}` |
 | `layer_viewport` | `graph/viewport/command` (a ruler `cell` sent as its index: `"C, 7"` → `{x: 2, y: 6}`) | `commandId`, `openTabs` (0: the layer is not open, nothing moved) |
 | `hole_close` | `actor/hole/merge`, or `actor/get` (the hole) + atomic `actor/create` + `actor/hole/merge` | `{holeActorId, actorId, created, changes}` (+ `closingProgress`, `conditions` with `forceMerge`) |
