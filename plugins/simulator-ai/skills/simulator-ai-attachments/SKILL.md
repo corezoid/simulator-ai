@@ -52,6 +52,9 @@ because the answer depends on it. Then work from what it says, naming the file y
 | `docx`, `xlsx` | `text` (a spreadsheet: `## <sheet>` then rows, cells tab-separated), at most 100 KiB |
 | `binary` | only type and size: describe it, do not invent its content |
 
+  A PDF over 10 MiB, an encrypted one or one whose streams unpack too far gives no text, and
+  `note` says why. One request sends at most 8 images in all (`imagesSkipped` counts the rest):
+  read only the files the request needs.
   `tooLarge` means the image was over 5 MiB and was not sent: say so and ask for a
   smaller one or to open it in Simulator.
 - A file still being scanned is retried for several seconds. A stand serving files from ufs

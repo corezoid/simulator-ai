@@ -171,11 +171,15 @@ type AttachmentContent struct {
 	Binary    bool   `json:"binary,omitempty"`
 	// Inline says image blocks follow: the image (Data), or a scanned PDF's page images (Pages).
 	// TooLarge: an image over the inline limit. Scanned: a PDF without a text layer.
-	Inline   bool     `json:"inline,omitempty"`
-	TooLarge bool     `json:"tooLarge,omitempty"`
-	Scanned  bool     `json:"scanned,omitempty"`
-	Data     []byte   `json:"-"`
-	Pages    [][]byte `json:"-"` // JPEG
+	Inline   bool `json:"inline,omitempty"`
+	TooLarge bool `json:"tooLarge,omitempty"`
+	Scanned  bool `json:"scanned,omitempty"`
+	// Note says why a PDF's text was not read (too large, encrypted, a stream bomb, too slow);
+	// ImagesSkipped how many of its images the per-run image limit held back.
+	Note          string   `json:"note,omitempty"`
+	ImagesSkipped int      `json:"imagesSkipped,omitempty"`
+	Data          []byte   `json:"-"`
+	Pages         [][]byte `json:"-"` // JPEG
 }
 
 // ReadAttachment downloads a file by its storage key (fileName). A file ufs is still scanning is
@@ -213,7 +217,11 @@ func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (At
 		defer resp.Body.Close()
 		switch resp.StatusCode {
 		case http.StatusOK:
-			return readContent(in.FileName, resp)
+			out, err := readContent(in.FileName, resp)
+			if err == nil {
+				c.limitImages(&out)
+			}
+			return out, err
 		case http.StatusNotFound:
 			return AttachmentContent{}, errors.New("no such file, or its antivirus scan has not finished (or it is quarantined) on a stand serving files from ufs; try again later")
 		case http.StatusTooEarly:

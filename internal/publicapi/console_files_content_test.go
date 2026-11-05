@@ -176,7 +176,7 @@ func TestOfficeTextIsBounded(t *testing.T) {
 		fmt.Fprintf(&row, `<w:p><w:r><w:t>line %d</w:t></w:r></w:p>`, i)
 	}
 	body := zipBytes(t, map[string]string{"word/document.xml": `<w:document xmlns:w="w"><w:body>` + row.String() + `</w:body></w:document>`})
-	text, err := officeText("docx", body)
+	text, _, err := officeText("docx", body)
 	if err != nil {
 		t.Fatal(err)
 	}

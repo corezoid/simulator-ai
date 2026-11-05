@@ -24,6 +24,9 @@ type Client struct {
 	config Config
 	http   *http.Client
 	nextID atomic.Uint64
+	// imagesSent counts the image blocks attachment_read handed out in this process, one Console
+	// run: each rides again in every later step of the run, so they are capped (limitImages).
+	imagesSent atomic.Int64
 }
 
 func New(c Config) (*Client, error) {

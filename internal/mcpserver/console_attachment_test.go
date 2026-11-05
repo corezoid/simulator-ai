@@ -74,3 +74,19 @@ func TestAttachmentReadSendsContentBlocks(t *testing.T) {
 		t.Fatalf("text: %v", note)
 	}
 }
+
+// attachment_read is registered once, with the read schema and the description that names the
+// request's attachments.
+func TestAttachmentReadRegisteredOnce(t *testing.T) {
+	for _, profile := range []string{"console", "console-full"} {
+		c, err := publicapi.New(publicapi.Config{Origin: "http://127.0.0.1:1", Workspace: "ws", Profile: profile, Authorization: "Bearer user"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		tool := New(c).GetTool("attachment_read").Tool
+		schema := string(tool.RawInputSchema)
+		if !strings.Contains(tool.Description, "Attachments of the request") || strings.Contains(tool.Description, "embedded") || strings.Contains(schema, `"content"`) || !strings.Contains(schema, `"required":["fileName"]`) {
+			t.Fatalf("%s: %s / %s", profile, tool.Description, schema)
+		}
+	}
+}

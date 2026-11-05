@@ -1,7 +1,6 @@
 package publicapi
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -9,8 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/ledongthuc/pdf"
 )
 
 // What attachment_read gives the model of a file (legacy readAttachment, and more): a text file's
@@ -22,8 +19,9 @@ import (
 // MaxInlineBytes bounds an image sent along as a content block; maxPageImages the pages of a scan
 // (Hermes passes up to four images of one tool result to the model).
 const (
-	MaxInlineBytes = 5 << 20
-	maxPageImages  = 4
+	MaxInlineBytes  = 5 << 20
+	maxPageImages   = 4
+	maxImagesPerRun = 8
 )
 
 const (
@@ -50,25 +48,27 @@ func readContent(name string, resp *http.Response) (AttachmentContent, error) {
 		out.Kind = "image"
 		out.Inline, out.TooLarge = whole && len(body) <= MaxInlineBytes, !whole || len(body) > MaxInlineBytes
 		if out.Inline {
-			out.ContentType, out.Data = imageType(media, body), body
+			out.ContentType, out.Data = imageType(body), body
 		}
 	case kind == "pdf" && whole:
 		// Hermes hands the model an image block, never a PDF one: a PDF is its text, and a scan
 		// without text its page images.
 		out.Kind, out.ContentType = "pdf", "application/pdf"
-		out.Text, out.Truncated = cutText(pdfText(body))
+		text, unread := pdfText(body)
+		out.Text, out.Truncated = cutText(text)
 		if out.Text == "" {
 			out.Pages = scanPages(body, maxPageImages)
-			out.Inline, out.Scanned = len(out.Pages) > 0, true
+			out.Inline, out.Scanned, out.Note = len(out.Pages) > 0, unread == "", unread
 		}
 	case (kind == "docx" || kind == "xlsx") && whole:
-		text, err := officeText(kind, body)
+		text, cut, err := officeText(kind, body)
 		if err != nil {
 			out.Kind, out.Binary = "binary", true
 			return out, nil
 		}
 		out.Kind = kind
 		out.Text, out.Truncated = cutText(text)
+		out.Truncated = out.Truncated || cut
 	default:
 		out.Kind, out.Binary = "binary", true
 	}
@@ -109,7 +109,8 @@ func readText(out AttachmentContent, body io.Reader) (AttachmentContent, error) 
 func kindOf(media string, body []byte) string {
 	sniffed, _, _ := mime.ParseMediaType(http.DetectContentType(body))
 	switch {
-	case inlineImages[media] || media == "application/octet-stream" && inlineImages[sniffed] || media == "" && inlineImages[sniffed]:
+	// An image is one by its bytes too: a declared image/png that is not one is no image block.
+	case inlineImages[sniffed] && (inlineImages[media] || media == "application/octet-stream" || media == ""):
 		return "image"
 	case media == "application/pdf" || sniffed == "application/pdf":
 		return "pdf"
@@ -123,10 +124,8 @@ func kindOf(media string, body []byte) string {
 	return "binary"
 }
 
-func imageType(media string, body []byte) string {
-	if inlineImages[media] {
-		return media
-	}
+// imageType is the type the image's bytes say it is.
+func imageType(body []byte) string {
 	sniffed, _, _ := mime.ParseMediaType(http.DetectContentType(body))
 	return sniffed
 }
@@ -143,41 +142,54 @@ func cutText(text string) (string, bool) {
 	return cut, true
 }
 
-// pdfText is the plain text of a PDF, empty when it has none (a scan) or cannot be parsed; the
-// parser is pure Go, and a malformed file must not take the server down with it.
-func pdfText(body []byte) (text string) {
-	defer func() {
-		if recover() != nil {
-			text = ""
-		}
-	}()
-	r, err := pdf.NewReader(bytes.NewReader(body), int64(len(body)))
-	if err != nil {
-		return ""
-	}
-	plain, err := r.GetPlainText()
-	if err != nil {
-		return ""
-	}
-	b, err := io.ReadAll(io.LimitReader(plain, maxReadText+1))
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(strings.ToValidUTF8(string(b), ""))
-}
-
-// AttachmentNote is the line image blocks go with, and what the model is told when nothing of the
-// file could be sent.
+// AttachmentNote is the line the image blocks go with, and what the model is told when nothing of
+// the file could be sent.
 func (a AttachmentContent) AttachmentNote() string {
+	var note string
 	switch {
 	case a.Inline && a.Kind == "image":
-		return fmt.Sprintf("Image %q (%s, %d bytes) follows as an image block.", a.FileName, a.ContentType, a.Size)
+		note = fmt.Sprintf("Image %q (%s, %d bytes) follows as an image block.", a.FileName, a.ContentType, a.Size)
 	case a.Inline:
-		return fmt.Sprintf("The PDF %q has no text layer (a scan): its first %d page images follow as image blocks.", a.FileName, len(a.Pages))
+		why := "The PDF has no text layer (a scan)"
+		if a.Note != "" {
+			why = strings.ToUpper(a.Note[:1]) + a.Note[1:]
+		}
+		note = fmt.Sprintf("%s: its first %d page images follow as image blocks.", why, len(a.Pages))
 	case a.TooLarge:
-		return fmt.Sprintf("The image is larger than the %d MiB inline limit, so it is not sent: ask the user to open it in Simulator or to share a smaller one.", MaxInlineBytes>>20)
-	case a.Scanned:
-		return "The PDF has no text layer (a scan) and its pages are not JPEG images that can be sent, so its content is not available: ask the user for a text version or to describe it."
+		note = fmt.Sprintf("The image is larger than the %d MiB inline limit, so it is not sent: ask the user to open it in Simulator or to share a smaller one.", MaxInlineBytes>>20)
+	case a.Kind == "pdf" && a.Text == "" && a.ImagesSkipped == 0:
+		why := "The PDF has no text layer (a scan) and its pages are not JPEG images that can be sent"
+		if a.Note != "" {
+			why = strings.ToUpper(a.Note[:1]) + a.Note[1:]
+		}
+		note = why + ", so its content is not available: ask the user for a text version or to describe it."
 	}
-	return ""
+	if a.ImagesSkipped > 0 {
+		note = strings.TrimSpace(note + fmt.Sprintf(" %d image(s) of this file were not sent: this request already sent %d images, the most one request may; ask the user which to look at and read it again in a new request.", a.ImagesSkipped, maxImagesPerRun))
+	}
+	return note
+}
+
+// limitImages holds back the image blocks past maxImagesPerRun in this process (one Console run):
+// every image goes again with each later step of the run, so they are not let pile up.
+func (c *Client) limitImages(a *AttachmentContent) {
+	n := len(a.Pages)
+	if a.Kind == "image" && a.Inline {
+		n = 1
+	}
+	if n == 0 {
+		return
+	}
+	over := min(int(c.imagesSent.Add(int64(n))-maxImagesPerRun), n)
+	if over <= 0 {
+		return
+	}
+	c.imagesSent.Add(-int64(over))
+	a.ImagesSkipped = over
+	if a.Kind == "image" {
+		a.Data, a.Inline = nil, false
+		return
+	}
+	a.Pages = a.Pages[:n-over]
+	a.Inline = len(a.Pages) > 0
 }
