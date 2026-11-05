@@ -81,6 +81,7 @@ func addConsole(s *server.MCPServer, c *publicapi.Client) {
 	addConsoleAccounts(s, c)
 	addConsoleActors(s, c)
 	addConsoleHoles(s, c)
+	addConsoleDraw(s, c)
 }
 
 func addConsoleGraph(s *server.MCPServer, c *publicapi.Client) {

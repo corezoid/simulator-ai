@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours and holes — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, or count a layer ("створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
+description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, ask what is on a layer or who is connected to whom, count a layer, close holes or draw on it ("закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "создай блок-схему", "нарисуй процесс", "что на слое").
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
@@ -144,6 +144,33 @@ a hole leaves the hole open.
 
 A new hole: `actors_create` with `hole: true` (data = the closing conditions), placed like any
 node; a placeholder link: `edges_create` with `hole: true`.
+
+## Draw by hand (Pencil, `console-full`)
+
+"Draw / sketch / circle / underline / point an arrow at …" on a layer is `layer_draw`: the
+Graph Editor's Pencil in words. All strokes of one call become ONE picture actor, placed where
+they lie and off the grid, the same object a confirmed Pencil session makes: it moves, resizes,
+links and deletes as a whole and cannot be edited stroke by stroke. Use it for marks over the
+graph (a circle round a node, an arrow to it, a frame, an underline, a quick sketch); actors and
+edges stay the way to model a process.
+
+- Coordinates are graph units (x right, y down, 50 per cell). Read the nodes you draw around with
+  `layer_get` (`position` is a node's centre; a plain node is about one cell). With
+  `cell: "C, 7"` every coordinate is relative to that cell's centre.
+- A stroke is `kind: line` with `points` (two or more; `smooth` bends it through them,
+  `closed` joins the end back to the start, `arrowStart` / `arrowEnd` add filled heads),
+  `rect` or `ellipse` (`center`, `w`, `h`, an outline). `color` `#RRGGBB` (default slate
+  `#667085`; the editor hues are good choices), `width` 1–20 (default 3), `style`
+  `solid|dashed|dotted`. Later strokes paint over earlier ones.
+- Circle a node: an `ellipse` at its `position`, `w`/`h` about 80–100. Point at it: a `line`
+  ending 40–50 units short of its centre with `arrowEnd`. A star, a check mark, a cloud: a
+  `line` through their points (`smooth` for round shapes).
+- Not possible: fill, erasing, text, images. Words go in a text node (`layer_placements_manage`
+  with `isTextNode`, or a titled actor); a sketch that needs a fill is outlines only.
+- One call is one picture: draw a group of marks that belong together in one call, unrelated
+  marks in separate calls so they can be moved apart. At most 2000 × 2000 units.
+- The layer's default form names the picture actor's template; a layer without one needs
+  `formId` (ask which template, `forms_list`). `title` names it. Delete it like any actor.
 
 ## Edit (`console-full` unless noted)
 
