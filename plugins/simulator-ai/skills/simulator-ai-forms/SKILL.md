@@ -4,7 +4,7 @@ description: Design and change Simulator templates (forms, Account Templates, «
 ---
 
 Use the installed `simulator-ai` catalog. `console` has `form_get`, `forms_list`, `form_create`,
-`form_update` and `form_account_create`; `form_status_update`, `form_delete`, `forms_count`, the
+`form_fields_patch`, `form_update` and `form_account_create`; `form_status_update`, `form_delete`, `forms_count`, the
 tree reads and the rest of the account definitions need `console-full`. The records of a template are
 `simulator-ai-actors`.
 
@@ -54,10 +54,22 @@ source links the two by a hierarchy edge from this actor to the picked one;
 2. `form_create {title, sections, description?, color?, ref?, parentId?}`. Give every field
    a unique, stable `id` without `.`, `[` or `]`. `ref` is unique in the workspace.
    `isTemplate: false` makes a private draft that lists never return: keep its id.
-3. To change: `form_get {formId, with: ["editor"]}`, edit the returned `sections` (append new
-   fields with fresh ids), and send the whole array to `form_update {formId,
-   expectedEditToken, sections, ...}`. A stale token is refused instead of overwriting another
-   edit: read again and redo. Renaming a field's title is safe; changing its id orphans the
+3. To change a template, change only what the user asked, field by field:
+   `form_fields_patch {formId, expectedEditToken, ops, form?}`. Read the template once
+   (`form_get {formId, with: ["editor"]}`) for the field ids and `editToken`; every patch answers
+   the next `editToken` and only what changed, so chain patches without reading again. Ops, in
+   order, all or none:
+   - `add {field: {class, title, id?, type?, options?, required?, description?, extra?}, section?, before?|after?}`
+     (`section` is an index or a title; without one the field goes to the end of the last section;
+     without `id` one is generated and returned);
+   - `update {id, set: {property: value}, unset?: [property]}` (`set.id` is refused);
+   - `remove {id}`, `move {id, section?|before?|after?}`;
+   - `section_add {title, at?}`, `section_update {section, title}`, `section_remove {section}` (empty only).
+   `form` patches the template's own `title`, `description`, `color`, `ref`, `tags`, `parentId`
+   and `settings` key by key (a key set to null is dropped; the other keys stay). A stale `expectedEditToken` is refused (someone changed the template): read again
+   and redo the ops. A refused value names the property and the values it takes: fix that one op.
+   `form_update` with whole `sections` is for rebuilding the structure from scratch only: never
+   resend every field to change one. Renaming a field's title is safe; changing its id orphans the
    values in existing actors (they stay in their `data`).
 4. `form_status_update {formId, status}`: verified, rejected or pending. `form_delete` removes
    the template: confirm with the user first.
