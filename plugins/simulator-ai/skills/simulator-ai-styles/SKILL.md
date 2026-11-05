@@ -4,7 +4,7 @@ description: Style a CDU v2 Smart Form — its theme file (built-in or own theme
 ---
 
 Use the installed `simulator-ai` catalog (`smart_form_files_get`, `smart_form_files_create`,
-`smart_form_files_update`, `smart_form_release`, `smart_form_components`). Page layout is
+`smart_form_files_update`, `smart_form_page_patch`, `smart_form_release`, `smart_form_components`). Page layout is
 `simulator-ai-smart-forms`; this skill owns the look.
 
 A CDU v2 page has **no CSS or Less**: components draw themselves from theme tokens, so the look
@@ -14,7 +14,8 @@ comes from two places only.
    palette, fonts and shape for every page.
 2. **Component props** such as size, variant, tone or surface. Take them only from
    `smart_form_components {types: [...]}`: an unknown prop is refused on save. Never invent a
-   `style`, `className` or colour prop.
+   `style`, `className` or colour prop. Spacing: a `Stack`'s `size` is the gap between its children,
+   `space` its padding (`{size, sides}`); there is no `gap`.
 
 A `styles/index` file in the tree is the legacy stylesheet; v2 pages do not use it.
 
@@ -68,12 +69,15 @@ Save validation checks the shape, not the token ids: no `; { } < >`, `url(`, `ex
 
 1. Agree on the intent: brand colours or a logo, a reference, light or dark, phone or desktop.
    No preference: state the defaults you will use.
-2. `smart_form_files_get {appId, withSource: true}`: is there a root `theme`? Keep what the user
-   did not ask to change.
+2. `smart_form_files_get {appId, paths: ["theme"]}`: is there a root `theme` (else it is in
+   `missing`)? Keep what the user did not ask to change.
 3. Write it: `smart_form_files_update` with the file's id, current `title` and `type` (and
    `ifMatchHash` from its `sourceHash`), or `smart_form_files_create` in the root folder when
    it is missing. Prefer `scales` and `presets` over many single tokens.
-4. Adjust component props on the pages only through the catalog's props.
+4. Adjust component props on the pages only through the catalog's props: read the page with
+   `smart_form_files_get {paths: ["pages/<page>/config"]}` and change just those props with
+   `smart_form_page_patch {appId, path, nodeId, ops: [{op: "replace", path: "/props/<prop>",
+   value}]}` rather than rewriting the page.
 5. `smart_form_release` publishes it. A form already live elsewhere: name it and what changes,
    and get an explicit yes first (`smart_form_release_rollback` in `console-full` undoes a
    release). `smart_form_page_render` shows a page still builds, but only a person sees the

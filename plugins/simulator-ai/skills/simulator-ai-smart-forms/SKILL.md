@@ -5,7 +5,7 @@ description: Create, edit and release CDU v2 Smart Forms (mini-apps) through the
 
 Use the installed `simulator-ai` catalog. In `console`: `smart_form_create`,
 `smart_form_components`, `smart_form_data_form_create`, `smart_form_files_get`,
-`smart_form_files_create`, `smart_form_files_update`, `smart_form_release`,
+`smart_form_files_create`, `smart_form_files_update`, `smart_form_page_patch`, `smart_form_release`,
 `smart_form_release_get`, and `corezoid_project_create` / `corezoid_project_get` for its
 business logic. The `smart-forms` desktop profile has its own receipt-based tools
 (last section). Related skills: `simulator-ai-styles` (the look), `simulator-ai-smart-forms-logic`
@@ -46,6 +46,9 @@ naming the closest. Read data in a prop as a JSONata expression in `{{ }}`: `{{ 
 `form.validate` and an `if` first. A field caption is the input's `label` prop; `DatePicker`
 has none, so put a `Label` before it.
 
+**Spacing.** A `Stack`'s `size` is the gap between its children (`none` … `11xl`); its `space`
+is its padding (`{size, sides, customSize}`); there is no `gap` prop.
+
 **View model and locale.** `viewModel` is an object; seed every key a page reads.
 `locale` is keyed by language first: `{"en": {"title": "Order"}, "uk": {"title":
 "Замовлення"}}`; page texts override the app's.
@@ -80,18 +83,26 @@ without actions beside inputs, or a `form/submit` without its template is refuse
 
 ## Edit pages
 
-1. `smart_form_components {brief: true}` lists every type; then `{types: [...]}` for the props,
-   events and state of the ones you use.
-2. `smart_form_files_get {appId, withSource: true}`: files by path with `id`, `sourceHash` and
-   folder ids. Reuse existing files; titles are not unique, so never create a second file with
-   the same name.
-3. `smart_form_files_update {appId, items: [{id, title, type, source, ifMatchHash}]}` (up to 20
-   files, one transaction, under 960 KiB): send the current `title` and `type`, and the read
-   `sourceHash` as `ifMatchHash` so a concurrent edit is refused instead of overwritten. Read
-   again before the next write: the hashes changed.
-4. `smart_form_files_create {appId, items: [{folderId, title, type, source}]}` adds a file in an
-   existing folder (e.g. `pages/index/locale`).
-5. On a refusal, read the server's message: it names the component, prop or wiring at fault.
+To change an existing page, touch only that page and only the components you change:
+
+1. `smart_form_files_get {appId, paths: ["pages/<page>/config"]}`: that file's source,
+   `id` and `sourceHash` (a folder path such as `pages/<page>` gives everything under it).
+   `withSource: true` returns every file's source: only for a whole-form review.
+2. `smart_form_components {types: [...]}` for the types you add or change: one line per prop,
+   enums inlined (`{brief: true}` lists every type first; `schema: true` the raw JSON Schemas).
+3. `smart_form_page_patch {appId, path?, nodeId, ops}`: JSON Patch ops relative to the node
+   with that `id`, e.g. `{nodeId: "root", ops: [{op: "add", path: "/props/size", value:
+   "xl"}]}`; `add` to `/children/-` appends a child, `remove` with `""` drops the node. All
+   ops apply or none, the write is refused if the file changed since it was read, and it
+   returns the new `sourceHash`, not the source.
+4. Rewrite whole files with `smart_form_files_update {appId, items: [{id, title, type, source,
+   ifMatchHash}]}` only for a new page or a big restructure (up to 20 files, one transaction,
+   under 960 KiB): send the current `title` and `type`, and the read `sourceHash` as
+   `ifMatchHash` so a concurrent edit is refused. Read again before the next write.
+5. `smart_form_files_create {appId, items: [{folderId, title, type, source}]}` adds a file in an
+   existing folder (e.g. `pages/index/locale`); titles are not unique, so never create a second
+   file with the same name.
+6. On a refusal, read the server's message: it names the component, prop or wiring at fault.
 
 A new page is a folder `pages/<page>` holding its `config`: `smart_form_folders_create
 {actorId: <appId>, items: [{folderId: <id of pages>, title: "<page>"}]}`, then

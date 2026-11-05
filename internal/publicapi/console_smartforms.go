@@ -43,7 +43,13 @@ type SmartFormInput struct {
 type SmartFormFilesInput struct {
 	AppID      string `json:"appId"`
 	WithSource bool   `json:"withSource,omitempty"`
+	// Paths narrows the answer to these files and folders (a folder with what is under it), each
+	// file with its source.
+	Paths []string `json:"paths,omitempty"`
 }
+
+// maxPathSources bounds the files one paths request reads a source of (one app_file/get each).
+const maxPathSources = 20
 
 // SmartFormEntry is one folder or file of the develop tree, addressed by its slash path
 // ("pages/index/config"); the root folder is "/".
@@ -62,6 +68,8 @@ type SmartFormFiles struct {
 	DevelopEnvID    int64            `json:"developEnvId"`
 	ProductionEnvID int64            `json:"productionEnvId"`
 	Files           []SmartFormEntry `json:"files"`
+	// Missing are requested paths that name nothing in the develop tree.
+	Missing []string `json:"missing,omitempty"`
 }
 
 // SmartFormFileCreate creates a file in a develop folder; source is stored as text.
@@ -210,7 +218,7 @@ func (c *Client) GetSmartFormFiles(ctx context.Context, in SmartFormFilesInput) 
 		return SmartFormFiles{}, e
 	}
 	fields := []string{"id", "title", "objType", "type", "sourceHash", "children"}
-	if in.WithSource {
+	if in.WithSource && len(in.Paths) == 0 {
 		fields = append(fields, "source")
 	}
 	r, e := call[structRequest, structWire](ctx, c, "application/struct", structRequest{AccID: c.config.Workspace, ActorID: in.AppID, EnvID: dev, Fields: fields})
@@ -229,6 +237,46 @@ func (c *Client) GetSmartFormFiles(ctx context.Context, in SmartFormFilesInput) 
 		}
 	}
 	walk(r.Tree, "/")
+	if len(in.Paths) > 0 {
+		return c.narrowFiles(ctx, out, in.Paths)
+	}
+	return out, nil
+}
+
+// narrowFiles keeps the entries paths name (a folder with everything under it) and reads each kept
+// file's source, so a page is read without every other file's source.
+func (c *Client) narrowFiles(ctx context.Context, all SmartFormFiles, paths []string) (SmartFormFiles, error) {
+	out := all
+	out.Files = []SmartFormEntry{}
+	hit := map[string]bool{}
+	for _, f := range all.Files {
+		for _, p := range paths {
+			if p = strings.Trim(p, "/"); p != "" && (f.Path == p || strings.HasPrefix(f.Path, p+"/")) {
+				hit[p] = true
+				out.Files = append(out.Files, f)
+				break
+			}
+		}
+	}
+	for _, p := range paths {
+		if !hit[strings.Trim(p, "/")] {
+			out.Missing = append(out.Missing, p)
+		}
+	}
+	read := 0
+	for i, f := range out.Files {
+		if f.ObjType != "file" {
+			continue
+		}
+		if read++; read > maxPathSources {
+			return SmartFormFiles{}, fmt.Errorf("paths name more than %d files: narrow them", maxPathSources)
+		}
+		file, e := c.appFile(ctx, all.AppID, f.ID)
+		if e != nil {
+			return SmartFormFiles{}, e
+		}
+		out.Files[i].Source, out.Files[i].SourceHash = &file.Source, file.SourceHash
+	}
 	return out, nil
 }
 
