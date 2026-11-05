@@ -5,7 +5,7 @@ description: Build, edit, read, analyse, export and import Simulator graphs — 
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
 `actors_create`, `edges_create`, `layer_create`, `layer_placements_create`,
-`layer_positions_update`, `layer_get`, `graph_get`); `console-full` adds every edit, delete
+`layer_positions_update`, `layer_get`, `graph_get`, `hole_close`); `console-full` adds every edit, delete
 and layer read below. The desktop `graph-read` / `graph-create` profiles have their own tools
 (last section). Actor `data` rules are `simulator-ai-actors`.
 
@@ -29,6 +29,7 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
   edge `laId`s are separate numbering.
 - A **hole** is a placeholder: an actor with `hole: true` (its data fields are the conditions
   that close it) or an edge with `hole: true`. `layer_get` marks `hole` and `closedHole`.
+  Closing one is its own operation (section Holes), never a new actor drawn over it.
 - A person on a graph is their twin actor: `actor_system_get {objType: "user", objId}`.
 
 ## Read a layer
@@ -113,6 +114,36 @@ first) also places special nodes through `layerSettings`: a text label (`isTextN
 (`isCardView`, `expand`, `expandType`), `labelStyle`, `opacity`, `rotation`, `zIndex`; and an
 image body (`areaPicture {img, width, height}`). Use it for flowchart blocks only through
 `layer_placements_create`, which keeps them on the grid.
+
+## Holes
+
+A hole stands on a layer for an actor (or a link) that is expected but not known yet. **Closing**
+it puts a real actor in its place: the closer takes the hole's placement and links, the hole
+stays in the workspace and can be reopened. "Close / fill these holes", "replace the
+placeholders with actors" always means these tools; an actor created and placed next to or over
+a hole leaves the hole open.
+
+1. Find them: `layer_get {layerId}` → nodes with `hole: true` (their `actorId` is the
+   `holeActorId`, their `laId` the `holeLaId`), edges with `hole: true` (their `edgeId` is the
+   `holeEdgeId`). A placement with `closedHole` is already closed.
+2. Close an actor hole: `hole_close {layerId, holeActorId, actorId}` with an existing actor the
+   user named (find it with `actors_search`), or `hole_close {layerId, holeActorId, newActor:
+   {title, data?}}` to create the closer in the same atomic call (template and data default to
+   the hole's own, so its conditions hold). Several holes: one `hole_close` per hole.
+3. Conditions: the hole's non-empty data fields. A closer that does not meet them is refused
+   with each condition and its verdict; tell the user which ones fail and offer to fix the
+   closer's data (`actor_update`) or close anyway (`forceMerge: true`, only on their yes).
+   Structural issues (the closer lacks a template the hole carries) are fatal.
+   `hole_conditions_get {holeActorId, actorId}` (`console-full`) is the dry run.
+4. Close a placeholder link: `edge_hole_close {layerId, holeEdgeId}` creates the real edge
+   between the same two actors in the hole's direction and type (`name` labels it), or takes an
+   existing one (`edgeId`; it must join the same actors in the same direction).
+5. Undo (`console-full`): `hole_reopen {actorId: <the closer>}` (optional `layerId`,
+   `holeActorId`), `edge_hole_reopen {edgeId: <the closing edge>}`. The closer is taken off the
+   layer, not deleted.
+
+A new hole: `actors_create` with `hole: true` (data = the closing conditions), placed like any
+node; a placeholder link: `edges_create` with `hole: true`.
 
 ## Edit (`console-full` unless noted)
 

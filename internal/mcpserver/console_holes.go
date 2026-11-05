@@ -1,0 +1,15 @@
+package mcpserver
+
+import (
+	"github.com/corezoid/simulator-ai/internal/publicapi"
+	"github.com/mark3labs/mcp-go/server"
+)
+
+// addConsoleHoles registers the hole closes: a placeholder is closed by an actor or an edge that
+// takes its place, never by creating a new actor over it.
+func addConsoleHoles(s *server.MCPServer, c *publicapi.Client) {
+	consoleTool(s, "hole_close", "Close a hole (\"close the holes\", \"fill this placeholder\"): a hole is a placeholder actor on a layer (layer_get node placements with hole true) for an actor not known yet; closing puts a real actor in its place on the layer, keeps the hole (hole_reopen brings it back) and links the closer as the hole was linked. NEVER create an actor over a hole instead: that leaves the hole open. actorId closes it with an existing actor; newActor creates the closer in the same atomic call (title required; formId defaults to the hole's template and data starts from the hole's own data, its closing conditions, overlaid with yours). The hole's conditions are its non-empty data fields: a closer that does not meet them all is refused with each condition and its verdict (hole_conditions_get is the dry run); forceMerge closes anyway on a partial match (only after the user agreed; structural issues stay fatal). holeLaId closes only that placement; by default every placement of the hole on the layer. Needs modify on the layer and both actors. Returns {holeActorId, actorId, created, changes [{layerId, removedLaId, addedLaId}]} (+ closingProgress, conditions with forceMerge). A placeholder LINK is edge_hole_close.",
+		`{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255},"holeActorId":{"type":"string","minLength":1,"maxLength":255},"actorId":{"type":"string","minLength":1,"maxLength":255},"newActor":{"type":"object","properties":{"title":{"type":"string","minLength":1,"maxLength":1000},"formId":{"type":"integer","minimum":1},"description":{"type":"string","maxLength":10000},"color":{"type":"string","maxLength":32},"data":{"type":"object"}},"required":["title"],"additionalProperties":false},"holeLaId":{"type":"integer","minimum":1},"forceMerge":{"type":"boolean"}},"required":["layerId","holeActorId"],"additionalProperties":false}`, true, c.CloseHole)
+	consoleTool(s, "edge_hole_close", "Close a placeholder link (layer_get edge placements with hole true) with a real edge between the same two actors in the same direction: edgeId an existing one, else a new edge of the hole's type is created from its endpoints (name its label) in the same atomic call. The real edge takes the hole's placement and look; the hole edge stays (edge_hole_reopen brings it back). Needs modify on the layer and on the edges' actors. Returns {holeEdgeId, edgeId, created, changes [{layerId, removedLeId, addedLeId}]}.",
+		`{"type":"object","properties":{"layerId":{"type":"string","minLength":1,"maxLength":255},"holeEdgeId":{"type":"string","minLength":1,"maxLength":255},"edgeId":{"type":"string","minLength":1,"maxLength":255},"name":{"type":"string","maxLength":1000}},"required":["layerId","holeEdgeId"],"additionalProperties":false}`, true, c.CloseEdgeHole)
+}
