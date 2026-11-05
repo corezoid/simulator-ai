@@ -278,7 +278,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | --- | --: | --: | --- |
 | `core` | 14 | 22.9 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
 | `graph` | 43 | 55.0 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits, holes, Pencil drawing, layer settings, nodes opened in place (at the 55 KiB bound: the next graph tool needs a split) |
-| `smart_forms` | 24 | 29.5 | Smart Form pages, the CDU reference, data template, releases, history, trash, test runs, its Corezoid project |
+| `smart_forms` | 24 | 29.8 | Smart Form pages, the CDU reference, data template, releases, history, trash, test runs, its Corezoid project |
 | `forms` | 12 | 21.4 | Account Templates: create, change, tree, their accounts, records filtered by data |
 | `finance` | 18 | 26.6 | everyday money: an actor's accounts, balances, a transfer, a transaction, their history, a pair by name |
 | `finance_setup` | 40 | 47.5 | currencies and account names, formulas, tags, triggers, counters, limits and status, atomic posts, by-ref variants |
@@ -289,7 +289,7 @@ output schemas carry no `additionalProperties: false`, which only cost context):
 | `charts` | 5 | 10.9 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 191 | 253.3 | |
+| all (`console-full`) | 191 | 253.7 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
@@ -333,7 +333,7 @@ another, never on a new one.
 | `smart_form_reference_grep` / `smart_form_reference_read` | `cdu/catalog/get` (all types, once per 10 minutes per process) for `components`; `protocol` and `examples` are embedded | plain text, grep-like: case-insensitive RE2 hits `doc:line: text` with context lines and the section heading (≈ 6 000 chars at most); reads by line or by section `doc/<section>` (8 000 chars a page); see "CDU reference" |
 | `smart_form_data_form_create` | `form/create` (data template) | formId and a ready page whose button submits via `form/submit` into it |
 | `smart_form_files_get` | `application/env/list` + `application/struct` (develop); with `paths` + `app_file/get` per named file | folders/files by path, optional sources (`paths`: only the named files and folders, each file with its source; `missing`), `developEnvId`, `productionEnvId` |
-| `smart_form_page_patch` | `application/env/list` + `application/struct` (by `path`) + `app_file/get` + `app_file/update` (`ifMatchHash` = the hash read) | RFC 6902 ops (add, replace, remove, move, copy, test; with `nodeId` relative to that tree node) on one develop JSON file, all or none: `{appId, fileId, path, sourceHash, applied}`, never the source |
+| `smart_form_page_patch` | `application/env/list` + `application/struct` (by `path`) + `app_file/get` + `app_file/update` (`ifMatchHash` = the hash read) | RFC 6902 ops (add, replace, remove, move, copy, test; with `nodeId` relative to that tree node) on one develop JSON file (a page config or a definition `definitions/<name>`; a `$ref` instance takes no type, props, children or actions), all or none: `{appId, fileId, path, sourceHash, applied}`, never the source |
 | `smart_form_files_update` / `smart_form_files_create` | `app_file/update` / `app_file/create` | id, folderId, title, sourceHash |
 | `smart_form_folders_create` | `app_folder/create` | folders with ids (a page is `pages/<page>`) |
 | `smart_form_release` | `application/env/list` + `release/create` (develop → production) | `{appId, releaseId, releaseNumber, status, ready, marker}` |
@@ -380,7 +380,7 @@ read, so the CDU v2 format is three documents it greps and reads by line, as Cla
 | Document | Source | Size (develop, 2026-11-05) |
 | --- | --- | --: |
 | `components` | the stand's `cdu/catalog/get` (every type, the catalog sim-api validates against) in `smart_form_components`' compact lines, one `## <Type> (kind, category)` section per type, plus each type's purpose, children and the editor's prop examples from `cdureference/types.json` | 98 types, 1 974 lines, 183 KB |
-| `protocol` | sim-api `internal/cdu/catalog/contracts/<protocol>/page-config.schema.json` (keys, types, required) and the ui-kit help bundle `packages/cdu-catalog/cdu-help.json` (expression context, concepts) | 300 lines, 28 KB |
+| `protocol` | sim-api `internal/cdu/catalog/contracts/<protocol>/page-config.schema.json` (keys, types, required) and the ui-kit help bundle `packages/cdu-catalog/cdu-help.json` (expression context, concepts); the definition rules a local stand showed (save, render, release) are the generator's own text | 315 lines, 30 KB |
 | `examples` | six CI-validated pages of ui-kit `docs/cdu-examples` (a form with validation, a wizard, a data grid, a Row/Col/Card/Tabs layout, a loop list, routes) split into their Smart Form files; `apps/cdu-lab` fixtures are block benches without a Form or a Table | 1 350 lines, 41 KB |
 
 `protocol`, `examples` and `types.json` live in `internal/mcpserver/cdureference`, written by

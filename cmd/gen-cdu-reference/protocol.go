@@ -86,6 +86,16 @@ func renderProtocol(head string, in *inputs) ([]byte, error) {
 	d.add("", "## definitions — reusable subtrees, files definitions/<name>")
 	d.add(in.helpLines("concept:definition")...)
 	d.add(paragraphs(cduschema.Description(def("Definition")))...)
+	treeProps, _ := def("TreeNode")["properties"].(map[string]any)
+	ref, _ := treeProps["$ref"].(map[string]any)
+	d.add("$ref: string " + fmt.Sprint(ref["pattern"]) + cduschema.DescribeFull(ref))
+	rules, _ := def("TreeNode")["allOf"].([]any)
+	for _, rule := range rules {
+		if m, _ := rule.(map[string]any); m["comment"] != nil {
+			d.add("Contract: " + fmt.Sprint(m["comment"]))
+		}
+	}
+	d.add(definitionRules...)
 
 	d.add("", "## data — the viewModel and locale files")
 	d.add("ViewModel" + cduschema.DescribeFull(def("ViewModel")))
@@ -197,4 +207,21 @@ func idsWith(entries map[string]helpEntry, prefix string) []string {
 	}
 	sort.Strings(ids)
 	return ids
+}
+
+// definitionRules are how sim-api treats definitions beyond what the schema says, as observed on a
+// local stand (sim-api 789b3bb3, 2026-11-05: saved, rendered with page/render and released).
+var definitionRules = []string{
+	"Rules (checked on a stand: save, page/render, release):",
+	"- A definition is a file definitions/<name> (application/json) in the app-root definitions folder, holding one node {id, type, props?, children?, actions?}. It is not checked when it is saved, only inside each page that uses it, when the page is rendered or released.",
+	"- An instance is {\"id\": \"<own id>\", \"$ref\": \"#/definitions/<name>\"} plus, if needed, if, visibility, for, slot or variant. A page saving an instance with type, props, children or actions is refused, and so is a nested name (#/definitions/cards/user): every definition sits directly in definitions/.",
+	"- The definition replaces the instance, then the instance's own keys replace the definition's same top-level keys (id, if, visibility, for, …). Props cannot differ per instance: vary content through data, e.g. a for on the instance repeats the definition per item, which reads the item as $<as> ({{ $f.label }}), or expressions over vm.",
+	"- Give every instance its own id. Ids are not checked for uniqueness: two instances without id both render with the definition root's id, so widget.call, bindings and $block cannot tell them apart. A definition root without id needs an id on every instance, else render and release are refused (missing property 'id'). Ids inside a definition repeat in every instance.",
+	"- A missing definition or a cycle saves, but render and release are refused: unresolved definition at /tree/… (missing, invalid, or cyclic). Wrong props inside a definition are refused the same way, at the resolved node.",
+	"- Instances in overlay.open content and in bindings are resolved too. Changing the definition file (smart_form_page_patch path definitions/<name>) changes every instance at the next render and release.",
+	"Example: the file definitions/field-row",
+	`{"id":"row","type":"Stack","props":{"direction":"horizontal","size":"md"},"children":[{"id":"row-label","type":"Label","props":{"text":"{{ $f.label }}"}},{"id":"row-value","type":"Label","props":{"text":"{{ $lookup(vm.profile, $f.key) }}"}}]}`,
+	"and two instances in a page tree, the second repeated per item of vm.fields:",
+	`{"id":"name-row","$ref":"#/definitions/field-row","for":{"items":"[{'label':'Name','key':'name'}]","as":"f"}}`,
+	`{"id":"field-rows","$ref":"#/definitions/field-row","for":{"items":"vm.fields","as":"f","keyBy":"key"}}`,
 }

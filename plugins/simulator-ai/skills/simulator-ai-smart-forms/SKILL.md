@@ -126,6 +126,45 @@ A new page is a folder `pages/<page>` holding its `config`: `smart_form_folders_
 `smart_form_files_create` the `config` (and `locale`) with the new folder's id. Reuse a folder
 that exists: titles are not unique.
 
+## Large pages: in parts, repeats as definitions
+
+Keep every write small, however long the turn may run:
+
+1. **Skeleton first.** Write the page with the root and one empty container per section, each
+   with an `id` (`{"id":"contacts","type":"Stack","children":[]}`), then fill one section per
+   `smart_form_page_patch {nodeId: "<section id>", ops: [{op: "add", path: "/children/-",
+   value: …}]}`.
+2. **Repeats become definitions.** A subtree used twice or more (a field row, a card, a section
+   header) goes once into a file `definitions/<name>` (one node, `application/json`; the
+   `definitions` folder exists in a new form, so look first with `smart_form_files_get {appId,
+   paths: ["definitions"]}` and reuse what is there). Each use is an instance with its own `id`:
+   `{"id": "phone-row", "$ref": "#/definitions/<name>"}`.
+3. **What an instance may hold:** `id`, `if`, `visibility`, `for`, `slot`, `variant`, never
+   `type`, `props`, `children` or `actions` (refused on save). Names sit directly in
+   `definitions/` (no subfolders). Vary content by data: `for` on the instance repeats the
+   definition per item, read inside as `$<as>`. Without its own `id` every instance gets the
+   definition root's `id`.
+4. **Edit once.** Change a definition with `smart_form_page_patch {path: "definitions/<name>",
+   nodeId?, ops}`: every instance follows. A missing or cyclic definition, or a wrong prop
+   inside one, saves but is refused at release: `smart_form_page_render` (develop) shows it first.
+
+Verified example. `definitions/field-row`:
+
+```json
+{"id":"row","type":"Stack","props":{"direction":"horizontal","size":"md"},"children":[
+ {"id":"row-label","type":"Label","props":{"text":"{{ $f.label }}"}},
+ {"id":"row-value","type":"Label","props":{"text":"{{ $lookup(vm.profile, $f.key) }}"}}]}
+```
+
+Two instances in the page tree (one row, then one per item of `vm.fields`):
+
+```json
+{"id":"name-row","$ref":"#/definitions/field-row","for":{"items":"[{'label':'Name','key':'name'}]","as":"f"}}
+{"id":"field-rows","$ref":"#/definitions/field-row","for":{"items":"vm.fields","as":"f","keyBy":"key"}}
+```
+
+The rules in full: `smart_form_reference_read {doc: "protocol/definitions"}`.
+
 ## Release and show it
 
 `smart_form_release {appId}` deploys develop into production (it replaces production's whole

@@ -159,6 +159,9 @@ func nodeOp(doc any, nodeID string, op PatchOp, i int) (PatchOp, error) {
 		}
 		return op, e
 	}
+	if e = instanceOp(doc, base, op, i); e != nil {
+		return op, e
+	}
 	moves := op.Op == "move" || op.Op == "copy"
 	for _, p := range []string{op.Path, op.From} {
 		if p != "" && p[0] != '/' {

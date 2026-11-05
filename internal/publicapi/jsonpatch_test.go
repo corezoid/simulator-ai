@@ -113,7 +113,7 @@ func TestPatchSourceNodeID(t *testing.T) {
 	if _, _, _, err = patchSource(dup, "field", []PatchOp{{Op: "remove", Path: "/props"}}); err == nil || !strings.Contains(err.Error(), "names 2 nodes") {
 		t.Fatal("a duplicate id must be refused:", err)
 	}
-	if _, _, _, err = patchSource(`{"a":1}`, "root", []PatchOp{{Op: "remove", Path: "/a"}}); err == nil || !strings.Contains(err.Error(), "no tree") {
+	if _, _, _, err = patchSource(`{"a":1}`, "root", []PatchOp{{Op: "remove", Path: "/a"}}); err == nil || !strings.Contains(err.Error(), "a file with a tree") {
 		t.Fatal("nodeId needs a tree:", err)
 	}
 	if _, _, _, err = patchSource(patchPage, "root", []PatchOp{{Op: "remove", Path: "props"}}); err == nil || !strings.Contains(err.Error(), "must start with /") {
@@ -170,5 +170,37 @@ func TestFindNodeInOverlays(t *testing.T) {
 	out, _, _, err := patchSource(page, "ok", []PatchOp{{Op: "add", Path: "/props", Value: json.RawMessage(`{"title":"OK"}`)}})
 	if err != nil || !strings.Contains(out, `{"id":"ok","type":"Button","props":{"title":"OK"}}`) {
 		t.Fatal(out, err)
+	}
+}
+
+// A definition file is one node: nodeId finds its nodes, its root by its id or "" paths. A $ref
+// instance is found by its own id, its definition is not opened, and an op giving it a key only the
+// definition holds is refused, naming the file to patch.
+func TestPatchDefinitionsAndInstances(t *testing.T) {
+	def := `{"id":"row","type":"Stack","props":{"size":"md"},"children":[{"id":"row-label","type":"Label","props":{"text":"Label"}}]}`
+	out, applied, _, err := patchSource(def, "row-label", []PatchOp{{Op: "replace", Path: "/props/text", Value: json.RawMessage(`"Name"`)}})
+	if err != nil || applied[0] != "replace /children/0/props/text" || !strings.Contains(out, `"text":"Name"`) {
+		t.Fatal(out, applied, err)
+	}
+	if _, applied, _, err = patchSource(def, "row", []PatchOp{{Op: "replace", Path: "/props/size", Value: json.RawMessage(`"lg"`)}}); err != nil || applied[0] != "replace /props/size" {
+		t.Fatal(applied, err)
+	}
+	page := `{"schemaVersion":"2.0","id":"index","tree":{"id":"root","type":"Stack","children":[{"id":"a","$ref":"#/definitions/field-row"},{"id":"b","$ref":"#/definitions/field-row","if":"vm.more"}]}}`
+	if _, _, _, err = patchSource(page, "row-label", []PatchOp{{Op: "remove", Path: "/props"}}); err == nil || !strings.Contains(err.Error(), "patch path definitions/<name> (this file uses definitions/field-row)") {
+		t.Fatal("a node inside a definition must point to its file:", err)
+	}
+	for _, path := range []string{"/props", "/props/size", "/children/-", "/type", "/actions"} {
+		_, _, _, err = patchSource(page, "a", []PatchOp{{Op: "add", Path: path, Value: json.RawMessage(`{}`)}})
+		if err == nil || !strings.Contains(err.Error(), "is an instance of #/definitions/field-row") || !strings.Contains(err.Error(), "patch path definitions/field-row") {
+			t.Errorf("%s on an instance: %v", path, err)
+		}
+	}
+	out, _, _, err = patchSource(page, "b", []PatchOp{{Op: "replace", Path: "/if", Value: json.RawMessage(`"vm.all"`)}, {Op: "add", Path: "/visibility", Value: json.RawMessage(`"hidden"`)}})
+	if err != nil || !strings.Contains(out, `{"id":"b","$ref":"#/definitions/field-row","if":"vm.all","visibility":"hidden"}`) {
+		t.Fatal("the instance's own keys are patched in place:", out, err)
+	}
+	out, _, _, err = patchSource(page, "a", []PatchOp{{Op: "replace", Path: "", Value: json.RawMessage(`{"id":"a","type":"Label","props":{"text":"inline"}}`)}})
+	if err != nil || !strings.Contains(out, `"children":[{"id":"a","type":"Label","props":{"text":"inline"}},`) {
+		t.Fatal("an instance may be replaced by an inline node:", out, err)
 	}
 }

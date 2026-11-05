@@ -163,3 +163,26 @@ func TestCompactCatalogEventsStateAPI(t *testing.T) {
 		t.Fatal("a brief answer is returned as it came:", string(out))
 	}
 }
+
+// paths ["definitions"] answers the folder, its subfolders (definitions/cards) and every
+// definition file with its source; a definition is patched by its path like a page.
+func TestSmartFormDefinitions(t *testing.T) {
+	tree := `"result":{"tree":{"id":100,"objType":"folder","title":"root","children":[{"id":101,"objType":"folder","title":"pages","children":[]},{"id":110,"objType":"folder","title":"definitions","children":[
+{"id":111,"objType":"file","title":"field-row","type":"application/json","sourceHash":"h"},{"id":112,"objType":"folder","title":"cards","children":[]}]}]}}`
+	def := `"result":{"id":111,"title":"field-row","type":"application/json","sourceHash":"` + readHash + `","source":"{\"id\":\"row\",\"type\":\"Stack\",\"children\":[{\"id\":\"row-label\",\"type\":\"Label\",\"props\":{\"text\":\"Label\"}}]}"}`
+	send, calls := consoleServer(t, map[string]string{"application/struct": tree, "app_file/get": def})
+	reply := callTool(send, "smart_form_files_get", `{"appId":"app1","paths":["definitions"]}`)
+	for _, want := range []string{`"path":"definitions","objType":"folder"`, `"path":"definitions/cards","objType":"folder"`, `"path":"definitions/field-row","objType":"file"`, `"source":"{`} {
+		if !strings.Contains(reply, want) {
+			t.Errorf("files_get definitions lacks %s:\n%s", want, reply)
+		}
+	}
+	if strings.Contains(reply, `"path":"pages"`) || strings.Count(methodsOf(*calls), "app_file/get") != 1 {
+		t.Fatal(methodsOf(*calls), reply)
+	}
+	*calls = nil
+	reply = callTool(send, "smart_form_page_patch", `{"appId":"app1","path":"definitions/field-row","nodeId":"row-label","ops":[{"op":"replace","path":"/props/text","value":"Name"}]}`)
+	if !strings.Contains(reply, `"path":"definitions/field-row"`) || !strings.Contains(reply, `"applied":["replace /children/0/props/text"]`) || !strings.HasSuffix(methodsOf(*calls), "app_file/get,app_file/update") {
+		t.Fatal(methodsOf(*calls), reply)
+	}
+}

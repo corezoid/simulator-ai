@@ -12,7 +12,7 @@ const testPageSchema = `{"description":"Stored page configs.","required":["schem
 "schemaVersion":{"type":"string","description":"Author '2.0'."},"id":{"$ref":"#/$defs/Identifier","description":"Page id."},"tree":{"$ref":"#/$defs/TreeNode"},
 "meta":{"type":"object","properties":{"tags":{"type":"array","items":{"type":"string"},"description":"Labels."}},"description":"Settings."}},
 "$defs":{"Identifier":{"type":"string","pattern":"^[A-Za-z_]+$","description":"An identifier."},"Expression":{"type":"string","description":"A {{ }} string."},
-"TreeNode":{"type":"object","description":"One UI node.","properties":{"id":{"$ref":"#/$defs/Identifier"},"actions":{"type":"object","additionalProperties":{"type":"array","items":{"$ref":"#/$defs/ClientAction"}}}}},
+"TreeNode":{"type":"object","description":"One UI node.","allOf":[{"comment":"$ref excludes props.","if":{"required":["$ref"]}}],"properties":{"$ref":{"type":"string","pattern":"^#/definitions/[a-z]+$","description":"A definition."},"id":{"$ref":"#/$defs/Identifier"},"actions":{"type":"object","additionalProperties":{"type":"array","items":{"$ref":"#/$defs/ClientAction"}}}}},
 "PageBinding":{"type":"object","required":["on"],"properties":{"on":{"type":"string"}}},
 "ClientAction":{"description":"One step.","oneOf":[{"$ref":"#/$defs/Action_FormSubmit"}]},
 "Action_FormSubmit":{"type":"object","required":["type","formId"],"title":"Submit a form","description":"Sends a form.\n\nIt does not validate.","properties":{"type":{"const":"form.submit"},"formId":{"$ref":"#/$defs/Identifier","description":"The Form node's id."},"onSuccess":{"type":"array","items":{"$ref":"#/$defs/ClientAction"}}}},
@@ -89,7 +89,8 @@ func TestGenerate(t *testing.T) {
 		"id: Identifier — Page id.\nschemaVersion: string — Author '2.0'.\ntree: TreeNode\nmeta?: object — Settings.\nmeta.tags?: string[] — Labels.",
 		"actions?: {[key: string]: ClientAction[]}",
 		"### form.submit — Submit a form\nSends a form.\nIt does not validate.\nformId: Identifier — The Form node's id.\nonSuccess?: ClientAction[]\n",
-		"### notify — Show a toast\nAs sent.\ntitle?: string", "$locale — The texts.\nvm — The page's data.", "### form — Form",
+		"### notify — Show a toast\nAs sent.\ntitle?: string",
+		"$ref: string ^#/definitions/[a-z]+$ — A definition.\nContract: $ref excludes props.\nRules (checked on a stand", `{"id":"field-rows","$ref":"#/definitions/field-row"`, "$locale — The texts.\nvm — The page's data.", "### form — Form",
 	} {
 		if !strings.Contains(protocol, want) {
 			t.Errorf("protocol lacks %q:\n%s", want, protocol)

@@ -234,6 +234,16 @@ func TestReferenceEmbedded(t *testing.T) {
 			t.Errorf("%s: %d lines, header %q", d.Name, len(d.Lines), d.Lines[1])
 		}
 	}
+	w, err := window([]referenceDoc{protocolDoc}, "protocol/definitions")
+	if err != nil {
+		t.Fatal(err)
+	}
+	section := strings.Join(protocolDoc.Lines[w.lo:w.hi], "\n")
+	for _, want := range []string{"Contract: $ref is mutually exclusive with type/props/children/actions.", "Give every instance its own id", `"$ref":"#/definitions/field-row","for":`} {
+		if !strings.Contains(section, want) {
+			t.Errorf("protocol/definitions lacks %q", want)
+		}
+	}
 	if len(typeNotes) < 50 || typeNotes["Stack"].Purpose == "" {
 		t.Fatal("type notes", len(typeNotes))
 	}
