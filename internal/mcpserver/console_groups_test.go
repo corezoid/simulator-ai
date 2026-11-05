@@ -38,8 +38,12 @@ func TestConsoleGroups(t *testing.T) {
 		}
 	}
 	for name, tool := range tools {
+		if tool.Tool.Meta == nil {
+			t.Errorf("%s has no _meta", name)
+			continue
+		}
 		groups, _ := tool.Tool.Meta.AdditionalFields[groupsMeta].([]string)
-		if tool.Tool.Meta == nil || len(groups) == 0 {
+		if len(groups) == 0 {
 			t.Errorf("%s has no group", name)
 			continue
 		}
@@ -97,8 +101,12 @@ func TestConsoleGroupsInToolsList(t *testing.T) {
 	}
 }
 
+// maxGroupBytes bounds one group's tools/list entries: a group rides in the model context whole.
+const maxGroupBytes = 55 << 10
+
 // TestConsoleGroupSizes logs each group's tools and the size of their tools/list entries (go test
-// -run GroupSizes -v), the numbers of the README's group table.
+// -run GroupSizes -v), the numbers of the README's group table, and keeps every group within
+// maxGroupBytes.
 func TestConsoleGroupSizes(t *testing.T) {
 	tools := consoleTools(t, "console-full").ListTools()
 	var lines []string
@@ -109,6 +117,9 @@ func TestConsoleGroupSizes(t *testing.T) {
 			size += len(b)
 		}
 		lines = append(lines, fmt.Sprintf("%s %d %.1f", g, len(consoleGroups[g]), float64(size)/1024))
+		if size > maxGroupBytes {
+			t.Errorf("group %s is %.1f KiB, more than %d KiB: split it", g, float64(size)/1024, maxGroupBytes>>10)
+		}
 	}
 	total := 0
 	var names []string

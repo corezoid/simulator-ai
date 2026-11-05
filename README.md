@@ -266,7 +266,7 @@ can give a run `core` and only the domains its request needs (`internal/mcpserve
 in several groups, each group with `core` is enough for its domain). The baseline without the relay is the plain
 `console` profile, the 48 tools named in `consoleCoreTools`, not the union of groups: `core`, `graph`, `smart_forms`,
 `forms`, `finance`, `people` and `files` together contain those 48 and more (the graph edits, the Smart Form history,
-...). Sizes are the tools' `tools/list` entries (`go test ./internal/mcpserver -run GroupSizes -v`):
+...). Sizes are the tools' `tools/list` entries (`go test ./internal/mcpserver -run GroupSizes -v`, which also keeps each group within 55 KiB):
 
 | Group | Tools | KiB | For |
 | --- | --: | --: | --- |
@@ -280,10 +280,10 @@ in several groups, each group with `core` is enough for its domain). The baselin
 | `files` | 7 | 7.2 | upload, attach, list, rename, detach, actor picture |
 | `meetings` | 4 | 4.1 | guest links, transcripts |
 | `jobs` | 4 | 6.4 | graph export and import |
-| `charts` | 2 | 6.1 | charts on a layer |
+| `charts` | 5 | 11.0 | charts on a layer, with the account reads that give their nameId and currencyId |
 | `simulation` | 3 | 5.7 | simulation snapshot, check, run |
 | `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
-| all (`console-full`) | 180 | 238.9 | |
+| all (`console-full`) | 180 | 239.0 | |
 
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
