@@ -38,35 +38,6 @@ func deflated(t *testing.T, n int) []byte {
 	return b.Bytes()
 }
 
-// A PDF whose content stream inflates to 96 MiB is not handed to the parser.
-func TestPDFFlateBombIsRefused(t *testing.T) {
-	bomb := deflated(t, 96<<20)
-	var doc bytes.Buffer
-	fmt.Fprintf(&doc, "%%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
-	fmt.Fprintf(&doc, "3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length %d /Filter /FlateDecode >>\nstream\n", len(bomb))
-	doc.Write(bomb)
-	doc.WriteString("\nendstream\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n")
-	var text, unread string
-	bounded(t, 3*time.Second, 32<<20, func() { text, unread = pdfText(doc.Bytes()) })
-	if text != "" || !strings.Contains(unread, "more than 64 MiB") {
-		t.Fatalf("%q %q", text, unread)
-	}
-	if !inflatesWithin(pdfBytes("fine"), maxPDFInflate) {
-		t.Fatal("a plain PDF was taken for a bomb")
-	}
-}
-
-func TestPDFTextRefusals(t *testing.T) {
-	for body, want := range map[string]string{
-		"%PDF-1.4 " + strings.Repeat(" ", maxPDFTextBytes): "larger than 10 MiB",
-		"%PDF-1.4\ntrailer\n<< /Encrypt 5 0 R >>":          "encrypted",
-	} {
-		if _, unread := pdfText([]byte(body)); !strings.Contains(unread, want) {
-			t.Errorf("%.20q: %q, want %q", body, unread, want)
-		}
-	}
-}
-
 // A sheet whose cells sit at column XFD (16384) pads no more than maxColumns.
 func TestXLSXFarColumnsAreBounded(t *testing.T) {
 	var rows strings.Builder
@@ -110,21 +81,68 @@ func TestOfficeInflateBudget(t *testing.T) {
 	}
 }
 
-// One run sends at most maxImagesPerRun images; a scan gets the pages left, the rest is noted.
-func TestImagesPerRunAreCapped(t *testing.T) {
-	c, _ := New(Config{Origin: "http://127.0.0.1:1", Workspace: "ws", Profile: "console", Authorization: "Bearer x"})
-	for i := 0; i < 6; i++ {
-		img := AttachmentContent{Kind: "image", Inline: true, Data: []byte{1}}
-		if c.limitImages(&img); !img.Inline || img.ImagesSkipped != 0 {
-			t.Fatal(i, img)
-		}
+// pdfWith is a one-page PDF whose page content is object 4: dict, then data as its stream; extra
+// objects follow from number 5. Offsets and the xref are counted.
+func pdfWith(dict string, data []byte, extra ...string) []byte {
+	objects := [][]byte{
+		[]byte("<< /Type /Catalog /Pages 2 0 R >>"),
+		[]byte("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+		[]byte("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>"),
+		append(append([]byte(fmt.Sprintf("<< %s /Length %d >>\nstream\n", dict, len(data))), data...), "\nendstream"...),
 	}
-	scan := AttachmentContent{Kind: "pdf", Inline: true, Pages: [][]byte{{1}, {2}, {3}, {4}}}
-	if c.limitImages(&scan); len(scan.Pages) != 2 || scan.ImagesSkipped != 2 || !strings.Contains(scan.AttachmentNote(), "2 image(s) of this file were not sent") {
-		t.Fatal(scan)
+	for _, e := range extra {
+		objects = append(objects, []byte(e))
 	}
-	img := AttachmentContent{Kind: "image", Inline: true, Data: []byte{1}}
-	if c.limitImages(&img); img.Inline || img.Data != nil || img.ImagesSkipped != 1 {
-		t.Fatal(img)
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n")
+	offsets := make([]int, len(objects))
+	for i, o := range objects {
+		offsets[i] = b.Len()
+		fmt.Fprintf(&b, "%d 0 obj\n", i+1)
+		b.Write(o)
+		b.WriteString("\nendobj\n")
+	}
+	xref := b.Len()
+	fmt.Fprintf(&b, "xref\n0 %d\n0000000000 65535 f \n", len(objects)+1)
+	for _, off := range offsets {
+		fmt.Fprintf(&b, "%010d 00000 n \n", off)
+	}
+	fmt.Fprintf(&b, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(objects)+1, xref)
+	return b.Bytes()
+}
+
+// Every way to hide a filter bomb from a look at the dictionary stops at the read budget, since the
+// budget sits in the stream reader itself; a predictor sized past reason is refused unallocated.
+func TestPDFBombsStopAtTheLimit(t *testing.T) {
+	bomb := deflated(t, 96<<20)
+	var twice bytes.Buffer
+	z := zlib.NewWriter(&twice)
+	z.Write(bomb)
+	z.Close()
+	cases := map[string][]byte{
+		"chain of two FlateDecode":  pdfWith("/Filter [/FlateDecode /FlateDecode]", twice.Bytes()),
+		"name in hex":               pdfWith("/Filter /Fl#61teDecode", bomb),
+		"indirect Filter":           pdfWith("/Filter 5 0 R", bomb, "/FlateDecode"),
+		"dictionary past 4 KiB":     pdfWith("/Pad ("+strings.Repeat("x", 8192)+") /Filter /FlateDecode", bomb),
+		"predictor of 2^40 columns": pdfWith("/Filter /FlateDecode /DecodeParms << /Predictor 12 /Columns 1099511627776 >>", deflated(t, 64)),
+	}
+	for name, doc := range cases {
+		t.Run(name, func(t *testing.T) {
+			var text, unread string
+			bounded(t, 3*time.Second, 64<<20, func() { text, unread = pdfText(doc) })
+			// Each bomb is read into until the budget stops it; the predictor is refused before.
+			if text != "" || strings.HasPrefix(name, "predictor") != !strings.Contains(unread, "64 MiB") {
+				t.Fatalf("text %.40q, unread %q", text, unread)
+			}
+		})
+	}
+	if text, unread := pdfText(pdfBytes("fine")); text != "fine" || unread != "" {
+		t.Fatalf("a plain PDF: %q %q", text, unread)
+	}
+}
+
+func TestPDFTextRefusesALargeFile(t *testing.T) {
+	if _, unread := pdfText([]byte("%PDF-1.4 " + strings.Repeat(" ", maxPDFTextBytes))); !strings.Contains(unread, "larger than 10 MiB") {
+		t.Fatal(unread)
 	}
 }

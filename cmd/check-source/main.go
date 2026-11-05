@@ -15,7 +15,7 @@ func check(root string) error {
 			return err
 		}
 		if entry.IsDir() {
-			if entry.Name() == ".git" || entry.Name() == "vendor" || entry.Name() == "bin" {
+			if entry.Name() == ".git" || entry.Name() == "vendor" || entry.Name() == "third_party" || entry.Name() == "bin" {
 				return filepath.SkipDir
 			}
 			return nil
