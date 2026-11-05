@@ -261,6 +261,28 @@ attachment, finance, registry, simulation, chart, Smart Form history, Corezoid, 
 transcript tool (180 in all). Parameter descriptions are cut to their first sentence and nested fields keep only
 their types. List rows and graph nodes are `id`, `title`, `formId` unless the call sends `fields`.
 
+Tool groups: every console tool in `tools/list` carries `_meta: {"simulator-ai/groups": [...]}`, so the Hermes relay
+can give a run `core` and only the domains its request needs (`internal/mcpserver/console_groups.go`; a tool may sit
+in several groups, each group with `core` is enough for its domain). `core`, `graph`, `smart_forms`, `forms`,
+`finance`, `people` and `files` together hold the plain `console` catalog. Sizes are the tools' `tools/list` entries
+(`go test ./internal/mcpserver -run GroupSizes -v`):
+
+| Group | Tools | KiB | For |
+| --- | --: | --: | --- |
+| `core` | 14 | 23.2 | read, find, create and change an actor; templates read; people found; comments; a file read; saved skills; links |
+| `graph` | 36 | 46.7 | flowcharts, edges, layers, placements, cells, the user's viewport, graph reads and edits |
+| `smart_forms` | 21 | 24.2 | Smart Form pages, data template, releases, history, trash, test runs, its Corezoid project |
+| `forms` | 12 | 21.4 | Account Templates: create, change, tree, their accounts, records filtered by data |
+| `finance` | 58 | 74.1 | accounts, names, currencies, transactions, transfers, counters, formulas, tags, triggers |
+| `people` | 19 | 22.6 | access, access requests, users, chats, cards on an actor, reactions, agents |
+| `files` | 7 | 7.2 | upload, attach, list, rename, detach, actor picture |
+| `meetings` | 4 | 4.1 | guest links, transcripts |
+| `jobs` | 4 | 6.4 | graph export and import |
+| `charts` | 2 | 6.1 | charts on a layer |
+| `simulation` | 3 | 5.7 | simulation snapshot, check, run |
+| `corezoid` | 7 | 4.8 | Corezoid projects, stages, processes, Smart Form binding |
+| all (`console-full`) | 180 | 238.8 | |
+
 Actors get the editor's colours: without `color`, `actor_create` and `actors_create` pick a random hue of
 simulator-ui-kit `themes/actorHues.ts` (the eight chromatic ones; red and slate are never random there either),
 `flowchart_layout` gives each block its form's own colour or such a hue, and `layer_placements_create` paints a
