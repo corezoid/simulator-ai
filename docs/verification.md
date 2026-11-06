@@ -25,10 +25,9 @@ null pagination and fractional limits, with zero backend calls for invalid argum
 Malformed/null placements, missing identities and nested actor identity mismatches now fail;
 denied actor metadata remains stripped before checking any unreadable nested actor.
 
-CI activation is pending: the available GitHub token lacks `workflow` scope and SSH has no
-authorized key. The prepared workflow is in `docs/ci/check.yml.pending`; a repository admin
-can move it to `.github/workflows/check.yml`. Local checks above are executed; no hosted CI
-pass is claimed.
+The original CI authorization blocker is superseded by the active
+[GitHub workflow](../.github/workflows/check.yml). The historical local results above remain
+local evidence; hosted verdicts belong to the exact PR/commit runs. See [release checks](release.md).
 
 R1.2b adds [real backend acceptance](live-backend-acceptance.md), including the actual public
 wire ID contract and ACL revoke/regrant through a persistent MCP process. Exact paired commits

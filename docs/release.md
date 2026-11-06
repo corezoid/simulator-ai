@@ -44,7 +44,8 @@ released binaries before changing those methods; do not silently loosen this saf
 Go 1.27.3 and golangci-lint 2.14.0. `make check` runs sequentially; use GOMAXPROCS=2 and -p=1.
 CI adds `make test-race`, `make test-cover`, and `make security`. Coverage baselines are 86% for
 mcpserver and 73% for publicapi/simulation; manual live-smoke CLIs and third-party PDF code are
-not hidden inside these numbers. The full coverage profile is retained as a CI artifact.
+not hidden inside these numbers. The full coverage profile is retained as a CI artifact. Wall-clock budgets run in Quality;
+race instrumentation retains functional/allocation checks without applying uninstrumented timings.
 
 `make gen-check` reproduces embedded CDU documents from inputs.json, a generated public
 projection of the source contracts/help/examples. It never skips absent inputs. When refreshing,

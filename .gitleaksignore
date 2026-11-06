@@ -1,0 +1,5 @@
+# Synthetic JWT assembled for httptest: fixed public HS256 header + caller-supplied
+# JSON claims + literal '.sig' (not a signature). No signing key or usable credential.
+# Only these two historical findings are excluded; new commits remain scanned.
+ca42be0bfd5bcf33159c0523744d110e38deba1f:internal/publicapi/console_self_test.go:generic-api-key:32
+c9a378859b2ebad8331c64343f45e9c0dc799593:internal/publicapi/console_self_test.go:generic-api-key:32

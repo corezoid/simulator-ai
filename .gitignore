@@ -4,3 +4,5 @@
 /bin/
 *.test
 coverage.out
+
+/dist/

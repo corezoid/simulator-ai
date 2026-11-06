@@ -465,9 +465,8 @@ snapshots or widen the catalog as a side effect of regeneration.
 
 To refresh after a reviewed backend contract change, export `cmd/api-contract -public` from
 the intended sim-api revision, select these same three methods, record its SHA/revision,
-regenerate, inspect schemas and run tests. `make gen-check` verifies generated code locally;
-hosted CI activation is pending (see [verification](docs/verification.md)). Local generation
-checks cannot prove the deployed server matches the pinned source. [Architecture](docs/architecture.md)
+regenerate, inspect schemas and run tests. `make gen-check` verifies generated code locally
+and in [GitHub CI](.github/workflows/check.yml). Generation checks cannot prove the deployed server matches the pinned source. [Architecture](docs/architecture.md)
 records transport/errors/limits and remaining gates.
 
 

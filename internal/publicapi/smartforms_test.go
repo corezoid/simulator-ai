@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/corezoid/simulator-ai/contracts"
@@ -60,7 +61,7 @@ func creation() CreateApplicationInput {
 const created = `{"application":{"id":"app-1","ref":"test-app","data":{"secret":"not-for-tools"}},"envs":[{"id":1,"actorId":"app-1","title":"develop","corezoidCredentials":{"apiSecret":"credential-canary"}},{"id":2,"actorId":"app-1","title":"production"}]}`
 
 func TestSmartCreationLossRecoveryNoAutomaticRetry(t *testing.T) {
-	writes, lookups := 0, 0
+	var writes, lookups atomic.Int32
 	c := smartClient(t, contracts.SmartForms, func(w http.ResponseWriter, r *http.Request) {
 		q := readSmart(t, r)
 		if string(q.Params["operationId"]) != `"create-1"` {
@@ -68,11 +69,11 @@ func TestSmartCreationLossRecoveryNoAutomaticRetry(t *testing.T) {
 		}
 		switch q.Method {
 		case "application/create":
-			writes++
+			writes.Add(1)
 			if string(q.Params["cduVersion"]) != "2" || q.Params["corezoidCredentials"] != nil {
 				t.Error("unsafe creation")
 			}
-			if writes == 1 {
+			if writes.Load() == 1 {
 				conn, _, err := w.(http.Hijacker).Hijack()
 				if err != nil {
 					t.Error(err)
@@ -82,7 +83,7 @@ func TestSmartCreationLossRecoveryNoAutomaticRetry(t *testing.T) {
 				return
 			}
 		case "application/operation/get":
-			lookups++
+			lookups.Add(1)
 		default:
 			t.Error("unexpected method")
 		}
@@ -96,7 +97,7 @@ func TestSmartCreationLossRecoveryNoAutomaticRetry(t *testing.T) {
 	if !errors.As(err, &uncertain) || !strings.Contains(err.Error(), "preserve operationId") {
 		t.Fatalf("lost write not marked unresolved: %v", err)
 	}
-	if writes != 1 {
+	if writes.Load() != 1 {
 		t.Fatal("automatically retried")
 	}
 	recovered, err := c.GetApplicationOperation(context.Background(), ApplicationOperationInput{Operation: Operation{"create-1"}})
@@ -110,7 +111,7 @@ func TestSmartCreationLossRecoveryNoAutomaticRetry(t *testing.T) {
 		}
 	}
 	replay, err := c.CreateApplication(context.Background(), p)
-	if err != nil || *replay.Application.ID != *recovered.Application.ID || writes != 2 || lookups != 1 {
+	if err != nil || *replay.Application.ID != *recovered.Application.ID || writes.Load() != 2 || lookups.Load() != 1 {
 		t.Fatalf("explicit replay: %v", err)
 	}
 }

@@ -71,8 +71,8 @@ object ACLs and this binary. It found and fixed the string JSON-RPC ID mismatch 
   denial, public-only enforcement and revoke, including the documented API-key cache window.
   Use backend functional fixtures for private-method probes; do not add private tools to MCP.
 - Claude model-driven tool execution, if required by the acceptance owner: approved budget.
-- Hosted CI activation: available GitHub token lacks `workflow` scope; prepared workflow
-  remains `docs/ci/check.yml.pending`. Local checks are not a hosted CI verdict.
+- Hosted CI is now configured in [check.yml](../.github/workflows/check.yml); the original
+  workflow-scope blocker is resolved. Check the exact PR/commit run before promotion.
 - Public directory submission: Claude validator reports a missing license. The legacy repo
   is MIT, but this new repository has no explicit license grant yet; obtain owner choice
   before directory submission. Local installation succeeds. No license was invented here.
