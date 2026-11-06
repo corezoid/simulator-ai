@@ -18,4 +18,4 @@ Run `make docs` when tool registration or annotations change.
 If review was performed, record its exact commit, findings and fixes. Otherwise write
 "Not performed". Do not claim an automated review or numerical quality score from green CI.
 
-See [QUALITY.md](../QUALITY.md) for the repository's release standard.
+See [QUALITY.md](https://github.com/corezoid/simulator-ai/blob/develop/QUALITY.md) for the repository's release standard.
