@@ -294,7 +294,7 @@ boundaries (25 + 50k); a position is the block centre and a block's top-left cor
 block of whole cells fills whole cells. The layout ranks nodes top to bottom (loop-back edges excluded from
 ranking) with three free cells between blocks and ranks. Like the editor, the placement carries the block
 silhouette as `areaPicture`, which makes it graphic, so sim-api keeps that position instead of snapping the centre
-to a multiple of 50 (half a cell off for even-sized blocks). 
+to a multiple of 50 (half a cell off for even-sized blocks).
 
 ## Smart Form workflow
 
