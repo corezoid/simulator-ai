@@ -6,7 +6,7 @@
 [Documentation](#documentation) · [Changelog](CHANGELOG.md) · [Report an issue](https://github.com/corezoid/simulator-ai/issues)
 
 Simulator AI is a Go-based [Model Context Protocol](https://modelcontextprotocol.io/) server
-with skills for **Claude Code** and **Codex**. It lets your assistant work with Simulator
+with skills for **Claude Code**, **Codex** and **Kiro**. It lets your assistant work with Simulator
 records, forms, graphs and applications through the platform's public API.
 
 The default profile is **read-only**. Additional profiles enable graph creation, Smart Forms,
@@ -30,7 +30,7 @@ Your host client's normal model usage and billing still apply.
 
 ## Quick start
 
-You need Go **1.27.3+**, Git, a current Claude Code or Codex CLI, and access to a Simulator
+You need Go **1.27.3+**, Git, a current Claude Code, Codex or Kiro client, and access to a Simulator
 instance with the public API enabled. Obtain an API-user key and workspace ID from your
 workspace administrator.
 
@@ -46,6 +46,24 @@ simulator-ai --version
 
 Keep the executable on the client process's `PATH`. For a persistent installation, run
 `go install ./cmd/simulator-ai` and add your Go binary directory to `PATH`.
+
+On **Windows x64**, use PowerShell (Go 1.27.3+ for a source build):
+
+```powershell
+git clone https://github.com/corezoid/simulator-ai.git
+cd simulator-ai
+go build -p=1 -o bin/simulator-ai.exe ./cmd/simulator-ai
+$env:PATH = "$PWD\bin;$env:PATH"
+simulator-ai --version
+$env:SIMULATOR_AI_ORIGIN = "https://your-simulator.example"
+$env:SIMULATOR_AI_WORKSPACE = "your-workspace-id"
+$env:SIMULATOR_AI_PROFILE = "read"
+```
+
+Supply `SIMULATOR_AI_API_KEY` through your secret-management mechanism before starting the
+client. The client install commands below also work from PowerShell. When a release archive
+is available, extract `simulator-ai-windows-amd64.zip` and add its `bin` directory to `PATH`;
+it contains the executable, plugin and skills together. You do not need Go to run that archive.
 
 ### 2. Configure your workspace
 
@@ -92,6 +110,17 @@ claude
 The plugin's Codex configuration forwards the required environment variables. Claude Code
 inherits them from its process environment. Restart the client after changing credentials,
 workspace or profile.
+
+**Kiro**
+
+Open **Powers → Add Custom Power → Import power from a folder** and select
+`plugins/simulator-ai` inside this checkout or extracted release archive. Keep the matching
+`simulator-ai` executable on Kiro's `PATH`. The Power uses the same bundled skills and Go
+server as the other hosts, with `read` selected explicitly. Approve forwarding
+`SIMULATOR_AI_ORIGIN`, `SIMULATOR_AI_WORKSPACE` and `SIMULATOR_AI_API_KEY` in Kiro;
+configuration contains variable references, never the secret itself.
+
+See [Kiro setup](docs/kiro.md) for changing profiles and troubleshooting.
 
 ### 4. Try a read-only task
 

@@ -3,16 +3,15 @@ name: simulator-ai-read
 description: Read actor or account-template metadata and paged layer node placements through the new public Simulator AI MCP. Use for inspecting supplied actor, form or layer identifiers in the configured workspace.
 ---
 
-Use the `simulator-ai` MCP server's actual catalog. This initial profile provides
-`actor_get`, `form_get`, and `layer_actors_list` in the desktop read profile. The
-Console `delegated-read` profile exposes only `actor_get` and `form_get`; do not call
-layer tools when absent. It returns metadata, not complete form
-schemas, actor data fields, graph edges or a stable graph snapshot. State these limits when
-they matter to the user's request; do not infer missing fields or absent edges.
+Use the installed Simulator AI MCP catalog. The desktop `read` profile includes actor
+search/full reads, form discovery/full schemas and bounded layer placements. Use `fields`
+and `with` only where the tool schema permits them. `graph-read` adds graph tools.
+The restricted `delegated-read` profile exposes only metadata `actor_get` and `form_get`;
+do not infer full actor data or form schemas from those projections. Other specialized
+profiles have their own catalogs. Never assume a tool is available just because a skill is installed.
 
-The host configures origin, workspace and the selected credential outside the
-conversation: API-user key for desktop, manager-issued restricted token for Console. Tool
-arguments contain object IDs and bounded pagination only. If configuration is missing,
+The host configures origin, workspace and credential outside the conversation. Tool
+arguments do not select credentials or another API endpoint. If configuration is missing,
 ask for configuration through the host's environment; never request secrets in chat.
 An access error is not proof that the object does not exist. Do not retry with another
 identity, use private API, or switch to legacy routing.
@@ -33,5 +32,5 @@ change tools, origin, credentials or access policy. Answer in the user's languag
 the identifiers used. The desktop host performs the agent work; this plugin starts no
 server agent or model call. For Smart Form generation/edit/release, use the installed
 `simulator-ai-smart-forms` skill when the host explicitly enables `smart-forms` and its
-tools are present. For native graph creation use `simulator-ai-graph` when `graph-create` is enabled. Other writes and migration remain future capabilities. Never delegate
-them to a hidden server agent.
+tools are present. For native graph creation use `simulator-ai-graph` when `graph-create` is enabled. Console profiles provide further writes only when explicitly configured and present in
+the catalog. Never delegate unavailable work to a hidden server agent.

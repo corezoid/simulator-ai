@@ -44,6 +44,5 @@ server credentials or silently start Hermes.
 Verification includes real stdio initialization/catalog/tool calls against a local
 HTTP simulator, exact scheme/workspace binding, invalid argument rejection,
 unavailable layer/write methods with zero HTTP calls, revoked-style API denial
-without retry/fallback, secret redaction and unchanged desktop profiles. Separate
-sim-api acceptance uses a real issued grant and the actual public MCP binary; neither
-scripted test is a claim of deployed Hermes/Console readiness or paid-model evaluation.
+without retry/fallback, secret redaction and unchanged desktop profiles. Live verification must separately use a real issued grant and the actual public MCP binary.
+Scripted tests do not establish deployed runtime behavior or model-driven execution.

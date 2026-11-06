@@ -2,10 +2,15 @@
 
 ## [0.1.0]
 
-### Fixed
-- require develop as the only source for main promotions
+### Added
+- support Kiro and Windows with current public documentation
 
 ## [Unreleased]
+
+- Add a Kiro Power with shared skills and read-only MCP configuration.
+- Refresh public documentation and remove obsolete development-stage notes.
+
+- Add Windows x64 ZIP packaging, PowerShell setup and native Windows MCP verification.
 
 - Enforce develop as the only PR source for main; prepare release metadata before pre promotion.
 

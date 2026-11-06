@@ -1,0 +1,16 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "simulator-ai": {
+      "type": "stdio",
+      "command": "simulator-ai",
+      "args": [],
+      "env": {
+        "SIMULATOR_AI_ORIGIN": "${SIMULATOR_AI_ORIGIN}",
+        "SIMULATOR_AI_WORKSPACE": "${SIMULATOR_AI_WORKSPACE}",
+        "SIMULATOR_AI_API_KEY": "${SIMULATOR_AI_API_KEY}",
+        "SIMULATOR_AI_PROFILE": "read"
+      }
+    }
+  }
+}
