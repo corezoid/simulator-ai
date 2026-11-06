@@ -73,3 +73,7 @@ smoke: build
 	@unset SIMULATOR_AI_API_KEY SIMULATOR_AI_AUTHORIZATION SIMULATOR_AI_DELEGATED_TOKEN SIMULATOR_AI_ACTOR SIMULATOR_AI_PROFILE && \
 		set -a && . "$(SMOKE_ENV)" && set +a && GOMAXPROCS=2 go run -p=1 ./cmd/console-smoke -bin bin/simulator-ai graph form registry core && \
 		GOMAXPROCS=2 go run -p=1 ./cmd/console-smoke -bin bin/simulator-ai -profile console-full parity people finance agents simulation charts formops extras jobs meetings
+
+.PHONY: package
+package:
+	scripts/package.sh $(PLATFORMS)

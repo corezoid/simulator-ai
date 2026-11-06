@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Add MIT licensing, packaged dependency notices and checksum/install verification.
+- Support release archive rehearsals without publishing and protected-PR weekly promotions.
+
 ### Added
 - Required CI for formatting, lint, contracts, tests, race detection and vulnerability/secret scans.
 - Reproducible CDU reference checks from committed public input projections.
