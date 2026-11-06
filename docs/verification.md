@@ -9,7 +9,8 @@ and one package build at a time. Hosted CI runs the heavier race and cross-platf
 | `make test-cover` | Tests plus the measured package coverage baselines. |
 | `make test-race` | Go race detection. |
 | `make security` | Reachable vulnerabilities in Go code and dependencies. |
-| `make gen-check` | Generated output matches the committed public input projections. |
+| `make docs` | Refresh tool availability from the real MCP registrations, without API calls. |
+| `make gen-check` | Generated contracts, CDU reference and tool availability match their sources. |
 | `make gen-source-check` | Input projections match their pinned upstream source commits; requires the source checkouts. |
 | `make client-smoke` | Disposable Codex and Claude plugin installation and MCP checks, without model inference. |
 | `make package PLATFORMS=darwin/arm64` | One release archive from a clean commit; choose the local platform. |

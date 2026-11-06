@@ -87,23 +87,18 @@ Workspace
 
 ## Profiles
 
-`console` is the core AI Console catalog (actors and their cards, templates and their
-accounts, flowcharts, Smart Forms, comments, chats, access, files, accounts by name, transfers
-and transactions, saved skills via `skills_find`/`skill_get`, and `build_link`).
-`console-full` adds the rest: actor status/delete/filter, template status and deletes, edges and layer edits (edge style too), access requests, reactions, attachments and actor
-pictures, the rest of finance, agents, charts, simulation, Smart Form release and file history, rollback, trash
-and test runs, Corezoid binding, graph export and import, meeting guest links and transcripts, and
-`bbcode_tags_get`. In AI Console a run may be given only some tool groups (core plus the domains
-of the request): when a tool a skill names is not in your catalog, say which part needs it
-instead of working around it. Desktop
-profiles (`read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`) are narrower.
+The host selects a profile when starting MCP. Inspect the installed catalog for exact
+availability and input schemas; do not carry a separate inventory or assume a fixed tool
+count. `read` is the default, specialized profiles narrow a workflow, `console` provides a
+focused interactive catalog, and `console-full` provides the broader Console catalog.
+Hosts may further restrict tool groups. A skill cannot enable an unavailable tool.
 
 ## Skills
 
 | Task | Skill |
 | --- | --- |
 | Connect, choose a profile | `simulator-ai-init` |
-| Read metadata in the read profiles | `simulator-ai-read` |
+| Read records, forms and bounded placements | `simulator-ai-read` |
 | Records of a template: create, update, search, filter | `simulator-ai-actors` |
 | Templates: fields, tree, default accounts | `simulator-ai-forms` |
 | Graphs, layers, flowcharts | `simulator-ai-graph` |
