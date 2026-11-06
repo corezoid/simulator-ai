@@ -28,7 +28,7 @@ linters:
       - path: _test\.go
         linters: [errcheck, gosec]
       # Generators read/write repository files and invoke git without a shell.
-      - path: cmd/(gen-client|gen-cdu-reference|gen-graph-contract|check-source)/
+      - path: cmd/(gen-client|gen-cdu-reference|gen-graph-contract|gen-tool-catalog|check-source)/
         linters: [gosec]
         text: 'G(204|304|306|703):'
 formatters:

@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+- Generate tool/profile availability from MCP registrations and check documentation drift in CI.
+- Organize public documentation by workflow and keep complete inventories out of agent instructions.
+
 - Add a Kiro Power with shared skills and read-only MCP configuration.
 - Refresh public documentation and remove obsolete development-stage notes.
 
