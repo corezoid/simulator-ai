@@ -25,7 +25,7 @@ func claudeSmoke(ctx context.Context, env []string, dir, root, executable string
 		return err
 	}
 	if install.Outcome != "ok" || install.PluginID != "simulator-ai@simulator-ai" {
-		return errors.New("Claude plugin install not confirmed")
+		return errors.New("claude plugin install not confirmed")
 	}
 	e.ClaudeInstall = true
 	details, err := run(ctx, env, dir, executable, "plugin", "details", "simulator-ai@simulator-ai")
@@ -33,21 +33,21 @@ func claudeSmoke(ctx context.Context, env []string, dir, root, executable string
 		return err
 	}
 	if !strings.Contains(string(details), "simulator-ai-read") || !strings.Contains(string(details), "simulator-ai-smart-forms") {
-		return errors.New("Claude did not load installed skill")
+		return errors.New("claude did not load installed skill")
 	}
 	e.ClaudeSkill = true
 	if strings.HasPrefix(e.Profile, "reactions-") && !strings.Contains(string(details), "simulator-ai-reactions") {
-		return errors.New("Claude did not load reactions skill")
+		return errors.New("claude did not load reactions skill")
 	}
 	if strings.HasPrefix(e.Profile, "graph-") && !strings.Contains(string(details), "simulator-ai-graph") {
-		return errors.New("Claude did not load graph skill")
+		return errors.New("claude did not load graph skill")
 	}
 	status, err := run(ctx, env, dir, executable, "mcp", "list")
 	if err != nil {
 		return err
 	}
 	if !claudeConnected(string(status)) {
-		return errors.New("Claude installed MCP did not connect")
+		return errors.New("claude installed MCP did not connect")
 	}
 	e.ClaudeMCP = true
 	return nil

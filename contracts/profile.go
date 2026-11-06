@@ -164,7 +164,7 @@ func CheckCompatibility(data []byte) error {
 	for _, want := range expected.Methods {
 		got, ok := methods[want.Name]
 		if !ok || got.Audience != "public" || got.Scope != want.Scope {
-			return fmt.Errorf("Smart Forms backend contract unavailable: %s", want.Name)
+			return fmt.Errorf("smart forms backend contract unavailable: %s", want.Name)
 		}
 		stripDescriptions(want.Params)
 		stripDescriptions(got.Params)
@@ -177,7 +177,7 @@ func CheckCompatibility(data []byte) error {
 			return out
 		}
 		if len(got.Params) != len(want.Params) || !reflect.DeepEqual(index(want.Params), index(got.Params)) {
-			return fmt.Errorf("Smart Forms backend contract mismatch: %s", want.Name)
+			return fmt.Errorf("smart forms backend contract mismatch: %s", want.Name)
 		}
 	}
 	return nil

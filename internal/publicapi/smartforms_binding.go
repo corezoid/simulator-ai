@@ -5,7 +5,7 @@ import "errors"
 // A valid-looking success for another file is not confirmation of this write.
 // Treat binding/count mismatches as uncertain outcomes and recover the receipt.
 func validateWriteBinding(input smartRequest, value any) error {
-	invalid := errors.New("Smart Form write result binding mismatch")
+	invalid := errors.New("smart form write result binding mismatch")
 	switch p := input.(type) {
 	case *CreateFoldersInput:
 		r := value.(Folders)

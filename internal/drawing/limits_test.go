@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/corezoid/simulator-ai/internal/testutil"
 )
 
 // zigzag is a line of n points bouncing between two corners of a square of the given side.
@@ -27,7 +29,7 @@ func refusedFast(t *testing.T, strokes []Stroke, want string) {
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("%v, want %q", err, want)
 	}
-	if d := time.Since(start); d > 100*time.Millisecond {
+	if d := time.Since(start); !testutil.RaceEnabled && d > 100*time.Millisecond {
 		t.Fatalf("refused after %v: the limit must hold before any painting", d)
 	}
 }
@@ -74,7 +76,7 @@ func TestWorstAllowedDrawingIsQuick(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d := time.Since(start); d > 5*time.Second {
+	if d := time.Since(start); !testutil.RaceEnabled && d > 5*time.Second {
 		t.Fatalf("took %v", d)
 	}
 	t.Logf("%v px in %v, %d KiB", p.Pixels, time.Since(start), len(p.PNG)>>10)

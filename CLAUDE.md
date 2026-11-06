@@ -1,13 +1,21 @@
 # Claude Code instructions — Simulator AI
 
-Read and follow [AGENTS.md](AGENTS.md), the shared operating contract.
+Read [AGENTS.md](AGENTS.md) first; it is the shared operating contract.
 
-Work in a separate worktree on `codex/*`; preserve unrelated changes. Keep source modules
-at most 700 lines and split cohesive responsibilities before they become large. Use targeted
-checks with low concurrency. After each completed slice, obtain independent xhigh review,
-fix confirmed findings and re-review the exact final commit. Do not claim unavailable review
-or unexecuted checks. No paid model calls without an approved budget.
+Use an isolated worktree on feature/*, bugfix/* or hotfix/*. Feature/fix PRs target develop;
+main is the frozen pre candidate. sim-deploy coordinates weekly promotion and production tags.
+Keep source modules below 700 lines; prefer small fixes and existing helpers over frameworks.
 
-The desktop plugin uses only public sim-api and the host's own agent. It must not start
-server Hermes, access databases or silently fall back to legacy. See AGENTS.md for all
-architecture, credential, generation and release rules.
+Use Go 1.27.3. Run targeted checks first, then `make check` sequentially with GOMAXPROCS=2
+and Go -p=1. Heavy race/cross-platform jobs belong in CI. Never run multiple test stacks,
+local Docker builds or paid model calls without their explicit scope/budget.
+
+`make gen-check` is self-contained. When refreshing source contracts, also run strict
+`make gen-source-check` with SIM_API_DIR/UI_KIT_DIR. Do not hand-edit generated artifacts.
+
+After implementation, request one independent xhigh review, fix confirmed findings and
+re-review the exact final diff/commit. Report actual checks and unresolved gates. A green
+pipeline is not evidence of a running environment or live backend authorization behavior.
+
+Desktop uses the host agent and public sim-api only. No hidden Hermes/model runtime,
+private API, databases, credential logs or legacy fallback. See docs/release.md and SECURITY.md.

@@ -1,0 +1,21 @@
+name: Branch policy
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  branch-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Accept only release promotions and hotfixes
+        env:
+          HEAD: ${{ github.head_ref }}
+          SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          test "$SAME_REPO" = true
+          case "$HEAD" in
+            develop|release/*|hotfix/*) ;;
+            *) echo 'Feature/fix PRs must target develop'; exit 1 ;;
+          esac

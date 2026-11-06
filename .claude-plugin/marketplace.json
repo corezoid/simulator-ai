@@ -1,5 +1,13 @@
 {
   "name": "simulator-ai",
-  "owner": {"name": "Simulator.Company"},
-  "plugins": [{"name":"simulator-ai","source":"./plugins/simulator-ai","description":"Public Simulator read-only metadata tools"}]
+  "owner": {
+    "name": "Simulator.Company"
+  },
+  "plugins": [
+    {
+      "name": "simulator-ai",
+      "source": "./plugins/simulator-ai",
+      "description": "MCP tools and skills for Simulator.Company: records, graphs and Smart Forms."
+    }
+  ]
 }

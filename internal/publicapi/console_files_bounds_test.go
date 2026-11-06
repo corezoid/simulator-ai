@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/corezoid/simulator-ai/internal/testutil"
 )
 
 // bounded runs f and fails when it takes longer than d or allocates more than limit bytes.
@@ -20,7 +22,7 @@ func bounded(t *testing.T, d time.Duration, limit uint64, f func()) {
 	f()
 	took := time.Since(start)
 	runtime.ReadMemStats(&after)
-	if took > d {
+	if !testutil.RaceEnabled && took > d {
 		t.Errorf("took %v, more than %v", took, d)
 	}
 	if alloc := after.TotalAlloc - before.TotalAlloc; alloc > limit {

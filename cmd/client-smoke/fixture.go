@@ -63,17 +63,17 @@ func startFixture() *fixture {
 		}
 		if request.Method == "application/create" && request.Params.OperationID == "smoke-create-1" && request.Params.Ref == "smoke-app" && request.Params.Title == "Smoke app" && request.Params.CduVersion == 2 {
 			f.creates.Add(1)
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"application":{"id":"synthetic-app","ref":"smoke-app"},"envs":[{"id":1,"actorId":"synthetic-app","title":"develop","corezoidCredentials":{"apiSecret":"credential-canary"}},{"id":2,"actorId":"synthetic-app","title":"production"}]}}`, request.ID)
+			_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"application":{"id":"synthetic-app","ref":"smoke-app"},"envs":[{"id":1,"actorId":"synthetic-app","title":"develop","corezoidCredentials":{"apiSecret":"credential-canary"}},{"id":2,"actorId":"synthetic-app","title":"production"}]}}`, request.ID)
 			return
 		}
 		if request.Method == "reaction/stats/get" && request.Params.RootActorID == "synthetic-actor" {
 			f.reads.Add(1)
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"comment":2,"view":0}}`, request.ID)
+			_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"comment":2,"view":0}}`, request.ID)
 			return
 		}
 		if request.Method == "graph/layer/stats/get" && request.Params.ActorID == "synthetic-layer" {
 			f.reads.Add(1)
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"nodes":7,"edges":8,"holes":1,"holesClosed":2,"edgeHoles":3,"edgeHolesClosed":0}}`, request.ID)
+			_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"nodes":7,"edges":8,"holes":1,"holesClosed":2,"edgeHoles":3,"edgeHolesClosed":0}}`, request.ID)
 			return
 		}
 		if request.Method == "edge_type/list" && request.Params.Limit == 1 && request.Params.IsSystem != nil && !*request.Params.IsSystem && request.Params.Filter == "" && (request.Params.Offset == 0 || request.Params.Offset == 1) {
@@ -82,7 +82,7 @@ func startFixture() *fixture {
 			if request.Params.Offset == 1 {
 				list = `[]`
 			}
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"list":%s}}`, request.ID, list)
+			_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"list":%s}}`, request.ID, list)
 			return
 		}
 		if request.Method != "actor/get" || request.Params.ActorID != "synthetic-actor" || len(request.Params.Fields) != 6 {
@@ -92,7 +92,7 @@ func startFixture() *fixture {
 		}
 		f.reads.Add(1)
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"id":"synthetic-actor","title":"Client smoke fixture"}}`, request.ID)
+		_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"id":"synthetic-actor","title":"Client smoke fixture"}}`, request.ID)
 	}))
 	return f
 }

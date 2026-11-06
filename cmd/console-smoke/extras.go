@@ -106,7 +106,7 @@ func corezoidReads(c *client) error {
 		return err
 	}
 	if len(stages.Stages) == 0 {
-		return fmt.Errorf("Corezoid project %d has no stages", project)
+		return fmt.Errorf("corezoid project %d has no stages", project)
 	}
 	var ignored json.RawMessage
 	return c.tool("corezoid_processes_list", map[string]any{"projectId": project, "stageId": stages.Stages[0].ID}, &ignored)

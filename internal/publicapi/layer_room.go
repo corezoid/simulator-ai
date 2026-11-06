@@ -123,11 +123,6 @@ func (r graphRect) union(o graphRect) graphRect {
 	return graphRect{X: x, Y: y, W: math.Max(r.right(), o.right()) - x, H: math.Max(r.bottom(), o.bottom()) - y}
 }
 
-// holds reports whether a centre lies inside the box (edges excluded, as the offset predicate).
-func (r graphRect) holds(x, y float64) bool {
-	return x > r.X && x < r.right() && y > r.Y && y < r.bottom()
-}
-
 // overlaps reports whether two boxes share area (touching edges do not).
 func (r graphRect) overlaps(o graphRect) bool {
 	return r.X < o.right() && o.X < r.right() && r.Y < o.bottom() && o.Y < r.bottom()

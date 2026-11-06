@@ -1,8 +1,8 @@
 .PHONY: generate gen-check test vet build
 
 # gen-cdu-reference reads sim-api and simulator-ui-kit (SIM_API_DIR / UI_KIT_DIR, default: the
-# checkouts next to this one) at origin/develop; its -check regenerates at the commits recorded in
-# the documents and is skipped where those checkouts are not available.
+# checkouts next to this one) at origin/develop. CI regenerates from committed public input
+# projections. gen-source-check also verifies those inputs against their recorded source commits.
 generate:
 	GOMAXPROCS=2 go run -p=1 ./cmd/gen-client
 	GOMAXPROCS=2 go run -p=1 ./cmd/gen-cdu-reference
@@ -13,6 +13,39 @@ gen-check:
 
 test: check-source gen-check
 	GOMAXPROCS=2 go test -p=1 -timeout=60s ./...
+
+.PHONY: fmt-check lint mod-check test-race test-cover security gen-source-check check
+fmt-check:
+	@test -z "$$(git ls-files '*.go' | xargs gofmt -l)" || { echo 'Run gofmt on Go sources'; exit 1; }
+
+lint:
+	GOMAXPROCS=2 golangci-lint run --allow-serial-runners
+
+mod-check:
+	GOMAXPROCS=2 go mod tidy -diff
+	GOMAXPROCS=2 go mod verify
+
+test-race:
+	GOMAXPROCS=2 go test -p=1 -race -timeout=180s ./...
+
+test-cover: check-source gen-check
+	GOMAXPROCS=2 go test -p=1 -timeout=60s -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+	awk -f scripts/check-coverage.awk coverage.out
+
+security:
+	GOMAXPROCS=2 go run -p=1 golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+gen-source-check:
+	GOMAXPROCS=2 go run -p=1 ./cmd/gen-cdu-reference -verify-sources
+
+# Run one target at a time: local resource limits are part of the agent contract.
+check:
+	$(MAKE) fmt-check
+	$(MAKE) mod-check
+	$(MAKE) lint
+	$(MAKE) test
+	$(MAKE) build
 
 vet:
 	GOMAXPROCS=2 go vet -p=1 ./...

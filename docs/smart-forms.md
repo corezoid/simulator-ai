@@ -1,8 +1,8 @@
-# Opt-in Smart Forms profile (R2.1)
+# Opt-in Smart Forms profile
 
 Set `SIMULATOR_AI_PROFILE=smart-forms` in the host environment, alongside the existing
-origin/workspace/API-user key. Restart/reload the MCP server. The default remains three
-metadata tools; this profile advertises sixteen tools. Codex forwards the profile variable
+origin/workspace/API-user key. Restart/reload the MCP server. The default `read` catalog
+stays separate; this profile exposes three metadata reads and thirteen Smart Forms tools. Codex forwards the profile variable
 through the plugin's `env_vars`; Claude Code inherits the host environment. No model,
 Hermes, LiteLLM or server AI billing is invoked by this executable.
 

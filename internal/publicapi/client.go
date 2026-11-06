@@ -124,7 +124,7 @@ func call[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 		}
 		return result, errors.New("public API transport unavailable; outcome unknown; preserve original operationId and payload for recovery")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // Read-only response cleanup.
 	if resp.StatusCode != http.StatusOK {
 		return result, &APIError{HTTPStatus: resp.StatusCode, Reason: "http_error"}
 	}

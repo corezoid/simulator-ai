@@ -113,7 +113,7 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 	if owner != self {
 		// The ref names someone else: take the quiet, just-made chat back.
 		if _, derr := call[map[string]any, json.RawMessage](ctx, c, "actor/delete", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID}); derr != nil {
-			return ChatOpened{}, fmt.Errorf("selfUserId %d is not you (chat %s was created by user %d) and the chat could not be deleted (%v): delete it, then pass the userId the request names", self, out.ChatID, owner, derr)
+			return ChatOpened{}, fmt.Errorf("selfUserId %d is not you (chat %s was created by user %d) and the chat could not be deleted (%w): delete it, then pass the userId the request names", self, out.ChatID, owner, derr)
 		}
 		return ChatOpened{}, fmt.Errorf("selfUserId %d is not you: the chat was created by user %d and removed again; pass the userId the request names", self, owner)
 	}
@@ -121,7 +121,7 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 		if _, err := call[map[string]any, json.RawMessage](ctx, c, "access_rule/actor/share", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID, "actions": []accessAction{{Action: "create", UserID: other, Privs: chatPrivs}}, "isNotify": true}); err != nil {
 			// A chat its other side cannot open is no chat: take it back, so the next call starts clean.
 			if _, derr := call[map[string]any, json.RawMessage](ctx, c, "actor/delete", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID}); derr != nil {
-				return ChatOpened{}, fmt.Errorf("chat %s was created but not shared with user %d (%v) nor deleted (%v): share it with access_rules_save or delete it", out.ChatID, other, err, derr)
+				return ChatOpened{}, fmt.Errorf("chat %s was created but not shared with user %d (%w) nor deleted (%w): share it with access_rules_save or delete it", out.ChatID, other, err, derr)
 			}
 			return ChatOpened{}, fmt.Errorf("the chat could not be shared with user %d and was removed again: %w", other, err)
 		}

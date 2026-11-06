@@ -186,7 +186,7 @@ func (c *Client) envs(ctx context.Context, appID string) (int64, int64, error) {
 	}
 	dev, prod := smartFormEnvs(r.Envs)
 	if dev < 1 || prod < 1 {
-		return 0, 0, errors.New("Smart Form has no develop and production environments")
+		return 0, 0, errors.New("smart form has no develop and production environments")
 	}
 	return dev, prod, nil
 }

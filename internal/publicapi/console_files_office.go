@@ -113,7 +113,7 @@ func openPart(parts map[string]*zip.File, name string, budget *officeBudget) (*x
 	}
 	d := xml.NewDecoder(budgetReader{rc, budget})
 	d.Strict = false
-	return d, func() { rc.Close() }, nil
+	return d, func() { _ = rc.Close() }, nil
 }
 
 // token is the next XML token, or errBudget once the time is up; a budget error of the reader
@@ -141,7 +141,7 @@ func docxText(parts map[string]*zip.File, budget *officeBudget) (string, error) 
 	inText := false
 	for b.Len() <= maxReadText {
 		tok, err := token(d, budget)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -212,7 +212,7 @@ func sharedStrings(parts map[string]*zip.File, budget *officeBudget) ([]string, 
 	inText := false
 	for {
 		tok, err := token(d, budget)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return out, nil
 		}
 		if err != nil {
@@ -281,7 +281,7 @@ func workbookSheets(parts map[string]*zip.File, budget *officeBudget) ([]sheetRe
 	var out []sheetRef
 	for len(out) < maxSheets {
 		tok, err := token(d, budget)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -320,7 +320,7 @@ func sheetText(parts map[string]*zip.File, part string, shared []string, b *stri
 	col, inValue := 0, false
 	for b.Len() <= maxReadText {
 		tok, err := token(d, budget)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {

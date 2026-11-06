@@ -105,7 +105,7 @@ func (c *Client) runtimeLink(ctx context.Context, in LinkInput) (Link, error) {
 		legacy, lerr := c.legacyLink(in)
 		legacy.Legacy = true
 		if lerr != nil {
-			return Link{}, fmt.Errorf("%w; and no legacy URL either: %v", err, lerr)
+			return Link{}, fmt.Errorf("%w; and no legacy URL either: %w", err, lerr)
 		}
 		return legacy, nil
 	}
@@ -158,7 +158,7 @@ func (c *Client) appKey(ctx context.Context, in LinkInput) (string, error) {
 		return "", fmt.Errorf("route/key/get: %w", err)
 	}
 	if got.AppKey == "" {
-		return "", fmt.Errorf("Smart Form %s has no short URL yet (never released to production)", in.AppID)
+		return "", fmt.Errorf("smart form %s has no short URL yet (never released to production)", in.AppID)
 	}
 	return got.AppKey, nil
 }

@@ -71,7 +71,7 @@ func smoke(root, profile string) (evidence, error) {
 	if err != nil {
 		return result, err
 	}
-	defer os.RemoveAll(temp)
+	defer func() { _ = os.RemoveAll(temp) }() // Best-effort removal of our disposable profiles.
 	for _, dir := range []string{"codex", "claude", "project"} {
 		if err = os.Mkdir(filepath.Join(temp, dir), 0700); err != nil {
 			return result, err

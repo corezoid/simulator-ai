@@ -96,7 +96,7 @@ func download(link string) ([]byte, error) {
 			return nil, err
 		}
 		body, err := io.ReadAll(io.LimitReader(resp.Body, maxArchive+1))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		switch {
 		case err != nil:
 			return nil, err
