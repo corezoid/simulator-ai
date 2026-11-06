@@ -57,7 +57,7 @@ Graph reads also include six layer counters. Host-bound graph-read is a closed o
 ## Development and weekly release
 
 - Permanent branches: develop (integration/dev), main (frozen pre candidate). Feature/fix PRs
-  target develop. Only a reviewed promotion or hotfix targets main. Tags vX.Y.Z identify prod.
+  target develop. Only a PR from this repository's develop branch may target main. Tags vX.Y.Z identify prod.
 - sim-deploy coordinates the weekly backend/plugin train. It verifies the exact candidate SHA,
   not a moving branch or an unrelated green run. Do not independently publish a stable plugin.
 - Version is minted once per release in internal/version/version.go and both plugin manifests.
@@ -91,3 +91,5 @@ Graph reads also include six layer counters. Host-bound graph-read is a closed o
   promotes and updates version metadata through checked temporary release PRs; never bypass protection.
 - `make package` requires a clean commit and ships MIT/dependency notices with per-platform build
   metadata. Use one local platform; prefer the manual Release workflow for cross-platform rehearsal.
+
+Main accepts only same-repository develop PRs; hotfixes and release metadata go through develop.

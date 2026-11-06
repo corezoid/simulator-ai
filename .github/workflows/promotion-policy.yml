@@ -1,0 +1,19 @@
+name: Promotion policy
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+permissions: {}
+jobs:
+  source:
+    name: Develop only
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      # No checkout or execution of PR code. GitHub loads this workflow from the default branch.
+      - name: Require develop from this repository
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: test "$HEAD_REF" = develop && test "$HEAD_REPO" = "$BASE_REPO"

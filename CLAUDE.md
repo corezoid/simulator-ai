@@ -19,3 +19,5 @@ pipeline is not evidence of a running environment or live backend authorization 
 
 Desktop uses the host agent and public sim-api only. No hidden Hermes/model runtime,
 private API, databases, credential logs or legacy fallback. See docs/release.md and SECURITY.md.
+
+Main accepts only same-repository develop PRs; hotfixes and release metadata go through develop.
