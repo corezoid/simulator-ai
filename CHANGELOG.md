@@ -2,8 +2,9 @@
 
 ## [0.1.0]
 
-### Added
-- support Kiro and Windows with current public documentation
+### Changed
+- derive tool availability from MCP and simplify public guides
+- remove trailing whitespace in Console guide
 
 ## [Unreleased]
 
