@@ -14,7 +14,7 @@ import (
 
 // Processes run one at a time in their own group. Cleanup cannot stop the user's services.
 func command(ctx context.Context, env []string, dir, executable string, args ...string) *exec.Cmd {
-	c := exec.CommandContext(ctx, executable, args...)
+	c := exec.CommandContext(ctx, executable, args...) // #nosec G204 G702 -- installed CLI path and internal argument lists; no shell or tool input.
 	c.Env, c.Dir = env, dir
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	c.Cancel = func() error { return syscall.Kill(-c.Process.Pid, syscall.SIGKILL) }

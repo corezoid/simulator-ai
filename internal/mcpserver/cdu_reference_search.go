@@ -124,7 +124,7 @@ func window(docs []referenceDoc, name string) (docWindow, error) {
 func grepReference(windows []docWindow, unavailable []string, pattern string, context, limit int) (string, error) {
 	re, err := regexp.Compile("(?i)" + pattern)
 	if err != nil {
-		return "", fmt.Errorf("invalid pattern %q: %v (RE2 syntax: no lookaround or backreferences; escape . ( ) [ ] { } * + ? | ^ $ with \\ to match them)", pattern, err)
+		return "", fmt.Errorf("invalid pattern %q: %w (RE2 syntax: no lookaround or backreferences; escape . ( ) [ ] { } * + ? | ^ $ with \\ to match them)", pattern, err)
 	}
 	if limit <= 0 {
 		limit = defaultGrepLimit

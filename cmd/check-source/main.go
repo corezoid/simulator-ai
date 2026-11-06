@@ -23,7 +23,7 @@ func check(root string) error {
 		if filepath.Ext(path) != ".go" {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) // #nosec G122 -- counts source lines in an operator-owned checkout; no content is exposed.
 		if err != nil {
 			return err
 		}

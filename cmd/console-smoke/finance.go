@@ -160,7 +160,7 @@ func unsharedPair(c *client, stamp string) error {
 		return err
 	}
 	if err := c.tool("account_pair_create", names, &ignored); err == nil || !strings.Contains(err.Error(), "takeOwnership") {
-		return fmt.Errorf("account_pair_create claimed or refused an unshared pair unexpectedly: %v", err)
+		return fmt.Errorf("account_pair_create claimed or refused an unshared pair unexpectedly: %w", err)
 	}
 	names["takeOwnership"] = true
 	var claimed struct {

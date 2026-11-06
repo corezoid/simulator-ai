@@ -37,7 +37,7 @@ coalesced with counts. No automatic retries, paid tests or remote MCP. Writes re
 
 ## Local setup
 
-Requires Go 1.27.2+ for source builds. From the checkout:
+Requires Go 1.27.3+ for source builds. From the checkout:
 
 ```sh
 make test vet build
@@ -469,3 +469,11 @@ regenerate, inspect schemas and run tests. `make gen-check` verifies generated c
 hosted CI activation is pending (see [verification](docs/verification.md)). Local generation
 checks cannot prove the deployed server matches the pinned source. [Architecture](docs/architecture.md)
 records transport/errors/limits and remaining gates.
+
+
+## Development and releases
+
+See [release workflow](docs/release.md) and [security policy](SECURITY.md).
+`make check` runs the local checks sequentially; GitHub CI adds race and security checks.
+`simulator-ai --version` prints the version and embedded VCS revision without credentials.
+The weekly dev/pre/prod train is owned by sim-deploy; main freezes the pre candidate.

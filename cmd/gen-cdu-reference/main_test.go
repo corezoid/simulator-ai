@@ -115,7 +115,7 @@ func TestGenerate(t *testing.T) {
 	}
 }
 
-// -check regenerates at the recorded commits: equal passes, an edit is drift, a missing checkout skips.
+// -check regenerates at the recorded commits: equal passes, an edit is drift, a missing checkout fails the source check.
 func TestCheckDrift(t *testing.T) {
 	sim, kit := testSources(t)
 	files, err := generate(sim, kit)
@@ -138,8 +138,8 @@ func TestCheckDrift(t *testing.T) {
 	if err = checkDrift(sim, kit, out); err == nil || !strings.Contains(err.Error(), "drift in examples.md") {
 		t.Fatal("drift not detected:", err)
 	}
-	if err = checkDrift(source{"sim-api", t.TempDir(), ""}, kit, out); err != nil {
-		t.Fatal("a missing checkout skips the check:", err)
+	if err = checkDrift(source{"sim-api", t.TempDir(), ""}, kit, out); err == nil {
+		t.Fatal("a missing checkout must fail the source check:", err)
 	}
 }
 
@@ -151,5 +151,34 @@ func TestCommittedHeader(t *testing.T) {
 	}
 	if headerRevs.FindSubmatch(b) == nil {
 		t.Fatal("protocol.md has no source header")
+	}
+}
+
+func TestOfflineSnapshotChecksWithoutSourceCheckouts(t *testing.T) {
+	sim, kit := testSources(t)
+	files, err := generate(sim, kit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), body, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := checkSnapshot(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "types.json"), []byte("{}"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkSnapshot(dir); err == nil {
+		t.Fatal("must reject edited output")
+	}
+	if err := os.Remove(filepath.Join(dir, "inputs.json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkSnapshot(dir); err == nil {
+		t.Fatal("must reject missing inputs")
 	}
 }

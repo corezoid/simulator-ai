@@ -22,7 +22,7 @@ type smartRequest interface{ setWorkspace(string) }
 // Deployment must still ensure all replicas behind the origin carry this contract.
 func (c *Client) VerifySmartForms(ctx context.Context) error {
 	if !c.SmartFormsEnabled() {
-		return errors.New("Smart Forms profile is disabled")
+		return errors.New("smart forms profile is disabled")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(c.config.Origin, "/")+"/api/2.0/doc/public", nil)
 	if err != nil {
@@ -33,9 +33,9 @@ func (c *Client) VerifySmartForms(ctx context.Context) error {
 	if err != nil {
 		return errors.New("cannot verify Smart Forms backend contract; no write sent")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("Smart Forms public contract unavailable; no write sent")
+		return errors.New("smart forms public contract unavailable; no write sent")
 	}
 	b, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil || len(b) > maxResponseBytes {
@@ -46,7 +46,7 @@ func (c *Client) VerifySmartForms(ctx context.Context) error {
 func smartCall[P smartRequest, R any](ctx context.Context, c *Client, method string, p P, write bool) (R, error) {
 	var result R
 	if !c.SmartFormsEnabled() {
-		return result, errors.New("Smart Forms profile is disabled")
+		return result, errors.New("smart forms profile is disabled")
 	}
 	p.setWorkspace(c.config.Workspace)
 	b, err := json.Marshal(p)

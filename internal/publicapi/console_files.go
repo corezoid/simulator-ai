@@ -136,7 +136,7 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 		}
 		return Attachment{}, errors.New("upload transport unavailable; outcome unknown; retry the upload (a duplicate is a harmless unattached file)")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if resp.StatusCode != http.StatusOK {
 		return Attachment{}, fmt.Errorf("upload refused (http %d): %s", resp.StatusCode, serverText(b))
@@ -204,7 +204,7 @@ func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (At
 			return AttachmentContent{}, errors.New("download transport unavailable")
 		}
 		if resp.StatusCode == http.StatusTooEarly && tries < 4 || resp.StatusCode == http.StatusNotFound && tries < 2 {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			select {
 			case <-ctx.Done():
 				return AttachmentContent{}, ctx.Err()
@@ -212,7 +212,7 @@ func (c *Client) ReadAttachment(ctx context.Context, in AttachmentReadInput) (At
 			}
 			continue
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		switch resp.StatusCode {
 		case http.StatusOK:
 			return readContent(in.FileName, resp)

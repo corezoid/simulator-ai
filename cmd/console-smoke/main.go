@@ -98,7 +98,7 @@ func main() {
 	// Bounded like client-smoke: the whole run, all of its scenarios, gets five minutes.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, *bin)
+	cmd := exec.CommandContext(ctx, *bin) // #nosec G204 G702 -- binary path explicitly chosen by the smoke operator; no shell.
 	cmd.Env = append(os.Environ(), "SIMULATOR_AI_PROFILE="+*profile)
 	cmd.Stderr = os.Stderr
 	stdin, _ := cmd.StdinPipe()
@@ -168,17 +168,17 @@ func publicRPC(method string, params map[string]any) (json.RawMessage, error) {
 		auth = "ApiKey " + os.Getenv("SIMULATOR_AI_API_KEY")
 	}
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": "smoke", "method": method, "params": params})
-	req, err := http.NewRequest(http.MethodPost, strings.TrimRight(os.Getenv("SIMULATOR_AI_ORIGIN"), "/")+"/api/2.0/rpc", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, strings.TrimRight(os.Getenv("SIMULATOR_AI_ORIGIN"), "/")+"/api/2.0/rpc", bytes.NewReader(body)) // #nosec G704 -- operator-configured test stand; no tool-supplied URL.
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", auth)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	resp, err := (&http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}).Do(req) // #nosec G704 -- fixed operator-configured origin; redirects refused.
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // Read-only response cleanup.
 	var reply struct {
 		Result json.RawMessage `json:"result"`
 		Error  *struct {

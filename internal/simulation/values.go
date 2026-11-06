@@ -1,4 +1,4 @@
-// Package sim is the Go engine of sim-morrow: behaviour simulation of Simulator graphs.
+// Package simulation is the Go engine of sim-morrow: behaviour simulation of Simulator graphs.
 //
 // The model format and its semantics are specified in
 // plugins/simulator/docs/simulation/model-format.md. testdata/conformance holds the

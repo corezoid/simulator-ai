@@ -115,7 +115,7 @@ func RunTool(ctx context.Context, c *publicapi.Client, in RunInput) (map[string]
 	ins, err := loadInputs(runCtx, c, in.Input, true)
 	if err != nil {
 		if cause := context.Cause(runCtx); cause != nil && ctx.Err() == nil {
-			return nil, fmt.Errorf("%w while reading the layer: %v", cause, err)
+			return nil, fmt.Errorf("%w while reading the layer: %w", cause, err)
 		}
 		return nil, err
 	}

@@ -537,7 +537,7 @@ func toAny(xs []string) []any {
 	return out
 }
 
-// RuleDecider: the rule if present, else a uniform pick with a stable stream (spec §7).
+// RuleDecider picks the rule if present, else a uniform pick with a stable stream (spec §7).
 func RuleDecider(c *StepContext, spec *OMap, options []string, ruleChoice *string) (string, map[string]any, error) {
 	if ruleChoice != nil {
 		return *ruleChoice, map[string]any{"source": "rule"}, nil

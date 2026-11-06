@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/corezoid/simulator-ai/internal/mcpserver"
+	"github.com/corezoid/simulator-ai/internal/publicapi"
 )
 
 func codexSmoke(ctx context.Context, env []string, dir, root, executable string, e *evidence) error {
@@ -33,7 +36,7 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		return err
 	}
 	if !strings.Contains(string(skill), "name: simulator-ai-read") {
-		return errors.New("Codex installed skill missing")
+		return errors.New("codex installed skill missing")
 	}
 	e.CodexInstall = true
 	p, err := startPeer(ctx, env, dir, executable, "app-server")
@@ -65,13 +68,13 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 	}
 	e.CodexSkill = loaded["simulator-ai:simulator-ai-read"] && loaded["simulator-ai:simulator-ai-smart-forms"]
 	if !e.CodexSkill {
-		return errors.New("Codex skills/list did not load installed skill")
+		return errors.New("codex skills/list did not load installed skill")
 	}
 	if strings.HasPrefix(e.Profile, "reactions-") && !loaded["simulator-ai:simulator-ai-reactions"] {
-		return errors.New("Codex did not load reactions skill")
+		return errors.New("codex did not load reactions skill")
 	}
 	if strings.HasPrefix(e.Profile, "graph-") && !loaded["simulator-ai:simulator-ai-graph"] {
-		return errors.New("Codex did not load graph skill")
+		return errors.New("codex did not load graph skill")
 	}
 	var thread struct {
 		Thread struct {
@@ -91,43 +94,36 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		return err
 	}
 	serverName := ""
-	expectedTools := 3
-	if e.Profile == "smart-forms" {
-		expectedTools = 16
-	} else if e.Profile == "reactions-read" {
-		expectedTools = 4
-	} else if e.Profile == "reactions-actor" {
-		expectedTools = 1
-	} else if e.Profile == "graph-read" {
-		expectedTools = 8
+	// Compare the installed client's catalog to this checkout. Profile safety is tested
+	// independently in mcpserver; this smoke verifies plugin installation and loading.
+	cfg := publicapi.Config{Origin: "http://127.0.0.1", Workspace: "synthetic-workspace", APIKey: "synthetic-client-key", Profile: e.Profile}
+	if e.Profile == "reactions-actor" {
+		cfg.Profile, cfg.ActorID = "reactions-read", "synthetic-actor"
 	} else if e.Profile == "graph-actor" {
-		expectedTools = 1
+		cfg.Profile, cfg.ActorID = "graph-read", "synthetic-layer"
 	}
+	client, err := publicapi.New(cfg)
+	if err != nil {
+		return err
+	}
+	expectedTools := mcpserver.New(client).ListTools()
 	for _, s := range status.Data {
-		if s.Name == "simulator-ai" && len(s.Tools) == expectedTools {
-			_, actor := s.Tools["actor_get"]
-			_, form := s.Tools["form_get"]
-			_, layer := s.Tools["layer_actors_list"]
-			_, stats := s.Tools["reaction_stats_get"]
-			_, layerStats := s.Tools["graph_layer_stats_get"]
-			matches := actor && form && layer
-			if e.Profile == "reactions-read" {
-				matches = matches && stats
-			} else if e.Profile == "reactions-actor" {
-				matches = stats
-			} else if e.Profile == "graph-read" {
-				matches = matches && layerStats
-			} else if e.Profile == "graph-actor" {
-				matches = layerStats
+		if s.Name != "simulator-ai" || len(s.Tools) != len(expectedTools) {
+			continue
+		}
+		matches := true
+		for name := range expectedTools {
+			if _, ok := s.Tools[name]; !ok {
+				matches = false
 			}
-			if matches {
-				serverName = s.Name
-				e.CodexTools = len(s.Tools)
-			}
+		}
+		if matches {
+			serverName = s.Name
+			e.CodexTools = len(s.Tools)
 		}
 	}
 	if serverName == "" {
-		return errors.New("Codex did not load the exact installed MCP catalog")
+		return errors.New("codex did not load the exact installed MCP catalog")
 	}
 	var call struct {
 		IsError bool `json:"isError"`
@@ -137,12 +133,16 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		StructuredContent json.RawMessage `json:"structuredContent"`
 	}
 	if e.Profile != "reactions-actor" && e.Profile != "graph-actor" {
-		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "actor_get", "arguments": map[string]string{"actorId": "synthetic-actor"}}, &call); err != nil {
+		args := map[string]any{"actorId": "synthetic-actor"}
+		if e.Profile == "read" || e.Profile == "graph-read" {
+			args["fields"] = []string{"id", "title", "description", "formId", "status", "ref"}
+		}
+		if err = p.call("mcpServer/tool/call", map[string]any{"threadId": thread.Thread.ID, "server": serverName, "tool": "actor_get", "arguments": args}, &call); err != nil {
 			return err
 		}
 		encoded, _ := json.Marshal(call)
 		if call.IsError || !strings.Contains(string(encoded), "Client smoke fixture") {
-			return errors.New("Codex tool did not return fixture metadata")
+			return errors.New("codex tool did not return fixture metadata")
 		}
 	}
 	e.CodexRead = true
@@ -156,10 +156,10 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		}
 		var stats map[string]int64
 		if call.IsError || json.Unmarshal(call.StructuredContent, &stats) != nil || len(stats) != 2 || stats["comment"] != 2 {
-			return errors.New("Codex reaction counts failed")
+			return errors.New("codex reaction counts failed")
 		}
 		if value, ok := stats["view"]; !ok || value != 0 {
-			return errors.New("Codex reaction zero count lost")
+			return errors.New("codex reaction zero count lost")
 		}
 		e.CodexReactionStats = true
 	}
@@ -173,11 +173,11 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		}
 		var counts map[string]int64
 		if call.IsError || json.Unmarshal(call.StructuredContent, &counts) != nil || len(counts) != 6 {
-			return errors.New("Codex layer counts failed")
+			return errors.New("codex layer counts failed")
 		}
 		for key, want := range map[string]int64{"nodes": 7, "edges": 8, "holes": 1, "holesClosed": 2, "edgeHoles": 3, "edgeHolesClosed": 0} {
 			if value, ok := counts[key]; !ok || value != want {
-				return errors.New("Codex layer count missing or changed")
+				return errors.New("codex layer count missing or changed")
 			}
 		}
 		e.CodexLayerStats = true
@@ -192,12 +192,12 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 				List []map[string]json.RawMessage `json:"list"`
 			}
 			if call.IsError || json.Unmarshal(call.StructuredContent, &page) != nil || page.List == nil || len(page.List) != 1-offset {
-				return errors.New("Codex edge type paging failed")
+				return errors.New("codex edge type paging failed")
 			}
 			if offset == 0 {
 				row := page.List[0]
 				if len(row) != 3 || string(row["id"]) != "2" || string(row["name"]) != `"Synthetic custom"` || string(row["userId"]) != "null" {
-					return errors.New("Codex edge type projection/null failed")
+					return errors.New("codex edge type projection/null failed")
 				}
 			}
 		}
@@ -209,7 +209,7 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		}
 		encoded, _ := json.Marshal(call)
 		if call.IsError || !strings.Contains(string(encoded), "synthetic-app") || strings.Contains(string(encoded), "credential-canary") {
-			return errors.New("Codex Smart Form creation failed")
+			return errors.New("codex Smart Form creation failed")
 		}
 		e.CodexCreate = true
 	}

@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"context"
 	"encoding/json"
 	"math/big"
 	"os"
@@ -129,7 +130,7 @@ func TestConformance(t *testing.T) {
 				if !hasRuns || n == 0 {
 					continue
 				}
-				s := RunMany(nil, g, m, sc, int(n), nil, NewOMap())
+				s := RunMany(context.Background(), g, m, sc, int(n), nil, NewOMap())
 				if s.Runs != wantRuns.Runs || s.Completed != wantRuns.Completed || s.Failed != wantRuns.Failed {
 					t.Errorf("%s runs: %d/%d/%d, want %d/%d/%d", sc.Name, s.Runs, s.Completed, s.Failed,
 						wantRuns.Runs, wantRuns.Completed, wantRuns.Failed)

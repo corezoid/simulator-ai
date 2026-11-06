@@ -3,11 +3,10 @@
 // truth: sim-api's vendored page-config contract and catalog manifest, and the ui-kit's help bundle
 // and CI-validated example pages. It reads both repositories at a commit through git, never their
 // working trees, and records the commits in each document, so -check regenerates exactly what was
-// committed and reports drift (it is skipped when a checkout or the commit is not available).
+// committed. Offline checks use the public input projection; source checks require both checkouts.
 package main
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -46,11 +45,16 @@ func main() {
 	kitDir := flag.String("ui-kit", envOr("UI_KIT_DIR", sibling("simulator-ui-kit")), "simulator-ui-kit checkout")
 	simRev := flag.String("sim-api-rev", "origin/develop", "sim-api commit to read")
 	kitRev := flag.String("ui-kit-rev", "origin/develop", "simulator-ui-kit commit to read")
-	check := flag.Bool("check", false, "regenerate at the recorded commits and compare without writing")
+	check := flag.Bool("check", false, "regenerate from committed public inputs and compare without writing")
+	verify := flag.Bool("verify-sources", false, "verify inputs and output against the recorded source commits (requires both checkouts)")
 	flag.Parse()
 	sim, kit := source{"sim-api", *simDir, *simRev}, source{"simulator-ui-kit", *kitDir, *kitRev}
-	if *check {
-		if err := checkDrift(sim, kit, outDir); err != nil {
+	if *check || *verify {
+		err := checkSnapshot(outDir)
+		if err == nil && *verify {
+			err = checkDrift(sim, kit, outDir)
+		}
+		if err != nil {
 			fail(err)
 		}
 		return
@@ -86,24 +90,14 @@ func checkDrift(sim, kit source, dir string) error {
 	sim.rev, kit.rev = string(m[1]), string(m[2])
 	for _, s := range []source{sim, kit} {
 		if exec.Command("git", "-C", s.dir, "cat-file", "-e", s.rev+"^{commit}").Run() != nil {
-			fmt.Printf("gen-cdu-reference: check skipped, %s %s is not available in %s\n", s.name, short(s.rev), s.dir)
-			return nil
+			return fmt.Errorf("source check requires %s %s in %s", s.name, short(s.rev), s.dir)
 		}
 	}
 	files, err := generate(sim, kit)
 	if err != nil {
 		return err
 	}
-	for name, body := range files {
-		committed, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			return err
-		}
-		if !bytes.Equal(committed, body) {
-			return fmt.Errorf("generated CDU reference drift in %s: run make generate", name)
-		}
-	}
-	return nil
+	return compareFiles(dir, files)
 }
 
 // generate renders every document from the two sources.
@@ -112,7 +106,14 @@ func generate(sim, kit source) (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	head := header(sim, kit)
+	return renderInputs(header(sim, kit), in)
+}
+
+func renderInputs(head string, in *inputs) (map[string][]byte, error) {
+	projection, err := snapshot(in, head)
+	if err != nil {
+		return nil, err
+	}
 	protocol, err := renderProtocol(head, in)
 	if err != nil {
 		return nil, err
@@ -125,7 +126,7 @@ func generate(sim, kit source) (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string][]byte{"protocol.md": protocol, "examples.md": examples, "types.json": types}, nil
+	return map[string][]byte{"inputs.json": projection, "protocol.md": protocol, "examples.md": examples, "types.json": types}, nil
 }
 
 func resolve(s source) (string, error) {

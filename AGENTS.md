@@ -29,13 +29,13 @@ run make generate and make gen-check. Test with GOMAXPROCS=2 and -p=1; no paid m
 without a separately approved budget. Credentials stay in process environment and never
 enter tools, output or logs. Skills remain portable and reflect the actual catalog.
 
-Small codex/* branches and PRs to develop. Review each slice with one independent reviewer
+Small feature/*, bugfix/* or hotfix/* branches and PRs to develop. Review each slice with one independent reviewer
 configured xhigh, fix confirmed findings, repeat review on the exact commit/diff and record
 checks. Full rollout requires separate client-install and live API-user ACL/revoke evidence.
 
 ## Worktrees, structure and verification
 
-- Work in a separate git worktree on a small `codex/*` branch. Leave the primary checkout,
+- Work in a separate git worktree on a small `feature/*`, `bugfix/*` or `hotfix/*` branch. Leave the primary checkout,
   unrelated local changes and existing services untouched. Publish each slice as its own PR.
 - Keep every authored source module at or below 700 lines, including tests. Start splitting
   around 600 lines. Separate cohesive responsibilities (transport, domain logic, storage,
@@ -52,3 +52,37 @@ checks. Full rollout requires separate client-install and live API-user ACL/revo
 - `make check-source` enforces the module line limit. `CLAUDE.md` points to this contract.
 
 Graph reads also include six layer counters. Host-bound graph-read is a closed one-tool layer-statistics catalog; counts never replace current receipt readback or recipient authority.
+
+
+## Development and weekly release
+
+- Permanent branches: develop (integration/dev), main (frozen pre candidate). Feature/fix PRs
+  target develop. Only a reviewed promotion or hotfix targets main. Tags vX.Y.Z identify prod.
+- sim-deploy coordinates the weekly backend/plugin train. It verifies the exact candidate SHA,
+  not a moving branch or an unrelated green run. Do not independently publish a stable plugin.
+- Version is minted once per release in internal/version/version.go and both plugin manifests.
+  Every normal PR updates CHANGELOG.md under Unreleased; no per-PR version bumps.
+- Binary, manifests and skills must come from the same commit. API origin, workspace and
+  credentials are runtime inputs; never bake dev/pre/prod endpoints or credentials into an artifact.
+- Green CI is not deployment or live ACL/revoke acceptance. See docs/release.md for the boundary.
+- Required merge check is CI / Gate: formatting, module consistency, source/generation checks,
+  lint, tests/coverage, race and vulnerability/secret scans. Missing or skipped jobs do not pass.
+- Source/runtime compatibility includes permissions, side effects, CAS and retry semantics;
+  a schema match alone is not proof. Do not weaken strict write preflight to make rollout pass.
+
+## Reproducible commands and agent budget
+
+- Go 1.27.3 (go.mod); golangci-lint 2.14.0. `make check` runs checks sequentially.
+- `make test` is the default local suite. `make test-race` and `make security` are separate;
+  prefer hosted CI for race and cross-platform packaging. Never run make -j, parallel full suites,
+  local Docker builds or multiple client-smoke processes for this task.
+- `make test-cover` enforces measured baselines for mcpserver/publicapi/simulation. Do not lower
+  them to hide a regression. Third-party PDF code has separate provenance and bounded-input tests.
+- `make gen-check` always reproduces output from committed public input projections, with no
+  private credentials and no silent skips. `make gen-source-check` strictly checks their pinned
+  upstream commits; it fails if either checkout/commit is missing. Run it when refreshing CDU
+  inputs using SIM_API_DIR and UI_KIT_DIR. Never edit generated inputs or outputs by hand.
+- CI tools are version-pinned. Additional global agents, background daemons, model frameworks
+  and paid evals are not needed for normal development. Use the host agent plus these commands.
+- Before merge: independent code review with reasoning_effort=xhigh, fix confirmed findings,
+  repeat on the final diff/SHA, and record tests/review/remaining gates in the PR.

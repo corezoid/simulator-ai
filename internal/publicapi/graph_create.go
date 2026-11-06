@@ -25,7 +25,7 @@ func (c *Client) verifyGraphCreates(ctx context.Context) error {
 	if err != nil {
 		return errors.New("cannot verify graph creation contract; no write sent")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return errors.New("graph creation public contract unavailable; no write sent")
 	}

@@ -123,7 +123,7 @@ func (c *Client) filePathID(ctx context.Context, appID, path string) (int64, err
 func patchSource(source, nodeID string, ops []PatchOp) (string, []string, bool, error) {
 	doc, e := decodeDoc([]byte(source))
 	if e != nil {
-		return "", nil, false, fmt.Errorf("the file is not JSON (%v): patch a page config, locale or viewModel, or rewrite it with smart_form_files_update", e)
+		return "", nil, false, fmt.Errorf("the file is not JSON (%w): patch a page config, locale or viewModel, or rewrite it with smart_form_files_update", e)
 	}
 	before := cloneDoc(doc)
 	root := &doc

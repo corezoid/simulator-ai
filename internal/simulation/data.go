@@ -363,5 +363,3 @@ func equal(a, b any) bool {
 	}
 	return a == b
 }
-
-func asString(v any) string { return show(v) }

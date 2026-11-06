@@ -95,7 +95,7 @@ type GraphPlacementOperationInput struct {
 	ActorID string `json:"actorId"`
 }
 
-// GraphCreatedNode/GraphCreatedPlacementEdge mirror layerManageRes projections exactly.
+// GraphCreatedNode and GraphCreatedPlacementEdge mirror layerManageRes projections exactly.
 type GraphCreatedNode struct {
 	LaID     int64       `json:"laId"`
 	ActorID  string      `json:"actorId"`

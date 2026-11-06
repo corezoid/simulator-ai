@@ -23,9 +23,6 @@ type nodeLink struct {
 type nodeLinksInput struct {
 	Links []nodeLink `json:"links"`
 }
-type layerInput struct {
-	LayerID string `json:"layerId"`
-}
 type compactInput struct {
 	LayerID         string  `json:"layerId"`
 	BucketThreshold int     `json:"bucketThreshold,omitempty"`

@@ -52,7 +52,7 @@ func decodeDoc(src []byte) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err = dec.Token(); err != io.EOF {
+	if _, err = dec.Token(); !errors.Is(err, io.EOF) {
 		return nil, errors.New("data after the JSON value")
 	}
 	return v, nil
