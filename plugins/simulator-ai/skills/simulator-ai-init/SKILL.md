@@ -31,7 +31,7 @@ refused, so the origin must be the one that answers the API.
 | `smart-forms` | recoverable Smart Form writes (`simulator-ai-smart-forms`) |
 | `reactions-read` | reaction counts |
 | `console` | the AI Console core: actors, templates, flowcharts, Smart Forms, comments, access, files |
-| `console-full` | `console` plus every other actor, template, graph, access, reaction, user, file and finance tool |
+| `console-full` | broader Console workflows; inspect the actual catalog for availability |
 
 Pick the narrowest profile that covers the task; a profile is chosen at start, not per call.
 `delegated-read` takes a scoped token from the Console manager and is never set up by hand.
@@ -42,7 +42,9 @@ Pick the narrowest profile that covers the task; a profile is chosen at start, n
 2. Tell the user to put the variables in the environment the client starts MCP servers with
    (its secret manager, or the shell that launches it), then restart the client or its MCP
    server. Claude Code inherits the shell; Codex forwards only the names in the server's
-   `env_vars` list, which must include the credential variable in use.
+   `env_vars` list, which must include the credential variable in use. Kiro uses the Power’s
+   MCP environment references and explicitly selects `read`; change its profile in Kiro’s
+   configuration and approve the required environment variables before reconnecting.
 3. Check the connection with one cheap read of the active profile: `forms_list {type:
    "system", limit: 3}` (`read`, `graph-read`, `console`), `workspaces_list` in `console-full`,
    `graph_edge_types_list {limit: 1}` in `graph-create`, the single tool with `{}` when

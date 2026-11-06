@@ -3,7 +3,7 @@
 **Connect your AI assistant to Simulator.Company.**
 
 [![CI](https://github.com/corezoid/simulator-ai/actions/workflows/check.yml/badge.svg?branch=develop)](https://github.com/corezoid/simulator-ai/actions/workflows/check.yml)
-[Documentation](#documentation) · [Changelog](CHANGELOG.md) · [Report an issue](https://github.com/corezoid/simulator-ai/issues)
+[Documentation](docs/README.md) · [Changelog](CHANGELOG.md) · [Report an issue](https://github.com/corezoid/simulator-ai/issues)
 
 Simulator AI is a Go-based [Model Context Protocol](https://modelcontextprotocol.io/) server
 with skills for **Claude Code**, **Codex** and **Kiro**. It lets your assistant work with Simulator
@@ -145,8 +145,8 @@ profile below and give the assistant the specific change you want it to make.
 | `console` | A focused catalog for interactive workspace operations. | Yes |
 | `console-full` | The complete Console catalog, including finance, files, charts, meetings and simulation. | Yes |
 
-See the [tool reference](docs/tool-reference.md) for individual tools, public API mappings
-and behavior. The MCP catalog returned by your running server describes the tools enabled
+See the [generated catalog](docs/tool-catalog.md) for exact profile membership and the
+[tool guide](docs/tool-reference.md) for public API mappings and behavior. The MCP catalog returned by your running server describes the tools enabled
 for that profile.
 
 Smart Forms and graph-create writes have explicit recovery keys and backend contract checks.
@@ -191,6 +191,8 @@ stdio and forwarding configuration to the server process; their installation flo
 
 ## Documentation
 
+Browse the [documentation index](docs/README.md) for user and contributor guides.
+
 | Guide | Topics |
 | --- | --- |
 | [Tool reference](docs/tool-reference.md) | Tool catalog, profiles, API mappings and operational limits. |
@@ -212,7 +214,7 @@ make client-smoke   # isolated Codex + Claude installation checks; no model call
 
 `make check` requires golangci-lint **2.14.0**. `make client-smoke` requires both client CLIs.
 CI also checks generated files, coverage and git history for secrets. Agent-assisted
-contributors should read [AGENTS.md](AGENTS.md); Claude-specific entry instructions are in
+contributors should read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md); Claude-specific entry instructions are in
 [CLAUDE.md](CLAUDE.md).
 
 For bugs or feature requests, [open an issue](https://github.com/corezoid/simulator-ai/issues)

@@ -11,7 +11,7 @@ mkdir -p dist
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 mkdir -p "$stage/licenses/go" "$stage/licenses/pdf"
-cp LICENSE README.md CHANGELOG.md SECURITY.md AGENTS.md CLAUDE.md THIRD_PARTY_NOTICES.md "$stage/"
+cp LICENSE README.md CONTRIBUTING.md CHANGELOG.md SECURITY.md AGENTS.md CLAUDE.md THIRD_PARTY_NOTICES.md "$stage/"
 cp -R plugins .agents .claude-plugin docs "$stage/"
 cp "$(go env GOROOT)/LICENSE" "$stage/licenses/go/LICENSE"
 cp internal/third_party/pdf/LICENSE internal/third_party/pdf/README.md "$stage/licenses/pdf/"

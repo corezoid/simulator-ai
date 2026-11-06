@@ -8,6 +8,7 @@ generate:
 	GOMAXPROCS=2 go run -p=1 ./cmd/gen-cdu-reference
 
 gen-check:
+	GOMAXPROCS=2 go run -p=1 ./cmd/gen-tool-catalog -check
 	GOMAXPROCS=2 go run -p=1 ./cmd/gen-client -check
 	GOMAXPROCS=2 go run -p=1 ./cmd/gen-cdu-reference -check
 
@@ -77,3 +78,7 @@ smoke: build
 .PHONY: package
 package:
 	scripts/package.sh $(PLATFORMS)
+
+.PHONY: docs
+docs:
+	GOMAXPROCS=2 go run -p=1 ./cmd/gen-tool-catalog
