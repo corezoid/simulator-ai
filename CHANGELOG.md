@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.0]
+
+### Fixed
+- require develop as the only source for main promotions
+
 ## [Unreleased]
 
 - Enforce develop as the only PR source for main; prepare release metadata before pre promotion.
