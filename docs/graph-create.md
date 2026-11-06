@@ -85,8 +85,8 @@ JSON parsed as in the UI writer. Graph/layer relationships use the actual edge t
 
 `123` and IDs above are placeholders, not seeded IDs. Inspect the actual template fields
 and fill them for the intended workspace. A plain node placement example does not establish
-native flowchart parity. The deterministic planner now supplies native creation payloads and node layout. Updates with conflict
-preconditions, same-tab refresh and live Graph Editor/Console acceptance remain open.
+native flowchart parity. The deterministic planner supplies native creation payloads and node layout. This
+profile does not update existing elements; verify rendering in the consuming graph editor.
 
 ## Source and checks
 
@@ -100,5 +100,5 @@ the digest and review named DTOs/schema narrowing together.
 Targeted tests use scripted HTTP and real stdio. They exercise schema/profile fences,
 receipt lookup after an uncertain write, stale backend rejection, native field bounds,
 repeated actor placements and result binding. Actual database atomicity/ACL evidence
-belongs to backend actor/edge/placement receipt functional tests (MR403/404/405). Neither
-those tests nor this profile's mocks are final Console/native-flowchart acceptance.
+requires live actor/edge/placement receipt checks. Scripted tests do not establish
+rendering or interaction behavior in a graph editor.

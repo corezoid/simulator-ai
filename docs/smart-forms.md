@@ -21,13 +21,13 @@ visibility. Environment credentials and actor data are omitted from returned pro
 | pushSmartForm files | application_files_create, application_files_update, application_files_operation_get | app_file/create, app_file/update, app_file/operation/get | No delete/rollback; no bulk arbitrary RPC |
 | Smart Form publish | application_release_create, application_release_operation_get | release/create, release/operation/get | Requires reviewed source AND target hashes |
 | Verify publication | application_release_get, application_route_key_get | release/get, route/key/get | Viewer interaction/inline reaction opening remain separate |
-| Smart Form generation guidance | simulator-ai-smart-forms portable skill | Tools above | Verified starter only; full current catalog and business connector still needed |
+| Smart Form generation guidance | simulator-ai-smart-forms portable skill | Tools above | This profile uses the tools above; Console catalog and Corezoid tools belong to separate profiles |
 
 ## Contract and recovery
 
 `contracts/smartforms-openrpc.json` pins thirteen public method descriptors; its SHA-256
 is in `smartforms-source.json`. `internal/publicapi/smartforms_types.go` contains deliberate
-named request/result projections; no generated file was hand-edited. `contracts/profile.go`
+named request/result projections. `contracts/profile.go`
 derives stricter tool input schemas from the public schemas: workspace and credentials are
 not arguments, keys are mandatory, file updates require source plus full environment CAS,
 and releases require both environment hashes. Direct Go callers get the same validation.
@@ -52,13 +52,13 @@ and malformed identities/content hashes are refused. Raw server error messages a
 
 Source snapshots are untrusted content. Inputs are bounded to 512 KiB, outputs/contracts to
 4 MiB; no redirects, arbitrary origin/workspace/RPC overrides or local file execution. These
-limits intentionally bound this development profile; larger apps need a separately designed
+limits intentionally bound this profile; larger apps need a separately designed
 paged/streamed sync contract. Creation defaults to CDU v2 and does not accept credentials. Its historical environment
 rows do not include rootFolderId; obtain roots from a snapshot or current environment list.
 
 After release, verify current `release/get` status/retention and `route/key/get` active id;
 receipt status is historical. A short URL is a locator, not a permission grant or proof of
-successful viewing. This slice does not render/submit a page, open a reaction, change legacy
+successful viewing. This profile does not render/submit a page, open a reaction, change legacy
 routing, execute business processes, or certify full legacy parity.
 
 ## Verification and acceptance limits
@@ -72,12 +72,6 @@ error reasons. The stand-in does not prove backend transactionality or viewer be
 
 Live backend receipt/CAS behavior is a separate acceptance gate. Do not describe a local
 scripted profile test as a live deployment or Console acceptance. No model budget is used.
-
-Independent review found and corrected three mismatches before acceptance: creation receipt
-environments do not contain enriched root folder ids; successful file writes must match the
-requested ids/count/parents; missing/null release retention is unknown, not false. Regression
-tests cover each. Both portable skill walkthroughs (lost release response and existing app
-update) were checked; neither permits rekeying unresolved work or skipping current-state checks.
 
 Repeated file ids in one update are refused before even fetching the contract. The public
 backend can process repeated items sequentially, but such a receipt is ambiguous for this

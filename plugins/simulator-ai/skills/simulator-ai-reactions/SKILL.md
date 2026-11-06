@@ -28,5 +28,6 @@ It does not add comments, mark reactions read, grant access or start a runtime.
 Parity fixture: `parity/getReactionsStats`. The legacy response's outer `data`
 wrapper is removed; per-type fields and absent/zero distinctions are retained.
 Current backend recipient and cache protections are required even if a historical
-legacy installation had a broader counter cache. Full reactions skill parity is
-still pending list/create/update/delete/read/pin and other legacy workflows.
+legacy installation had a broader counter cache. The `reactions-read` profile provides counts only. Console profiles separately expose
+reaction list/create/update/delete/mark-read tools; use them only when present and authorized.
+Pinned reactions are unsupported.

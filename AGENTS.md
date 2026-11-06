@@ -60,9 +60,9 @@ Graph reads also include six layer counters. Host-bound graph-read is a closed o
   target develop. Only a PR from this repository's develop branch may target main. Tags vX.Y.Z identify prod.
 - sim-deploy coordinates the weekly backend/plugin train. It verifies the exact candidate SHA,
   not a moving branch or an unrelated green run. Do not independently publish a stable plugin.
-- Version is minted once per release in internal/version/version.go and both plugin manifests.
+- Version is minted once per release in internal/version/version.go and all three host plugin manifests.
   Every normal PR updates CHANGELOG.md under Unreleased; no per-PR version bumps.
-- Binary, manifests and skills must come from the same commit. API origin, workspace and
+- Binary, manifests and skills (including the Kiro Power) must come from the same commit. API origin, workspace and
   credentials are runtime inputs; never bake dev/pre/prod endpoints or credentials into an artifact.
 - Green CI is not deployment or live ACL/revoke acceptance. See docs/release.md for the boundary.
 - Required merge check is CI / Gate: formatting, module consistency, source/generation checks,

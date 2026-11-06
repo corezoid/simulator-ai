@@ -32,7 +32,7 @@ jobs:
       - run: bin/simulator-ai --version
       - name: Verify installable package and notices
         run: |
-          scripts/package.sh linux/amd64
+          scripts/package.sh linux/amd64 windows/amd64
           (cd dist && shasum -a 256 -c checksums.txt)
           mkdir -p "$RUNNER_TEMP/plugin-install"
           tar -xzf dist/simulator-ai-linux-amd64.tar.gz -C "$RUNNER_TEMP/plugin-install"
@@ -45,6 +45,27 @@ jobs:
             coverage.out
             bin/simulator-ai
           retention-days: 14
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: windows-package-${{ github.sha }}
+          path: |
+            dist/simulator-ai-windows-amd64.zip
+            dist/checksums.txt
+          retention-days: 7
+  windows:
+    name: Windows package
+    needs: quality
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-package-${{ github.sha }}
+          path: dist
+      - name: Verify ZIP and native MCP protocol
+        shell: pwsh
+        run: ./scripts/check-windows.ps1
   race:
     name: Race
     runs-on: ubuntu-latest
@@ -78,7 +99,7 @@ jobs:
   gate:
     name: Gate
     if: always()
-    needs: [quality, race, security]
+    needs: [quality, race, security, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

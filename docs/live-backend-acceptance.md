@@ -1,37 +1,46 @@
-# R1.2b — real sim-api wire and authorization acceptance
+# Live backend authorization checks
 
-The local sim-api functional suite now exercises this executable with a real readonly
-API-user from non-production Single Account and real local test databases. Its test is
-`TestSimulatorAIReadProfile`, with optional subtest `MCP binary uses real API-user reads`
-(enabled by `SIMULATOR_AI_MCP_BINARY`). The pairing is recorded by exact commits in the PR/MR.
+A mock or generated schema cannot establish live authorization behavior. Validate the
+actual packaged MCP binary against the intended Simulator API using disposable API-user
+identities and known test objects. Record plugin/backend revisions and the environment in
+private operational evidence; do not commit keys or workspace-specific data here.
 
-The first live run found that this client sent numeric JSON-RPC IDs. sim-api documents and
-requires **string** IDs (`internal/server/rpc_handler.Request.ID`). Version `0.1.0-dev.3`
-emits a monotonic string ID and requires an exact string echo. Numeric, missing, null and
-mismatched response IDs fail. Scripted HTTP fixtures now model that actual server boundary;
-MCP's own stdio and Codex app-server IDs remain independent of the public HTTP transport.
+## Read and permission checks
 
-The backend also maps an explicit SA 401/403 on scope verification to code 1,
-`reason=notAuthorized`, instead of treating it as an internal error. This client preserves
-that bounded reason without exposing issuer messages. Transport, rate-limit and server
-failures are not relabeled credential errors.
+1. Start a persistent MCP process with the intended origin, workspace and `read` profile.
+   Initialize it, inspect `tools/list`, then call an allowed actor and form read.
+2. Confirm string JSON-RPC request IDs round-trip correctly through the public API.
+   Transport success must contain the expected ID and a valid result, not an error envelope.
+3. Try an object that is not shared with the test identity and an object in another workspace.
+   Both must be denied without leaking data or retrying under another identity.
+4. Grant read access to a disposable object, read it, revoke that object's access, then read
+   again through the same MCP process. Verify current denial, including any documented cache
+   window. Check that a read-only credential cannot perform writes.
+5. Verify public-audience enforcement in the backend's authorization tests. Do not add private
+   methods to this plugin just to probe them.
 
-Executed assertions cover actor/form/layer reads, no metadata leakage from a hidden layer
-actor, no extra tools, and all three reads failing after ACL revocation while the MCP process
-remains alive. Regrant restores all three reads. Backend-only assertions also cover readonly
-scope despite Modify ACL, wrong workspace, internal RPC refusal in direct/atomic/non-atomic
-calls, the per-scope cache TTL and immediate local token blocking over warmed caches.
+## Credential revocation is a separate check
 
-No paid model or Hermes runtime was called. The user-supplied Hermes dev origin belongs in
-the backend's A04 environment notes, not in this desktop MCP configuration.
+Object ACL revocation does not revoke an API-user key. Block the disposable API user through
+its issuer's supported API, read back the issuer's blocked state, and prove the old key is
+rejected after the documented cache window. A successful HTTP status from a block request
+is insufficient if the issuer still reports the identity active.
 
-This is not complete issuer-revoke acceptance: sim-api's current SA client has no verified
-API-user revoke/rotation operation, and available credentials could not read the referenced
-issuer source repository. Local token blocking and ACL revocation are separate mechanisms.
-The fixture blocks its test credential locally and deletes actor/form fixtures; it does not
-claim permanent cleanup or rotation at SA. Full R1 rollout still requires that issuer gate,
-hosted CI/release checks and any separately budgeted model-driven acceptance.
+Issuer-level revocation has not yet been established for the current integration. Treat it
+as an unresolved rollout gate; do not describe ACL tests, short-lived token expiry, local
+cache deletion or credential-file replacement as proof of permanent key revocation.
 
-The existing [client smoke](client-acceptance.md) remains the repeatable installed-client
-check. The new backend test is the complementary live wire/auth boundary, not a substitute
-for either host packaging checks or production rollout approval.
+## Writes, cleanup and rollback
+
+For write profiles, use disposable objects and test response loss, retained receipt lookup,
+stale CAS rejection and current permissions. Verify the intended effect through an authorized
+read, and distinguish historical receipts from current state. Follow each profile's guide;
+Console retries and strict graph-create/Smart Forms recovery have different contracts.
+
+Delete only fixtures created by the verification run. Confirm issuer-side cleanup separately
+from object cleanup. Keep the previous compatible binary/backend pair available for rollback,
+and verify all replicas use the intended candidate before enabling strict write profiles.
+
+The [client smoke](client-acceptance.md) covers installation and fixture protocol calls.
+Backend-only functional tests do not establish MCP installation, model execution or a deployed
+fleet's behavior. No model call is necessary for these direct protocol checks.
