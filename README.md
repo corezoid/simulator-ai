@@ -190,5 +190,5 @@ For bugs or feature requests, [open an issue](https://github.com/corezoid/simula
 with your plugin version, client and profile, plus a credential-free reproduction. Report
 security issues privately as described in [SECURITY.md](SECURITY.md).
 
-Maintained by [Simulator.Company](https://simulator.company/). A project-wide license has
-not yet been declared; third-party notices remain with their respective sources.
+Maintained by [Simulator.Company](https://simulator.company/). Licensed under [MIT](LICENSE).
+Dependencies retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).

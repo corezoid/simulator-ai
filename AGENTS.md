@@ -86,3 +86,8 @@ Graph reads also include six layer counters. Host-bound graph-read is a closed o
   and paid evals are not needed for normal development. Use the host agent plus these commands.
 - Before merge: independent code review with reasoning_effort=xhigh, fix confirmed findings,
   repeat on the final diff/SHA, and record tests/review/remaining gates in the PR.
+
+- Both permanent branches require PRs and strict Gate, including administrators. sim-deploy
+  promotes and updates version metadata through checked temporary release PRs; never bypass protection.
+- `make package` requires a clean commit and ships MIT/dependency notices with per-platform build
+  metadata. Use one local platform; prefer the manual Release workflow for cross-platform rehearsal.

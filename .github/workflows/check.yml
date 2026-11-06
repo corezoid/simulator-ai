@@ -30,6 +30,14 @@ jobs:
           version: v2.14.0
       - run: make test-cover build
       - run: bin/simulator-ai --version
+      - name: Verify installable package and notices
+        run: |
+          scripts/package.sh linux/amd64
+          (cd dist && shasum -a 256 -c checksums.txt)
+          mkdir -p "$RUNNER_TEMP/plugin-install"
+          tar -xzf dist/simulator-ai-linux-amd64.tar.gz -C "$RUNNER_TEMP/plugin-install"
+          test "$("$RUNNER_TEMP/plugin-install/bin/simulator-ai" --version)" = "$(bin/simulator-ai --version)"
+          test -s "$RUNNER_TEMP/plugin-install/licenses/pdf/LICENSE"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: verification-${{ github.sha }}

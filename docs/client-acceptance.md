@@ -73,9 +73,8 @@ object ACLs and this binary. It found and fixed the string JSON-RPC ID mismatch 
 - Claude model-driven tool execution, if required by the acceptance owner: approved budget.
 - Hosted CI is now configured in [check.yml](../.github/workflows/check.yml); the original
   workflow-scope blocker is resolved. Check the exact PR/commit run before promotion.
-- Public directory submission: Claude validator reports a missing license. The legacy repo
-  is MIT, but this new repository has no explicit license grant yet; obtain owner choice
-  before directory submission. Local installation succeeds. No license was invented here.
+- The repository now declares MIT, and release archives include third-party license notices.
+  Directory submission and its client-specific validation remain a separate publishing step.
 
 The local functional sim-api harness was inspected: it uses reusable test PostgreSQL/Redis/
 Scylla and external Single Account, including real API-user creation. This smoke deliberately

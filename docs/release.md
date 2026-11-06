@@ -10,18 +10,20 @@ The release tag is vX.Y.Z; no environment branches and no per-PR version bumps.
    self-contained generation, golangci-lint, tests/coverage, race, govulncheck and redacted
    Gitleaks history scanning. All jobs must succeed for the required Gate. Actions are SHA-pinned.
 2. sim-deploy prerelease resolves develop to a full SHA, verifies its CI, promotes that SHA
-   into main, and checks the resulting SHA. No production tag or public release is created.
+   through a temporary release PR containing the current main baseline. It verifies that PR's
+   CI and unchanged head/base, merges through branch protection, then checks the resulting SHA.
+   No production tag or public release is created.
 3. Pre must consume that exact commit for both binary and skills. Test backend compatibility
    with supported old desktop plugins, the candidate, and the previous backend for rollback.
 4. sim-deploy verifies the pre candidate before backend production rollout. After backend
-   success it refuses publication if the candidate moved, mints version/changelog metadata,
-   waits for that final commit's CI, and creates the tag. It does not merge a later develop tip.
+   success it refuses publication if the candidate moved, puts version/changelog metadata through
+   a checked release PR, waits for the merge commit's CI, and creates the tag. It does not merge a later develop tip.
 5. Release workflow rechecks the tag, main ancestry and version equality, then builds Linux/macOS
    amd64/arm64 archives containing bin/simulator-ai plus manifests/skills, SHA256 checksums and
    Go build dependency information. It stages a draft; sim-deploy publishes only after success.
 
-Production is not part of the initial CI/dev/pre adoption. No license is invented: owner choice
-and the documented live issuer-revoke acceptance remain prerequisites for broad public rollout.
+The project is MIT-licensed. Archives include the project license, dependency notices and
+per-platform BUILD_INFO.txt. Issuer-revoke and environment acceptance remain separate live gates.
 Build-info is a dependency inventory, not a signed SBOM/provenance attestation. Add those only
 when publication requirements need them, rather than claiming they exist in this first slice.
 
@@ -70,3 +72,18 @@ resuming; never overwrite public assets to disguise a failed release.
 Every change ends with independent xhigh review, fixes, then review of the exact final diff/SHA.
 Record local commands, hosted pipeline links, source revisions, and any remaining live gates in
 its PR. Do not run the broad sim-deploy CLI as a test: it can notify people and deploy other repos.
+
+## Archive rehearsal and protected branches
+
+`make package` creates all four release archives from a clean committed checkout; use
+`make package PLATFORMS=darwin/arm64` for one local platform. CI packages Linux amd64,
+verifies its checksum, extracts it and compares its version with the built executable.
+The manual `Release` workflow builds all platforms on a commit contained in main without
+creating a tag or a GitHub release. Download its artifact, run `shasum -a 256 -c checksums.txt`,
+extract the matching platform and run `bin/simulator-ai --version` before client acceptance.
+Restore the previous archive directory to roll back binary, manifests and skills together.
+
+Both permanent branches require PRs and strict Gate checks, including administrators.
+Main receives reviewed promotions/hotfixes; sim-deploy uses temporary release branches and
+ordinary PR merges for both pre promotion and version metadata. It deletes successful release
+branches and leaves failed ones for inspection. Do not disable protection for weekly releases.
