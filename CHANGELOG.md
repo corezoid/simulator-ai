@@ -2,8 +2,8 @@
 
 ## [0.1.0]
 
-### Fixed
-- require develop as the only source for main promotions
+### Added
+- support Kiro and Windows with current public documentation
 
 ## [Unreleased]
 
