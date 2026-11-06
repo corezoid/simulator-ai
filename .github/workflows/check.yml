@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
+    outputs:
+      results:
+        description: Required CI job results for this workflow run
+        value: ${{ jobs.gate.outputs.results }}
   schedule:
     - cron: '23 5 * * *'
 permissions:
@@ -100,10 +104,15 @@ jobs:
     name: Gate
     if: always()
     needs: [quality, race, security, windows]
+    outputs:
+      results: ${{ steps.verdict.outputs.results }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Require every check to pass
+        id: verdict
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: echo "$RESULTS" | jq -e 'all(.[]; .result == "success")'
+        run: |
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")'
+          echo "results=$(echo "$RESULTS" | jq -c 'map_values(.result)')" >> "$GITHUB_OUTPUT"

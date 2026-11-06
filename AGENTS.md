@@ -89,3 +89,12 @@ Main accepts only same-repository develop PRs; hotfixes and release metadata go 
 
 Run `make docs` after tool registration/annotation changes. `make gen-check` includes the
 generated catalog drift check. See CONTRIBUTING.md for documentation ownership.
+
+## Automated release evidence
+
+QUALITY.md defines repository quality criteria. The Release workflow records real reusable-CI
+job results and verifies every archive checksum before emitting quality-report.json/md.
+It does not run an AI reviewer, require review approval or assign a numerical score.
+Never claim a review from a green CI job or a filled PR template. The internal deployment
+coordinator remains automatic when required checks pass. This release policy does not
+replace any explicitly requested development review; follow the owner's current scope.
