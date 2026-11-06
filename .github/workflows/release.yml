@@ -41,8 +41,8 @@ jobs:
               stage=$(mktemp -d)
               mkdir -p "$stage/bin"
               CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -p=1 -trimpath -o "$stage/bin/simulator-ai" ./cmd/simulator-ai
-              cp -R plugins .agents .claude-plugin "$stage/"
-              cp README.md CHANGELOG.md "$stage/"
+              cp -R plugins .agents .claude-plugin docs "$stage/"
+              cp README.md CHANGELOG.md SECURITY.md AGENTS.md CLAUDE.md "$stage/"
               tar -czf "dist/simulator-ai-${os}-${arch}.tar.gz" -C "$stage" .
               rm -rf "$stage"
             done

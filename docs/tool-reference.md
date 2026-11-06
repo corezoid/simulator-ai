@@ -180,15 +180,14 @@ or a new one from the hole's endpoints and type (`edge/create` + `edge/hole/merg
 `SIMULATOR_AI_PROFILE=console` is what Hermes runs per AI Console request under the initiator's own
 `SIMULATOR_AI_AUTHORIZATION`. It covers two Console answers: a flowchart drawn on a layer and a released
 Smart Form opened inline in the reply. Writes are plain public calls: no receipt keys and no contract
-preflight, because sim-api deduplicates Console retries. Each tool returns only ids and what the next
-step needs. The run's prompt carries sim-api's "Current context" (the layer, actor and Smart Form the user has
+preflight, because sim-api deduplicates Console retries. Results follow each tool's declared projection; actor reads can include the full data document. The run's prompt carries sim-api's "Current context" (the layer, actor and Smart Form the user has
 open): `layer_create` and `layer_placements_create` tell the agent to build on that layer unless the user names
 another, never on a new one.
 
 | MCP tool | Public RPC | Result |
 | --- | --- | --- |
-| `actor_get` | `actor/get` | id, title, description, formId, status, ref |
-| `actor_create` / `actor_update` | `actor/create` / `actor/update` | same actor subset |
+| `actor_get` | `actor/get` | Backend actor shape, including `data`; `fields` narrows the result and `with` requests related data. |
+| `actor_create` / `actor_update` | `actor/create` / `actor/update` | Defaults to id, title, description, formId, status, ref and color; caller-provided `fields` changes that projection. |
 | `actors_create` / `edges_create` | one atomic `batch` of `actor/create` / `edge/create` (edge types by name) | actors / edges in input order; one failed item fails the call with its index and creates nothing |
 | `flowchart_blocks_list` | `form/flowchart-block/search` | formId, title, blockId, `hasMore`; with `blockIds` also ready `data` and `layerSettings` |
 | `flowchart_layout` | `form/flowchart-block/search` (read-only) | per node formId, data, grid position and layerSettings; `returnEdges` |
@@ -249,3 +248,14 @@ page configs (`application/struct` with sources) and refuses to release one stil
 agent ends its final answer with that line, and sim-api reads it from the Markdown (the Hermes run stream carries
 no tool results) to put `appId` into the reply reaction with `appSettings.autorun`.
 
+### CDU reference
+
+Use `smart_form_reference_grep` to find relevant reference sections, then
+`smart_form_reference_read` to read them. `smart_form_components` describes component
+schemas and examples for the connected backend. The bundled protocol and example documents
+cover page structure, expressions, forms, layouts and routes; they record their source
+revisions so a maintainer can reproduce them.
+
+Start with the [CDU v2 example](../plugins/simulator-ai/skills/simulator-ai-smart-forms/references/cdu-v2.md),
+then check the actual component and page contracts before saving a change. A bundled example
+is guidance, not proof that every backend version supports the same components.
