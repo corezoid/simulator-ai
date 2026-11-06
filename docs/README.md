@@ -11,6 +11,7 @@
 ## Integrate and contribute
 
 - [Architecture](architecture.md): transport, credentials, limits and profile boundaries.
+- [Repository quality](../QUALITY.md): required criteria and release evidence.
 - [Verification](verification.md): local checks and what they establish.
 - [Client checks](client-acceptance.md) and [live backend checks](live-backend-acceptance.md): distinct validation boundaries.
 - [Release procedures](release.md): versions, protected branches, artifacts and rollback.
