@@ -34,7 +34,7 @@ The JSON evidence records client versions and these separate checks:
 | --- | --- |
 | Codex plugin install | Real marketplace install into its disposable cache |
 | Codex skills/list | The installed, enabled `simulator-ai:simulator-ai-read` skill loads |
-| Codex MCP inventory | The installed server exposes exactly actor_get/form_get/layer_actors_list |
+| Codex MCP inventory | The installed server exposes the exact selected-profile catalog from this checkout |
 | Codex MCP direct call | app-server mcpServer/tool/call returns one projected fixture actor |
 | Claude plugin install/details | Real installation and loaded skill inventory |
 | Claude mcp list | The installed plugin's server completes the client connection check |

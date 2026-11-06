@@ -1,7 +1,9 @@
 # Native graph metadata profile
 
 Set `SIMULATOR_AI_PROFILE=graph-read` alongside the explicit origin, workspace and API-user
-key documented in the README. Workspace mode has the three default reads plus these tools and [exact placement readback](graph-elements.md):
+key documented in the README. Workspace mode includes the read-only actor/form catalog,
+graph parity reads, the native metadata tools below and [exact placement readback](graph-elements.md).
+See the [complete mapping](tool-reference.md); host-bound mode is described separately below.
 
 | Tool | Public RPC | Scope | Input and output |
 | --- | --- | --- | --- |
@@ -15,7 +17,7 @@ internal RPC names and arbitrary method forwarding are rejected. Workspace acces
 scopes remain backend-enforced; the catalog uses the backend's workspace system-template
 visibility, not a new per-template permission. `graph-read` accepts no delegated token.
 `read`, `smart-forms` and `delegated-read` do not gain these tools implicitly.
-The separate [graph-create profile](graph-create.md) includes these eight reads plus
+The separate [graph-create profile](graph-create.md) includes the original metadata reads plus
 explicit create/recovery tools.
 
 Browse defaults to 48, maximum 100, offset >= 0. Exact `blockIds` has 1–100 entries of 1–128 characters each;
@@ -52,11 +54,9 @@ write permission, or proof that the current user may create actors under that te
 {"name":"graph_edge_types_list","arguments":{"isSystem":false,"filter":"id,name,isTree","limit":50,"offset":0}}
 ```
 
-This supplies native metadata needed by the legacy `getForms`, `createActor` and
-`manageLayerActors` workflows. It does not close their capability parity: graph writes,
-CAS/recovery orchestration, layout, native edit/reload and Console execution still require
-implementation and acceptance. The standalone MCP uses its host agent and never launches
-Hermes. No model turn, billing delivery or private Console routing is enabled here.
+This profile only reads graph data. For creation and recovery use [graph-create](graph-create.md);
+for broader graph editing see the Console profiles in the [tool reference](tool-reference.md).
+These profiles use different write and recovery semantics.
 
 ## Contract source and checks
 
@@ -74,7 +74,6 @@ Record the printed revision/digest in `graph-source.json`; review schemas, named
 examples together. Do not use the full/internal contract or a lagging deployed snapshot.
 `make test vet` verifies the pin, schema bounds, result projections, malformed responses,
 profile separation and real stdio calls against a scripted loopback public API. These tests
-are not live workspace ACL/revoke or Graph Editor acceptance evidence. Hosted CI remains
-pending as documented in `verification.md`.
+are not live workspace ACL/revoke or Graph Editor acceptance evidence. Hosted CI runs the scripted checks; it does not replace live acceptance.
 
-`graph_layer_stats_get` adds six recipient-eligible [layer counters](layer-stats.md). Workspace mode has eight tools; host-bound graph-read exposes only this statistics tool with `{}`.
+`graph_layer_stats_get` adds six recipient-eligible [layer counters](layer-stats.md). Host-bound graph-read exposes only this statistics tool with `{}`.
