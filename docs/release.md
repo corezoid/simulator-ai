@@ -76,3 +76,15 @@ Main accepts only same-repository develop PRs; hotfixes and release metadata go 
 Windows amd64 ships as ZIP with bin/simulator-ai.exe. Required CI downloads that same ZIP
 and verifies its checksum, extraction, version and MCP initialize/tools-list on a Windows runner.
 Windows client-install acceptance is separate from this executable/protocol check.
+
+## Quality evidence
+
+[QUALITY.md](../QUALITY.md) defines the repository's required checks. After its reusable CI
+and packaging succeed, Release verifies all five archives against checksums.txt and writes
+quality-report.json and quality-report.md into dist. Reports are uploaded with the archives,
+attached to tagged release drafts and shown in the workflow summary. Missing/failed CI
+results, missing archives, duplicate checksum entries or mismatched hashes stop publication.
+
+The report identifies the exact commit, version and workflow run. Review is recorded as
+not performed by this workflow; no numeric rating or live-deployment claim is generated.
+No new review approval, model credential or paid AI job is required by the release flow.

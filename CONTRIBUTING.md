@@ -1,5 +1,7 @@
 # Contributing
 
+Read [QUALITY.md](QUALITY.md) for release criteria and the limits of automated evidence.
+
 Open an issue with a credential-free reproduction before proposing a broad change.
 For a focused fix, use a feature or bugfix branch and open a pull request into `develop`.
 `main` accepts promotion PRs from this repository's `develop` only.

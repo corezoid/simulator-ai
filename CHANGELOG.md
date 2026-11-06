@@ -8,6 +8,9 @@
 
 ## [Unreleased]
 
+- Define repository quality criteria and attach verified CI/archive evidence to every release.
+- Add a PR template; automated AI review and mandatory review approval remain disabled.
+
 - Generate tool/profile availability from MCP registrations and check documentation drift in CI.
 - Organize public documentation by workflow and keep complete inventories out of agent instructions.
 

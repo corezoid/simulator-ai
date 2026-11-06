@@ -38,11 +38,23 @@ jobs:
           fi
       - name: Package the binary and plugin from the same commit
         run: scripts/package.sh
+      - name: Validate release evidence and write quality report
+        env:
+          QUALITY_RESULTS: ${{ needs.check.outputs.results }}
+        run: |
+          go run -p=1 ./cmd/quality-report
+          cat dist/quality-report.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: release-${{ github.sha }}
           path: dist/
           retention-days: 30
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: quality-report-${{ github.sha }}
+          path: dist/quality-report.*
+          if-no-files-found: error
+          retention-days: 90
       - name: Stage release assets for sim-deploy publication
         if: github.event_name == 'push'
         env:

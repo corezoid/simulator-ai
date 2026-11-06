@@ -200,6 +200,7 @@ Browse the [documentation index](docs/README.md) for user and contributor guides
 | [Smart Forms](docs/smart-forms.md) | Application and file workflows, release checks and recovery. |
 | [Reaction statistics](docs/reactions-read.md) | Reaction counts and access behavior. |
 | [Architecture](docs/architecture.md) | Transport, configuration and API boundaries. |
+| [Repository quality](QUALITY.md) | Required checks, release evidence and review policy. |
 | [Security policy](SECURITY.md) | Credentials, vulnerability reporting and security checks. |
 | [Changelog](CHANGELOG.md) | Changes to the plugin. |
 
