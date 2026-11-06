@@ -1,6 +1,6 @@
 {
   "name": "simulator-ai",
-  "version": "0.1.0-dev.4",
+  "version": "0.1.0",
   "description": "MCP tools and skills for Simulator.Company: workspace reads, graphs and Smart Forms, with opt-in write profiles.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"

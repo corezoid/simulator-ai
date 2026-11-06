@@ -9,15 +9,15 @@ The release tag is vX.Y.Z; no environment branches and no per-PR version bumps.
 1. CI runs on PRs and develop/main pushes: formatting, go mod tidy/verify, source limits,
    self-contained generation, golangci-lint, tests/coverage, race, govulncheck and redacted
    Gitleaks history scanning. All jobs must succeed for the required Gate. Actions are SHA-pinned.
-2. sim-deploy prerelease resolves develop to a full SHA, verifies its CI, promotes that SHA
-   through a temporary release PR containing the current main baseline. It verifies that PR's
-   CI and unchanged head/base, merges through branch protection, then checks the resulting SHA.
-   No production tag or public release is created.
-3. Pre must consume that exact commit for both binary and skills. Test backend compatibility
+2. sim-deploy prerelease verifies develop and main by exact SHA. A temporary release PR
+   into develop synchronizes the main baseline and prepares version/changelog metadata.
+   After its checks and merge, only a develop → main PR can promote the candidate.
+   The final main SHA is checked again. No production tag or public release is created.
+3. Pre consumes that exact commit for both binary and skills. Test backend compatibility
    with supported old desktop plugins, the candidate, and the previous backend for rollback.
-4. sim-deploy verifies the pre candidate before backend production rollout. After backend
-   success it refuses publication if the candidate moved, puts version/changelog metadata through
-   a checked release PR, waits for the merge commit's CI, and creates the tag. It does not merge a later develop tip.
+4. Production verifies the pre candidate before backend rollout. Afterwards sim-deploy refuses
+   publication if main moved, verifies its already-prepared version, tags it and publishes the
+   checked draft. It never commits metadata to main or incorporates later develop changes.
 5. Release workflow rechecks the tag, main ancestry and version equality, then builds Linux/macOS
    amd64/arm64 archives containing bin/simulator-ai plus manifests/skills, SHA256 checksums and
    Go build dependency information. It stages a draft; sim-deploy publishes only after success.
@@ -84,6 +84,8 @@ extract the matching platform and run `bin/simulator-ai --version` before client
 Restore the previous archive directory to roll back binary, manifests and skills together.
 
 Both permanent branches require PRs and strict Gate checks, including administrators.
-Main receives reviewed promotions/hotfixes; sim-deploy uses temporary release branches and
-ordinary PR merges for both pre promotion and version metadata. It deletes successful release
+Main receives only develop PRs; sim-deploy prepares metadata through temporary PRs into develop, then promotes develop.
+The required Develop only check runs trusted default-branch code with no PR checkout. It deletes successful release
 branches and leaves failed ones for inspection. Do not disable protection for weekly releases.
+
+Main accepts only same-repository develop PRs; hotfixes and release metadata go through develop.
