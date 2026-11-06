@@ -1,7 +1,8 @@
 # Reaction statistics
 
-`SIMULATOR_AI_PROFILE=reactions-read` exposes the three default metadata tools plus
-`reaction_stats_get`. It accepts only the configured API-user key; no delegated
+`SIMULATOR_AI_PROFILE=reactions-read` exposes `actor_get`, `form_get`,
+`layer_actors_list` and `reaction_stats_get`. It uses the configured API-user key or supported
+`SIMULATOR_AI_AUTHORIZATION` credential; no delegated
 Console token, hidden runtime, write tool, billing or private/legacy fallback.
 The portable `simulator-ai-reactions` skill describes this bounded workflow.
 
@@ -40,5 +41,5 @@ The source contract is pinned in `contracts/reactions-openrpc.json`. Refresh wit
 OpenRPC and record its backend revision/digest. Contract pin/input/output tests,
 malformed-result tests and real stdio catalog tests accompany this tool. Backend
 functional acceptance must exercise the actual binary and current ACL/recipient/
-Execute/cache/revoke behavior before the named row is accepted. Schema presence
-alone is not legacy parity, and this skill does not close the full reactions skill.
+Execute/cache/revoke behavior. Schema presence alone does not establish those guarantees.
+Reaction list and mutation tools belong to the separate Console catalogs.

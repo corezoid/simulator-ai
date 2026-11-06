@@ -18,14 +18,13 @@ The release tag is vX.Y.Z; no environment branches and no per-PR version bumps.
 4. Production verifies the pre candidate before backend rollout. Afterwards sim-deploy refuses
    publication if main moved, verifies its already-prepared version, tags it and publishes the
    checked draft. It never commits metadata to main or incorporates later develop changes.
-5. Release workflow rechecks the tag, main ancestry and version equality, then builds Linux/macOS
-   amd64/arm64 archives containing bin/simulator-ai plus manifests/skills, SHA256 checksums and
+5. Release workflow rechecks the tag, main ancestry and version equality, then builds Linux/macOS amd64/arm64 archives and a Windows amd64 ZIP containing the platform executable plus manifests/skills, SHA256 checksums and
    Go build dependency information. It stages a draft; sim-deploy publishes only after success.
 
 The project is MIT-licensed. Archives include the project license, dependency notices and
 per-platform BUILD_INFO.txt. Issuer-revoke and environment acceptance remain separate live gates.
 Build-info is a dependency inventory, not a signed SBOM/provenance attestation. Add those only
-when publication requirements need them, rather than claiming they exist in this first slice.
+when publication requirements need them.
 
 ## Deployment boundary
 
@@ -67,25 +66,23 @@ A failed or missing workflow stops promotion. Fix code/configuration rather than
 Release draft creation fails closed on an existing draft: inspect its exact SHA/checksums before
 resuming; never overwrite public assets to disguise a failed release.
 
-## Review evidence
-
-Every change ends with independent xhigh review, fixes, then review of the exact final diff/SHA.
-Record local commands, hosted pipeline links, source revisions, and any remaining live gates in
-its PR. Do not run the broad sim-deploy CLI as a test: it can notify people and deploy other repos.
-
 ## Archive rehearsal and protected branches
 
-`make package` creates all four release archives from a clean committed checkout; use
-`make package PLATFORMS=darwin/arm64` for one local platform. CI packages Linux amd64,
-verifies its checksum, extracts it and compares its version with the built executable.
-The manual `Release` workflow builds all platforms on a commit contained in main without
+`make package` creates all five release archives from a clean committed checkout; use
+`make package PLATFORMS=darwin/arm64` for one local platform. CI packages Linux and Windows amd64,
+verifies their checksums, extracts it and compares its version with the built executable.
+The manual `Release` workflow builds all five platforms on a commit contained in main without
 creating a tag or a GitHub release. Download its artifact, run `shasum -a 256 -c checksums.txt`,
 extract the matching platform and run `bin/simulator-ai --version` before client acceptance.
 Restore the previous archive directory to roll back binary, manifests and skills together.
 
 Both permanent branches require PRs and strict Gate checks, including administrators.
 Main receives only develop PRs; sim-deploy prepares metadata through temporary PRs into develop, then promotes develop.
-The required Develop only check runs trusted default-branch code with no PR checkout. It deletes successful release
+The required Develop only check runs trusted default-branch code with no PR checkout. sim-deploy deletes successful release
 branches and leaves failed ones for inspection. Do not disable protection for weekly releases.
 
 Main accepts only same-repository develop PRs; hotfixes and release metadata go through develop.
+
+Windows amd64 ships as ZIP with bin/simulator-ai.exe. Required CI downloads that same ZIP
+and verifies its checksum, extraction, version and MCP initialize/tools-list on a Windows runner.
+Windows client-install acceptance is separate from this executable/protocol check.

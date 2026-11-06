@@ -30,13 +30,8 @@ read failure may follow committed repair. No realtime frame is published, and
 retries recheck authority without duplicating a default. The MCP client itself
 does not retry or cache these reads.
 
-The inspected legacy handler ignores its advertised isSystem parameter and its
-SQL omits the isSystem result field. Public true/false filtering and the flag are
-intentional improvements, not claimed historical behavior. Legacy default repair,
-CSV selection and nullable creators are retained. The fixture under
-`internal/publicapi/testdata/parity/getEdgeTypes.json` records these distinctions
-and normalizes only the legacy outer data envelope to list for comparable cases.
-It is a source-derived oracle, not a live legacy-server comparison.
+Public true/false filtering and the `isSystem` result flag are supported explicitly.
+The legacy-compatible projection preserves CSV selection and nullable creators.
 
 ```json
 {"name":"graph_edge_types_list","arguments":{"isSystem":false,"filter":"id,name,isTree","limit":50,"offset":0}}
@@ -44,6 +39,5 @@ It is a source-derived oracle, not a live legacy-server comparison.
 
 Use actual IDs and tree constraints when planning graph links. Hierarchy is a
 special graph relation; select a suitable non-tree connector for return loops.
-Counts/read metadata never grant write access. Named parity still requires public
-API-user scope/workspace/revoke evidence and installed-client checks; full graph
-workflow, issuer-side revoke and model-driven execution are independent gates.
+Counts/read metadata never grant write access. See [live authorization checks](live-backend-acceptance.md)
+for API-user scope, workspace and revocation verification.

@@ -90,14 +90,13 @@ profile exposes a focused subset for interactive tasks (see "AI Console profile"
 | `meet_transcription_list` [getTranscription] (the live transcript; empty before and after a call) | `meet/transcription/list` | ✓ | | |
 | `simulation_snapshot_get` [simulationSnapshot] · `simulation_check` [simulationCheck] · `simulation_run` [simulationRun] (the engine runs in the plugin and writes nothing) | reads `graph/layer/actors/list` · `graph/layer/edges/list` · `edge_type/list` · `account_actor/list` (`form/get` names a graph's bare form ids) | ✓ | | |
 
-These tools need sim-api `feature/simulator-ai` at a547f397 or later (`cdu/catalog/get` !463,
-`actor/corezoid/process/list` !465, `form/tree/get`, `edge/by-node/get`, the Smart Form history, trash, page and
-Corezoid methods, the task methods !494, guest links !495, the transcript !496 and `graph/viewport/command` for `layer_viewport`); on an older backend they fail with reason `methodNotFound`. The rollback, restore, page submit, graph
+The connected backend must expose the public methods listed above. Missing methods fail
+with `methodNotFound`; check the instance’s public API reference before enabling a workflow. The rollback, restore, page submit, graph
 import, guest link create/revoke and Corezoid bind/create tools are hinted destructive (a new guest link opens view to
 anyone with its URL and stops the one already handed out); page render is not read-only either (it runs the page's `/get`).
 
-An AI Console run's token reaches `rest/upload` (and no other REST route) through sim-api !481
-(`AuthReqAllowingAgentRun`); an older stand refuses it, and `attachment_upload` returns that refusal. On a stand
+An AI Console run's token requires backend support for run-scoped authorization on
+`rest/upload`; unsupported instances refuse it, and `attachment_upload` returns that refusal. On a stand
 serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
 retried for about 3 seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
 `simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks`, `simulator-ai-finance`, `simulator-ai-skills`,
@@ -131,8 +130,8 @@ read included, and two at once per process (`SIMULATOR_AI_MAX_CONCURRENT_SIMULAT
 Smart Form is bound afterwards with `corezoid_project_bind`. Legacy `uploadGraphFile` also fetched a `fileUrl`; here the
 archive comes as base64 only, and the plugin fetches no URL.
 
-Not covered yet, and why: pullGraphFile / pushGraphFile, a local file ↔ layer sync engine on public methods,
-too large for this slice; getChildAccounts, since account trees were removed from the platform (walk the
+Unsupported capabilities: pullGraphFile / pushGraphFile (local file ↔ layer synchronization
+is not provided); getChildAccounts, since account trees were removed from the platform (walk the
 children with `graph_list` and read their `accounts_list`). Also unavailable: pinned reactions, uploadBase64 and data-field actors
 by form.
 

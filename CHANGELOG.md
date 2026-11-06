@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+- Add a Kiro Power with shared skills and read-only MCP configuration.
+- Refresh public documentation and remove obsolete development-stage notes.
+
+- Add Windows x64 ZIP packaging, PowerShell setup and native Windows MCP verification.
+
 - Enforce develop as the only PR source for main; prepare release metadata before pre promotion.
 
 - Add MIT licensing, packaged dependency notices and checksum/install verification.
