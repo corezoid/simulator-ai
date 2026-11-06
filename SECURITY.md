@@ -1,9 +1,9 @@
 # Security policy
 
-Report suspected vulnerabilities privately using this repository's GitHub Security advisory
-reporting when enabled, or contact the repository owners privately. Do not disclose credentials
-or an unpatched exploit in a public issue. The owner must configure the preferred reporting route
-before broad public distribution.
+Report suspected vulnerabilities privately through [GitHub's vulnerability reporting form](https://github.com/corezoid/simulator-ai/security/advisories/new).
+Do not disclose credentials or an unpatched exploit in a public issue. Include the affected
+version, profile and a credential-free reproduction. Maintainers triage reports privately
+and coordinate fixes before public disclosure.
 
 CI blocks on reachable known Go vulnerabilities and detected secrets. Module-only findings are
 triaged separately; record reachability, owner and remediation rather than treating them as safe
