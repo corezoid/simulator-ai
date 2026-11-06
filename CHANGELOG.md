@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Enforce develop as the only PR source for main; prepare release metadata before pre promotion.
+
 - Add MIT licensing, packaged dependency notices and checksum/install verification.
 - Support release archive rehearsals without publishing and protected-PR weekly promotions.
 
