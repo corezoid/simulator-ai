@@ -3,8 +3,8 @@
 ## [0.1.0]
 
 ### Changed
-- derive tool availability from MCP and simplify public guides
-- remove trailing whitespace in Console guide
+- record verified release quality evidence without review gates
+- use a repository link in copied PR descriptions
 
 ## [Unreleased]
 
