@@ -8,6 +8,9 @@
 
 ## [Unreleased]
 
+- Add `layer_stats_get`, `layer_node_expand`, `layer_settings_update` and `account_pair_create` to the plain
+  `console` catalog: AI Console runs on the baseline (router fallback) asked for them and missed them.
+
 - Define repository quality criteria and attach verified CI/archive evidence to every release.
 - Add a PR template; automated AI review and mandatory review approval remain disabled.
 
