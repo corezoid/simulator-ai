@@ -31,11 +31,6 @@ func gridLine(v float64) float64 {
 	return math.Floor((v-gridPhase)/gridCell+0.5)*gridCell + gridPhase
 }
 
-// gridLineAfter is the first grid line at or after v.
-func gridLineAfter(v float64) float64 {
-	return math.Ceil((v-gridPhase)/gridCell)*gridCell + gridPhase
-}
-
 // GridCenter moves a w×h box centred at p so its top-left corner is on the nearest grid line.
 func GridCenter(p publicapi.GraphPoint, w, h float64) publicapi.GraphPoint {
 	return publicapi.GraphPoint{X: gridLine(p.X-w/2) + w/2, Y: gridLine(p.Y-h/2) + h/2}
@@ -122,58 +117,4 @@ func darken(color string, amount float64) string {
 	keep := 1 - math.Min(1, amount)
 	ch := func(shift uint) int { return int(math.Round(float64((v>>shift)&0xff) * keep)) }
 	return fmt.Sprintf("#%02x%02x%02x", ch(16), ch(8), ch(0))
-}
-
-// LayoutNode is one block of a console flowchart layout; Width/Height come from its catalog kind.
-type LayoutNode struct {
-	Key    string
-	Width  float64
-	Height float64
-}
-
-// GridLayout ranks nodes by longest path (return links excluded, as in Build) and lays the ranks
-// top to bottom, each rank centred on x = 0, with layoutGap between blocks and ranks. Every block's
-// corner is on a grid line, so placements keep exactly these centres. Same input, same layout.
-func GridLayout(nodes []LayoutNode, edges []Edge) ([]publicapi.GraphPoint, []string) {
-	keys := make([]string, len(nodes))
-	for i, n := range nodes {
-		keys[i] = n.Key
-	}
-	rank, back := ranks(keys, edges)
-	var returns []string
-	for i, e := range edges {
-		if back[i] {
-			returns = append(returns, e.Key)
-		}
-	}
-	rows := 0
-	for _, r := range rank {
-		rows = max(rows, r+1)
-	}
-	heights, widths := make([]float64, rows), make([]float64, rows)
-	for i, n := range nodes {
-		heights[rank[i]] = max(heights[rank[i]], n.Height)
-		if widths[rank[i]] > 0 {
-			widths[rank[i]] += layoutGap
-		}
-		widths[rank[i]] += n.Width
-	}
-	// Every corner is a grid line even for block sizes that are not whole cells: advances round up
-	// to the next line, so placements keep exactly these centres.
-	out := make([]publicapi.GraphPoint, len(nodes))
-	top := gridPhase
-	for r := range rows {
-		x := gridLine(-widths[r] / 2)
-		for i, n := range nodes {
-			if rank[i] != r {
-				continue
-			}
-			// Blocks of one rank share a centre line when the height difference allows it.
-			y := top + math.Floor((heights[r]-n.Height)/2/gridCell)*gridCell
-			out[i] = publicapi.GraphPoint{X: x + n.Width/2, Y: y + n.Height/2}
-			x = gridLineAfter(x + n.Width + layoutGap)
-		}
-		top = gridLineAfter(top + heights[r] + layoutGap)
-	}
-	return out, returns
 }

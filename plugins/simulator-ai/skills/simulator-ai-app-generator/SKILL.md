@@ -86,8 +86,8 @@ the user's yes.
 3. Fix in the owning layer (page file, or `corezoid-edit` for the process), re-run, at most
    three passes per defect; then report what still fails and why.
 4. Theme (`simulator-ai-styles`), then `smart_form_release` after the user confirms.
-5. End-to-end (`console-full`): `smart_form_page_render {ref, envTitle: "develop", page}` for
-   every page; it runs each page's `/get`. A submit runs the bound `/send` process and whatever
+5. End-to-end: `smart_form_page_render {ref, envTitle: "develop", page}` for
+   every page; it runs each page's `/get` and answers a summary or the error. (`console-full`) A submit runs the bound `/send` process and whatever
    it writes, so show the user the test values per Form and get a yes before
    `smart_form_page_submit` with them. Then the user walks every page and outcome, phone width
    too. Say which pages nobody checked.

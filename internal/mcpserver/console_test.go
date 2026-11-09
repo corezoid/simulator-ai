@@ -31,6 +31,7 @@ var consoleReplies = map[string]string{
 	"application/create":                  `{"application":{"id":"app1","ref":"leave_form"},"envs":[{"id":1,"actorId":"app1","title":"develop"},{"id":2,"actorId":"app1","title":"production","readonly":true}]}`,
 	"application/env/list":                `{"canModify":true,"envs":[{"id":1,"actorId":"app1","title":"develop","rootFolderId":100},{"id":2,"actorId":"app1","title":"production","readonly":true}]}`,
 	"application/struct":                  `{"tree":{"id":100,"objType":"folder","title":"root","children":[{"id":101,"objType":"folder","title":"pages","children":[{"id":102,"objType":"folder","title":"index","children":[{"id":103,"objType":"file","title":"config","type":"application/json","sourceHash":"h"}]}]}]}}`,
+	"app_file/get":                        `{"id":103,"folderId":102,"objType":"file","title":"config","type":"application/json","source":"{\"schemaVersion\":\"2.0\",\"id\":\"index\",\"tree\":{\"id\":\"root\",\"type\":\"Stack\"}}","sourceHash":"h"}`,
 	"app_file/update":                     `{"files":[{"id":103,"folderId":102,"objType":"file","title":"config","type":"application/json","source":"{}","sourceHash":"h2"}]}`,
 	"app_file/create":                     `{"files":[{"id":104,"folderId":102,"objType":"file","title":"locale","type":"application/json","source":"{}","sourceHash":"h3"}]}`,
 	"release/create":                      `{"id":9,"actorId":"app1","envId":2,"sourceEnvId":1,"releaseNumber":1,"status":"active"}`,
@@ -57,6 +58,11 @@ func consoleServer(t *testing.T, overrides map[string]string) (func(body string)
 			t.Errorf("%s sent without the host credential or workspace", q.Method)
 		}
 		*calls = append(*calls, consoleCall{q.Method, q.Params})
+		// A layer's node placements are read until an empty page: the canned page is the only one.
+		if offset, _ := q.Params["offset"].(float64); q.Method == "graph/layer/actors/list" && offset > 0 {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"list":[]}}`, q.ID)
+			return
+		}
 		if member, ok := overrides[q.Method]; ok {
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,%s}`, q.ID, member)
 			return
@@ -123,7 +129,7 @@ func TestConsoleCatalog(t *testing.T) {
 		"counter_by_period_get,counter_get,counter_increment,counter_set,currencies_list,currency_create,currency_get,currency_update,edge_create,edge_delete," +
 		"edge_endpoints_update,edge_exist,edge_get,edge_hole_close,edge_hole_reopen,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
 		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_fields_patch,form_get,form_linked_get,form_status_update,form_update,forms_count," +
-		"forms_list,forms_tree_get,graph_export_create,graph_file_upload,graph_get,graph_import_create,graph_list,hole_close,hole_conditions_get,hole_reopen,layer_actors_move,layer_actors_search,layer_clean," +
+		"forms_list,forms_tree_get,graph_build,graph_build_delete,graph_export_create,graph_file_upload,graph_get,graph_import_create,graph_list,hole_close,hole_conditions_get,hole_reopen,layer_actors_move,layer_actors_search,layer_clean," +
 		"layer_compact,layer_create,layer_draw,layer_edge_settings_save,layer_edges_list,layer_element_exist,layer_get,layer_node_expand,layer_placements_all,layer_placements_create," +
 		"layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_settings_update,layer_skeleton_get,layer_stats_get,layer_viewport,meet_transcription_list," +
 		"public_link_create,public_link_get,public_link_revoke,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,reactions_mark_read," +
@@ -134,7 +140,7 @@ func TestConsoleCatalog(t *testing.T) {
 		"transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter,transactions_filter_count,transactions_list," +
 		"transfer_by_ref_get,transfer_create,transfer_get,transfers_filter,transfers_filter_count,user_get,users_search,workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 192 {
+	if got := strings.Join(names, ","); got != want || len(names) != 194 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
 	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get", "smart_form_reference_grep", "smart_form_reference_read"} {
@@ -160,25 +166,25 @@ func TestConsoleRequests(t *testing.T) {
 		{"flowchart_blocks_list", `{"blockIds":["process"]}`, "form/flowchart-block/search", `"blockIds":["process"]`, `"layerSettings":{"width":200,"height":100,"blockId":"process"`},
 		{"layer_create", `{"title":"Flow"}`, "form/system/get,actor/create", `"data":{},"fields"`, `"id":"a1"`},
 		{"edge_create", `{"source":"a1","target":"a2","name":"yes"}`, "edge_type/get,edge/create", `"edgeTypeId":3,"forceDirection":true,"name":"yes","source":"a1","target":"a2"`, `"id":"e1"`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":0,"y":0}}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/manage", `"actorId":"L","items":[{"action":"create","data":{"id":"a1","position":{"x":0,"y":0},"type":"node"}}]`, `"laId":11`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","color":"#539fdf","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/manage",
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":0,"y":0}}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/list,graph/layer/actors/manage", `"actorId":"L","items":[{"action":"create","data":{"id":"a1","position":{"x":0,"y":0},"type":"node"}}]`, `"laId":11`},
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","color":"#539fdf","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/list,graph/layer/actors/manage",
 			`"data":{"areaPicture":{"height":100,"img":"data:image/svg+xml;base64,`, `"laId":11`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "batch,actor/get,graph/layer/actors/list,graph/layer/actors/manage",
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","position":{"x":10,"y":10},"layerSettings":{"width":200,"height":100,"blockId":"process","shape":{"type":"path","d":"M0 0H1"},"textFrame":{"x":0,"y":0,"w":200,"h":100}}}]}`, "batch,actor/get,graph/layer/actors/list,graph/layer/actors/list,graph/layer/actors/manage",
 			`"position":{"x":25,"y":25},"type":"node"`, `"laId":11`},
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"blockIds":["process"]`,
 			`"key":"b","blockId":"process","formId":5,"color":"#`},
 		{"flowchart_layout", `{"nodes":[{"key":"a","blockId":"process"},{"key":"b","blockId":"process"}],"edges":[{"source":"a","target":"b"},{"source":"b","target":"a"}]}`, "form/flowchart-block/search", `"limit":100`,
 			`"position":{"x":25,"y":325},"cell":"B, 8","layerSettings":{"width":200,"height":100,"blockId":"process"`},
-		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","cell":"C, 7"}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/manage", `"data":{"id":"a1","position":{"x":100,"y":300},"type":"node"}`, `"cell":"`},
+		{"layer_placements_create", `{"layerId":"L","nodes":[{"actorId":"a1","cell":"C, 7"}]}`, "actor/get,graph/layer/actors/list,graph/layer/actors/list,graph/layer/actors/manage", `"data":{"id":"a1","position":{"x":100,"y":300},"type":"node"}`, `"cell":"`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"cell":"-B, -1"}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":-100,"y":-50}}]`, `"updated":1`},
 		{"layer_positions_update", `{"layerId":"L","items":[{"laId":11,"x":150,"y":0}]}`, "graph/layer/actors/positions/update", `"items":[{"laActorId":11,"position":{"x":150,"y":0}}]`, `"updated":1`},
 		{"layer_get", `{"layerId":"L","full":true}`, "actor/get,graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":200`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"position":{"x":1000,"y":1000},"cell":"U, 21","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
 		{"layer_get", `{"layerId":"L"}`, "actor/get,graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":100`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"cell":"U, 21","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
 		{"smart_form_create", `{"ref":"leave_form","title":"Leave request","sharedWith":"allWorkspaceUsers"}`, "application/create", `"cduVersion":2,"ref":"leave_form","sharedWith":"allWorkspaceUsers"`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
-		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
+		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}","ifMatchHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"ifMatchHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
 		{"smart_form_files_create", `{"appId":"app1","items":[{"folderId":102,"title":"locale","type":"application/json","source":"{}"}]}`, "app_file/create", `"items":[{"folderId":102`, `"id":104`},
-		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,application/struct,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"appId: app1"}`},
+		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,application/struct,app_file/get,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"appId: app1"}`},
 		{"smart_form_release_get", `{"appId":"app1","releaseId":9}`, "application/env/list,release/get", `"releaseId":9`, `"ready":false`},
 	}
 	for _, tc := range cases {
@@ -235,7 +241,7 @@ func TestConsoleFailures(t *testing.T) {
 		overrides        map[string]string
 		want             string
 	}{
-		{"server validation text reaches the agent", "smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`,
+		{"server validation text reaches the agent", "smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}","ifMatchHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}`,
 			map[string]string{"app_file/update": `"error":{"code":-32602,"message":"invalid params: invalid CDU source in page 'index': unknown component type \"Buton\" at /tree/children/0","data":{"reason":"invalidParams"}}`},
 			`reason=invalidParams http=0): invalid params: invalid CDU source in page 'index': unknown component type`},
 		{"route issues are included", "smart_form_release", `{"appId":"app1"}`,
@@ -274,7 +280,7 @@ func TestConsoleBatches(t *testing.T) {
 		fails                               bool
 	}{
 		{"actors in order", "actors_create", `{"actors":[{"formId":5,"title":"Start","color":"#17B26A","data":{"k":1}},{"formId":5,"title":"End"}]}`, actors,
-			`"isAtomic":true,"list":[{"id":"0","method":"actor/create","params":{"accId":"ws","color":"#17B26A","data":{"k":1}`, `"actors":[{"formId":5,"id":"a1","title":"Start"},{"formId":5,"id":"a2","title":"End"}]`, false},
+			`"isAtomic":true,"list":[{"id":"0","method":"actor/create","params":{"accId":"ws","addToRecent":false,"color":"#17B26A","data":{"k":1}`, `"actors":[{"formId":5,"id":"a1","title":"Start"},{"formId":5,"id":"a2","title":"End"}]`, false},
 		{"edges keep direction", "edges_create", `{"edges":[{"source":"a1","target":"a2","name":"go"},{"source":"a2","target":"a1"}]}`, edges,
 			`"method":"edge/create","params":{"accId":"ws","edgeTypeId":3,"forceDirection":true,"name":"go","source":"a1","target":"a2"}`, `"edges":[{"id":"e1","edgeTypeId":3,"source":"a1","target":"a2","name":"go"},{"id":"e2"`, false},
 		{"a failed item fails the call", "actors_create", `{"actors":[{"formId":5,"title":"A"},{"formId":9,"title":"B"}]}`, failed, `"isAtomic":true`, "item 1 failed, nothing was created", true},
@@ -333,7 +339,7 @@ func TestConsoleCoreCatalog(t *testing.T) {
 			t.Error("console has", name)
 		}
 	}
-	if len(names) != len(consoleCoreTools) || len(names) != 59 {
+	if len(names) != len(consoleCoreTools) || len(names) != 62 {
 		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
 	}
 }

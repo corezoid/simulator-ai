@@ -21,6 +21,8 @@ type layoutInput struct {
 		Source string `json:"source"`
 		Target string `json:"target"`
 	} `json:"edges"`
+	// Origin is the layout's top-left cell; without it the layout is centred on column A from row 2.
+	Origin string `json:"origin"`
 }
 
 // layoutNode is everything the agent needs to create and place one planned block.
@@ -44,8 +46,8 @@ const layoutOutput = `{"type":"object","properties":{"nodes":{"type":"array","it
 
 // addFlowchartLayout registers the read-only grid layout of a flowchart; it writes nothing.
 func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
-	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(layoutOutput)), "flowchart_layout", "Lay out a flowchart before creating it: nodes [{key, blockId}] (kinds from flowchart_blocks_list), directed edges [{source, target}] by key. Returns per node formId, color and data for actors_create (all blocks in one call), position and layerSettings for layer_placements_create (all nodes in one call, then edges_create and their placements): ranks top to bottom, three free cells between blocks and ranks, blocks on whole cells, no overlaps. returnEdges: loop-back edges (\"source->target\") kept out of ranking. Writes nothing.",
-		`{"type":"object","properties":{"nodes":{"type":"array","minItems":1,"maxItems":100,"items":{"type":"object","properties":{"key":{"type":"string","minLength":1,"maxLength":64},"blockId":{"type":"string","minLength":1,"maxLength":128}},"required":["key","blockId"],"additionalProperties":false}},"edges":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"source":{"type":"string","minLength":1,"maxLength":64},"target":{"type":"string","minLength":1,"maxLength":64}},"required":["source","target"],"additionalProperties":false}}},"required":["nodes"],"additionalProperties":false}`, false,
+	addConsoleTool(s, mcp.WithRawOutputSchema(json.RawMessage(layoutOutput)), "flowchart_layout", "Lay out a flowchart before creating it: nodes [{key, blockId}] (kinds from flowchart_blocks_list), directed edges [{source, target}] by key. Returns per node formId, color and data for actors_create (all blocks in one call), position and layerSettings for layer_placements_create (all nodes in one call, then edges_create and their placements): ranks top to bottom (wrapped at 60 cells), three free cells between blocks and ranks, blocks on whole cells, no overlaps. origin: the top-left cell. returnEdges: loop-back edges (\"source->target\") kept out of ranking. Writes nothing.",
+		`{"type":"object","properties":{"nodes":{"type":"array","minItems":1,"maxItems":100,"items":{"type":"object","properties":{"key":{"type":"string","minLength":1,"maxLength":64},"blockId":{"type":"string","minLength":1,"maxLength":128}},"required":["key","blockId"],"additionalProperties":false}},"edges":{"type":"array","maxItems":500,"items":{"type":"object","properties":{"source":{"type":"string","minLength":1,"maxLength":64},"target":{"type":"string","minLength":1,"maxLength":64}},"required":["source","target"],"additionalProperties":false}},"origin":{"type":"string"}},"required":["nodes"],"additionalProperties":false}`, false,
 		func(ctx context.Context, in layoutInput) (layout, error) {
 			keys, kinds := map[string]bool{}, []string{}
 			seen := map[string]bool{}
@@ -89,6 +91,14 @@ func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
 				boxes[i] = graphplan.LayoutNode{Key: n.Key, Width: def.LayerSettings.Width, Height: def.LayerSettings.Height}
 			}
 			positions, returns := graphplan.GridLayout(boxes, edges)
+			if in.Origin != "" {
+				at, err := publicapi.CellCenter(in.Origin)
+				if err != nil {
+					return layout{}, fmt.Errorf("origin: %w", err)
+				}
+				corner := publicapi.GraphPoint{X: at.X - graphplan.PlainSize/2, Y: at.Y - graphplan.PlainSize/2}
+				positions, returns, _ = graphplan.Layered(boxes, edges, graphplan.LayoutOptions{Origin: corner})
+			}
 			for i := range out.Nodes {
 				out.Nodes[i].Position = positions[i]
 				out.Nodes[i].Cell = publicapi.CellOf(graphplan.GridCenter(positions[i], out.Nodes[i].LayerSettings.Width, out.Nodes[i].LayerSettings.Height))
@@ -169,16 +179,18 @@ func fillActorColors(ctx context.Context, c *publicapi.Client, nodes []publicapi
 	if len(items) == 0 {
 		return nil
 	}
-	results, err := c.PassEach(ctx, "actor/get", items)
-	if err != nil {
-		return err
-	}
-	for k, r := range results {
-		var actor struct {
-			Color string `json:"color"`
+	for start := 0; start < len(items); start += 100 { // a public batch takes 100 items
+		results, err := c.PassEach(ctx, "actor/get", items[start:min(start+100, len(items))])
+		if err != nil {
+			return err
 		}
-		if r.Error == "" && json.Unmarshal(r.Result, &actor) == nil {
-			nodes[missing[k]].Color = actor.Color
+		for k, r := range results {
+			var actor struct {
+				Color string `json:"color"`
+			}
+			if r.Error == "" && json.Unmarshal(r.Result, &actor) == nil {
+				nodes[missing[start+k]].Color = actor.Color
+			}
 		}
 	}
 	return nil

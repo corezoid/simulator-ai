@@ -6,11 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
-// ActorsCreateInput creates 1..100 actors, of one or several templates, in one call.
+// ActorsCreateInput creates 1..100 actors, of one or several templates, in one call. With
+// OperationID a repeated call answers the actors the first one created instead of new ones.
 type ActorsCreateInput struct {
-	Actors []ActorCreateInput `json:"actors"`
+	Actors      []ActorCreateInput `json:"actors"`
+	OperationID string             `json:"operationId,omitempty"`
 }
 
 // EdgesCreateInput creates 1..100 edges in one call.
@@ -89,23 +92,32 @@ func (c *Client) atomicItems(ctx context.Context, items []atomicItem) ([]json.Ra
 	out := make([]json.RawMessage, len(items))
 	for i, item := range wire.List {
 		if item.Error != nil {
-			cause := c.apiError(item.Error)
-			return nil, fmt.Errorf("item %d failed, nothing was created: %w", i, cause)
+			return nil, &atomicItemError{Index: i, Cause: c.apiError(item.Error)}
 		}
 		out[i] = item.Result
 	}
 	if wire.RolledBack {
-		return nil, errors.New("batch rolled back, nothing was created")
+		return nil, errRolledBack
 	}
 	return out, nil
 }
 
-// CreateActors creates the actors atomically and returns them in input order.
+// createdActorFields is what a bulk creation answers per actor.
+var createdActorFields = append(actorFields[:len(actorFields):len(actorFields)], "color", "hole")
+
+// CreateActors creates the actors atomically and returns them in input order. They stay out of the
+// caller's recent list. With an operationId each actor carries the ref "gb:<operationId>:<index>"
+// (unique within its template), and a call that finds the first one answers the earlier call's
+// actors: a retry after a lost answer creates nothing twice.
 func (c *Client) CreateActors(ctx context.Context, in ActorsCreateInput) (CreatedActors, error) {
 	if e := consoleOnly(c); e != nil {
 		return CreatedActors{}, e
 	}
+	if in.OperationID != "" && !operationPattern.MatchString(in.OperationID) {
+		return CreatedActors{}, errOperationID
+	}
 	params := make([]any, len(in.Actors))
+	refs := make([]actorRef, len(in.Actors))
 	for i, a := range in.Actors {
 		if a.FormID < 1 || !validTitle(a.Title, false) {
 			return CreatedActors{}, fmt.Errorf("actor %d: positive formId and a 1..1000 character title required", i)
@@ -118,10 +130,27 @@ func (c *Client) CreateActors(ctx context.Context, in ActorsCreateInput) (Create
 		if color == "" {
 			color = RandomActorColor()
 		}
-		params[i] = actorCreateRequest{AccID: c.config.Workspace, FormID: a.FormID, Title: a.Title, Description: a.Description, Color: color, Data: data, Hole: a.Hole, Fields: append(actorFields[:len(actorFields):len(actorFields)], "color", "hole")}
+		req := actorCreateRequest{AccID: c.config.Workspace, FormID: a.FormID, Title: a.Title, Description: a.Description, Color: color, Data: data, Hole: a.Hole, AddToRecent: notRecent, Fields: createdActorFields}
+		if in.OperationID != "" {
+			req.Ref = BuildRef(in.OperationID, strconv.Itoa(i))
+			refs[i] = actorRef{FormID: a.FormID, Ref: req.Ref}
+		}
+		params[i] = req
+	}
+	if in.OperationID != "" && len(refs) > 0 {
+		earlier, found, err := c.actorsByRef(ctx, refs)
+		if err == nil && found && !sameTitles(earlier, in.Actors) {
+			return CreatedActors{}, fmt.Errorf("operationId %q already created other actors (the first is %q): use a new operationId", in.OperationID, deref(earlier.Actors[0].Title))
+		}
+		if err != nil || found {
+			return earlier, err
+		}
 	}
 	results, err := c.atomic(ctx, "actor/create", params)
 	if err != nil {
+		if item := (*atomicItemError)(nil); in.OperationID != "" && errors.As(err, &item) && refTaken(item.Cause) {
+			return CreatedActors{}, fmt.Errorf("operationId %q is taken (an earlier call, changed since): use a new operationId: %w", in.OperationID, err)
+		}
 		return CreatedActors{}, err
 	}
 	out := CreatedActors{Actors: make([]CreatedActor, len(results))}
@@ -131,6 +160,76 @@ func (c *Client) CreateActors(ctx context.Context, in ActorsCreateInput) (Create
 		}
 	}
 	return out, nil
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// sameTitles says the actors found under an operation's refs are the ones this call sends: at least
+// one title matches. A retry matches them all; an operationId reused for other actors matches none,
+// and answering those as created would hide that nothing was.
+func sameTitles(found CreatedActors, sent []ActorCreateInput) bool {
+	for i, a := range found.Actors {
+		if i < len(sent) && strings.TrimSpace(deref(a.Title)) == strings.TrimSpace(sent[i].Title) {
+			return true
+		}
+	}
+	return false
+}
+
+// actorRef names an actor by its template and ref.
+type actorRef struct {
+	FormID int64  `json:"formId"`
+	Ref    string `json:"ref"`
+}
+
+type actorRefRequest struct {
+	AccID string `json:"accId"`
+	actorRef
+	Fields []string `json:"fields"`
+}
+
+// actorsByRef answers the actors an earlier call created under these refs, found false when the
+// first is not there (the creation is atomic: all of them exist or none). An operation that is
+// there only in part was changed since (actors deleted, or other input): it is refused.
+func (c *Client) actorsByRef(ctx context.Context, refs []actorRef) (CreatedActors, bool, error) {
+	get := func(r actorRef) actorRefRequest {
+		return actorRefRequest{AccID: c.config.Workspace, actorRef: r, Fields: createdActorFields}
+	}
+	first, err := call[actorRefRequest, CreatedActor](ctx, c, "actor/by-ref/get", get(refs[0]))
+	if err != nil {
+		if api := (*APIError)(nil); errors.As(err, &api) && (api.Reason == "notFound" || api.Reason == "noFoundOrNoAccess") {
+			return CreatedActors{}, false, nil
+		}
+		return CreatedActors{}, false, fmt.Errorf("actor/by-ref/get: %w", err)
+	}
+	out := CreatedActors{Actors: make([]CreatedActor, len(refs))}
+	out.Actors[0] = first
+	if len(refs) > 1 {
+		items := make([]atomicItem, len(refs)-1)
+		for i, r := range refs[1:] {
+			items[i] = atomicItem{Method: "actor/by-ref/get", Params: get(r)}
+		}
+		results, err := c.atomicItems(ctx, items)
+		if err != nil {
+			return CreatedActors{}, false, fmt.Errorf("this operationId was used by a call with other actors, or some of its actors were deleted; use a new operationId: %w", err)
+		}
+		for i, r := range results {
+			if json.Unmarshal(r, &out.Actors[i+1]) != nil {
+				return CreatedActors{}, false, fmt.Errorf("actor %d: actor/by-ref/get result shape mismatch", i+1)
+			}
+		}
+	}
+	for i, a := range out.Actors {
+		if a.ID == nil || *a.ID == "" {
+			return CreatedActors{}, false, fmt.Errorf("actor %d: actor/by-ref/get returned no actor id", i)
+		}
+	}
+	return out, true, nil
 }
 
 // CreateEdges creates the edges atomically, each in its given direction, and returns them in order.

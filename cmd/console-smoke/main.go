@@ -145,6 +145,8 @@ func main() {
 			err = meetings(c, stamp)
 		case "core":
 			err = core(c, stamp)
+		case "build":
+			err = build(c, stamp)
 		default:
 			err = fmt.Errorf("unknown scenario %q", scenario)
 		}
