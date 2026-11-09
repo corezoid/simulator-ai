@@ -31,6 +31,7 @@ var consoleReplies = map[string]string{
 	"application/create":                  `{"application":{"id":"app1","ref":"leave_form"},"envs":[{"id":1,"actorId":"app1","title":"develop"},{"id":2,"actorId":"app1","title":"production","readonly":true}]}`,
 	"application/env/list":                `{"canModify":true,"envs":[{"id":1,"actorId":"app1","title":"develop","rootFolderId":100},{"id":2,"actorId":"app1","title":"production","readonly":true}]}`,
 	"application/struct":                  `{"tree":{"id":100,"objType":"folder","title":"root","children":[{"id":101,"objType":"folder","title":"pages","children":[{"id":102,"objType":"folder","title":"index","children":[{"id":103,"objType":"file","title":"config","type":"application/json","sourceHash":"h"}]}]}]}}`,
+	"app_file/get":                        `{"id":103,"folderId":102,"objType":"file","title":"config","type":"application/json","source":"{\"schemaVersion\":\"2.0\",\"id\":\"index\",\"tree\":{\"id\":\"root\",\"type\":\"Stack\"}}","sourceHash":"h"}`,
 	"app_file/update":                     `{"files":[{"id":103,"folderId":102,"objType":"file","title":"config","type":"application/json","source":"{}","sourceHash":"h2"}]}`,
 	"app_file/create":                     `{"files":[{"id":104,"folderId":102,"objType":"file","title":"locale","type":"application/json","source":"{}","sourceHash":"h3"}]}`,
 	"release/create":                      `{"id":9,"actorId":"app1","envId":2,"sourceEnvId":1,"releaseNumber":1,"status":"active"}`,
@@ -181,9 +182,9 @@ func TestConsoleRequests(t *testing.T) {
 		{"layer_get", `{"layerId":"L"}`, "actor/get,graph/layer/edges/list,graph/layer/actors/list", `"fields":["id","title","formId"],"limit":100`, `"nodes":[{"laId":11,"actorId":"a1","title":"Demo","formId":5,"cell":"U, 21","blockId":"process"}],"edges":[{"laId":21,"edgeId":"e1","laIdSource":11,"laIdTarget":12,"source":"a1","target":"a2","name":"yes"}]`},
 		{"smart_form_create", `{"ref":"leave_form","title":"Leave request","sharedWith":"allWorkspaceUsers"}`, "application/create", `"cduVersion":2,"ref":"leave_form","sharedWith":"allWorkspaceUsers"`, `"appId":"app1","ref":"leave_form","developEnvId":1,"productionEnvId":2`},
 		{"smart_form_files_get", `{"appId":"app1"}`, "application/env/list,application/struct", `"envId":1,"fields":["id","title","objType","type","sourceHash","children"]`, `{"id":103,"path":"pages/index/config","objType":"file","type":"application/json","sourceHash":"h"}`},
-		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
+		{"smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}","ifMatchHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}`, "app_file/update", `"actorId":"app1","items":[{"id":103,"ifMatchHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source":"{}","title":"config","type":"application/json"}]`, `"sourceHash":"h2"`},
 		{"smart_form_files_create", `{"appId":"app1","items":[{"folderId":102,"title":"locale","type":"application/json","source":"{}"}]}`, "app_file/create", `"items":[{"folderId":102`, `"id":104`},
-		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,application/struct,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"appId: app1"}`},
+		{"smart_form_release", `{"appId":"app1"}`, "application/env/list,application/struct,app_file/get,release/create", `"sourceEnvId":1,"targetEnvId":2`, `{"appId":"app1","releaseId":9,"releaseNumber":1,"status":"active","ready":true,"marker":"appId: app1"}`},
 		{"smart_form_release_get", `{"appId":"app1","releaseId":9}`, "application/env/list,release/get", `"releaseId":9`, `"ready":false`},
 	}
 	for _, tc := range cases {
@@ -240,7 +241,7 @@ func TestConsoleFailures(t *testing.T) {
 		overrides        map[string]string
 		want             string
 	}{
-		{"server validation text reaches the agent", "smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}"}]}`,
+		{"server validation text reaches the agent", "smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":"{}","ifMatchHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}`,
 			map[string]string{"app_file/update": `"error":{"code":-32602,"message":"invalid params: invalid CDU source in page 'index': unknown component type \"Buton\" at /tree/children/0","data":{"reason":"invalidParams"}}`},
 			`reason=invalidParams http=0): invalid params: invalid CDU source in page 'index': unknown component type`},
 		{"route issues are included", "smart_form_release", `{"appId":"app1"}`,
@@ -338,7 +339,7 @@ func TestConsoleCoreCatalog(t *testing.T) {
 			t.Error("console has", name)
 		}
 	}
-	if len(names) != len(consoleCoreTools) || len(names) != 61 {
+	if len(names) != len(consoleCoreTools) || len(names) != 62 {
 		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
 	}
 }

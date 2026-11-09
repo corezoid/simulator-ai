@@ -41,6 +41,17 @@ type APIError struct {
 	Reason     string
 	HTTPStatus int
 	Message    string
+	// stale is the server's state of the files an appFileSourceMismatch refused; never printed.
+	stale []staleFile
+}
+
+// staleFile is a develop file as the server holds it when a write based on an older revision is
+// refused (app_file/update reasonParams.files).
+type staleFile struct {
+	ID         int64  `json:"id"`
+	Title      string `json:"title"`
+	Source     string `json:"source"`
+	SourceHash string `json:"sourceHash"`
 }
 
 func (e *APIError) Error() string {
@@ -208,8 +219,19 @@ func (c *Client) apiError(e *rpcError) *APIError {
 		reason = e.Data.Reason
 	}
 	err := &APIError{Code: e.Code, Reason: reason}
-	if c.ConsoleEnabled() {
-		err.Message = consoleErrorMessage(e)
+	if !c.ConsoleEnabled() {
+		return err
 	}
+	if reason == "appFileSourceMismatch" {
+		// reasonParams carries every refused file's whole current source: keep it out of the message.
+		var p struct {
+			Files []staleFile `json:"files"`
+		}
+		if json.Unmarshal(e.Data.ReasonParams, &p) == nil && len(p.Files) > 0 {
+			err.stale, err.Message = p.Files, e.Message
+			return err
+		}
+	}
+	err.Message = consoleErrorMessage(e)
 	return err
 }

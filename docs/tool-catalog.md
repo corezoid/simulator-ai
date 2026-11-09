@@ -206,7 +206,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `smart_form_files_update` |  | `console`, `console-full` |
 | `smart_form_folders_create` |  | `console`, `console-full` |
 | `smart_form_page_patch` |  | `console`, `console-full` |
-| `smart_form_page_render` |  | `console-full` |
+| `smart_form_page_render` |  | `console`, `console-full` |
 | `smart_form_page_submit` |  | `console-full` |
 | `smart_form_reference_grep` | `console`, `console-full` |  |
 | `smart_form_reference_read` | `console`, `console-full` |  |

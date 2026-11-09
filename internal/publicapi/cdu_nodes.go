@@ -13,21 +13,8 @@ import (
 // in node actions and in the page's bindings. It does not open definitions: a $ref instance is
 // found by its own id, and the nodes of its definition are in that definition's file.
 func findNode(doc any, id string) (string, error) {
-	f := &nodeFinder{id: id}
-	page, _ := doc.(*object)
-	tree, isPage := any(nil), false
-	if page != nil {
-		tree, isPage = page.get("tree")
-	}
-	switch {
-	case isPage:
-		f.node(tree, []string{"tree"})
-		if bindings, ok := page.get("bindings"); ok {
-			f.actions(bindings, []string{"bindings"})
-		}
-	case page != nil && (page.vals["type"] != nil || page.vals["$ref"] != nil):
-		f.node(page, nil)
-	default:
+	f, ok := walkNodes(doc, id)
+	if !ok {
 		return "", errors.New("nodeId needs a page config (a file with a tree) or a definition (a file that is one node)")
 	}
 	switch {
@@ -45,6 +32,31 @@ func findNode(doc any, id string) (string, error) {
 		msg += "; the nodes of a definition are in its own file: patch path definitions/<name> (this file uses " + strings.Join(f.refs, ", ") + ")"
 	}
 	return "", errors.New(msg)
+}
+
+// walkNodes walks a page config or a definition, collecting its node ids and the pointers of the
+// nodes with this id; ok is false for any other document.
+func walkNodes(doc any, id string) (*nodeFinder, bool) {
+	f := &nodeFinder{id: id}
+	page, _ := doc.(*object)
+	tree, isPage := any(nil), false
+	if page != nil {
+		tree, isPage = page.get("tree")
+	}
+	switch {
+	case isPage:
+		f.node(tree, []string{"tree"})
+		if bindings, ok := page.get("bindings"); ok {
+			for _, kid := range overlays(nil, bindings, []string{"bindings"}) {
+				f.node(kid.v, kid.path)
+			}
+		}
+	case page != nil && (page.vals["type"] != nil || page.vals["$ref"] != nil):
+		f.node(page, nil)
+	default:
+		return f, false
+	}
+	return f, true
 }
 
 type nodeFinder struct {
@@ -111,36 +123,53 @@ func (f *nodeFinder) node(n any, path []string) {
 			}
 		}
 	}
+	for _, kid := range nodeKids(node, path) {
+		f.node(kid.v, kid.path)
+	}
+}
+
+// nodeKid is what sits directly under a node: its children list, the list of a named slot, or the
+// content an overlay.open of its actions shows.
+type nodeKid struct {
+	v     any
+	path  []string
+	label string // "" for children, the slot name, or "overlay"
+}
+
+func nodeKids(node *object, path []string) []nodeKid {
+	var out []nodeKid
 	switch c := node.vals["children"].(type) {
 	case []any:
-		f.node(c, at(path, "children"))
+		out = append(out, nodeKid{c, at(path, "children"), ""})
 	case *object:
 		for _, slot := range c.keys {
-			f.node(c.vals[slot], at(path, "children", slot))
+			out = append(out, nodeKid{c.vals[slot], at(path, "children", slot), slot})
 		}
 	}
 	if actions, ok := node.vals["actions"].(*object); ok {
 		for _, event := range actions.keys {
-			f.actions(actions.vals[event], at(path, "actions", event))
+			out = overlays(out, actions.vals[event], at(path, "actions", event))
 		}
 	}
+	return out
 }
 
-// actions follows an action chain (and a binding's do) into overlay.open content.
-func (f *nodeFinder) actions(v any, path []string) {
+// overlays adds the content of every overlay.open an action chain (or a binding's do) holds.
+func overlays(out []nodeKid, v any, path []string) []nodeKid {
 	switch t := v.(type) {
 	case []any:
 		for i, item := range t {
-			f.actions(item, at(path, fmt.Sprint(i)))
+			out = overlays(out, item, at(path, fmt.Sprint(i)))
 		}
 	case *object:
 		if t.vals["type"] == "overlay.open" {
-			f.node(t.vals["content"], at(path, "content"))
+			out = append(out, nodeKid{t.vals["content"], at(path, "content"), "overlay"})
 		}
 		for _, key := range []string{"do", "then", "else", "onSuccess", "onError"} {
 			if next, ok := t.vals[key]; ok {
-				f.actions(next, at(path, key))
+				out = overlays(out, next, at(path, key))
 			}
 		}
 	}
+	return out
 }

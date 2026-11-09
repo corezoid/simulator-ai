@@ -75,7 +75,7 @@ var consoleGroups = map[string][]string{
 // everyday scenarios (consoleCoreTools).
 var consoleCoreGroups = []string{"core", "graph", "graph_extra", "smart_forms", "forms", "finance", "people", "files"}
 
-// Without the relay a run gets the plain console catalog (consoleCoreTools, 61 tools), not the
+// Without the relay a run gets the plain console catalog (consoleCoreTools, 62 tools), not the
 // union of these groups, which is larger (their setup tools, e.g. graph edits).
 
 // toolGroups is each tool's groups, in the order of groupOrder.
