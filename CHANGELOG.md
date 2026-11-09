@@ -8,6 +8,9 @@
 
 ## [Unreleased]
 
+- Run the main-promotion check (Develop only) on `pull_request`: GitHub's default block of `pull_request_target`
+  for public repositories stopped it from starting (startup_failure during the 2026-11-09 brownout).
+
 - Answer "how many templates" exactly and cheaply: `forms_count` joins the plain `console` catalog and core group,
   and `forms_list` rows are compact (id, title, type, isDefault; `full` for the rest). `reactions_list` drops the
   AI reasoning trace (`treeInfo.reasoning`) and `accounts_list` its per-row noise unless `full` is sent.

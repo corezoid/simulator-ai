@@ -68,8 +68,11 @@ Restore the previous archive directory to roll back binary, manifests and skills
 
 Both permanent branches require PRs and strict Gate checks, including administrators.
 Main receives only develop PRs; the release automation prepares metadata through temporary PRs into develop, then promotes develop.
-The required Develop only check runs trusted default-branch code with no PR checkout. The release automation deletes successful release
-branches and leaves failed ones for inspection. Do not disable protection for weekly releases.
+The required Develop only check runs on `pull_request` with no PR checkout and no token: GitHub's default policy for
+public repositories blocks `pull_request_target` (it failed to start during the 2026-11-09 brownout). Its workflow file
+comes from the PR's merge commit, so it guards against wrong-source promotions, not a hostile PR: a PR that edits
+.github/workflows needs a careful look before merging, and a PR with a merge conflict gets no run until it is resolved.
+The release automation deletes successful release branches and leaves failed ones for inspection. Do not disable protection for weekly releases.
 
 Main accepts only same-repository develop PRs; hotfixes and release metadata go through develop.
 

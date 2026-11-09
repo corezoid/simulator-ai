@@ -1,6 +1,8 @@
 name: Promotion policy
 on:
-  pull_request_target:
+  # pull_request, not pull_request_target: GitHub blocks pull_request_target by default for public
+  # repositories (brownout 2026-11-09). The check reads only event fields; it needs no token or code.
+  pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, edited]
 permissions: {}
@@ -10,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      # No checkout or execution of PR code. GitHub loads this workflow from the default branch.
+      # No checkout or execution of PR code. On pull_request this file comes from the PR's merge commit:
+      # a PR could edit it, so the check guards against wrong-source promotions, not a hostile PR.
       - name: Require develop from this repository
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
