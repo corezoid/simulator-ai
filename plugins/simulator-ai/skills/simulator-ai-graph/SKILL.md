@@ -111,11 +111,11 @@ your own `key`; no actor ids, `laId`s or coordinates.
    large layer back. Ask `ids: [keys]` only for actors you will use by id.
 6. **Resume:** `done: false`, a timeout or a cut turn: repeat the same call (same
    `operationId` and input); only what is missing is built. An `error` naming a node: fix it,
-   same `operationId`.
+   same `operationId`; follow `resume` (a new `operationId` only when it says the id is taken).
 7. **Stop on time:** after about three sections in a turn, or two `done: false` in a row, tell
    the user what is built and continue with their next message.
 8. **Undo:** `graph_build_delete {layerId, operationId, dryRun: true}`, confirm, then without
-   `dryRun`; that `operationId` cannot be reused.
+   `dryRun`.
 
 To file a layer under a graph: `edge_create {source: <graphId>, target: <layerId>}`.
 

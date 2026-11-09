@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -312,13 +313,72 @@ func TestGraphBuildDelete(t *testing.T) {
 		t.Fatal(done, err)
 	}
 	assertLayer(t, f, "L", 4, 0)
-	// The refs stay in the trash: the operation cannot be built again, and says so.
-	out := build(t, c, GraphBuildTarget{LayerID: "L", OperationID: "gone"}, in)
-	if out.Done || !strings.Contains(out.Error, "use a new operationId") {
+	// sim-api clears a deleted actor's ref: the same operation builds again.
+	if out := build(t, c, GraphBuildTarget{LayerID: "L", OperationID: "gone"}, in); !out.Done || out.Nodes.Done != 230 {
 		t.Fatalf("%+v", out)
 	}
+	assertLayer(t, f, "L", 234, len(in.Edges))
+	// The same operationId on another layer meets its own refs: refused, nothing written, and the
+	// answer says when a new id is right (a repeat after a lagging read must not build twice).
+	other := build(t, c, GraphBuildTarget{LayerID: "L2", OperationID: "gone"}, in)
+	if other.Done || other.Nodes.Done != 0 || other.Chunks[0].Status != "failed" || !strings.Contains(other.Resume, "use a new operationId") || !strings.Contains(other.Resume, "repeat the same call") {
+		t.Fatalf("%+v", other)
+	}
+	assertLayer(t, f, "L2", 0, 0)
 	if _, err = c.DeleteGraphBuild(context.Background(), GraphBuildDeleteInput{LayerID: "L", OperationID: "no good"}); err == nil {
 		t.Fatal("accepted a bad operationId")
+	}
+}
+
+// A layer an operation created stays even when it is itself a node of the layer being cleaned.
+func TestGraphBuildDeleteKeepsItsLayer(t *testing.T) {
+	c, f := fakeClient(t)
+	b, err := c.OpenGraphBuild(context.Background(), GraphBuildTarget{NewLayer: "Inner", OperationID: "nest"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inner := b.LayerID
+	build(t, c, GraphBuildTarget{LayerID: "L", OperationID: "nest"}, GraphBuildInput{Nodes: gridNodes("n", 3, GraphPoint{X: -25, Y: -25})})
+	if _, err = c.CreatePlacements(context.Background(), PlacementsCreateInput{LayerID: "L", Nodes: []NodePlacement{{ActorID: inner, Position: GraphPoint{X: 25, Y: 2025}}}}); err != nil {
+		t.Fatal(err)
+	}
+	done, err := c.DeleteGraphBuild(context.Background(), GraphBuildDeleteInput{LayerID: "L", OperationID: "nest"})
+	if err != nil || done.Found != 3 || done.Deleted != 3 {
+		t.Fatal(done, err)
+	}
+	actors, _, _ := f.Snapshot("L")
+	if len(actors) != 1 || actors[0].ID != inner {
+		t.Fatalf("%+v", actors)
+	}
+}
+
+// An edge named twice, once with the default type spelled out, is one edge: refused before a write.
+func TestGraphBuildValidateEdgeTypeDefault(t *testing.T) {
+	in := GraphBuildInput{Nodes: gridNodes("n", 2, GraphPoint{}), Edges: []BuildEdge{{From: "n0", To: "n1"}, {From: "n0", To: "n1", EdgeType: "hierarchy"}}}
+	if err := in.Validate(); err == nil {
+		t.Fatal("accepted the same edge twice")
+	}
+	in.Edges[1].EdgeType = "flow"
+	if err := in.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A refusal the server answered is "failed" with its reason, not "no answer"; a lost one is unknown.
+func TestGraphBuildFailKinds(t *testing.T) {
+	r := &buildRun{}
+	r.fail("edges", 3, &APIError{Reason: "notAllowed", Message: "no access"}, nil)
+	if r.out.Chunks[0].Status != "failed" || strings.Contains(r.out.Resume, "no answer") || !strings.Contains(r.out.Error, "no access") {
+		t.Fatalf("%+v", r.out)
+	}
+	for _, lost := range []error{errors.New("public API transport unavailable"), &APIError{HTTPStatus: 504, Reason: "http_error"}, &APIError{Reason: "timeout"}} {
+		r = &buildRun{}
+		if r.fail("nodes", 3, lost, nil); r.out.Chunks[0].Status != "unknown" {
+			t.Fatalf("%v: %+v", lost, r.out)
+		}
+	}
+	if refTaken(&APIError{Reason: "invalidParams", Message: "invalid params - preferred"}) || !refTaken(&APIError{Reason: "invalidParams", Message: "duplicate params - ref, formId"}) {
+		t.Fatal("refTaken")
 	}
 }
 
@@ -351,6 +411,22 @@ func TestCreateActorsRepeatsUnderOperationID(t *testing.T) {
 		t.Fatal("accepted a bad operationId")
 	}
 	if actors, _, _ = f.Snapshot(""); len(actors) != 4 {
+		t.Fatalf("%d actors", len(actors))
+	}
+	// The same id for other actors is refused instead of answering the earlier ones as created.
+	other := ActorsCreateInput{OperationID: "op1", Actors: []ActorCreateInput{{FormID: 5, Title: "X"}, {FormID: 6, Title: "Y"}, {FormID: 5, Title: "Z"}}}
+	if _, err = c.CreateActors(context.Background(), other); err == nil || !strings.Contains(err.Error(), "use a new operationId") {
+		t.Fatal(err)
+	}
+	// Its first actor deleted (the ref is freed), the rest still hold theirs: the id is taken.
+	if _, err = c.PassEach(context.Background(), "actor/delete", []map[string]json.RawMessage{{"actorId": json.RawMessage(`"` + *first.Actors[0].ID + `"`)}}); err != nil {
+		t.Fatal(err)
+	}
+	in.Actors = in.Actors[:3]
+	if _, err = c.CreateActors(context.Background(), in); err == nil || !strings.Contains(err.Error(), "use a new operationId") {
+		t.Fatal(err)
+	}
+	if actors, _, _ = f.Snapshot(""); len(actors) != 3 {
 		t.Fatalf("%d actors", len(actors))
 	}
 }

@@ -75,7 +75,7 @@ type Call struct {
 
 type state struct {
 	Actors     map[string]*Actor
-	Refs       map[string]string // "<formId>|<ref>" -> actor id; kept after a delete, as the trash keeps it
+	Refs       map[string]string // "<formId>|<ref>" -> actor id; freed by a delete, as sim-api nulls the ref
 	Nodes      []Node
 	Edges      map[string]*Edge
 	EdgeKeys   map[string]string
@@ -309,14 +309,22 @@ func resolveRefs(params json.RawMessage, done []any) (json.RawMessage, *rpcError
 			for _, key := range strings.Split(m[2], ".") {
 				switch c := cur.(type) {
 				case map[string]any:
-					cur = c[key]
+					next, ok := c[key]
+					if !ok { // as sim-api: a path that names nothing is refused, not sent as null
+						bad = fail("invalidParams", v+": no field "+key+" in the referenced result")
+						return v
+					}
+					cur = next
 				case []any:
-					k, _ := strconv.Atoi(key)
-					if k >= len(c) {
+					k, e := strconv.Atoi(key)
+					if e != nil || k < 0 || k >= len(c) {
 						bad = fail("invalidParams", v+": index out of range")
 						return v
 					}
 					cur = c[k]
+				default:
+					bad = fail("invalidParams", v+": cannot look up "+key+" inside a scalar value")
+					return v
 				}
 			}
 			return cur

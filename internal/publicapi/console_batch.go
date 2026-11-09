@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // ActorsCreateInput creates 1..100 actors, of one or several templates, in one call. With
@@ -137,12 +138,19 @@ func (c *Client) CreateActors(ctx context.Context, in ActorsCreateInput) (Create
 		params[i] = req
 	}
 	if in.OperationID != "" && len(refs) > 0 {
-		if earlier, found, err := c.actorsByRef(ctx, refs); err != nil || found {
+		earlier, found, err := c.actorsByRef(ctx, refs)
+		if err == nil && found && !sameTitles(earlier, in.Actors) {
+			return CreatedActors{}, fmt.Errorf("operationId %q already created other actors (the first is %q): use a new operationId", in.OperationID, deref(earlier.Actors[0].Title))
+		}
+		if err != nil || found {
 			return earlier, err
 		}
 	}
 	results, err := c.atomic(ctx, "actor/create", params)
 	if err != nil {
+		if item := (*atomicItemError)(nil); in.OperationID != "" && errors.As(err, &item) && refTaken(item.Cause) {
+			return CreatedActors{}, fmt.Errorf("operationId %q is taken (an earlier call, changed since): use a new operationId: %w", in.OperationID, err)
+		}
 		return CreatedActors{}, err
 	}
 	out := CreatedActors{Actors: make([]CreatedActor, len(results))}
@@ -152,6 +160,25 @@ func (c *Client) CreateActors(ctx context.Context, in ActorsCreateInput) (Create
 		}
 	}
 	return out, nil
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// sameTitles says the actors found under an operation's refs are the ones this call sends: at least
+// one title matches. A retry matches them all; an operationId reused for other actors matches none,
+// and answering those as created would hide that nothing was.
+func sameTitles(found CreatedActors, sent []ActorCreateInput) bool {
+	for i, a := range found.Actors {
+		if i < len(sent) && strings.TrimSpace(deref(a.Title)) == strings.TrimSpace(sent[i].Title) {
+			return true
+		}
+	}
+	return false
 }
 
 // actorRef names an actor by its template and ref.

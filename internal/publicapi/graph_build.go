@@ -20,8 +20,10 @@ import (
 // operation carries the ref "gb:<operationId>:<key>". An actor is created and placed in one atomic
 // batch: it exists exactly when it is on the layer. A repeated call reads the layer once, finds the
 // keys that landed and builds only the rest; edge/create returns an existing edge unchanged, and an
-// edge already drawn on the layer is not drawn twice. A deleted actor keeps its ref in the trash, so
-// an operation that was cleaned up needs a new operationId.
+// edge already drawn on the layer is not drawn twice. sim-api clears a deleted actor's ref, so an
+// operation that was cleaned up (graph_build_delete) can be built again under the same operationId;
+// a ref refused as taken means the operationId lives elsewhere (another layer or user) or the layer
+// read was behind the write.
 
 const (
 	buildRefPrefix = "gb:"
@@ -147,6 +149,8 @@ type GraphBuild struct {
 	laIDs   map[string]int64
 	// fresh: the layer had no placements, so nothing can be there twice.
 	fresh bool
+	// start is when the call began: the layer read counts against buildBudget too.
+	start time.Time
 }
 
 // OpenGraphBuild resolves the layer (creating the new one once per operation) and reads it.
@@ -160,7 +164,7 @@ func (c *Client) OpenGraphBuild(ctx context.Context, t GraphBuildTarget) (*Graph
 	if (t.LayerID == "") == (t.NewLayer == "") || t.LayerID != "" && !validID(t.LayerID) || !validTitle(t.NewLayer, true) {
 		return nil, errors.New("layerId of an existing layer or newLayer, the title of a new one, required")
 	}
-	b := &GraphBuild{c: c, LayerID: t.LayerID, op: t.OperationID, refs: map[string]buildPlaced{}, laIDs: map[string]int64{}}
+	b := &GraphBuild{c: c, LayerID: t.LayerID, op: t.OperationID, refs: map[string]buildPlaced{}, laIDs: map[string]int64{}, start: time.Now()}
 	if t.NewLayer != "" {
 		created, err := b.newLayer(ctx, t.NewLayer)
 		if err != nil || created {
@@ -347,6 +351,14 @@ func (b *GraphBuild) endpoints(in GraphBuildInput) (func(string) (buildEnd, erro
 	}, nil
 }
 
+// edgeTypeName is the edge type an edge names, hierarchy by default.
+func edgeTypeName(name string) string {
+	if name == "" {
+		return "hierarchy"
+	}
+	return name
+}
+
 // Validate checks the input's own shape; callers run it before a new layer is created for it.
 func (in GraphBuildInput) Validate() error {
 	if len(in.Nodes)+len(in.Edges) < 1 || len(in.Nodes) > MaxBuildNodes || len(in.Edges) > MaxBuildEdges || len(in.Use) > 20 {
@@ -367,7 +379,7 @@ func (in GraphBuildInput) Validate() error {
 	}
 	pairs := map[BuildEdge]bool{}
 	for _, e := range in.Edges {
-		pair := BuildEdge{From: e.From, To: e.To, EdgeType: e.EdgeType}
+		pair := BuildEdge{From: e.From, To: e.To, EdgeType: edgeTypeName(e.EdgeType)}
 		if e.From == "" || e.To == "" || e.From == e.To || pairs[pair] || len([]rune(e.Name)) > 1000 || len(e.EdgeType) > 255 {
 			return fmt.Errorf("edge %s -> %s: two different keys, once per edge type, required", e.From, e.To)
 		}

@@ -3,6 +3,7 @@ package simfake
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 )
 
 type point struct {
@@ -113,7 +114,7 @@ func (s *Server) actorCreate(params json.RawMessage) (any, *rpcError) {
 	}
 	key := fmt.Sprintf("%d|%s", p.FormID, p.Ref)
 	if _, taken := s.Refs[key]; p.Ref != "" && taken {
-		return nil, fail("invalidParams", "duplicate: ref, formId")
+		return nil, fail("invalidParams", "duplicate params - ref, formId")
 	}
 	a := &Actor{ID: s.id("actor"), Title: p.Title, Ref: p.Ref, Color: p.Color, FormID: p.FormID, Recent: p.AddToRecent == nil || *p.AddToRecent}
 	s.Actors[a.ID] = a
@@ -128,8 +129,13 @@ func (s *Server) actorDelete(params json.RawMessage) (any, *rpcError) {
 		ActorID string `json:"actorId"`
 	}
 	_ = json.Unmarshal(params, &p)
-	if s.Actors[p.ActorID] == nil {
+	a := s.Actors[p.ActorID]
+	if a == nil {
 		return nil, fail("notFound", "actor not found")
+	}
+	// sim-api's pg_actor.Delete sets ref = NULL: the trash does not hold the (template, ref) pair.
+	if a.Ref != "" {
+		delete(s.Refs, fmt.Sprintf("%d|%s", a.FormID, a.Ref))
 	}
 	delete(s.Actors, p.ActorID)
 	gone := map[int64]bool{}
@@ -252,6 +258,7 @@ func (s *Server) nodesList(params json.RawMessage) (any, *rpcError) {
 			rows = append(rows, n)
 		}
 	}
+	slices.Reverse(rows) // sim-api pages newest first (created_at DESC)
 	from, to, err := window(len(rows)+s.Ghosts, p)
 	if err != nil {
 		return nil, err
@@ -286,6 +293,7 @@ func (s *Server) edgesList(params json.RawMessage) (any, *rpcError) {
 			rows = append(rows, e)
 		}
 	}
+	slices.Reverse(rows) // newest first, as sim-api
 	from, to, err := window(len(rows), p)
 	if err != nil {
 		return nil, err

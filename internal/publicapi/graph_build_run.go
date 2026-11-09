@@ -46,7 +46,7 @@ func (b *GraphBuild) Run(ctx context.Context, in GraphBuildInput) (GraphBuildRes
 	if err != nil {
 		return GraphBuildResult{}, err
 	}
-	r := &buildRun{b: b, in: in, start: time.Now(), placed: make([]buildPlaced, len(in.Nodes))}
+	r := &buildRun{b: b, in: in, start: b.start, placed: make([]buildPlaced, len(in.Nodes))}
 	r.out = GraphBuildResult{LayerID: b.LayerID, Nodes: BuildCount{Total: len(in.Nodes)}, Edges: BuildCount{Total: len(in.Edges)}, Chunks: []BuildChunks{}}
 	var pending []int
 	var fresh []BuildNode
@@ -90,10 +90,7 @@ func (r *buildRun) resolveEdge(ctx context.Context, e BuildEdge, end func(string
 	if out.to, err = end(e.To); err != nil {
 		return out, err
 	}
-	name := e.EdgeType
-	if name == "" {
-		name = "hierarchy"
-	}
+	name := edgeTypeName(e.EdgeType)
 	id, ok := types[name]
 	if !ok {
 		c := r.b.c
@@ -117,23 +114,37 @@ func (r *buildRun) note(kind, status string, items int) {
 	r.out.Chunks = append(r.out.Chunks, BuildChunks{Kind: kind, Chunks: 1, Items: items, Status: status})
 }
 
-// fail records a batch that did not land and stops the run. A refused batch wrote nothing; any other
-// failure (no answer, a cut connection) may have written it, which the next call finds out.
+// refTaken says the server refused an actor because its (template, ref) pair is held already.
+func refTaken(e *APIError) bool {
+	return e != nil && e.Reason == "invalidParams" && strings.Contains(e.Message, "duplicate") && strings.Contains(e.Message, "ref")
+}
+
+// fail records a batch that did not land and stops the run. A refused batch wrote nothing; a failure
+// without the server's answer (a cut connection) may have written it, which the next call finds out.
 func (r *buildRun) fail(kind string, items int, err error, name func(int) string) {
 	r.stopped = true
 	var item *atomicItemError
+	var api *APIError
 	switch {
 	case errors.As(err, &item):
 		r.note(kind, "failed", items)
 		r.out.Error = fmt.Sprintf("%s: %v", name(item.Index), item.Cause)
-		if item.Cause.Reason == "invalidParams" && strings.Contains(item.Cause.Message, "ref") {
-			r.out.Error += "; this operationId was deleted or used elsewhere: use a new operationId"
-		}
 		r.out.Resume = "fix it and repeat the call: the same operationId keeps what landed"
+		if refTaken(item.Cause) {
+			// The actor exists but the layer read did not show it: a read behind this operation's own
+			// write, or the operationId lives on another layer or with another user. A new id after a
+			// lagging read would build the graph twice, so the answer names both cases.
+			r.out.Resume = "if this operationId already built on this layer, wait a few seconds and repeat the same call; otherwise the id is taken (another layer or user): use a new operationId"
+		}
 	case errors.Is(err, errRolledBack):
 		r.note(kind, "failed", items)
 		r.out.Error = err.Error()
 		r.out.Resume = "repeat the call: the same operationId keeps what landed"
+	case errors.As(err, &api) && api.HTTPStatus == 0 && api.Reason != "timeout":
+		// The server answered with a refusal: repeating the same call unchanged meets it again.
+		r.note(kind, "failed", items)
+		r.out.Error = err.Error()
+		r.out.Resume = "the server refused it; fix the cause, then repeat the call: the same operationId builds only what is missing"
 	default:
 		r.note(kind, "unknown", items)
 		r.out.Error = err.Error()
@@ -384,11 +395,11 @@ func (c *Client) DeleteGraphBuild(ctx context.Context, in GraphBuildDeleteInput)
 	if !validID(in.LayerID) || !operationPattern.MatchString(in.OperationID) {
 		return GraphBuildDeleted{}, fmt.Errorf("layerId required; %w", errOperationID)
 	}
-	prefix := BuildRef(in.OperationID, "")
+	prefix, layerRef := BuildRef(in.OperationID, ""), BuildRef(in.OperationID, buildLayerKey)
 	seen := map[string]bool{}
 	var ids []string
 	partial, err := c.scanLayerNodes(ctx, in.LayerID, []string{"id", "ref"}, func(n layerNodeFull) {
-		if n.Actor != nil && n.Actor.Ref != nil && strings.HasPrefix(*n.Actor.Ref, prefix) && !seen[n.ID] {
+		if n.Actor != nil && n.Actor.Ref != nil && strings.HasPrefix(*n.Actor.Ref, prefix) && *n.Actor.Ref != layerRef && !seen[n.ID] {
 			seen[n.ID] = true
 			ids = append(ids, n.ID)
 		}

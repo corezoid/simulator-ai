@@ -311,3 +311,20 @@ func TestPlacementsReadColoursInBatches(t *testing.T) {
 	}
 	cellsOf(t, f, "B", 120, 0)
 }
+
+// A bad origin or cell is refused before newLayer is created: no empty layer is left behind.
+func TestGraphBuildBadCellsLeaveNoLayer(t *testing.T) {
+	call, f := fakeConsole(t)
+	for _, args := range []string{
+		`{"operationId":"o1","newLayer":"Org","formId":42,"origin":"nowhere","nodes":[["a","A"]]}`,
+		`{"operationId":"o2","newLayer":"Org","formId":42,"layout":"given","nodes":[["a","A"]]}`,
+		`{"operationId":"o3","newLayer":"Org","formId":42,"nodes":[["a","A","B, 2"]]}`,
+	} {
+		if text, failed := call("graph_build", args); !failed {
+			t.Fatal(args, text)
+		}
+	}
+	if actors, _, _ := f.Snapshot(""); len(actors) != 0 || f.Count("actor/create") != 0 {
+		t.Fatalf("%d actors left", len(actors))
+	}
+}

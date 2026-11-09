@@ -96,7 +96,7 @@ const (
 	buildOutput        = `{"type":"object","properties":{"done":{"type":"boolean"},"layerId":{"type":"string"}},"required":["done","layerId"]}`
 	buildDeleteSchema  = `{"type":"object","properties":{"layerId":{"type":"string"},"operationId":{"type":"string"},"dryRun":{"type":"boolean"}},"required":["layerId","operationId"],"additionalProperties":false}`
 	buildDescription   = "Build a graph on a layer in ONE call: actors, placements, edges and their placements, by your own keys (no ids to pass around). nodes: [key, title] or {key, title, formId, kind, desc, data, color, hole, cell}; edges: [from, to, name?] or {from, to, name, type}. Top-level formId, kind (a flowchart blockId) and edgeType are the defaults. layerId, or newLayer (a title). layout: auto (ranks top-down when the edges have a direction, else a grid), layered, grid, or given ([key, title, cell]); origin: the top-left cell, default free cells under the layer's content; rowCells: row width, default 60. Edge ends may also be keys of operations listed in use, or existing {key: actorId} on the layer. operationId (yours): repeating the call builds only what is missing, never twice. ids: keys whose actorId to return. Returns done, layerId, nodes and edges {total, done, existing}, area, next {below, right} (origins for the next call); not done: chunks, error, resume. At most 2000 nodes and 4000 edges."
-	buildDeleteDetails = "Delete the actors a graph_build operationId created on a layer, with their placements and edges; a layer it created stays and the id cannot be reused. Destructive: run dryRun (counts only) first and confirm with the user."
+	buildDeleteDetails = "Delete the actors a graph_build operationId created on a layer, with their placements and edges; a layer it created stays. Destructive: run dryRun (counts only) first and confirm with the user."
 )
 
 // addGraphBuild registers graph_build and the removal of what one operation built.
@@ -266,6 +266,27 @@ func buildLayout(in buildInput, b *publicapi.GraphBuild, nodes []publicapi.Build
 	return nil
 }
 
+// checkBuildCells checks the cells the input names before anything is read or written: buildLayout
+// would refuse the same, but only after a new layer exists.
+func checkBuildCells(in buildInput) error {
+	if in.Origin != "" {
+		if _, err := publicapi.CellCenter(in.Origin); err != nil {
+			return fmt.Errorf("origin: %w", err)
+		}
+	}
+	for _, n := range in.Nodes {
+		if in.Layout != "given" && n.Cell != "" {
+			return fmt.Errorf("node %q: a cell is taken only with layout given", n.Key)
+		}
+		if in.Layout == "given" {
+			if _, err := publicapi.CellCenter(n.Cell); err != nil {
+				return fmt.Errorf("node %q: layout given needs every node's cell: %w", n.Key, err)
+			}
+		}
+	}
+	return nil
+}
+
 func graphBuild(ctx context.Context, c *publicapi.Client, in buildInput) (publicapi.GraphBuildResult, error) {
 	if len(in.Nodes) > publicapi.MaxBuildNodes || len(in.Edges) > publicapi.MaxBuildEdges {
 		return publicapi.GraphBuildResult{}, fmt.Errorf("at most %d nodes and %d edges per call: split the graph into sections", publicapi.MaxBuildNodes, publicapi.MaxBuildEdges)
@@ -292,6 +313,9 @@ func graphBuild(ctx context.Context, c *publicapi.Client, in buildInput) (public
 		run.Edges[i] = publicapi.BuildEdge{From: e.From, To: e.To, Name: e.Name, EdgeType: edgeType}
 	}
 	if err = run.Validate(); err != nil { // before a new layer is created for a call that cannot run
+		return publicapi.GraphBuildResult{}, err
+	}
+	if err = checkBuildCells(in); err != nil { // likewise: a bad cell or origin must not leave an empty new layer
 		return publicapi.GraphBuildResult{}, err
 	}
 	b, err := c.OpenGraphBuild(ctx, publicapi.GraphBuildTarget{LayerID: in.LayerID, NewLayer: in.NewLayer, OperationID: in.OperationID})
