@@ -16,6 +16,8 @@ const (
 	// maxReadBytes bounds the sources, outlines and nodes of one smart_form_files_get answer: the
 	// Console agent's host cuts a tool answer over 50,000 characters, and what is cut cannot be read.
 	maxReadBytes = 40_000
+	// minReadBytes is what sources may take however long the file listing is.
+	minReadBytes = 8_000
 	// maxOutlineLevels is the deepest outline; a tree is rarely deeper.
 	maxOutlineLevels = 20
 )
@@ -76,7 +78,11 @@ func (c *Client) GetSmartFormFiles(ctx context.Context, in SmartFormFilesInput) 
 			return SmartFormFiles{}, errors.New("nodeId and offset read one file: paths names a folder or nothing")
 		}
 	}
-	r := &fileReader{in: in, left: maxReadBytes}
+	// The listing rides in the same answer: its bytes come off the budget (a floor keeps a form with
+	// very many files readable by paths).
+	listing, _ := json.Marshal(out.Files)
+	budget := max(maxReadBytes-len(listing), minReadBytes)
+	r := &fileReader{in: in, left: budget, budget: budget}
 	for i := range out.Files {
 		f := &out.Files[i]
 		if f.ObjType != "file" || in.Outline > 0 && in.NodeID == "" && !named[f.Path] && !isPageConfig(f.Path) && !strings.HasPrefix(f.Path, "definitions/") {
@@ -130,6 +136,7 @@ func narrowFiles(all []SmartFormEntry, paths []string) (kept []SmartFormEntry, m
 type fileReader struct {
 	in      SmartFormFilesInput
 	left    int // bytes the answer may still take
+	budget  int // left at the start: the whole answer's share for sources, outlines and nodes
 	read    int // files read
 	skipped int // files left without their source
 	cut     bool
@@ -162,7 +169,7 @@ func (r *fileReader) fill(f *SmartFormEntry, source string) error {
 	}
 	if r.in.Outline > 0 {
 		f.Outline = outlineDoc(doc, path, r.in.Outline, r.left)
-		r.left -= len(f.Outline)
+		r.left -= encodedLen(f.Outline)
 		return nil
 	}
 	b, e := encodeDoc(doc, "")
@@ -184,13 +191,16 @@ func (r *fileReader) source(f *SmartFormEntry, source string) error {
 		if at >= len(source) {
 			return fmt.Errorf("offset %d is past the end of %s (%d bytes)", at, f.Path, len(source))
 		}
-		for !utf8.RuneStart(source[at]) {
+		for at < len(source) && !utf8.RuneStart(source[at]) {
 			at++ // an offset inside a character starts at the next one
+		}
+		if at == len(source) {
+			return fmt.Errorf("offset %d is past the end of %s (%d bytes)", r.in.Offset, f.Path, len(source))
 		}
 		source = source[at:]
 	}
 	if encodedLen(source) > r.left {
-		if r.left < maxReadBytes {
+		if r.left < r.budget {
 			r.skipped++
 			return nil
 		}
@@ -227,7 +237,7 @@ func cutSource(s string, limit int) string {
 func (r *fileReader) note() string {
 	var notes []string
 	if r.skipped > 0 {
-		notes = append(notes, fmt.Sprintf("%d files left without source (one answer holds %d characters and %d files): read them by paths, fewer at a time", r.skipped, maxReadBytes, maxPathSources))
+		notes = append(notes, fmt.Sprintf("%d files left without source (one answer holds %d characters and %d files): read them by paths, fewer at a time", r.skipped, r.budget, maxPathSources))
 	}
 	if r.cut {
 		notes = append(notes, "source cut: read on with offset = next; read a page or definition with outline, then one node with nodeId, and change it with smart_form_page_patch")

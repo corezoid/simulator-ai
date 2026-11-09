@@ -191,7 +191,17 @@ func outlineDoc(doc any, path []string, levels, limit int) string {
 		tree, isPage = page.get("tree")
 	}
 	_, node := isNode(doc)
-	_, list := doc.([]any)
+	// A list is a node list (a children array) when one of its items is a node; rows of a viewModel
+	// are plain objects and are outlined by keys.
+	list := false
+	if items, ok := doc.([]any); ok {
+		for _, item := range items {
+			if _, ok := isNode(item); ok {
+				list = true
+				break
+			}
+		}
+	}
 	switch {
 	case isPage:
 		total := countNodes(tree)
@@ -207,7 +217,7 @@ func outlineDoc(doc any, path []string, levels, limit int) string {
 		for _, kid := range bound {
 			o.nodes(kid.v, kid.path, 0, "binding overlay")
 		}
-	case node || list && countNodes(doc) > 0:
+	case node || list:
 		o.nodes(doc, path, 0, "")
 	default:
 		name := "/"

@@ -229,4 +229,20 @@ func TestSmartFormReads(t *testing.T) {
 	if many := get(SmartFormFilesInput{Paths: []string{"styles"}}); !strings.Contains(many.Note, "1 files left without source") {
 		t.Fatal(many.Note)
 	}
+	// The listing rides in the answer too: a cut source and the listing together stay in the budget.
+	f.EditFile(app.AppID, "styles/index", func(string) string { return less })
+	whole := get(SmartFormFilesInput{Paths: []string{"styles"}})
+	raw, _ := json.Marshal(whole)
+	if entry(whole, "styles/index").Next == 0 || len(whole.Files) < 20 || len(raw) > maxReadBytes+1000 {
+		t.Fatalf("%d bytes for %d files, next %d", len(raw), len(whole.Files), entry(whole, "styles/index").Next)
+	}
+	// An offset inside the file's last character is past the end, not a panic.
+	f.EditFile(app.AppID, "styles/index", func(string) string { return "a { }é" })
+	if _, err = c.GetSmartFormFiles(ctx, SmartFormFilesInput{AppID: app.AppID, Paths: []string{"styles/index"}, Offset: len("a { }é") - 1}); err == nil || !strings.Contains(err.Error(), "past the end") {
+		t.Fatal(err)
+	}
+	// Rows of a viewModel are not CDU nodes: a list of them is outlined as a list, not node by node.
+	if e := entry(get(SmartFormFilesInput{Paths: []string{"pages/index/viewModel"}, NodeID: "/orders", Outline: 2}), "pages/index/viewModel"); e.Outline != "orders [2]" {
+		t.Fatal(e.Outline)
+	}
 }
