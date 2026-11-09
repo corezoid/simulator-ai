@@ -37,4 +37,4 @@ In `console`, the whole protocol, every component and complete example pages are
 This is a display-only starter. A form that saves records is `smart_form_data_form_create` in
 `console`; Corezoid-backed data and submits are `simulator-ai-smart-forms-logic`. Never put API
 keys or Corezoid credentials in view models or sources. The `smart-forms` profile does not run `page/render`
-or `page/submit`; `console-full` does (`smart_form_page_render`, `smart_form_page_submit`).
+or `page/submit`; `console` renders (`smart_form_page_render`), `console-full` also submits (`smart_form_page_submit`).

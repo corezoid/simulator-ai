@@ -251,9 +251,13 @@ a rank wider than 60 cells wraps; `origin` is the layout's top-left cell.
 <details>
 <summary>smart_form_files_get</summary>
 
-**Public calls:** `application/env/list` + `application/struct` (develop); with `paths` + `app_file/get` per named file
+**Public calls:** `application/env/list` + `application/struct` (develop, never with sources); + `app_file/get` per file read (at most 20)
 
-**Result:** folders/files by path, optional sources (`paths`: only the named files and folders, each file with its source; `missing`), `developEnvId`, `productionEnvId`
+**Result:** folders/files by path with `sourceHash`, `developEnvId`, `productionEnvId`. Sources on request (`paths`: the named files and
+folders; `withSource`: every file) within 40,000 characters per answer: files past that come without `source` and `note` says how to read
+them; one file too long alone is cut with `next` (read on with `offset`). `outline: N` answers pages and definitions as one line per node
+(`Type#id props on:events`, `+n` nodes below level N); with one file in `paths`, `nodeId` (a node id or a JSON Pointer) answers that part
+as `node`, or its outline. `missing`: paths that name nothing
 
 </details>
 
@@ -271,7 +275,8 @@ a rank wider than 60 cells wraps; `origin` is the layout's top-left cell.
 
 **Public calls:** `app_file/update` / `app_file/create`
 
-**Result:** id, folderId, title, sourceHash
+**Result:** id, folderId, title, sourceHash. An update with `source` requires `ifMatchHash` (the `sourceHash` read): a file changed since
+is not written, and the error names its hash now and the node ids the sent source lacks (never the stored source)
 
 </details>
 
@@ -287,7 +292,7 @@ a rank wider than 60 cells wraps; `origin` is the layout's top-left cell.
 <details>
 <summary>smart_form_release</summary>
 
-**Public calls:** `application/env/list` + `release/create` (develop → production)
+**Public calls:** `application/env/list` + `application/struct` + `app_file/get` per page config (the pending check) + `release/create` (develop → production)
 
 **Result:** `{appId, releaseId, releaseNumber, status, ready, marker}`
 
@@ -335,7 +340,9 @@ filter reading another Form, and set its `accId` to the host workspace and its `
 methods) are left as they are. A page that sends nothing yet (inputs with an action-less button but no Form, a Form that neither a form.submit names
 nor any action passes on: `vm.<valueKey>` in a `simapi.call`, `widget.call`, `bus.publish`, `navigate.local`/`navigate.route` or `copy`, their `onError`/`notify` follow-ups not counting)
 is saved with `pending` naming what is missing, so a large page can be built section by section; `smart_form_release` reads the develop
-page configs (`application/struct` with sources) and refuses to release one still in that state. Then
+page configs (one `app_file/get` each, so a large form stays under the response limit) and refuses to release one still in that state.
+`smart_form_page_render` (in the plain `console` catalog) answers `{ok, pageId, nodes, bindings, vmKeys, locales, bytes, warnings?}`
+unless `full` is sent: a written page is verified by rendering it, not by reading it back. Then
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`; a later change to a page is
 `smart_form_files_get {paths}` → `smart_form_reference_grep` / `smart_form_reference_read` (or
 `smart_form_components {types}`) → `smart_form_page_patch` by `nodeId`. Its

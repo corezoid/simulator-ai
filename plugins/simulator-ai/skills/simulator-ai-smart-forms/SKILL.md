@@ -101,8 +101,8 @@ The CDU v2 reference reads like source files, a few lines at a time:
 To change an existing page, touch only that page and only the components you change:
 
 1. `smart_form_files_get {appId, paths: ["pages/<page>/config"]}`: that file's source,
-   `id` and `sourceHash` (a folder path such as `pages/<page>` gives everything under it).
-   `withSource: true` returns every file's source: only for a whole-form review.
+   `id` and `sourceHash` (a folder path such as `pages/<page>` gives everything under it). One
+   answer holds 40,000 characters; a longer page is read by outline and node (Large apps below).
 2. The types you add or change: `smart_form_reference_read {doc: "components/<Type>"}` or
    `smart_form_components {types: [...]}`, one line per prop, enums inlined (`schema: true` the
    raw JSON Schemas).
@@ -116,7 +116,8 @@ To change an existing page, touch only that page and only the components you cha
 4. Rewrite whole files with `smart_form_files_update {appId, items: [{id, title, type, source,
    ifMatchHash}]}` only for a new page or a big restructure (up to 20 files, one transaction,
    under 960 KiB): send the current `title` and `type`, and the read `sourceHash` as
-   `ifMatchHash` so a concurrent edit is refused. Read again before the next write.
+   `ifMatchHash` (required with `source`). A refusal names the file's hash now and the nodes
+   your source lacks: someone saved it in the editor, so read those and patch, never resend blind.
 5. `smart_form_files_create {appId, items: [{folderId, title, type, source}]}` adds a file in an
    existing folder (e.g. `pages/index/locale`); titles are not unique, so never create a second
    file with the same name.
@@ -127,7 +128,20 @@ A new page is a folder `pages/<page>` holding its `config`: `smart_form_folders_
 `smart_form_files_create` the `config` (and `locale`) with the new folder's id. Reuse a folder
 that exists: titles are not unique.
 
-## Large pages: in parts, repeats as definitions
+## Large apps: page by page, in parts
+
+1. **Plan first:** the pages, each page's sections (ids) and the shared definitions; create
+   every folder (`smart_form_folders_create`), the definitions and one skeleton per page.
+2. **One page per step**, one section per patch. Never rewrite an existing page.
+3. **Verify by render, not by reading back:** `smart_form_page_render {ref, envTitle:
+   "develop", page}` answers `{ok, nodes, …}` or the error; move on when `ok`.
+4. **Read in parts:** `smart_form_files_get {appId, paths: [<page config>], outline: 2}` is one
+   line per node (`Type#id props`, `+n` nodes below); go deeper with `nodeId` + `outline`, read
+   one node's JSON with `nodeId` alone, another long file from `offset: <next>`. `{appId,
+   outline: 1}` is the whole app at a glance.
+5. **Resume after a cut turn:** `smart_form_files_get {appId, outline: 2}` shows which pages
+   and sections are filled (an empty section has no `+n`); continue from the first empty one
+   with the listed `sourceHash`. Release once, at the end.
 
 Keep every write small, however long the turn may run:
 
@@ -208,7 +222,8 @@ status, ready, marker}`: `ready: true` means production serves it. `smart_form_r
   `smart_form_trash_restore {actorId, items: [{id, objType}]}`; a folder comes back alone, so
   restore its files as items of their own. Confirm first.
 - **Test run:** `smart_form_page_render {ref, envTitle: "develop", page}` builds a page as the
-  runtime does, its initialization process included, and returns the error that breaks it.
+  runtime does, its initialization process included, and answers a summary or the error that
+  breaks it (`full: true`: the whole render).
   `smart_form_page_submit {ref, envTitle, page, formId: <Form node id>, formData}` runs a submit
   and whatever its process writes: only test data, and only when the user asked for a test.
 

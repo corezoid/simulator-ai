@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+- Build and edit large multi-page Smart Forms from the AI Console. `smart_form_files_get` answers at most 40,000
+  characters of sources (files past that come without `source` and a `note`; one long file is cut with `next` and read
+  on with `offset`), reads a page or definition as an outline (`outline: N`, one line per node) and one node by
+  `nodeId` (an id or a JSON Pointer), and no longer asks `application/struct` for sources. `smart_form_files_update`
+  requires `ifMatchHash` with `source`; a stale one is refused with the file's hash now and the node ids the sent
+  source lacks. `smart_form_release` reads page configs one by one for its pending check. `smart_form_page_render`
+  joins the plain `console` catalog (62 tools), takes `ref`, `envTitle`, `page`, `query` and answers a summary
+  (`full: true` for the whole render).
+
 - Build large graphs from the AI Console: `graph_build` creates actors, placements, edges and edge placements in one
   call from caller-chosen keys (up to 2000 nodes and 4000 edges, atomic batches of 99, layered / grid / given layouts
   with rank wrapping and an origin), repeats safely under an `operationId` (actor refs `gb:<operationId>:<key>`) and
