@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+- Answer "how many templates" exactly and cheaply: `forms_count` joins the plain `console` catalog and core group,
+  and `forms_list` rows are compact (id, title, type, isDefault; `full` for the rest). `reactions_list` drops the
+  AI reasoning trace (`treeInfo.reasoning`) and `accounts_list` its per-row noise unless `full` is sent.
+
 - Add `layer_stats_get`, `layer_node_expand`, `layer_settings_update` and `account_pair_create` to the plain
   `console` catalog: AI Console runs on the baseline (router fallback) asked for them and missed them.
 

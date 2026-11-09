@@ -3,8 +3,8 @@ name: simulator-ai-forms
 description: Design and change Simulator templates (forms, Account Templates, «Шаблон рахунків») — sections and fields, dynamic selects, the template tree and default accounts — and find system templates, through the public Simulator AI tools. Use when the user wants to create or modify a template, add fields, define an actor schema, set a template's status, give every actor of a template an account, or asks what system templates exist ("створи шаблон", "додай поле", "шаблон рахунків", "создай форму", "добавь поле").
 ---
 
-Use the installed `simulator-ai` catalog. `console` has `form_get`, `forms_list`, `form_create`,
-`form_fields_patch`, `form_update` and `form_account_create`; `form_status_update`, `form_delete`, `forms_count`, the
+Use the installed `simulator-ai` catalog. `console` has `form_get`, `forms_list`, `forms_count`, `form_create`,
+`form_fields_patch`, `form_update` and `form_account_create`; `form_status_update`, `form_delete`, the
 tree reads and the rest of the account definitions need `console-full`. The records of a template are
 `simulator-ai-actors`.
 
@@ -19,7 +19,10 @@ meeting and recurrence, a dashboard's source, a stream's order) are keys of thei
 
 - `forms_list {query?, type?}`: custom templates by default; `type: "system"` for Events,
   Layers, Graphs, Scripts and the other platform templates (their ids differ per workspace),
-  `"all"` for every kind. Rows have no body.
+  `"all"` for every kind. Rows are compact (id, title, type, ref, parentId when set; `full` for
+  owner, flags and dates) and have no body. Ask only for as many rows as you will show.
+- `forms_count {query?, type?}`: the exact number for the same filters; answer "how many" with
+  it, never by counting pages.
 - `form_get {formId}` returns the full body. Its `description` and each field's `description`
   are the authoritative meaning of the template and its fields: read them before explaining a
   field, and read again rather than answering from memory. `with: ["editor"]` adds the

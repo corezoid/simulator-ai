@@ -16,7 +16,7 @@ import (
 // turn, so the rest of the console tools are console-full only.
 var consoleCoreTools = map[string]bool{
 	"actor_get": true, "actor_create": true, "actors_create": true, "actor_update": true, "actors_search": true,
-	"form_get": true, "forms_list": true, "graph_get": true,
+	"form_get": true, "forms_list": true, "forms_count": true, "graph_get": true,
 	"flowchart_blocks_list": true, "flowchart_layout": true, "layer_create": true, "layer_get": true,
 	"layer_placements_create": true, "layer_positions_update": true, "edge_create": true, "edges_create": true,
 	"smart_form_components": true, "smart_form_data_form_create": true, "smart_form_create": true, "smart_form_files_get": true, "smart_form_files_update": true,
