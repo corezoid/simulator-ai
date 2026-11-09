@@ -88,6 +88,9 @@ func (s *Server) run(method string, params json.RawMessage) (any, *rpcError) {
 		}
 		return map[string]any{"nodes": nodes, "edges": edges}, nil
 	}
+	if run, ok := appMethods[method]; ok {
+		return run(s, params)
+	}
 	return nil, fail("methodNotFound", method)
 }
 

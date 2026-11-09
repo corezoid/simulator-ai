@@ -2,6 +2,8 @@
 // actors with refs unique per template, edges with natural keys, a layer's node and edge placements,
 // and batches (atomic, with "$<index>.<path>" result references) under the server's own limits. It
 // lets tests build thousands of nodes, lose an answer mid-build and read back what really landed.
+// It also holds Smart Forms (apps.go): a develop file tree with source hashes and the ifMatchHash
+// precondition, releases into production and a page render.
 package simfake
 
 import (
@@ -114,6 +116,8 @@ type Server struct {
 	Ghosts int
 	// Blocks is the result of form/flowchart-block/search.
 	Blocks string
+	// apps are the Smart Forms (see apps.go); they take no part in batches.
+	apps map[string]*app
 }
 
 // BlockCatalog is a one-kind flowchart catalog: "process", 200 x 100.
@@ -121,7 +125,7 @@ const BlockCatalog = `{"list":[{"id":6,"parentId":5,"title":"Process","blockId":
 
 // New starts a fake backend; close it with Close.
 func New() *Server {
-	s := &Server{Blocks: BlockCatalog, state: state{Actors: map[string]*Actor{}, Refs: map[string]string{}, Edges: map[string]*Edge{}, EdgeKeys: map[string]string{}}}
+	s := &Server{Blocks: BlockCatalog, apps: map[string]*app{}, state: state{Actors: map[string]*Actor{}, Refs: map[string]string{}, Edges: map[string]*Edge{}, EdgeKeys: map[string]string{}}}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	return s
 }
@@ -130,7 +134,8 @@ type rpcError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    struct {
-		Reason string `json:"reason"`
+		Reason       string `json:"reason"`
+		ReasonParams any    `json:"reasonParams,omitempty"`
 	} `json:"data"`
 }
 
