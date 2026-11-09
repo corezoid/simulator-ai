@@ -66,7 +66,7 @@ func (c *Client) planRoom(ctx context.Context, in PlacementsCreateInput) (roomPl
 	var plan roomPlan
 	start := room
 	if room.Partial {
-		plan.warning = fmt.Sprintf("the layer has more than %d placements: only the first were checked for room", maxRoomPages*1000)
+		plan.warning = fmt.Sprintf("the layer has more than %d placements: only the first were checked for room", maxRoomPages*layerPage)
 	}
 	if taken := room.conflicts(boxes, 0); len(taken) > 0 {
 		if !room.Anisotropy {

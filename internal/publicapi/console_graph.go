@@ -68,6 +68,10 @@ type PlacementsCreateInput struct {
 	Edges   []EdgePlacement `json:"edges,omitempty"`
 }
 
+// maxLayerItems is what graph/layer/actors/manage and positions/update take in one call (1-500 in
+// the pinned contract).
+const maxLayerItems = 500
+
 type layerManageRequest struct {
 	AccID   string               `json:"accId"`
 	ActorID string               `json:"actorId"`
@@ -288,8 +292,8 @@ func (c *Client) placeNodes(ctx context.Context, in PlacementsCreateInput, given
 		return PlacementsCreated{}, e
 	}
 	n := len(in.Nodes) + len(in.Edges)
-	if !validID(in.LayerID) || n < 1 || n > 100 {
-		return PlacementsCreated{}, errors.New("layerId and 1..100 node or edge placements required")
+	if !validID(in.LayerID) || n < 1 || n > maxLayerItems {
+		return PlacementsCreated{}, errors.New("layerId and 1..500 node or edge placements required")
 	}
 	if err := in.validBornOpen(); err != nil {
 		return PlacementsCreated{}, err
@@ -339,8 +343,8 @@ func (c *Client) UpdatePositions(ctx context.Context, in PositionsUpdateInput) (
 	if e := consoleOnly(c); e != nil {
 		return PositionsUpdated{}, e
 	}
-	if !validID(in.LayerID) || len(in.Items) < 1 || len(in.Items) > 100 {
-		return PositionsUpdated{}, errors.New("layerId and 1..100 positions required")
+	if !validID(in.LayerID) || len(in.Items) < 1 || len(in.Items) > maxLayerItems {
+		return PositionsUpdated{}, errors.New("layerId and 1..500 positions required")
 	}
 	items := make([]positionItem, len(in.Items))
 	for i, p := range in.Items {

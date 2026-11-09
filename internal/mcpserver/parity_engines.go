@@ -223,25 +223,26 @@ func compact(ctx context.Context, c *publicapi.Client, in compactInput) (graphpl
 		return graphplan.CompactStats{}, err
 	}
 	moves, stats := graphplan.CompactLayout(nodes, links, graphplan.CompactOptions{BucketThreshold: in.BucketThreshold, ClustersPerRow: in.ClustersPerRow, NodesPerRow: in.NodesPerRow, NodeDX: in.NodeDX, NodeDY: in.NodeDY})
-	if len(moves) > 500 {
-		// One call moves all of them, so vacated cells can be reused; sim-api takes at most 500.
-		return graphplan.CompactStats{}, fmt.Errorf("layout would move %d placements; at most 500 per call", len(moves))
-	}
-	if len(moves) == 0 {
-		return stats, nil
-	}
 	type item struct {
 		LaActorID int64          `json:"laActorId"`
 		Position  map[string]any `json:"position"`
 	}
-	items := make([]item, len(moves))
-	for i, m := range moves {
-		items[i] = item{LaActorID: m.LaID, Position: map[string]any{"x": m.X, "y": m.Y}}
-	}
-	raw, _ := json.Marshal(items)
 	layer, _ := json.Marshal(in.LayerID)
-	if _, err = c.Pass(ctx, "graph/layer/actors/positions/update", map[string]json.RawMessage{"actorId": layer, "items": raw}); err != nil {
-		return graphplan.CompactStats{}, err
+	// sim-api takes at most 500 positions a call and refuses a taken cell: a larger layout goes in
+	// ordered calls (graphplan.MoveBatches), each leaving the layer consistent.
+	batches := graphplan.MoveBatches(nodes, moves, 500)
+	for k, batch := range batches {
+		items := make([]item, len(batch))
+		for i, m := range batch {
+			items[i] = item{LaActorID: m.LaID, Position: map[string]any{"x": m.X, "y": m.Y}}
+		}
+		raw, _ := json.Marshal(items)
+		if _, err = c.Pass(ctx, "graph/layer/actors/positions/update", map[string]json.RawMessage{"actorId": layer, "items": raw}); err != nil {
+			if k > 0 {
+				return graphplan.CompactStats{}, fmt.Errorf("layout stopped after %d of %d calls (the layer is consistent, partly laid out; run layer_compact again): %w", k, len(batches), err)
+			}
+			return graphplan.CompactStats{}, err
+		}
 	}
 	return stats, nil
 }

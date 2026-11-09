@@ -22,31 +22,31 @@ func TestChartCreate(t *testing.T) {
 	placed := map[string]string{"graph/layer/actors/manage": `"result":{"nodes":[{"laId":31,"actorId":"a1"}],"edges":[]}`}
 	send, calls := consoleServer(t, placed)
 	reply := callTool(send, "chart_create", `{"layerId":"`+chartLayer+`","title":"Revenue","chartType":"bar","position":{"x":100,"y":50},"accounts":[{"actorId":"`+chartActor+`","nameId":"`+chartName+`","currencyId":1}]}`)
-	if strings.Contains(reply, `"isError":true`) || methodsOf(*calls) != "actor/get,graph/layer/actors/list,form/system/get,actor/create,graph/layer/actors/manage" || !strings.Contains(reply, `"chartId":"a1","laId":31`) {
+	if strings.Contains(reply, `"isError":true`) || methodsOf(*calls) != "actor/get,graph/layer/actors/list,graph/layer/actors/list,form/system/get,actor/create,graph/layer/actors/manage" || !strings.Contains(reply, `"chartId":"a1","laId":31`) {
 		t.Fatal(methodsOf(*calls), reply)
 	}
-	if (*calls)[2].Params["title"] != "Dashboards" || !strings.Contains(sent((*calls)[3]), `"data":{"source":"{"defaultAccount":null,"accounts":[{"actorId":"`+chartActor) ||
-		!strings.Contains(sent((*calls)[3]), `"sourceType":"manual"`) || !strings.Contains(sent((*calls)[3]), `"formId":7`) {
-		t.Fatal("chart actor:", sent((*calls)[3]))
+	if (*calls)[3].Params["title"] != "Dashboards" || !strings.Contains(sent((*calls)[4]), `"data":{"source":"{"defaultAccount":null,"accounts":[{"actorId":"`+chartActor) ||
+		!strings.Contains(sent((*calls)[4]), `"sourceType":"manual"`) || !strings.Contains(sent((*calls)[4]), `"formId":7`) {
+		t.Fatal("chart actor:", sent((*calls)[4]))
 	}
 	// Born open as the Graph Editor's Chart row: the chart box, and no make-room (anisotropy off).
 	if want := `"items":[{"action":"create","data":{"id":"a1","layerSettings":{"expand":true,"expandPushed":false,"expandType":"chart","flaskView":false,"height":450,` +
-		`"nestedFrame":{"height":9,"left":-6,"top":-4,"width":13},"width":650},"position":{"x":100,"y":50},"type":"node"}}]`; !strings.Contains(sent((*calls)[4]), want) {
-		t.Fatal("placement:", sent((*calls)[4]))
+		`"nestedFrame":{"height":9,"left":-6,"top":-4,"width":13},"width":650},"position":{"x":100,"y":50},"type":"node"}}]`; !strings.Contains(sent((*calls)[5]), want) {
+		t.Fatal("placement:", sent((*calls)[5]))
 	}
 
 	// An actorFilter chart first creates its ActorFilters actor, titled by the chart.
 	send, calls = consoleServer(t, placed)
 	reply = callTool(send, "chart_create", `{"layerId":"`+chartLayer+`","title":"Top customers","sourceFormId":19,"accountNameId":"`+chartName+`","currencyId":2,"top":5}`)
-	if strings.Contains(reply, `"isError":true`) || methodsOf(*calls) != "actor/get,graph/layer/actors/list,form/system/get,form/system/get,actor/create,actor/create,graph/layer/actors/manage" || !strings.Contains(reply, `"filterActorId":"a1"`) {
+	if strings.Contains(reply, `"isError":true`) || methodsOf(*calls) != "actor/get,graph/layer/actors/list,graph/layer/actors/list,form/system/get,form/system/get,actor/create,actor/create,graph/layer/actors/manage" || !strings.Contains(reply, `"filterActorId":"a1"`) {
 		t.Fatal(methodsOf(*calls), reply)
 	}
-	if (*calls)[3].Params["title"] != "ActorFilters" || !strings.Contains(sent((*calls)[4]), `"filter":"{"accountNameId":"`+chartName+`","currencyId":2,"formId":19,"selectedForms":[19]}"`) ||
-		!strings.Contains(sent((*calls)[4]), `"title":"Top customers"`) {
-		t.Fatal("filter actor:", sent((*calls)[4]))
+	if (*calls)[4].Params["title"] != "ActorFilters" || !strings.Contains(sent((*calls)[5]), `"filter":"{"accountNameId":"`+chartName+`","currencyId":2,"formId":19,"selectedForms":[19]}"`) ||
+		!strings.Contains(sent((*calls)[5]), `"title":"Top customers"`) {
+		t.Fatal("filter actor:", sent((*calls)[5]))
 	}
-	if !strings.Contains(sent((*calls)[5]), `"dynamicSource":{"id":"a1","title":"Top customers","top":"5"`) {
-		t.Fatal("chart source:", sent((*calls)[5]))
+	if !strings.Contains(sent((*calls)[6]), `"dynamicSource":{"id":"a1","title":"Top customers","top":"5"`) {
+		t.Fatal("chart source:", sent((*calls)[6]))
 	}
 }
 
@@ -124,7 +124,7 @@ func TestChartUpdate(t *testing.T) {
 func TestChartCreateRefusedBeforeActors(t *testing.T) {
 	send, calls := consoleServer(t, nil)
 	reply := callTool(send, "chart_create", `{"layerId":"`+chartLayer+`","title":"Revenue","position":{"x":1000,"y":1000},"accounts":[{"actorId":"`+chartActor+`","nameId":"`+chartName+`","currencyId":1}]}`)
-	if !strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "occupied") || methodsOf(*calls) != "actor/get,graph/layer/actors/list" {
+	if !strings.Contains(reply, `"isError":true`) || !strings.Contains(reply, "occupied") || methodsOf(*calls) != "actor/get,graph/layer/actors/list,graph/layer/actors/list" {
 		t.Fatal(methodsOf(*calls), reply)
 	}
 }
