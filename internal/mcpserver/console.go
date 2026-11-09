@@ -42,6 +42,10 @@ var consoleCoreTools = map[string]bool{
 	// Deleting an actor the user named: a request that names no domain gets this baseline, so
 	// without it "delete X" outside a layer had no tool (destructive: confirmed with the user).
 	"actor_delete": true,
+	// What runs on the baseline asked for and missed (sim-api router evaluation, 2026-11-09): how many
+	// actors and edges a layer has, opening or resizing a node, the layer's own settings (accounts
+	// shown on the graph) and the account pair those settings name.
+	"layer_stats_get": true, "layer_node_expand": true, "layer_settings_update": true, "account_pair_create": true,
 }
 
 // keepConsoleCore drops every tool outside consoleCoreTools.

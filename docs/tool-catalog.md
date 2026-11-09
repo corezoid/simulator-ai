@@ -37,7 +37,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `account_name_get` | `console-full` |  |
 | `account_name_update` |  | `console-full` |
 | `account_names_list` | `console-full` |  |
-| `account_pair_create` |  | `console-full` |
+| `account_pair_create` |  | `console`, `console-full` |
 | `account_pair_unregister` |  | `console-full` |
 | `account_status_update` |  | `console-full` |
 | `account_tag_add` |  | `console-full` |
@@ -165,16 +165,16 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `layer_edges_list` | `graph-read`, `console-full` |  |
 | `layer_element_exist` | `graph-read`, `console-full` |  |
 | `layer_get` | `console`, `console-full` |  |
-| `layer_node_expand` |  | `console-full` |
+| `layer_node_expand` |  | `console`, `console-full` |
 | `layer_placements_all` | `graph-read`, `console-full` |  |
 | `layer_placements_create` |  | `console`, `console-full` |
 | `layer_placements_list` | `graph-read`, `console-full` |  |
 | `layer_placements_manage` |  | `console-full` |
 | `layer_positions_update` |  | `console`, `console-full` |
 | `layer_prune_long_edges` |  | `console-full` |
-| `layer_settings_update` |  | `console-full` |
+| `layer_settings_update` |  | `console`, `console-full` |
 | `layer_skeleton_get` | `graph-read`, `console-full` |  |
-| `layer_stats_get` | `console-full` |  |
+| `layer_stats_get` | `console`, `console-full` |  |
 | `layer_viewport` | `console`, `console-full` |  |
 | `meet_transcription_list` | `console-full` |  |
 | `public_link_create` |  | `console-full` |

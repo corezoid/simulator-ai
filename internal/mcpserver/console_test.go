@@ -333,7 +333,7 @@ func TestConsoleCoreCatalog(t *testing.T) {
 			t.Error("console has", name)
 		}
 	}
-	if len(names) != len(consoleCoreTools) || len(names) != 54 {
+	if len(names) != len(consoleCoreTools) || len(names) != 58 {
 		t.Fatalf("console has %d tools, want the %d core ones: %v", len(names), len(consoleCoreTools), names)
 	}
 }
