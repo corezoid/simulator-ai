@@ -18,7 +18,8 @@ positions; `layer_edges_list` keeps of each edge its type, ends, label and hole;
 most 150 nodes and the edges between them with `total`, the `box` every node centre lies in and `truncated`; `layer_placements_all`
 answers `count`, `summary {forms [{formId, count}], box}` and the first `limit` (150) rows by `cell`. Tool groups: Console entries in `tools/list` carry `_meta: {"simulator-ai/groups": [...]}`.
 Hosts can select `core` plus the domains needed for a task. A tool can belong to multiple groups.
-Groups include graph, smart_forms, forms, finance, finance_setup, people, files, meetings,
+Groups include graph, graph_extra (holes, pencil drawings, opening a node, layer settings, the compact and prune
+engines), smart_forms, forms, finance, finance_setup, people, files, meetings,
 jobs, charts, simulation and corezoid. The plain `console` catalog is a curated subset,
 not the union of all these groups. Use `tools/list` for the current inventory.
 
@@ -69,7 +70,27 @@ Expand an entry for its calls and result semantics. Profile membership is in the
 
 **Public calls:** one atomic `batch` of `actor/create` / `edge/create` (edge types by name)
 
-**Result:** actors / edges in input order; one failed item fails the call with its index and creates nothing
+**Result:** actors / edges in input order; one failed item fails the call with its index and creates nothing.
+`actors_create` keeps its actors out of the caller's recent list (`addToRecent: false`); with `operationId` they carry
+refs `gb:<operationId>:<index>` and a repeated call answers the same actors (`actor/by-ref/get`) instead of new ones.
+
+</details>
+
+<details>
+<summary>graph_build / graph_build_delete</summary>
+
+**Public calls:** `graph/layer/actors/list` (the layer, once), then atomic `batch`es of up to 99 `actor/create` plus the
+`graph/layer/actors/manage` that places them by result reference, and of up to 99 `edge/create` plus the `manage` that
+draws them; `edge_type/get` per edge type; `actor/by-ref/get` and `actor/create` for `newLayer`. Delete: the layer read,
+then `batch`es of `actor/delete`.
+
+**Input:** nodes and edges are short tuples (`[key, title]`, `[from, to, name?]`) or objects; call-level `formId`,
+`kind` and `edgeType` are defaults. **Result:** `done`, `layerId`, `nodes`/`edges` `{total, done, existing}`, `area`,
+`next {below, right}`, `ids` only for the keys asked for; `chunks` (runs of batches by outcome), `error` and `resume`
+only when something is left to build. Never the input back. Up to 2000 nodes and 4000 edges a call. Every actor carries the ref
+`gb:<operationId>:<key>` (unique within its template) and stays out of the recent list; a repeated call builds only
+the keys that are not on the layer. Layouts: ranks top to bottom with wrapping, a grid, or given cells; never over an
+occupied cell (the call is refused before any write).
 
 </details>
 
@@ -87,7 +108,8 @@ Expand an entry for its calls and result semantics. Profile membership is in the
 
 **Public calls:** `form/flowchart-block/search` (read-only)
 
-**Result:** per node formId, data, grid position and layerSettings; `returnEdges`
+**Result:** per node formId, data, grid position and layerSettings; `returnEdges`. Up to 100 blocks and 500 edges;
+a rank wider than 60 cells wraps; `origin` is the layout's top-left cell.
 
 </details>
 

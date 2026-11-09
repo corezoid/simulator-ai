@@ -4,7 +4,7 @@ description: Build, edit, read, analyse, export and import Simulator graphs — 
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
-`actors_create`, `edges_create`, `layer_create`, `layer_placements_create`,
+`graph_build`, `actors_create`, `edges_create`, `layer_create`, `layer_placements_create`,
 `layer_positions_update`, `layer_get`, `graph_get`, `hole_close`); `console-full` adds every edit, delete
 and layer read below. The desktop `graph-read` / `graph-create` profiles have their own tools
 (last section). Actor `data` rules are `simulator-ai-actors`.
@@ -87,38 +87,47 @@ plain text. Never draw an ASCII diagram. For the Smart Form, build the layer, th
 the block (`smart_form_components {types: ["GraphEditor"]}` for its props) and release it
 (`simulator-ai-smart-forms`).
 
-## Draw a flowchart
+## Draw a flowchart or any graph: `graph_build`
 
-1. **Kinds:** `flowchart_blocks_list {query?}` → `{formId, title, blockId}` (e.g. `startStop`,
-   `process`, `decision`, `predefinedProcess`; the workspace's catalog is the truth).
-2. **Plan** nodes `{key, blockId}` and directed edges `{source, target}` by key; keep decision
-   labels ("Yes"/"No") and return links. Ask about real ambiguity before writing.
-3. **Layout:** `flowchart_layout {nodes, edges}` returns per node `formId`, `color`, `data`,
-   `position`, `layerSettings` (ranks top to bottom, three free cells apart, on whole grid
-   cells; loop-back edges kept but not ranked). Never hand-pick coordinates for blocks.
-4. **Layer:** the one the user named, else the current layer of the request's Current context
-   (AI Console: `layer <id>`): create and change actors, links and placements there and do not
-   make a new layer. Only with neither, or when the user asks for a new one, `layer_create {title}`. To file it
-   under a graph, `edge_create {source: <graphId>, target: <layerId>}`.
-5. **Actors:** one `actors_create` with each node's `formId`, `title`, `color` and `data`
-   verbatim from the layout (atomic: all or none, in input order).
-6. **Nodes:** one `layer_placements_create {layerId, nodes: [{actorId, position, layerSettings,
-   color}]}` with the layout's values (layerSettings verbatim: resizing is not supported).
-   Keep the returned `laId` per key.
-7. **Edges:** one `edges_create` (`name` is the drawn label, `curveStyle` optional), then a
-   second `layer_placements_create {layerId, edges: [{edgeId, laIdSource, laIdTarget}]}`.
-8. **Verify** with `layer_get` and report the layer, node and edge counts.
+One call creates the actors, places them and creates and draws the edges. You name nodes by
+your own `key`; no actor ids, `laId`s or coordinates.
 
-Up to 100 items per call. Each call is its own transaction: if a later step fails, report what
-was already created and continue from it instead of starting over.
+1. **Kinds** (flowchart only): `flowchart_blocks_list {query?}` → `blockId`s (`startStop`,
+   `process`, `decision`, ...; the workspace's catalog is the truth). Ask about real ambiguity
+   before writing.
+2. **Layer:** the one the user named, else the current layer of the request's Current context
+   (AI Console: `layer <id>`); only with neither, or when asked, `newLayer: "<title>"`.
+3. **Build:** `graph_build {operationId, layerId, kind | formId, nodes: [[key, title], ...],
+   edges: [[from, to, "label"?], ...]}`. `kind` (a blockId) or `formId` is the default; a node
+   that differs is an object `{key, title, kind | formId, data, color, hole}`, an edge of
+   another type `{from, to, name, type}`. Keep decision labels and return links. The layout is
+   automatic (ranks top to bottom, else a grid; `layout: "given"` with `[key, title, cell]`).
+4. **Large graphs:** up to ~200 nodes with their edges per call. Split more into sections, each
+   its own `operationId` and keys unique on the layer; a section lands on free cells under the
+   layer's content (or at `origin`, e.g. the answer's `next.right`). Join sections by listing
+   earlier operations in `use` and naming their keys in edges; other actors on the layer go in
+   `existing {key: actorId}`. An edges-only call is fine.
+5. **Verify by counts:** the answer's `nodes`/`edges`, then `layer_stats_get`; do not read a
+   large layer back. Ask `ids: [keys]` only for actors you will use by id.
+6. **Resume:** `done: false`, a timeout or a cut turn: repeat the same call (same
+   `operationId` and input); only what is missing is built. An `error` naming a node: fix it,
+   same `operationId`.
+7. **Stop on time:** after about three sections in a turn, or two `done: false` in a row, tell
+   the user what is built and continue with their next message.
+8. **Undo:** `graph_build_delete {layerId, operationId, dryRun: true}`, confirm, then without
+   `dryRun`; that `operationId` cannot be reused.
+
+To file a layer under a graph: `edge_create {source: <graphId>, target: <layerId>}`.
+
+By hand (a few nodes added to an existing chart): `flowchart_layout {nodes, edges, origin}` →
+`actors_create` (formId, color, data verbatim) → `layer_placements_create` nodes (position,
+layerSettings verbatim) → `edges_create` → `layer_placements_create` edges by `laId`. Each call
+is its own transaction: on a failure continue from what exists.
 
 ## Other graphs
 
-For a graph of ordinary actors (an org chart, a mind map, a domain model): `actors_create`
-with any templates (`simulator-ai-actors`; without `color` an editor hue is picked),
-`edges_create`, then place nodes with positions you lay out on the 50-unit grid
-(`layer_placements_create` without `layerSettings`, or `layer_placements_manage`) and their
-edges. Spread rows and columns at least 4 cells apart.
+Ordinary actors (an org chart, a mind map, a domain model): `graph_build` with their `formId`
+(`simulator-ai-actors` for `data`). Placing by hand, keep rows and columns 4 cells apart.
 
 `layer_placements_manage {actorId: <layerId>, items}` (`console-full`, 1–500 items, deletes
 first) also places special nodes through `layerSettings`: a text label (`isTextNode`,
@@ -252,7 +261,8 @@ edges stay the way to model a process.
 | Delete an actor | `actor_delete` (trash, with its placements and edges) |
 | Move nodes to another layer | `layer_actors_move` (1–10, with edges between them) |
 | Empty a layer (actors stay) | `layer_clean` |
-| Re-lay a plain-actor layer into clusters | `layer_compact` (never on a flowchart) |
+| Re-lay a plain-actor layer into clusters | `layer_compact` (never on a flowchart; any size) |
+| Remove what one `graph_build` built | `graph_build_delete {layerId, operationId}` (`console`; `dryRun` first) |
 | Drop long edges | `layer_prune_long_edges` (`dryRun` first) |
 
 Before placing again, check `layer_element_exist {actorId: <layerId>, id, type}`; before a new

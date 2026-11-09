@@ -8,6 +8,19 @@
 
 ## [Unreleased]
 
+- Build large graphs from the AI Console: `graph_build` creates actors, placements, edges and edge placements in one
+  call from caller-chosen keys (up to 2000 nodes and 4000 edges, atomic batches of 99, layered / grid / given layouts
+  with rank wrapping and an origin), repeats safely under an `operationId` (actor refs `gb:<operationId>:<key>`) and
+  answers a compact result; `graph_build_delete` removes one operation. `actors_create` takes an `operationId` too.
+  Both are in the plain `console` catalog.
+- New tool group `graph_extra` (holes except `hole_close`, `layer_draw`, `layer_node_expand`, `layer_settings_update`,
+  `layer_stats_get`, `layer_compact`, `layer_prune_long_edges`), split from `graph`: hosts that filter by group must
+  know the name.
+- `layer_placements_create` and `layer_positions_update` take 500 items (the server's limit); `layer_compact` moves
+  layers of any size in ordered calls of 500; `flowchart_layout` wraps wide ranks and takes an `origin`.
+- Bulk creations send `addToRecent: false`. Layer occupancy is read in pages of 200 until an empty page (a short
+  page is not the last).
+
 - Run the main-promotion check (Develop only) on `pull_request`: GitHub's default block of `pull_request_target`
   for public repositories stopped it from starting (startup_failure during the 2026-11-09 brownout).
 
