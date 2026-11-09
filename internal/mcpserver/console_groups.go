@@ -20,7 +20,7 @@ const groupsMeta = "simulator-ai/groups"
 // link what was made. graph is at its maxGroupBytes bound: its next tool needs a split, and a new
 // group name needs sim-api's router and the Hermes relay to know it.
 var consoleGroups = map[string][]string{
-	"core": {"actor_get", "actors_search", "actor_by_ref_get", "actor_create", "actor_update", "form_get", "forms_list",
+	"core": {"actor_get", "actors_search", "actor_by_ref_get", "actor_create", "actor_update", "form_get", "forms_list", "forms_count",
 		"users_search", "reactions_list", "reaction_create", "attachment_read", "skills_find", "skill_get", "build_link"},
 	"graph": {"actors_create", "actor_delete", "actor_status_update", "actor_system_get",
 		"graph_get", "graph_list", "flowchart_blocks_list", "flowchart_layout", "edge_types_list",
@@ -36,7 +36,7 @@ var consoleGroups = map[string][]string{
 		"smart_form_file_version_get", "smart_form_file_rollback", "smart_form_trash_list", "smart_form_trash_restore",
 		"smart_form_page_render", "smart_form_page_submit", "corezoid_project_create", "corezoid_project_get",
 		"smart_form_page_patch", "smart_form_reference_grep", "smart_form_reference_read"},
-	"forms": {"form_create", "form_update", "form_fields_patch", "form_delete", "form_status_update", "forms_count", "forms_tree_get", "form_linked_get",
+	"forms": {"form_create", "form_update", "form_fields_patch", "form_delete", "form_status_update", "forms_tree_get", "form_linked_get",
 		"form_accounts_list", "form_account_create", "form_account_delete", "actors_filter", "actors_filter_count"},
 	// finance is the everyday money of a request: an actor's accounts, a balance, a transfer, a
 	// transaction, their history; finance_setup the rest, which shapes the ledger.
@@ -71,7 +71,7 @@ var consoleGroups = map[string][]string{
 // everyday scenarios (consoleCoreTools).
 var consoleCoreGroups = []string{"core", "graph", "smart_forms", "forms", "finance", "people", "files"}
 
-// Without the relay a run gets the plain console catalog (consoleCoreTools, 58 tools), not the
+// Without the relay a run gets the plain console catalog (consoleCoreTools, 59 tools), not the
 // union of these groups, which is larger (their setup tools, e.g. graph edits).
 
 // toolGroups is each tool's groups, in the order of groupOrder.
