@@ -132,7 +132,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `form_linked_get` | `read`, `graph-read`, `console-full` |  |
 | `form_status_update` |  | `console-full` |
 | `form_update` |  | `console`, `console-full` |
-| `forms_count` | `read`, `graph-read`, `console-full` |  |
+| `forms_count` | `read`, `graph-read`, `console`, `console-full` |  |
 | `forms_list` | `read`, `graph-read`, `console`, `console-full` |  |
 | `forms_tree_get` | `read`, `graph-read`, `console-full` |  |
 | `graph_actor_create` |  | `graph-create` |
