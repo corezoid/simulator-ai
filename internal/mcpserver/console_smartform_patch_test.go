@@ -193,12 +193,11 @@ func TestSmartFormPendingSubmit(t *testing.T) {
 	formOnly := `{"schemaVersion":"2.0","id":"index","tree":{"id":"request","type":"Form","children":[{"id":"c","type":"TextInput"}]}}`
 	send, calls := consoleServer(t, nil)
 	src, _ := json.Marshal(formOnly)
-	reply := callTool(send, "smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","source":`+string(src)+`}]}`)
+	reply := callTool(send, "smart_form_files_update", `{"appId":"app1","items":[{"id":103,"title":"config","type":"application/json","ifMatchHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source":`+string(src)+`}]}`)
 	if !strings.Contains(reply, `"pending":["file 0: Form "request" has no button with form.submit`) || !strings.Contains(methodsOf(*calls), "app_file/update") {
 		t.Fatal(methodsOf(*calls), reply)
 	}
-	tree := `"result":{"tree":{"id":100,"objType":"folder","title":"root","children":[{"id":101,"objType":"folder","title":"pages","children":[{"id":102,"objType":"folder","title":"index","children":[{"id":103,"objType":"file","title":"config","type":"application/json","source":` + string(src) + `}]}]}]}}`
-	send, calls = consoleServer(t, map[string]string{"application/struct": tree})
+	send, calls = consoleServer(t, map[string]string{"app_file/get": `"result":{"id":103,"folderId":102,"objType":"file","title":"config","type":"application/json","sourceHash":"h","source":` + string(src) + `}`})
 	reply = callTool(send, "smart_form_release", `{"appId":"app1"}`)
 	if !strings.Contains(reply, `not released, a page would send nothing: pages/index/config: Form "request" has no button with form.submit`) || strings.Contains(methodsOf(*calls), "release/create") {
 		t.Fatal(methodsOf(*calls), reply)

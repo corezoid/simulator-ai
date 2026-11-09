@@ -18,7 +18,8 @@ positions; `layer_edges_list` keeps of each edge its type, ends, label and hole;
 most 150 nodes and the edges between them with `total`, the `box` every node centre lies in and `truncated`; `layer_placements_all`
 answers `count`, `summary {forms [{formId, count}], box}` and the first `limit` (150) rows by `cell`. Tool groups: Console entries in `tools/list` carry `_meta: {"simulator-ai/groups": [...]}`.
 Hosts can select `core` plus the domains needed for a task. A tool can belong to multiple groups.
-Groups include graph, smart_forms, forms, finance, finance_setup, people, files, meetings,
+Groups include graph, graph_extra (holes, pencil drawings, opening a node, layer settings, the compact and prune
+engines), smart_forms, forms, finance, finance_setup, people, files, meetings,
 jobs, charts, simulation and corezoid. The plain `console` catalog is a curated subset,
 not the union of all these groups. Use `tools/list` for the current inventory.
 
@@ -69,7 +70,27 @@ Expand an entry for its calls and result semantics. Profile membership is in the
 
 **Public calls:** one atomic `batch` of `actor/create` / `edge/create` (edge types by name)
 
-**Result:** actors / edges in input order; one failed item fails the call with its index and creates nothing
+**Result:** actors / edges in input order; one failed item fails the call with its index and creates nothing.
+`actors_create` keeps its actors out of the caller's recent list (`addToRecent: false`); with `operationId` they carry
+refs `gb:<operationId>:<index>` and a repeated call answers the same actors (`actor/by-ref/get`) instead of new ones.
+
+</details>
+
+<details>
+<summary>graph_build / graph_build_delete</summary>
+
+**Public calls:** `graph/layer/actors/list` (the layer, once), then atomic `batch`es of up to 99 `actor/create` plus the
+`graph/layer/actors/manage` that places them by result reference, and of up to 99 `edge/create` plus the `manage` that
+draws them; `edge_type/get` per edge type; `actor/by-ref/get` and `actor/create` for `newLayer`. Delete: the layer read,
+then `batch`es of `actor/delete`.
+
+**Input:** nodes and edges are short tuples (`[key, title]`, `[from, to, name?]`) or objects; call-level `formId`,
+`kind` and `edgeType` are defaults. **Result:** `done`, `layerId`, `nodes`/`edges` `{total, done, existing}`, `area`,
+`next {below, right}`, `ids` only for the keys asked for; `chunks` (runs of batches by outcome), `error` and `resume`
+only when something is left to build. Never the input back. Up to 2000 nodes and 4000 edges a call. Every actor carries the ref
+`gb:<operationId>:<key>` (unique within its template) and stays out of the recent list; a repeated call builds only
+the keys that are not on the layer. Layouts: ranks top to bottom with wrapping, a grid, or given cells; never over an
+occupied cell (the call is refused before any write).
 
 </details>
 
@@ -87,7 +108,8 @@ Expand an entry for its calls and result semantics. Profile membership is in the
 
 **Public calls:** `form/flowchart-block/search` (read-only)
 
-**Result:** per node formId, data, grid position and layerSettings; `returnEdges`
+**Result:** per node formId, data, grid position and layerSettings; `returnEdges`. Up to 100 blocks and 500 edges;
+a rank wider than 60 cells wraps; `origin` is the layout's top-left cell.
 
 </details>
 
@@ -229,9 +251,13 @@ Expand an entry for its calls and result semantics. Profile membership is in the
 <details>
 <summary>smart_form_files_get</summary>
 
-**Public calls:** `application/env/list` + `application/struct` (develop); with `paths` + `app_file/get` per named file
+**Public calls:** `application/env/list` + `application/struct` (develop, never with sources); + `app_file/get` per file read (at most 20)
 
-**Result:** folders/files by path, optional sources (`paths`: only the named files and folders, each file with its source; `missing`), `developEnvId`, `productionEnvId`
+**Result:** folders/files by path with `sourceHash`, `developEnvId`, `productionEnvId`. Sources on request (`paths`: the named files and
+folders; `withSource`: every file) within 40,000 characters per answer: files past that come without `source` and `note` says how to read
+them; one file too long alone is cut with `next` (read on with `offset`). `outline: N` answers pages and definitions as one line per node
+(`Type#id props on:events`, `+n` nodes below level N); with one file in `paths`, `nodeId` (a node id or a JSON Pointer) answers that part
+as `node`, or its outline. `missing`: paths that name nothing
 
 </details>
 
@@ -249,7 +275,8 @@ Expand an entry for its calls and result semantics. Profile membership is in the
 
 **Public calls:** `app_file/update` / `app_file/create`
 
-**Result:** id, folderId, title, sourceHash
+**Result:** id, folderId, title, sourceHash. An update with `source` requires `ifMatchHash` (the `sourceHash` read): a file changed since
+is not written, and the error names its hash now and the node ids the sent source lacks (never the stored source)
 
 </details>
 
@@ -265,7 +292,7 @@ Expand an entry for its calls and result semantics. Profile membership is in the
 <details>
 <summary>smart_form_release</summary>
 
-**Public calls:** `application/env/list` + `release/create` (develop → production)
+**Public calls:** `application/env/list` + `application/struct` + `app_file/get` per page config (the pending check) + `release/create` (develop → production)
 
 **Result:** `{appId, releaseId, releaseNumber, status, ready, marker}`
 
@@ -313,7 +340,9 @@ filter reading another Form, and set its `accId` to the host workspace and its `
 methods) are left as they are. A page that sends nothing yet (inputs with an action-less button but no Form, a Form that neither a form.submit names
 nor any action passes on: `vm.<valueKey>` in a `simapi.call`, `widget.call`, `bus.publish`, `navigate.local`/`navigate.route` or `copy`, their `onError`/`notify` follow-ups not counting)
 is saved with `pending` naming what is missing, so a large page can be built section by section; `smart_form_release` reads the develop
-page configs (`application/struct` with sources) and refuses to release one still in that state. Then
+page configs (one `app_file/get` each, so a large form stays under the response limit) and refuses to release one still in that state.
+`smart_form_page_render` (in the plain `console` catalog) answers `{ok, pageId, nodes, bindings, vmKeys, locales, bytes, warnings?}`
+unless `full` is sent: a written page is verified by rendering it, not by reading it back. Then
 `smart_form_files_get` → `smart_form_files_update` of `pages/index/config` → `smart_form_release`; a later change to a page is
 `smart_form_files_get {paths}` → `smart_form_reference_grep` / `smart_form_reference_read` (or
 `smart_form_components {types}`) → `smart_form_page_patch` by `nodeId`. Its

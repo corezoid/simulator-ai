@@ -76,7 +76,7 @@ func TestExpandNodeMakesRoom(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m := methodsOf(*calls); m != "graph/layer/elements/list,actor/get,graph/layer/actors/list,form/system/get,form/system/get,batch" {
+	if m := methodsOf(*calls); m != "graph/layer/elements/list,actor/get,graph/layer/actors/list,graph/layer/actors/list,form/system/get,form/system/get,batch" {
 		t.Fatal(m)
 	}
 	want := `[{"id":"0","method":"graph/layer/actor_settings/save","params":{"accId":"ws","actorId":"L","laActorId":7,"layerSettings":{"expand":true,"expandPushed":true,"expandType":"layer","flaskView":true,"height":450,"nestedFrame":{"height":9,"left":-6,"top":-4,"width":13},"width":650}}},` +
@@ -113,7 +113,7 @@ func TestCollapseNodePullsBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m := methodsOf(*calls); m != "graph/layer/elements/list,actor/get,graph/layer/actors/list,batch" {
+	if m := methodsOf(*calls); m != "graph/layer/elements/list,actor/get,graph/layer/actors/list,graph/layer/actors/list,batch" {
 		t.Fatal(m)
 	}
 	if b := lastBatch(t, *calls); !strings.Contains(b, `"layerSettings":{"expand":false,"flaskView":false,"fullScreen":false,"profile":false}`) ||
@@ -216,7 +216,7 @@ func TestPlacementsFreeCellIsOneCall(t *testing.T) {
 	if err != nil || out.Moved != 0 {
 		t.Fatal(err, out)
 	}
-	if m := methodsOf(*calls); m != "actor/get,graph/layer/actors/list,graph/layer/actors/manage" {
+	if m := methodsOf(*calls); m != "actor/get,graph/layer/actors/list,graph/layer/actors/list,graph/layer/actors/manage" {
 		t.Fatal(m)
 	}
 }

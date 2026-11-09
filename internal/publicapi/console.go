@@ -40,8 +40,15 @@ type actorCreateRequest struct {
 	Color       string          `json:"color,omitempty"`
 	Data        json.RawMessage `json:"data"`
 	Hole        bool            `json:"hole,omitempty"`
-	Fields      []string        `json:"fields"`
+	// Ref is the actor's own key, unique within its template: the retry key of a bulk creation.
+	Ref string `json:"ref,omitempty"`
+	// AddToRecent false keeps a bulk creation out of the caller's recent list (default true).
+	AddToRecent *bool    `json:"addToRecent,omitempty"`
+	Fields      []string `json:"fields"`
 }
+
+// notRecent is addToRecent for actors nobody picked one by one.
+var notRecent = new(bool)
 
 func consoleOnly(c *Client) error {
 	if !c.ConsoleEnabled() {

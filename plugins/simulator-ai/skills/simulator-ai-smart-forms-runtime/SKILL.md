@@ -4,8 +4,8 @@ description: Go through an existing Simulator Smart Form on the user's behalf â€
 ---
 
 Use the installed `simulator-ai` catalog. You run an app; building or editing one is
-`simulator-ai-smart-forms`. In `console` you cannot press an app's buttons or run its Corezoid
-logic; `console-full` can (`smart_form_page_render`, `smart_form_page_submit`). What you do
+`simulator-ai-smart-forms`. In `console` you can render a page (`smart_form_page_render`) but not press an app's buttons;
+`console-full` can (`smart_form_page_submit`). What you do
 depends on where the app's submit goes.
 
 ## 1. Find the app
@@ -17,7 +17,8 @@ Smart Forms are actors of the `Scripts` system template (`forms_list {type: "sys
 
 ## 2. Read what it asks
 
-`smart_form_files_get {appId, withSource: true}` returns the develop files; production serves
+`smart_form_files_get {appId, outline: 3}` outlines the develop pages (then `paths` + `nodeId`
+for a node's JSON); production serves
 the last release, which may be older. In each `pages/<page>/config`, a `Form` node holds the
 inputs (their value keys, `label`, `required`, select `options`), and a button's actions show
 where the values go:
@@ -37,7 +38,7 @@ date as `{startDate, endDate}`, select as in `simulator-ai-actors`), and create 
 Creating needs your own access to the template; a refusal means the user must use the form.
 
 **Corezoid or other app.** Its process decides what is written. In `console-full`, run it as
-the runtime does: `smart_form_page_render {ref, envTitle: "production", page}` returns the page
+the runtime does: `smart_form_page_render {ref, envTitle: "production", page, full: true}` returns the page
 with its viewModel (what `/get` loaded), then, after the confirmation gate,
 `smart_form_page_submit {ref, envTitle: "production", page, formId: <the Form node id>,
 formData}` submits like its button and returns what the process answered. In `console`, prepare

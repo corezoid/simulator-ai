@@ -17,19 +17,23 @@ const groupsMeta = "simulator-ai/groups"
 
 // consoleGroups lists each group's tools. core is the minimum of any request: read an actor or a
 // template, find one, create or change one, comment, find a person, read a file, run a saved skill,
-// link what was made. graph is at its maxGroupBytes bound: its next tool needs a split, and a new
-// group name needs sim-api's router and the Hermes relay to know it.
+// link what was made. graph builds and reads a layer; graph_extra holds the graph tools a run rarely
+// needs (holes, pencil drawings, opening a node, layer settings, the prune and compact engines), split
+// out when graph_build would have taken graph past maxGroupBytes. A new group name needs sim-api's
+// router and the Hermes relay to know it.
 var consoleGroups = map[string][]string{
 	"core": {"actor_get", "actors_search", "actor_by_ref_get", "actor_create", "actor_update", "form_get", "forms_list", "forms_count",
 		"users_search", "reactions_list", "reaction_create", "attachment_read", "skills_find", "skill_get", "build_link"},
 	"graph": {"actors_create", "actor_delete", "actor_status_update", "actor_system_get",
-		"graph_get", "graph_list", "flowchart_blocks_list", "flowchart_layout", "edge_types_list",
+		"graph_get", "graph_list", "flowchart_blocks_list", "flowchart_layout", "graph_build", "graph_build_delete", "edge_types_list",
 		"edge_create", "edges_create", "edge_get", "edge_update", "edge_delete", "edge_endpoints_update", "edge_exist", "edges_by_nodes_delete",
 		"layer_create", "layer_get", "layer_placements_create", "layer_positions_update", "layer_viewport",
 		"layer_placements_list", "layer_placements_all", "layer_placements_manage", "layer_actors_search", "layer_actors_move",
-		"layer_clean", "layer_compact", "layer_prune_long_edges", "layer_skeleton_get", "layer_stats_get", "layer_edges_list",
-		"layer_element_exist", "layer_edge_settings_save",
-		"hole_close", "hole_conditions_get", "hole_reopen", "edge_hole_close", "edge_hole_reopen", "layer_draw", "layer_settings_update", "layer_node_expand"},
+		"layer_clean", "layer_skeleton_get", "layer_stats_get", "layer_edges_list",
+		"layer_element_exist", "layer_edge_settings_save", "hole_close"},
+	// layer_stats_get is in graph too: a large build is verified by its counts.
+	"graph_extra": {"hole_conditions_get", "hole_reopen", "edge_hole_close", "edge_hole_reopen", "layer_draw",
+		"layer_node_expand", "layer_settings_update", "layer_stats_get", "layer_compact", "layer_prune_long_edges"},
 	"smart_forms": {"smart_form_components", "smart_form_create", "smart_form_data_form_create", "smart_form_files_get",
 		"smart_form_files_update", "smart_form_files_create", "smart_form_folders_create", "smart_form_release", "smart_form_release_get",
 		"smart_form_releases_list", "smart_form_release_diff", "smart_form_release_rollback", "smart_form_file_versions_list",
@@ -69,9 +73,9 @@ var consoleGroups = map[string][]string{
 
 // consoleCoreGroups are the groups whose union is the plain console catalog of the Console's
 // everyday scenarios (consoleCoreTools).
-var consoleCoreGroups = []string{"core", "graph", "smart_forms", "forms", "finance", "people", "files"}
+var consoleCoreGroups = []string{"core", "graph", "graph_extra", "smart_forms", "forms", "finance", "people", "files"}
 
-// Without the relay a run gets the plain console catalog (consoleCoreTools, 59 tools), not the
+// Without the relay a run gets the plain console catalog (consoleCoreTools, 62 tools), not the
 // union of these groups, which is larger (their setup tools, e.g. graph edits).
 
 // toolGroups is each tool's groups, in the order of groupOrder.
@@ -87,7 +91,7 @@ var toolGroups = func() map[string][]string {
 	return out
 }()
 
-var groupOrder = []string{"core", "graph", "smart_forms", "forms", "finance", "finance_setup", "people", "files", "meetings", "jobs", "charts", "simulation", "corezoid"}
+var groupOrder = []string{"core", "graph", "graph_extra", "smart_forms", "forms", "finance", "finance_setup", "people", "files", "meetings", "jobs", "charts", "simulation", "corezoid"}
 
 // tagGroups writes each console tool's groups into its _meta, keeping its handler.
 func tagGroups(s *server.MCPServer) {

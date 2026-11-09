@@ -19,8 +19,8 @@ import (
 // flowchart block its own box. Pictures, drawings and markup (polygons) are marks over the grid and
 // hold nothing.
 
-// maxRoomPages bounds the read of a layer's placements (1000 a page).
-const maxRoomPages = 10
+// maxRoomPages bounds the read of a layer's placements (layerPage a page): 10000 placements.
+const maxRoomPages = 50
 
 // placementSettingsWire is the part of a stored placement bag the plugin reads.
 type placementSettingsWire struct {
@@ -47,6 +47,7 @@ type layerNodeFull struct {
 	Actor         *struct {
 		FormID        *int64             `json:"formId"`
 		Title         *string            `json:"title"`
+		Ref           *string            `json:"ref"`
 		PictureObject *pictureObjectWire `json:"pictureObject"`
 	} `json:"actor"`
 }
@@ -192,6 +193,37 @@ func (c *Client) layerNodesPage(ctx context.Context, layerID string, limit, offs
 	return page.List, nil
 }
 
+// roomFields are the actor fields occupancy reads with each placement.
+var roomFields = []string{"id", "formId", "pictureObject"}
+
+// scanLayerNodes visits every node placement of a layer, in pages of layerPage (a flowchart placement
+// carries its areaPicture, so a larger page could near the 4 MiB response cap). A page shorter than
+// the limit is not the last (sim-api drops deleted actors after paging): it reads until an empty one,
+// at most maxRoomPages pages; past that it answers partial.
+func (c *Client) scanLayerNodes(ctx context.Context, layerID string, fields []string, visit func(layerNodeFull)) (bool, error) {
+	for page := int64(0); page < maxRoomPages; page++ {
+		nodes, err := c.layerNodesPage(ctx, layerID, layerPage, page*layerPage, fields)
+		if err != nil {
+			return false, fmt.Errorf("graph/layer/actors/list: %w", err)
+		}
+		if len(nodes) == 0 {
+			return false, nil
+		}
+		for _, n := range nodes {
+			visit(n)
+		}
+	}
+	return true, nil
+}
+
+// occupy adds the placement's footprint, when it holds part of the grid.
+func (r *layerRoom) occupy(n layerNodeFull) {
+	if box, ok := n.footprint(); ok {
+		x, y, _ := n.center()
+		r.Occupants = append(r.Occupants, occupant{LaID: n.LaID, X: x, Y: y, Box: box})
+	}
+}
+
 // readLayerRoom reads the layer's anisotropy and every placement's footprint (at most
 // maxRoomPages pages; past that Partial is set and the server's own checks decide the rest).
 func (c *Client) readLayerRoom(ctx context.Context, layerID string) (layerRoom, error) {
@@ -200,23 +232,10 @@ func (c *Client) readLayerRoom(ctx context.Context, layerID string) (layerRoom, 
 		return layerRoom{}, err
 	}
 	room := layerRoom{Anisotropy: aniso}
-	const limit = 1000
-	for page := int64(0); page < maxRoomPages; page++ {
-		nodes, err := c.layerNodesPage(ctx, layerID, limit, page*limit, []string{"id", "formId", "pictureObject"})
-		if err != nil {
-			return layerRoom{}, fmt.Errorf("graph/layer/actors/list: %w", err)
-		}
-		for _, n := range nodes {
-			if box, ok := n.footprint(); ok {
-				x, y, _ := n.center()
-				room.Occupants = append(room.Occupants, occupant{LaID: n.LaID, X: x, Y: y, Box: box})
-			}
-		}
-		if len(nodes) < limit {
-			return room, nil
-		}
+	room.Partial, err = c.scanLayerNodes(ctx, layerID, roomFields, room.occupy)
+	if err != nil {
+		return layerRoom{}, err
 	}
-	room.Partial = true
 	return room, nil
 }
 

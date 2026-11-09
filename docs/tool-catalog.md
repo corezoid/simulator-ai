@@ -137,6 +137,8 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `forms_tree_get` | `read`, `graph-read`, `console-full` |  |
 | `graph_actor_create` |  | `graph-create` |
 | `graph_actor_operation_get` | `graph-create` |  |
+| `graph_build` |  | `console`, `console-full` |
+| `graph_build_delete` |  | `console`, `console-full` |
 | `graph_edge_create` |  | `graph-create` |
 | `graph_edge_operation_get` | `graph-create` |  |
 | `graph_edge_types_list` | `graph-read`, `graph-create` |  |
@@ -204,7 +206,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `smart_form_files_update` |  | `console`, `console-full` |
 | `smart_form_folders_create` |  | `console`, `console-full` |
 | `smart_form_page_patch` |  | `console`, `console-full` |
-| `smart_form_page_render` |  | `console-full` |
+| `smart_form_page_render` |  | `console`, `console-full` |
 | `smart_form_page_submit` |  | `console-full` |
 | `smart_form_reference_grep` | `console`, `console-full` |  |
 | `smart_form_reference_read` | `console`, `console-full` |  |

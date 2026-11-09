@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -46,10 +47,14 @@ type SmartFormFilesInput struct {
 	// Paths narrows the answer to these files and folders (a folder with what is under it), each
 	// file with its source.
 	Paths []string `json:"paths,omitempty"`
+	// Outline answers pages and definitions as one line per node, this many levels deep, instead of
+	// their sources.
+	Outline int `json:"outline,omitempty"`
+	// NodeID reads one node of the one file paths names (a node id, or a JSON Pointer starting with
+	// /); Offset reads that file's source from a byte offset on.
+	NodeID string `json:"nodeId,omitempty"`
+	Offset int    `json:"offset,omitempty"`
 }
-
-// maxPathSources bounds the files one paths request reads a source of (one app_file/get each).
-const maxPathSources = 20
 
 // SmartFormEntry is one folder or file of the develop tree, addressed by its slash path
 // ("pages/index/config"); the root folder is "/".
@@ -60,6 +65,10 @@ type SmartFormEntry struct {
 	Type       string  `json:"type,omitempty"`
 	SourceHash string  `json:"sourceHash,omitempty"`
 	Source     *string `json:"source,omitempty"`
+	// Next is the offset the rest of a cut source is read from.
+	Next    int             `json:"next,omitempty"`
+	Outline string          `json:"outline,omitempty"`
+	Node    json.RawMessage `json:"node,omitempty"`
 }
 
 type SmartFormFiles struct {
@@ -70,6 +79,8 @@ type SmartFormFiles struct {
 	Files           []SmartFormEntry `json:"files"`
 	// Missing are requested paths that name nothing in the develop tree.
 	Missing []string `json:"missing,omitempty"`
+	// Note says what the answer left out to stay within maxReadBytes, and how to read it.
+	Note string `json:"note,omitempty"`
 }
 
 // SmartFormFileCreate creates a file in a develop folder; source is stored as text.
@@ -211,81 +222,6 @@ func (c *Client) CreateSmartForm(ctx context.Context, in SmartFormCreateInput) (
 	return SmartForm{AppID: *r.Application.ID, Ref: in.Ref, DevelopEnvID: dev, ProductionEnvID: prod}, nil
 }
 
-// GetSmartFormFiles lists the develop tree as slash paths, with sources on request.
-func (c *Client) GetSmartFormFiles(ctx context.Context, in SmartFormFilesInput) (SmartFormFiles, error) {
-	if e := consoleOnly(c); e != nil {
-		return SmartFormFiles{}, e
-	}
-	dev, prod, e := c.envs(ctx, in.AppID)
-	if e != nil {
-		return SmartFormFiles{}, e
-	}
-	fields := []string{"id", "title", "objType", "type", "sourceHash", "children"}
-	if in.WithSource && len(in.Paths) == 0 {
-		fields = append(fields, "source")
-	}
-	r, e := call[structRequest, structWire](ctx, c, "application/struct", structRequest{AccID: c.config.Workspace, ActorID: in.AppID, EnvID: dev, Fields: fields})
-	if e != nil {
-		return SmartFormFiles{}, e
-	}
-	if r.Tree.ID < 1 || r.Tree.ObjType != "folder" {
-		return SmartFormFiles{}, errors.New("invalid Smart Form tree")
-	}
-	out := SmartFormFiles{AppID: in.AppID, DevelopEnvID: dev, ProductionEnvID: prod, Files: []SmartFormEntry{}}
-	var walk func(n ContentNode, path string)
-	walk = func(n ContentNode, path string) {
-		out.Files = append(out.Files, SmartFormEntry{ID: n.ID, Path: path, ObjType: n.ObjType, Type: n.Type, SourceHash: n.SourceHash, Source: n.Source})
-		for _, child := range n.Children {
-			walk(child, strings.TrimPrefix(path+"/"+child.Title, "//"))
-		}
-	}
-	walk(r.Tree, "/")
-	if len(in.Paths) > 0 {
-		return c.narrowFiles(ctx, out, in.Paths)
-	}
-	return out, nil
-}
-
-// narrowFiles keeps the entries paths name (a folder with everything under it) and reads each kept
-// file's source, so a page is read without every other file's source.
-func (c *Client) narrowFiles(ctx context.Context, all SmartFormFiles, paths []string) (SmartFormFiles, error) {
-	out := all
-	out.Files = []SmartFormEntry{}
-	hit := map[string]bool{}
-	for _, f := range all.Files {
-		kept := false
-		for _, p := range paths {
-			if p = strings.Trim(p, "/"); p != "" && (f.Path == p || strings.HasPrefix(f.Path, p+"/")) {
-				hit[p] = true // every path that names it counts as found; the entry is kept once
-				kept = true
-			}
-		}
-		if kept {
-			out.Files = append(out.Files, f)
-		}
-	}
-	for _, p := range paths {
-		if !hit[strings.Trim(p, "/")] {
-			out.Missing = append(out.Missing, p)
-		}
-	}
-	read := 0
-	for i, f := range out.Files {
-		if f.ObjType != "file" {
-			continue
-		}
-		if read++; read > maxPathSources {
-			return SmartFormFiles{}, fmt.Errorf("paths name more than %d files: narrow them", maxPathSources)
-		}
-		file, e := c.appFile(ctx, all.AppID, f.ID)
-		if e != nil {
-			return SmartFormFiles{}, e
-		}
-		out.Files[i].Source, out.Files[i].SourceHash = &file.Source, file.SourceHash
-	}
-	return out, nil
-}
-
 func written(appID string, files Files, want int, pending []string) (SmartFormWritten, error) {
 	if len(files.Files) != want {
 		return SmartFormWritten{}, errors.New("file write returned a different number of files")
@@ -351,42 +287,54 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
+	for i, it := range in.Items {
+		// Without the hash the write is last-write-wins over whatever a person saved in the editor.
+		if it.Source != nil && it.IfMatchHash == "" {
+			return SmartFormWritten{}, fmt.Errorf("item %d: ifMatchHash required to overwrite a file: send the sourceHash smart_form_files_get lists for it (it changes with every write)", i)
+		}
+	}
 	pending, err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) })
 	if err != nil {
 		return SmartFormWritten{}, err
 	}
 	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
 	if e != nil {
-		return SmartFormWritten{}, e
+		return SmartFormWritten{}, staleWrite(e, in.Items)
 	}
 	return written(in.AppID, r, len(in.Items), pending)
 }
 
 // checkPagesSend refuses a release while a develop page config would send nothing (a Form
 // without its submit, inputs beside an action-less button): a write lets a page be built in parts,
-// a release ships it as it is.
+// a release ships it as it is. It reads the page configs one by one: every source of a large form
+// in one answer would pass the response limit.
 func (c *Client) checkPagesSend(ctx context.Context, appID string, dev int64) error {
-	r, e := call[structRequest, structWire](ctx, c, "application/struct", structRequest{AccID: c.config.Workspace, ActorID: appID, EnvID: dev, Fields: []string{"id", "title", "objType", "children", "source"}})
+	files, e := c.developTree(ctx, appID, dev)
 	if e != nil {
 		return e
 	}
 	var problems []string
-	var walk func(n ContentNode, path string)
-	walk = func(n ContentNode, path string) {
-		if n.ObjType == "file" && strings.HasPrefix(path, "pages/") && n.Title == "config" && n.Source != nil {
-			for _, p := range unsentPage(*n.Source) {
-				problems = append(problems, path+": "+p)
-			}
+	for _, f := range files {
+		if f.ObjType != "file" || !isPageConfig(f.Path) {
+			continue
 		}
-		for _, child := range n.Children {
-			walk(child, strings.TrimPrefix(path+"/"+child.Title, "/"))
+		file, e := c.appFile(ctx, appID, f.ID)
+		if e != nil {
+			return e
+		}
+		for _, p := range unsentPage(file.Source) {
+			problems = append(problems, f.Path+": "+p)
 		}
 	}
-	walk(r.Tree, "")
 	if len(problems) > 0 {
 		return errors.New("not released, a page would send nothing: " + strings.Join(problems, "; ") + ". Add the form.submit button (or the action sending the values), or create the data template and a ready page with smart_form_data_form_create")
 	}
 	return nil
+}
+
+// isPageConfig says path is pages/<page>/config (a page may sit in nested folders).
+func isPageConfig(path string) bool {
+	return strings.HasPrefix(path, "pages/") && strings.HasSuffix(path, "/config")
 }
 
 func released(appID string, r Release) SmartFormRelease {

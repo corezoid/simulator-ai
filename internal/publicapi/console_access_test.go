@@ -30,6 +30,11 @@ func rpcBackend(t *testing.T, result func(method string) string) (*Client, *[]rp
 		}
 		_ = json.NewDecoder(r.Body).Decode(&q)
 		calls = append(calls, q.rpcCall)
+		// A layer's node placements are read until an empty page: the canned page is the only one.
+		if offset, _ := q.Params["offset"].(float64); q.Method == "graph/layer/actors/list" && offset > 0 {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"list":[]}}`, q.ID)
+			return
+		}
 		if r := result(q.Method); strings.HasPrefix(r, `"error":`) {
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,%s}`, q.ID, r)
 		} else {
