@@ -22,9 +22,9 @@ const (
 	// DefaultRowWidth wraps a rank: 60 cells hold about 8 flowchart blocks or 20 plain actors, which
 	// still fits a screen at a readable zoom.
 	DefaultRowWidth = 60 * gridCell
-	// MaxLayoutNodes bounds one layout. Ranking is a DFS and a queue pass (O(nodes + edges)) and
-	// packing one pass over the nodes, so the bound is about memory and the size of one request, not
-	// time: 5000 boxes lay out in a few milliseconds.
+	// MaxLayoutNodes bounds one layout. Ranking is a DFS and a queue pass (O(nodes + edges)), ordering
+	// a few sorts of every rank and packing a few passes over the nodes, so the bound is about memory
+	// and the size of one request, not time: 5000 boxes lay out in a few milliseconds.
 	MaxLayoutNodes = 5000
 )
 
@@ -38,42 +38,49 @@ type LayoutOptions struct {
 	RowWidth float64
 	// Gap separates boxes and rows; 0 takes three cells, room for an edge label between blocks.
 	Gap float64
+	// RankRows lays a rank out as one row (wrapped at RowWidth) instead of grouping children under
+	// their parents: a flowchart, whose branches meet again.
+	RankRows bool
 }
 
 // LayoutBox is the area a layout covers, in graph units, X and Y its top-left corner.
 type LayoutBox struct{ X, Y, W, H float64 }
 
-// GridLayout is Layered as flowchart_layout always placed it: centred on x = 0, from the second row.
+// GridLayout is Layered as flowchart_layout always placed it: whole ranks, centred on x = 0, from the
+// second row.
 func GridLayout(nodes []LayoutNode, edges []Edge) ([]publicapi.GraphPoint, []string) {
-	points, returns, _ := Layered(nodes, edges, LayoutOptions{Origin: publicapi.GraphPoint{Y: gridPhase}, Centered: true})
+	points, returns, _ := Layered(nodes, edges, LayoutOptions{Origin: publicapi.GraphPoint{Y: gridPhase}, Centered: true, RankRows: true})
 	return points, returns
 }
 
-// Layered ranks nodes by longest path (return links excluded, as in Build) and lays the ranks top to
-// bottom; a rank wider than RowWidth continues on the next row. Every box's corner is on a grid
-// line, so placements keep exactly these centres. Same input, same layout. Edges must join known
-// keys. It answers the centres, the return links' keys and the box covered.
+// Layered ranks nodes by longest path (return links excluded, as in Build), orders every rank by its
+// neighbours' places (rankOrder) and lays the ranks top to bottom. Children sit in a block under
+// their parent (packTrees); with RankRows a rank is one row instead, wrapped when wider than
+// RowWidth. Every box's corner is on a grid line, so placements keep exactly these centres. Same
+// input, same layout. Edges must join known keys. It answers the centres, the return links' keys and
+// the box covered.
 func Layered(nodes []LayoutNode, edges []Edge, opt LayoutOptions) ([]publicapi.GraphPoint, []string, LayoutBox) {
 	keys := make([]string, len(nodes))
+	index := make(map[string]int, len(nodes))
 	for i, n := range nodes {
-		keys[i] = n.Key
+		keys[i], index[n.Key] = n.Key, i
 	}
 	rank, back := ranks(keys, edges)
 	var returns []string
+	links := make([][2]int, 0, len(edges))
 	for i, e := range edges {
 		if back[i] {
 			returns = append(returns, e.Key)
+		} else {
+			links = append(links, [2]int{index[e.Source], index[e.Target]})
 		}
 	}
-	depth := 0
-	for _, r := range rank {
-		depth = max(depth, r+1)
+	order := rankOrder(rank, links)
+	if opt.RankRows {
+		points, box := packRows(nodes, order, opt)
+		return points, returns, box
 	}
-	byRank := make([][]int, depth)
-	for i, r := range rank {
-		byRank[r] = append(byRank[r], i)
-	}
-	points, box := packRows(nodes, byRank, opt)
+	points, box := packTrees(nodes, rank, order, links, opt)
 	return points, returns, box
 }
 

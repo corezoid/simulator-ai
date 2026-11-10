@@ -97,7 +97,7 @@ func addFlowchartLayout(s *server.MCPServer, c *publicapi.Client) {
 					return layout{}, fmt.Errorf("origin: %w", err)
 				}
 				corner := publicapi.GraphPoint{X: at.X - graphplan.PlainSize/2, Y: at.Y - graphplan.PlainSize/2}
-				positions, returns, _ = graphplan.Layered(boxes, edges, graphplan.LayoutOptions{Origin: corner})
+				positions, returns, _ = graphplan.Layered(boxes, edges, graphplan.LayoutOptions{Origin: corner, RankRows: true})
 			}
 			for i := range out.Nodes {
 				out.Nodes[i].Position = positions[i]

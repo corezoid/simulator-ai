@@ -41,7 +41,7 @@ func assertApart(t *testing.T, nodes []LayoutNode, at []publicapi.GraphPoint, bo
 }
 
 func TestLayeredWrapsRanksAndStartsAtOrigin(t *testing.T) {
-	// One root over 30 children: the second rank is wider than 10 blocks' worth and wraps.
+	// One root over 30 children: the second rank is wider than a row and wraps under the root.
 	nodes := []LayoutNode{{"root", 200, 100}}
 	var edges []Edge
 	for i := range 30 {
@@ -59,7 +59,7 @@ func TestLayeredWrapsRanksAndStartsAtOrigin(t *testing.T) {
 	for _, p := range at[1:] {
 		rows[p.Y]++
 	}
-	if len(rows) != 4 || at[0].Y >= at[1].Y { // 30 blocks of 350 pitch in 3000 units: 9 a row
+	if len(rows) != 5 || at[0].Y >= at[1].Y { // 30 childless blocks fold into 6 by 5 under the root
 		t.Fatalf("rows %v", rows)
 	}
 	// A second layout from the cell under the first does not touch it.

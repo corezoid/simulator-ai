@@ -328,3 +328,32 @@ func TestGraphBuildBadCellsLeaveNoLayer(t *testing.T) {
 		t.Fatalf("%d actors left", len(actors))
 	}
 }
+
+// A layer built in sections, each a parent over 25 children and no origin: compact blocks that fill
+// rows, a page and not a strip.
+func TestGraphBuildToolFlowsSections(t *testing.T) {
+	call, f := fakeConsole(t)
+	for i := range 12 {
+		nodes, edges := []string{fmt.Sprintf(`["p%d","Group %d"]`, i, i)}, []string{}
+		for k := range 25 {
+			nodes = append(nodes, fmt.Sprintf(`["p%dc%d","Item %d"]`, i, k, k))
+			edges = append(edges, fmt.Sprintf(`["p%d","p%dc%d"]`, i, i, k))
+		}
+		reply, failed := call("graph_build", fmt.Sprintf(`{"operationId":"sec%d","layerId":"L","formId":42,"nodes":[%s],"edges":[%s]}`, i, strings.Join(nodes, ","), strings.Join(edges, ",")))
+		if failed || !strings.Contains(reply, `"done":true`) || strings.Contains(reply, `"next"`) || len(reply) > 120 {
+			t.Fatal(reply)
+		}
+		if i == 0 && !strings.Contains(reply, `"area":"A, 1 - M, 16"`) { // 5 by 5 under the parent
+			t.Fatal(reply)
+		}
+	}
+	cells := cellsOf(t, f, "L", 12*26, 12*25)
+	right, bottom := 0.0, 0.0
+	for at := range cells {
+		right, bottom = max(right, at[0]), max(bottom, at[1])
+	}
+	// Five sections a row, three rows: 77 by 54 cells.
+	if right != 76*50 || bottom != 53*50 {
+		t.Fatalf("the layer is %v by %v cells", right/50+1, bottom/50+1)
+	}
+}

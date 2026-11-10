@@ -86,11 +86,14 @@ then `batch`es of `actor/delete`.
 
 **Input:** nodes and edges are short tuples (`[key, title]`, `[from, to, name?]`) or objects; call-level `formId`,
 `kind` and `edgeType` are defaults. **Result:** `done`, `layerId`, `nodes`/`edges` `{total, done, existing}`, `area`,
-`next {below, right}`, `ids` only for the keys asked for; `chunks` (runs of batches by outcome), `error` and `resume`
+`ids` only for the keys asked for; `chunks` (runs of batches by outcome), `error` and `resume`
 only when something is left to build. Never the input back. Up to 2000 nodes and 4000 edges a call. Every actor carries the ref
 `gb:<operationId>:<key>` (unique within its template) and stays out of the recent list; a repeated call builds only
-the keys that are not on the layer. Layouts: ranks top to bottom with wrapping, a grid, or given cells; never over an
-occupied cell (the call is refused before any write).
+the keys that are not on the layer. Layouts: ranks top to bottom with every node's children in a block under it (rank order by
+barycentre; more than six childless children fold into a near-square block; a row wider than `rowCells` is narrowed,
+then wrapped inside the parent's block), whole ranks for flowchart blocks, a grid, or given cells; never over an
+occupied cell (the call is refused before any write). Without `origin` a section takes the highest free place within
+80 columns, so sections fill rows.
 
 </details>
 
