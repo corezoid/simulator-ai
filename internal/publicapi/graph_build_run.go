@@ -333,7 +333,7 @@ func (r *buildRun) drawChunk(ctx context.Context, creates []atomicItem, place la
 	return len(creates) - len(missing), nil
 }
 
-// finish sums the run up: whether everything is on the layer, the area and where to build next.
+// finish sums the run up: whether everything is on the layer and the area.
 func (r *buildRun) finish() {
 	r.out.Done = !r.stopped
 	if r.out.Done {
@@ -361,10 +361,6 @@ func (r *buildRun) finish() {
 		area = area.union(n.footprint())
 	}
 	r.out.Area = areaCells(area)
-	r.out.Next = &BuildNext{
-		Below: CellOf(GraphPoint{X: area.X + gridCell/2, Y: lineAfter(area.bottom()) + 3*gridCell + gridCell/2}),
-		Right: CellOf(GraphPoint{X: lineAfter(area.right()) + 3*gridCell + gridCell/2, Y: area.Y + gridCell/2}),
-	}
 	if len(ids) > 0 {
 		r.out.IDs = ids
 	}

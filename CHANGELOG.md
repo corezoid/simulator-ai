@@ -17,6 +17,13 @@
   joins the plain `console` catalog (62 tools), takes `ref`, `envTitle`, `page`, `query` and answers a summary
   (`full: true` for the whole render).
 
+- `graph_build` groups a hierarchy: ranks are ordered by their neighbours (barycentre sweeps) and every node's
+  children sit in a block under it, the parent centred, so an org chart no longer interleaves departments over wrapped
+  rows. More than six childless children fold into a near-square block (25 make 5 by 5); a row wider than `rowCells`
+  is narrowed first and wrapped inside the parent's block only then. Flowchart blocks keep whole ranks, now in the
+  same order, as does `flowchart_layout`. Without `origin` a section takes the highest free place within 80 columns of
+  the layer's content, so a layer built in sections fills rows instead of one strip; the answer's `next` is gone.
+
 - Build large graphs from the AI Console: `graph_build` creates actors, placements, edges and edge placements in one
   call from caller-chosen keys (up to 2000 nodes and 4000 edges, atomic batches of 99, layered / grid / given layouts
   with rank wrapping and an origin), repeats safely under an `operationId` (actor refs `gb:<operationId>:<key>`) and

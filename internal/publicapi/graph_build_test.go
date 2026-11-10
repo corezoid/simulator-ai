@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -127,8 +128,8 @@ func TestGraphBuildScale(t *testing.T) {
 			if len(raw) > 200 { // counts only: no ids, no chunks, no echo
 				t.Fatalf("the answer of a %d-node build takes %d bytes: %s", n, len(raw), raw)
 			}
-			if out.Area != "A, 1 - N4, "+fmt.Sprint((n-1)/40*3+1) || out.Next == nil || out.Next.Right != "R4, 1" {
-				t.Fatalf("area %s next %+v", out.Area, out.Next)
+			if out.Area != "A, 1 - N4, "+fmt.Sprint((n-1)/40*3+1) {
+				t.Fatalf("area %s", out.Area)
 			}
 		})
 	}
@@ -211,14 +212,14 @@ func TestGraphBuildResumes(t *testing.T) {
 func TestGraphBuildSectionsJoin(t *testing.T) {
 	c, f := fakeClient(t)
 	a := build(t, c, GraphBuildTarget{LayerID: "L", OperationID: "sec-a"}, GraphBuildInput{Nodes: gridNodes("a", 120, GraphPoint{X: -25, Y: -25}), Edges: meshEdges("a", 120), IDs: []string{"a5"}})
-	if !a.Done || len(a.IDs) != 1 || a.Next.Below != "A, 11" {
+	if !a.Done || len(a.IDs) != 1 {
 		t.Fatalf("%+v", a)
 	}
 	b, err := c.OpenGraphBuild(context.Background(), GraphBuildTarget{LayerID: "L", OperationID: "sec-b"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	free := b.FreeOrigin()
+	free := b.FreeOrigin(4400) // wider than the flow: under everything
 	if at, ok := b.Landed("a0"); ok || free != (GraphPoint{X: -25, Y: 475}) {
 		t.Fatal(free, at, ok)
 	}
@@ -476,5 +477,81 @@ func TestLayerWritesTakeFiveHundred(t *testing.T) {
 	moves.Items = append(moves.Items, PositionUpdate{LaID: 1, X: 1, Y: 1})
 	if _, err := c.UpdatePositions(context.Background(), moves); err == nil {
 		t.Fatal("501 moves accepted")
+	}
+}
+
+// Sections built one after another fill rows of buildFlowCells columns: the layer stays a page.
+func TestFreeOriginFlowsSectionsInRows(t *testing.T) {
+	b := &GraphBuild{}
+	add := func(at GraphPoint, w, h float64) {
+		b.room.Occupants = append(b.room.Occupants, occupant{Box: graphRect{X: at.X, Y: at.Y, W: w, H: h}})
+	}
+	var got []string
+	for i := range 12 { // 13 cells wide; every third one is taller
+		w, h := 13*gridCell, 16*gridCell
+		if i%3 == 0 {
+			h = 22 * gridCell
+		}
+		at := b.FreeOrigin(w)
+		for _, o := range b.room.Occupants {
+			if o.Box.overlaps(graphRect{X: at.X - 3*gridCell, Y: at.Y - 3*gridCell, W: w + 6*gridCell, H: h + 6*gridCell}) {
+				t.Fatalf("section %d at %v is closer than 3 cells to %+v", i, at, o.Box)
+			}
+		}
+		add(at, w, h)
+		got = append(got, CellOf(GraphPoint{X: at.X + gridCell/2, Y: at.Y + gridCell/2}))
+	}
+	// Five in a row (13 cells and 3 free), then under the lowest ones first.
+	want := "A, 1|Q, 1|G1, 1|W1, 1|M2, 1|Q, 20|G1, 20|M2, 20|A, 26|W1, 26|Q, 39|M2, 39"
+	if strings.Join(got, "|") != want {
+		t.Fatalf("origins %s", strings.Join(got, "|"))
+	}
+	// A section wider than the flow goes under everything.
+	if at := b.FreeOrigin(100 * gridCell); at.X != -25 || at.Y != 57*gridCell-25 { // row 58
+		t.Fatal(at)
+	}
+	// Content left of and above "A, 1" moves the flow's corner with it.
+	far := &GraphBuild{}
+	far.room.Occupants = []occupant{{Box: graphRect{X: -1025, Y: -525, W: 50, H: 50}}}
+	if at := far.FreeOrigin(50); at != (GraphPoint{X: -825, Y: -525}) {
+		t.Fatal(at)
+	}
+}
+
+// FreeOrigin on any layer keeps a section of the width it was asked for three cells from everything
+// read, however tall the section is, and a width of the whole plane costs no more than a narrow one.
+func TestFreeOriginIsFreeOnRandomLayers(t *testing.T) {
+	r := rand.New(rand.NewSource(20261110))
+	for round := range 300 {
+		b := &GraphBuild{}
+		spread := []float64{2000, 20000, 2e6}[r.Intn(3)]
+		for range 1 + r.Intn(400) {
+			box := graphRect{X: (r.Float64() - 0.5) * spread, Y: (r.Float64() - 0.5) * spread, W: gridCell, H: gridCell}
+			if r.Intn(4) == 0 { // an expanded node, a frame or a flowchart block
+				box.W, box.H = float64(1+r.Intn(900)), float64(1+r.Intn(900))
+			}
+			b.room.Occupants = append(b.room.Occupants, occupant{Box: box})
+		}
+		width := []float64{gridCell, 13 * gridCell, 79 * gridCell, 80 * gridCell, 81 * gridCell, 375, 2e9}[r.Intn(7)]
+		at := b.FreeOrigin(width)
+		if _, err := CellCenter(CellOf(GraphPoint{X: at.X + gridCell/2, Y: at.Y + gridCell/2})); err != nil || lineAfter(at.X) != at.X || lineAfter(at.Y) != at.Y {
+			t.Fatalf("round %d: %v is off the grid: %v", round, at, err)
+		}
+		section := graphRect{X: at.X - 3*gridCell, Y: at.Y - 3*gridCell, W: width + 6*gridCell, H: 1e7}
+		for _, o := range b.room.Occupants {
+			if o.Box.overlaps(section) {
+				t.Fatalf("round %d: a section %v wide at %v is closer than 3 cells to %+v", round, width, at, o.Box)
+			}
+		}
+	}
+	wide := &GraphBuild{}
+	wide.room.Occupants = []occupant{{Box: graphRect{X: -25, Y: -25, W: 50, H: 50}}}
+	if n := testing.AllocsPerRun(5, func() { wide.FreeOrigin(2e9) }); n > 0 {
+		t.Fatalf("%v allocations for a section as wide as the plane", n)
+	}
+	// The hint of a refused call with far-apart given cells is as cheap.
+	far := []BuildNode{{Key: "a", Position: GraphPoint{}}, {Key: "b", Position: GraphPoint{X: 9e8}}, {Key: "c", Position: GraphPoint{X: -9e8}}}
+	if err := wide.checkRoom(far); err == nil || !strings.Contains(err.Error(), "occupied: A, 1") || !strings.Contains(err.Error(), "layout given: other cells") {
+		t.Fatal(err)
 	}
 }
