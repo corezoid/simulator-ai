@@ -100,12 +100,6 @@ type BuildChunks struct {
 	Status string `json:"status"`
 }
 
-// BuildNext names the free cells for the next section's origin: under this one and right of it.
-type BuildNext struct {
-	Below string `json:"below"`
-	Right string `json:"right"`
-}
-
 // GraphBuildResult is the compact answer of a build: counts, never the input back. Chunks are there
 // only when something is left to build.
 type GraphBuildResult struct {
@@ -115,8 +109,7 @@ type GraphBuildResult struct {
 	Edges   BuildCount    `json:"edges"`
 	Chunks  []BuildChunks `json:"chunks,omitempty"`
 	// Area is the box the nodes cover by its corner cells.
-	Area string     `json:"area,omitempty"`
-	Next *BuildNext `json:"next,omitempty"`
+	Area string `json:"area,omitempty"`
 	// IDs maps the keys asked for to actor ids.
 	IDs     map[string]string `json:"ids,omitempty"`
 	Error   string            `json:"error,omitempty"`
@@ -224,17 +217,62 @@ func lineAfter(v float64) float64 {
 	return math.Ceil((v-gridCell/2)/gridCell)*gridCell + gridCell/2
 }
 
-// FreeOrigin is the top-left corner where nothing is in the way: cell "A, 1" on an empty layer,
-// else three free rows under everything, from the leftmost occupied column.
-func (b *GraphBuild) FreeOrigin() GraphPoint {
+// buildFlowCells is how wide sections built one after another fill a layer before the next goes
+// under them: a layer of sections stays a page, not a strip.
+const buildFlowCells = 80
+
+// FreeOrigin is the top-left corner for a section of the given width where nothing is in the way:
+// cell "A, 1" on an empty layer, else the highest free place within buildFlowCells columns of the
+// leftmost occupied one, three free cells from what is beside and above it. So sections fill a row,
+// then the next row starts under the lowest of them. One pass over the occupants and the columns:
+// no more work or memory for a wider section.
+func (b *GraphBuild) FreeOrigin(width float64) GraphPoint {
 	if len(b.room.Occupants) == 0 {
 		return GraphPoint{X: -gridCell / 2, Y: -gridCell / 2}
 	}
-	left, bottom := math.Inf(1), math.Inf(-1)
+	left, top := math.Inf(1), math.Inf(1)
 	for _, o := range b.room.Occupants {
-		left, bottom = math.Min(left, o.Box.X), math.Max(bottom, o.Box.bottom())
+		left, top = math.Min(left, o.Box.X), math.Min(top, o.Box.Y)
 	}
-	return GraphPoint{X: math.Floor((left-gridCell/2)/gridCell)*gridCell + gridCell/2, Y: lineAfter(bottom) + 3*gridCell}
+	lineBefore := func(v float64) float64 { return math.Floor((v-gridCell/2)/gridCell)*gridCell + gridCell/2 }
+	left, top = lineBefore(left), lineBefore(top)
+	const margin = 3
+	if width >= buildFlowCells*gridCell {
+		// As wide as the flow or wider (a caller's cells may span the whole plane): one place, under
+		// everything it would be beside, with no column table to fill.
+		reach := (math.Ceil(width/gridCell) + margin) * gridCell
+		for _, o := range b.room.Occupants {
+			if o.Box.X-left < reach {
+				top = math.Max(top, lineAfter(o.Box.bottom())+margin*gridCell)
+			}
+		}
+		return GraphPoint{X: left, Y: top}
+	}
+	need := max(1, int(math.Ceil(width/gridCell)))
+	const columns = buildFlowCells
+	// under[c] is the first line a section in column c may start at.
+	under := make([]float64, columns)
+	for c := range under {
+		under[c] = top
+	}
+	for _, o := range b.room.Occupants {
+		first := int(math.Floor((o.Box.X-left)/gridCell)) - margin
+		last := int(math.Ceil((o.Box.right()-left)/gridCell)) - 1 + margin
+		for c := max(first, 0); c <= min(last, columns-1); c++ {
+			under[c] = math.Max(under[c], lineAfter(o.Box.bottom())+margin*gridCell)
+		}
+	}
+	best, at := math.Inf(1), 0
+	for c := 0; c+need <= columns; c++ {
+		y := top
+		for _, u := range under[c : c+need] {
+			y = math.Max(y, u)
+		}
+		if y < best {
+			best, at = y, c
+		}
+	}
+	return GraphPoint{X: left + float64(at)*gridCell, Y: best}
 }
 
 // footprint is what the node will hold on the grid.
@@ -296,8 +334,8 @@ func (b *GraphBuild) checkRoom(nodes []BuildNode) error {
 		}
 	}
 	if len(hit) > 0 {
-		free := b.FreeOrigin()
-		return fmt.Errorf("occupied: %s. Nothing was written: build on free cells, e.g. origin %q (under everything on the layer)", cellsOf(hit),
+		free := b.FreeOrigin(area.W)
+		return fmt.Errorf("occupied: %s. Nothing was written: build on free cells, e.g. from %q (origin, or leave it out; layout given: other cells)", cellsOf(hit),
 			CellOf(GraphPoint{X: free.X + gridCell/2, Y: free.Y + gridCell/2}))
 	}
 	return nil

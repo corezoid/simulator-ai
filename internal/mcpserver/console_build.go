@@ -95,7 +95,7 @@ const (
 	// buildOutput names only what every answer has: the rest is described once, in the description.
 	buildOutput        = `{"type":"object","properties":{"done":{"type":"boolean"},"layerId":{"type":"string"}},"required":["done","layerId"]}`
 	buildDeleteSchema  = `{"type":"object","properties":{"layerId":{"type":"string"},"operationId":{"type":"string"},"dryRun":{"type":"boolean"}},"required":["layerId","operationId"],"additionalProperties":false}`
-	buildDescription   = "Build a graph on a layer in ONE call: actors, placements, edges and their placements, by your own keys (no ids to pass around). nodes: [key, title] or {key, title, formId, kind, desc, data, color, hole, cell}; edges: [from, to, name?] or {from, to, name, type}. Top-level formId, kind (a flowchart blockId) and edgeType are the defaults. layerId, or newLayer (a title). layout: auto (ranks top-down when the edges have a direction, else a grid), layered, grid, or given ([key, title, cell]); origin: the top-left cell, default free cells under the layer's content; rowCells: row width, default 60. Edge ends may also be keys of operations listed in use, or existing {key: actorId} on the layer. operationId (yours): repeating the call builds only what is missing, never twice. ids: keys whose actorId to return. Returns done, layerId, nodes and edges {total, done, existing}, area, next {below, right} (origins for the next call); not done: chunks, error, resume. At most 2000 nodes and 4000 edges."
+	buildDescription   = "Build a graph on a layer in ONE call: actors, placements, edges and their placements, by your own keys (no ids to pass around). nodes: [key, title] or {key, title, formId, kind, desc, data, color, hole, cell}; edges: [from, to, name?] or {from, to, name, type}. Top-level formId, kind (a flowchart blockId) and edgeType are the defaults. layerId, or newLayer (a title). layout: auto (directed edges: children under their parent, kind blocks in ranks; else a grid), layered, flowchart (ranks), grid, or given ([key, title, cell]); origin: the top-left cell; omit it: the next free place, sections fill rows; rowCells: row width, default 60. Edge ends may also be keys of operations listed in use, or existing {key: actorId} on the layer. operationId (yours): repeating the call builds only what is missing, never twice. ids: keys whose actorId to return. Returns done, layerId, nodes and edges {total, done, existing}, area; not done: chunks, error, resume. At most 2000 nodes and 4000 edges."
 	buildDeleteDetails = "Delete the actors a graph_build operationId created on a layer, with their placements and edges; a layer it created stays. Destructive: run dryRun (counts only) first and confirm with the user."
 )
 
@@ -203,7 +203,7 @@ func buildNodes(in buildInput, defs map[string]graphplan.Block) ([]publicapi.Bui
 
 // buildLayout gives every node its centre. A layout starts at the origin asked for, else where an
 // earlier call of the operation put it (so a repeated call continues the same picture), else on the
-// free cells under everything on the layer.
+// next free place of the layer (FreeOrigin).
 func buildLayout(in buildInput, b *publicapi.GraphBuild, nodes []publicapi.BuildNode, boxes []graphplan.LayoutNode) error {
 	if in.Layout == "given" {
 		for i, n := range in.Nodes {
@@ -233,7 +233,8 @@ func buildLayout(in buildInput, b *publicapi.GraphBuild, nodes []publicapi.Build
 			edges = append(edges, graphplan.Edge{Key: e.From + "->" + e.To, Source: e.From, Target: e.To})
 		}
 	}
-	opt := graphplan.LayoutOptions{RowWidth: float64(in.RowCells) * graphplan.PlainSize}
+	// Flowchart blocks keep whole ranks, as flowchart_layout draws them, unless layered is asked for.
+	opt := graphplan.LayoutOptions{RowWidth: float64(in.RowCells) * graphplan.PlainSize, RankRows: in.Layout == "flowchart" || (!plain && in.Layout != "layered")}
 	if plain {
 		opt.Gap = graphplan.PlainGap
 	}
@@ -245,7 +246,7 @@ func buildLayout(in buildInput, b *publicapi.GraphBuild, nodes []publicapi.Build
 	default:
 		points, _, box = graphplan.Layered(boxes, edges, opt)
 	}
-	corner := b.FreeOrigin()
+	var corner publicapi.GraphPoint
 	if in.Origin != "" {
 		at, err := publicapi.CellCenter(in.Origin)
 		if err != nil {
@@ -253,12 +254,18 @@ func buildLayout(in buildInput, b *publicapi.GraphBuild, nodes []publicapi.Build
 		}
 		corner = publicapi.GraphPoint{X: at.X - graphplan.PlainSize/2, Y: at.Y - graphplan.PlainSize/2}
 	}
-	dx, dy := corner.X-box.X, corner.Y-box.Y
+	dx, dy, resumed := 0.0, 0.0, false
 	for i, n := range in.Nodes {
 		if at, landed := b.Landed(n.Key); landed {
-			dx, dy = at.X-points[i].X, at.Y-points[i].Y
+			dx, dy, resumed = at.X-points[i].X, at.Y-points[i].Y, true
 			break
 		}
+	}
+	if !resumed {
+		if in.Origin == "" {
+			corner = b.FreeOrigin(box.W)
+		}
+		dx, dy = corner.X-box.X, corner.Y-box.Y
 	}
 	for i := range nodes {
 		nodes[i].Position = publicapi.GraphPoint{X: points[i].X + dx, Y: points[i].Y + dy}
