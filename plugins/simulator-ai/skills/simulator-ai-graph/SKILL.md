@@ -101,7 +101,7 @@ your own `key`; no actor ids, `laId`s or coordinates.
    edges: [[from, to, "label"?], ...]}`. `kind` (a blockId) or `formId` is the default; a node
    that differs is an object `{key, title, kind | formId, data, color, hole}`, an edge of
    another type `{from, to, name, type}`. Keep decision labels and return links. The layout is
-   automatic (children in a block under their parent, else a grid; `layout: "given"` with
+   automatic (blocks in ranks, plain actors under their parent, else a grid; `layout: "given"` with
    `[key, title, cell]`).
 4. **Large graphs:** up to ~200 nodes with their edges per call. Split more into sections, each
    its own `operationId` and keys unique on the layer; leave `origin` out: sections fill rows on

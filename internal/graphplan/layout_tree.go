@@ -151,7 +151,8 @@ func packTrees(nodes []LayoutNode, rank []int, order [][]int, links [][2]int, op
 }
 
 // adopt gives every node below the first rank its parent: of its parents one rank up, the middle one
-// in the rank's order, so a shared child sits between those who share it. Children keep that order.
+// in the rank's order (the left one of two), so a child of three or more sits between those who
+// share it. Children keep that order.
 func (f *forest) adopt(order [][]int, links [][2]int) {
 	n := len(f.nodes)
 	pos := make([]int, n)
@@ -261,7 +262,16 @@ func (f *forest) share(v int) {
 	for _, c := range kids {
 		f.budget[c] = min(f.nat[c], limit)
 		if limit == 0 {
-			f.budget[c] = min(f.nat[c], max(f.floor(c), snapDown(math.Sqrt(f.area[c]))), max(budget, f.low[c]))
+			wide := max(f.floor(c), snapDown(math.Sqrt(f.area[c])))
+			// A block a cell too wide for one more in the row leaves that much of the row empty: a
+			// block up to a fifth narrower lets it in.
+			if step := cells(f.gap); wide <= budget {
+				count := math.Floor((budget-wide)/(wide+step)) + 1
+				if tight := snapDown((budget - count*step) / (count + 1)); tight >= f.floor(c) && tight >= 0.8*wide {
+					wide = tight
+				}
+			}
+			f.budget[c] = min(f.nat[c], wide, max(budget, f.low[c]))
 		}
 	}
 }

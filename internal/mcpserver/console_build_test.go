@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -355,5 +356,101 @@ func TestGraphBuildToolFlowsSections(t *testing.T) {
 	// Five sections a row, three rows: 77 by 54 cells.
 	if right != 76*50 || bottom != 53*50 {
 		t.Fatalf("the layer is %v by %v cells", right/50+1, bottom/50+1)
+	}
+}
+
+// rowsOf counts the layer's nodes by row, top to bottom.
+func rowsOf(f *simfake.Server, layer string) []int {
+	_, placed, _ := f.Snapshot(layer)
+	count := map[float64]int{}
+	var ys []float64
+	for _, n := range placed {
+		if count[n.Y] == 0 {
+			ys = append(ys, n.Y)
+		}
+		count[n.Y]++
+	}
+	sort.Float64s(ys)
+	out := make([]int, len(ys))
+	for i, y := range ys {
+		out[i] = count[y]
+	}
+	return out
+}
+
+// auto keeps whole ranks for flowchart blocks and groups plain actors under their parents; layered
+// and flowchart ask for one or the other whatever the nodes are.
+func TestGraphBuildToolLayoutModes(t *testing.T) {
+	// Two parents of eight children each: whole ranks put the sixteen in one row, blocks fold each
+	// eight into two rows of four under its parent.
+	nodes, edges := []string{`["r","R"]`, `["a","A"]`, `["b","B"]`}, []string{`["r","a"]`, `["r","b"]`}
+	for i := range 16 {
+		nodes = append(nodes, fmt.Sprintf(`["c%d","C"]`, i))
+		edges = append(edges, fmt.Sprintf(`["%s","c%d"]`, []string{"a", "b"}[i%2], i))
+	}
+	ranks, grouped := []int{1, 2, 16}, []int{1, 2, 8, 8}
+	for name, want := range map[string]struct {
+		head string
+		rows []int
+	}{
+		"plain auto":       {`"formId":42`, grouped},
+		"plain layered":    {`"formId":42,"layout":"layered"`, grouped},
+		"plain flowchart":  {`"formId":42,"layout":"flowchart"`, ranks},
+		"blocks auto":      {`"kind":"process"`, ranks},
+		"blocks flowchart": {`"kind":"process","layout":"flowchart"`, ranks},
+		"blocks layered":   {`"kind":"process","layout":"layered"`, grouped},
+	} {
+		call, f := fakeConsole(t)
+		reply, failed := call("graph_build", fmt.Sprintf(`{"operationId":"m","layerId":"L","rowCells":200,%s,"nodes":[%s],"edges":[%s]}`, want.head, strings.Join(nodes, ","), strings.Join(edges, ",")))
+		if failed || !strings.Contains(reply, `"done":true`) {
+			t.Fatal(name, reply)
+		}
+		if got := rowsOf(f, "L"); fmt.Sprint(got) != fmt.Sprint(want.rows) {
+			t.Errorf("%s: rows %v, want %v", name, got, want.rows)
+		}
+	}
+}
+
+// A build without origin that lost an answer half way is finished by the same call where it began:
+// the repeat takes its place from what landed, not from the layer's next free place, which the
+// landed part has moved.
+func TestGraphBuildToolResumesAtItsDefaultOrigin(t *testing.T) {
+	args := buildArgs(`"operationId":"part","layerId":"L"`, 300)
+	first := `{"operationId":"first","layerId":"L","formId":42,"nodes":[["s0","S"],["s1","S"],["s2","S"]],"edges":[["s0","s1"],["s0","s2"]]}`
+	call, f := fakeConsole(t)
+	for _, in := range []string{first, args} {
+		if reply, failed := call("graph_build", in); failed || !strings.Contains(reply, `"done":true`) {
+			t.Fatal(reply)
+		}
+	}
+	clean := cellsOf(t, f, "L", 303, 301)
+
+	call, f = fakeConsole(t)
+	if reply, failed := call("graph_build", first); failed {
+		t.Fatal(reply)
+	}
+	batches := 0
+	f.Set(func(s *simfake.Server) {
+		s.Hook = func(_ int, method string) simfake.Fault {
+			if method == "batch" {
+				if batches++; batches == 2 {
+					return simfake.Lose
+				}
+			}
+			return simfake.Answer
+		}
+	})
+	if reply, failed := call("graph_build", args); failed || !strings.Contains(reply, `"done":false`) {
+		t.Fatal(reply)
+	}
+	f.Set(func(s *simfake.Server) { s.Hook = nil })
+	if reply, failed := call("graph_build", args); failed || !strings.Contains(reply, `"done":true`) {
+		t.Fatal(reply)
+	}
+	again := cellsOf(t, f, "L", 303, 301)
+	for at := range clean {
+		if !again[at] {
+			t.Fatalf("the repeated build has no node at %v", at)
+		}
 	}
 }

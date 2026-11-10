@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -514,5 +515,43 @@ func TestFreeOriginFlowsSectionsInRows(t *testing.T) {
 	far.room.Occupants = []occupant{{Box: graphRect{X: -1025, Y: -525, W: 50, H: 50}}}
 	if at := far.FreeOrigin(50); at != (GraphPoint{X: -825, Y: -525}) {
 		t.Fatal(at)
+	}
+}
+
+// FreeOrigin on any layer keeps a section of the width it was asked for three cells from everything
+// read, however tall the section is, and a width of the whole plane costs no more than a narrow one.
+func TestFreeOriginIsFreeOnRandomLayers(t *testing.T) {
+	r := rand.New(rand.NewSource(20261110))
+	for round := range 300 {
+		b := &GraphBuild{}
+		spread := []float64{2000, 20000, 2e6}[r.Intn(3)]
+		for range 1 + r.Intn(400) {
+			box := graphRect{X: (r.Float64() - 0.5) * spread, Y: (r.Float64() - 0.5) * spread, W: gridCell, H: gridCell}
+			if r.Intn(4) == 0 { // an expanded node, a frame or a flowchart block
+				box.W, box.H = float64(1+r.Intn(900)), float64(1+r.Intn(900))
+			}
+			b.room.Occupants = append(b.room.Occupants, occupant{Box: box})
+		}
+		width := []float64{gridCell, 13 * gridCell, 79 * gridCell, 80 * gridCell, 81 * gridCell, 375, 2e9}[r.Intn(7)]
+		at := b.FreeOrigin(width)
+		if _, err := CellCenter(CellOf(GraphPoint{X: at.X + gridCell/2, Y: at.Y + gridCell/2})); err != nil || lineAfter(at.X) != at.X || lineAfter(at.Y) != at.Y {
+			t.Fatalf("round %d: %v is off the grid: %v", round, at, err)
+		}
+		section := graphRect{X: at.X - 3*gridCell, Y: at.Y - 3*gridCell, W: width + 6*gridCell, H: 1e7}
+		for _, o := range b.room.Occupants {
+			if o.Box.overlaps(section) {
+				t.Fatalf("round %d: a section %v wide at %v is closer than 3 cells to %+v", round, width, at, o.Box)
+			}
+		}
+	}
+	wide := &GraphBuild{}
+	wide.room.Occupants = []occupant{{Box: graphRect{X: -25, Y: -25, W: 50, H: 50}}}
+	if n := testing.AllocsPerRun(5, func() { wide.FreeOrigin(2e9) }); n > 0 {
+		t.Fatalf("%v allocations for a section as wide as the plane", n)
+	}
+	// The hint of a refused call with far-apart given cells is as cheap.
+	far := []BuildNode{{Key: "a", Position: GraphPoint{}}, {Key: "b", Position: GraphPoint{X: 9e8}}, {Key: "c", Position: GraphPoint{X: -9e8}}}
+	if err := wide.checkRoom(far); err == nil || !strings.Contains(err.Error(), "occupied: A, 1") || !strings.Contains(err.Error(), "layout given: other cells") {
+		t.Fatal(err)
 	}
 }
