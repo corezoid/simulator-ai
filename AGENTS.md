@@ -65,7 +65,7 @@ Host-bound counts never replace current receipt readback or recipient authority.
 
 ## Reproducible commands and agent budget
 
-- Go 1.27.3 (go.mod); golangci-lint 2.14.0. `make check` runs checks sequentially.
+- Go 1.27.4 (go.mod); golangci-lint 2.14.0. `make check` runs checks sequentially.
 - `make test` is the default local suite. `make test-race` and `make security` are separate;
   prefer hosted CI for race and cross-platform packaging. Never run make -j, parallel full suites,
   local Docker builds or multiple client-smoke processes for this task.
