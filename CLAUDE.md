@@ -6,7 +6,7 @@ Use an isolated worktree on feature/*, bugfix/* or hotfix/*. Feature/fix PRs tar
 main is the frozen pre candidate. sim-deploy coordinates weekly promotion and production tags.
 Keep source modules below 700 lines; prefer small fixes and existing helpers over frameworks.
 
-Use Go 1.27.3. Run targeted checks first, then `make check` sequentially with GOMAXPROCS=2
+Use Go 1.27.4. Run targeted checks first, then `make check` sequentially with GOMAXPROCS=2
 and Go -p=1. Heavy race/cross-platform jobs belong in CI. Never run multiple test stacks,
 local Docker builds or paid model calls without their explicit scope/budget.
 

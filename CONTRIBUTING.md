@@ -8,7 +8,7 @@ For a focused fix, use a feature or bugfix branch and open a pull request into `
 
 ## Local checks
 
-Use Go 1.27.3 and golangci-lint 2.14.0. Run `make check` sequentially; Go commands limit
+Use Go 1.27.4 and golangci-lint 2.14.0. Run `make check` sequentially; Go commands limit
 parallelism to protect local resources. Hosted CI also runs race, vulnerability/secret,
 coverage and Windows package checks. See [verification](docs/verification.md).
 
