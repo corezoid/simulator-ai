@@ -30,7 +30,7 @@ Your host client's normal model usage and billing still apply.
 
 ## Quick start
 
-You need Go **1.27.3+**, Git, a current Claude Code, Codex or Kiro client, and access to a Simulator
+You need Go **1.27.4+**, Git, a current Claude Code, Codex or Kiro client, and access to a Simulator
 instance with the public API enabled. Obtain an API-user key and workspace ID from your
 workspace administrator.
 
@@ -47,7 +47,7 @@ simulator-ai --version
 Keep the executable on the client process's `PATH`. For a persistent installation, run
 `go install ./cmd/simulator-ai` and add your Go binary directory to `PATH`.
 
-On **Windows x64**, use PowerShell (Go 1.27.3+ for a source build):
+On **Windows x64**, use PowerShell (Go 1.27.4+ for a source build):
 
 ```powershell
 git clone https://github.com/corezoid/simulator-ai.git

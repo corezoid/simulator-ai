@@ -8,6 +8,7 @@
 
 ## [Unreleased]
 
+- Go 1.27.4 (`go.mod`) for GO-2026-6859 in `net/http`; a source build needs Go 1.27.4 or a toolchain download.
 - Build and edit large multi-page Smart Forms from the AI Console. `smart_form_files_get` answers at most 40,000
   characters of sources (files past that come without `source` and a `note`; one long file is cut with `next` and read
   on with `offset`), reads a page or definition as an outline (`outline: N`, one line per node) and one node by
