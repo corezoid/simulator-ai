@@ -19,7 +19,10 @@ type Entry struct {
 	AccessToken  string    `json:"accessToken,omitempty"`
 	RefreshToken string    `json:"refreshToken,omitempty"`
 	ExpiresAt    time.Time `json:"expiresAt,omitzero"`
-	Workspace    string    `json:"workspace,omitempty"`
+	// Subject is the SuperAdmin id of the person who signed in; it outlives an expired token, so the
+	// same person signing in again keeps their workspace choice.
+	Subject   int64  `json:"saId,omitempty"`
+	Workspace string `json:"workspace,omitempty"`
 }
 
 type storeFile struct {
@@ -58,9 +61,16 @@ func (s *Store) Get(origin string) (Entry, error) {
 }
 
 // Update applies change to the origin's entry and saves the file; an emptied entry is removed.
+// A lock file serializes the read-modify-write with other client processes, so a rotated refresh
+// token written by one is never overwritten by another's older copy.
 func (s *Store) Update(origin string, change func(*Entry)) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	unlock, err := s.lock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	f, err := s.read()
 	if err != nil {
 		return err
@@ -76,6 +86,39 @@ func (s *Store) Update(origin string, change func(*Entry)) error {
 		f.Origins[origin] = &e
 	}
 	return s.write(f)
+}
+
+const (
+	lockWait  = 3 * time.Second
+	lockStale = 15 * time.Second // A holder never keeps it longer: no network inside Update.
+)
+
+// lock creates credentials.json.lock exclusively, waiting for another process to release it and
+// breaking a lock left behind by a crashed one.
+func (s *Store) lock() (func(), error) {
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
+		return nil, errors.New("cannot create the Simulator AI config directory")
+	}
+	name := s.path + ".lock"
+	deadline := time.Now().Add(lockWait)
+	for {
+		f, err := os.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:gosec // G304: the lock beside the user's own credentials file.
+		if err == nil {
+			_ = f.Close()
+			return func() { _ = os.Remove(name) }, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, errors.New("cannot lock the credentials file")
+		}
+		if info, serr := os.Stat(name); serr == nil && time.Since(info.ModTime()) > lockStale {
+			_ = os.Remove(name)
+			continue
+		}
+		if time.Now().After(deadline) {
+			return nil, errors.New("the credentials file is locked by another Simulator AI process; try again")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 func (s *Store) read() (storeFile, error) {
@@ -105,9 +148,6 @@ func (s *Store) read() (storeFile, error) {
 
 func (s *Store) write(f storeFile) error {
 	dir := filepath.Dir(s.path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return errors.New("cannot create the Simulator AI config directory")
-	}
 	b, err := json.MarshalIndent(f, "", "  ")
 	if err != nil {
 		return errors.New("cannot encode the credentials file")

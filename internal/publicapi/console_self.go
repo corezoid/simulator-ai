@@ -2,12 +2,11 @@ package publicapi
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
+
+	"github.com/corezoid/simulator-ai/internal/auth"
 )
 
 // No public method says who the caller is. A "Simulator <jwt>" credential (the AI Console run's,
@@ -21,36 +20,23 @@ type tokenUser struct {
 	Nick string
 }
 
-// credentialUser is the user a Simulator JWT names; ok false for any other credential.
-func (c *Client) credentialUser(ctx context.Context) (tokenUser, bool) {
-	header := c.config.Authorization
+// credentialUser is the user a Simulator JWT names (the host's, or the person's own login); ok
+// false for any other credential. It never renews a login: the claims are only read.
+func (c *Client) credentialUser() (tokenUser, bool) {
+	var (
+		id   int64
+		nick string
+		ok   bool
+	)
 	if c.CredentialMode() == "login" {
-		header, _ = c.config.Account.Authorization(ctx)
+		id, nick, ok = c.config.Account.User()
+	} else if scheme, token, found := strings.Cut(c.config.Authorization, " "); found && scheme == "Simulator" {
+		id, nick, ok = auth.UserOf(token)
 	}
-	scheme, token, found := strings.Cut(header, " ")
-	if !found || scheme != "Simulator" {
+	if !ok {
 		return tokenUser{}, false
 	}
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return tokenUser{}, false
-	}
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return tokenUser{}, false
-	}
-	var claims struct {
-		Sub  string `json:"sub"`
-		Nick string `json:"nick"`
-	}
-	if json.Unmarshal(payload, &claims) != nil {
-		return tokenUser{}, false
-	}
-	id, err := strconv.ParseInt(claims.Sub, 10, 64)
-	if err != nil || id < 1 {
-		return tokenUser{}, false
-	}
-	return tokenUser{SAID: id, Nick: claims.Nick}, true
+	return tokenUser{SAID: id, Nick: nick}, true
 }
 
 type memberRow struct {
@@ -72,7 +58,7 @@ type caller struct {
 // differs is refused. user/list needs the viewUsers permission, which an ordinary member lacks: on
 // accessDenied, and with any other credential, the argument is taken as it is, untrusted.
 func (c *Client) selfUserID(ctx context.Context, claimed int64) (caller, error) {
-	user, ok := c.credentialUser(ctx)
+	user, ok := c.credentialUser()
 	if !ok {
 		return caller{ID: claimed}, nil
 	}

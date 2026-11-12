@@ -47,11 +47,11 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 	if c.Authorization == "" && c.DelegatedToken == "" && c.Profile != "delegated-read" {
 		account := getenv("SIMULATOR_AI_ACCOUNT_URL")
 		if account != "" {
-			if err := checkOrigin(account); err != nil {
-				return Config{}, errors.New("SIMULATOR_AI_ACCOUNT_URL: " + err.Error())
+			if err := checkOrigin("SIMULATOR_AI_ACCOUNT_URL", account); err != nil {
+				return Config{}, err
 			}
 		}
-		if dir := configDir(getenv); dir != "" && checkOrigin(c.Origin) == nil {
+		if dir := configDir(getenv); dir != "" && checkOrigin("SIMULATOR_AI_ORIGIN", c.Origin) == nil {
 			c.Account = auth.NewSession(auth.Options{Origin: strings.TrimRight(c.Origin, "/"), ConfigDir: dir, AccountURL: account, ClientID: getenv("SIMULATOR_AI_OAUTH_CLIENT_ID")})
 		}
 	}
@@ -77,11 +77,12 @@ func configDir(getenv func(string) string) string {
 	return ""
 }
 
-// checkOrigin accepts an HTTPS origin, or HTTP on a literal loopback host for development.
-func checkOrigin(origin string) error {
+// checkOrigin accepts an HTTPS origin, or HTTP on a literal loopback host for development; name is
+// the variable it came from.
+func checkOrigin(name, origin string) error {
 	u, e := url.Parse(origin)
 	if e != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Path != "" && u.Path != "/") || u.Opaque != "" {
-		return errors.New("must be an origin without credentials, path, query or fragment")
+		return errors.New(name + " must be an origin without credentials, path, query or fragment")
 	}
 	if u.Scheme != "https" {
 		ip := net.ParseIP(u.Hostname())
@@ -99,11 +100,8 @@ func (c Config) validate() error {
 	if c.ActorID != "" && ((c.Profile != "reactions-read" && c.Profile != "graph-read") || len(c.ActorID) > 255 || strings.IndexFunc(c.ActorID, unicode.IsSpace) >= 0 || strings.IndexFunc(c.ActorID, unicode.IsControl) >= 0) {
 		return errors.New("SIMULATOR_AI_ACTOR requires reactions-read or graph-read and a nonempty actor ID up to 255 bytes without whitespace")
 	}
-	if e := checkOrigin(c.Origin); e != nil {
-		if strings.HasPrefix(e.Error(), "HTTPS") {
-			return e
-		}
-		return errors.New("SIMULATOR_AI_ORIGIN " + e.Error())
+	if e := checkOrigin("SIMULATOR_AI_ORIGIN", c.Origin); e != nil {
+		return e
 	}
 	credential := c.APIKey
 	if c.Authorization != "" {

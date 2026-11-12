@@ -255,7 +255,7 @@ func TestStoreKeysByOriginAndRefusesOpenFile(t *testing.T) {
 	if err := os.Chmod(a.StorePath(), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.Workspace(); err == nil || !strings.Contains(err.Error(), "chmod 600") {
+	if _, err := a.Status(); err == nil || !strings.Contains(err.Error(), "chmod 600") {
 		t.Fatalf("group-readable store accepted: %v", err)
 	}
 }
@@ -271,5 +271,116 @@ func TestParseClaimsAndSafeCode(t *testing.T) {
 	}
 	if safeCode(`<script>x</script>`, 400) != "scriptxscript" || safeCode("", 401) != "http 401" {
 		t.Fatal("safeCode")
+	}
+}
+
+func TestSameUserKeepsWorkspaceAfterRevokedRefresh(t *testing.T) {
+	s, sa, _ := newTestSession(t)
+	old := time.Now().Add(-time.Minute)
+	_ = s.save(context.Background(), Entry{AccessToken: jwt(42, "Ada", old), RefreshToken: "revoked", ExpiresAt: old})
+	_ = s.SetWorkspace("ws-1")
+	if _, err := s.Authorization(context.Background()); !errors.Is(err, ErrLoginRequired) {
+		t.Fatal(err)
+	}
+	s.open = browser(t, sa)
+	if res, err := s.Login(context.Background(), 10*time.Second); err != nil || res.Status != "signedIn" {
+		t.Fatal(res, err)
+	}
+	if w, _ := s.Workspace(); w != "ws-1" {
+		t.Fatal("the same person lost the workspace on signing in again")
+	}
+}
+
+func TestTransientRefreshFailureKeepsSession(t *testing.T) {
+	for _, status := range []int{http.StatusTooManyRequests, http.StatusRequestTimeout, http.StatusBadGateway} {
+		s, sa, _ := newTestSession(t)
+		soon := time.Now().Add(10 * time.Second)
+		_ = s.save(context.Background(), Entry{AccessToken: jwt(42, "Ada", soon), RefreshToken: "refresh-1", ExpiresAt: soon})
+		sa.status, sa.body = status, `{"error":"slow_down"}`
+		if _, err := s.Authorization(context.Background()); err == nil || errors.Is(err, ErrLoginRequired) {
+			t.Fatalf("%d: %v", status, err)
+		}
+		if e, _ := s.store.Get(s.origin); e.RefreshToken != "refresh-1" {
+			t.Fatalf("%d dropped the session", status)
+		}
+	}
+	s, sa, _ := newTestSession(t)
+	soon := time.Now().Add(10 * time.Second)
+	_ = s.save(context.Background(), Entry{AccessToken: jwt(42, "Ada", soon), RefreshToken: "refresh-1", ExpiresAt: soon})
+	sa.status, sa.body = http.StatusOK, `{"error":"invalid_grant"}`
+	if _, err := s.Authorization(context.Background()); !errors.Is(err, ErrLoginRequired) {
+		t.Fatalf("an OAuth error with 200 must end the session: %v", err)
+	}
+}
+
+func TestBackgroundLoginFailureIsReported(t *testing.T) {
+	s, _, _ := newTestSession(t)
+	var authURL string
+	s.open = func(u string) error { authURL = u; return nil }
+	if res, err := s.Login(context.Background(), 10*time.Millisecond); err != nil || res.Status != "pending" {
+		t.Fatal(res, err)
+	}
+	u, _ := url.Parse(authURL)
+	resp, err := http.Get(u.Query().Get("redirect_uri") + "?error=access_denied&state=" + url.QueryEscape(u.Query().Get("state")))
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		st, _ := s.Status()
+		if st.LoginError != "" {
+			if !strings.Contains(st.LoginError, "access_denied") || st.Pending || st.SignedIn {
+				t.Fatalf("%+v", st)
+			}
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("failure not reported")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func TestWorkspaceIsKeptPerProcess(t *testing.T) {
+	dir := t.TempDir()
+	a := NewSession(Options{Origin: "https://a.example", ConfigDir: dir})
+	b := NewSession(Options{Origin: "https://a.example", ConfigDir: dir}) // another client process
+	_ = a.SetWorkspace("ws-a")
+	if w, _ := b.Workspace(); w != "ws-a" {
+		t.Fatal("a new process does not start from the stored choice")
+	}
+	_ = b.SetWorkspace("ws-b")
+	if w, _ := a.Workspace(); w != "ws-a" {
+		t.Fatal("another process switched this one's workspace")
+	}
+}
+
+func TestStoreLockSerializesAndBreaksStale(t *testing.T) {
+	dir := t.TempDir()
+	st := NewStore(dir)
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			other := NewStore(dir) // separate in-process mutex: only the lock file serializes
+			_ = other.Update(fmt.Sprint("https://", i, ".example"), func(e *Entry) { e.Workspace = "w" })
+		}()
+	}
+	wg.Wait()
+	for i := range 8 {
+		if e, _ := st.Get(fmt.Sprint("https://", i, ".example")); e.Workspace != "w" {
+			t.Fatalf("lost update %d", i)
+		}
+	}
+	lock := st.Path() + ".lock"
+	_ = os.WriteFile(lock, nil, 0o600)
+	past := time.Now().Add(-time.Minute)
+	_ = os.Chtimes(lock, past, past)
+	if err := st.Update("https://x.example", func(e *Entry) { e.Workspace = "x" }); err != nil {
+		t.Fatal("stale lock not broken:", err)
+	}
+	if _, err := os.Stat(lock); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("lock left behind")
 	}
 }

@@ -95,15 +95,20 @@ func (p provider) token(ctx context.Context, form url.Values) (Entry, error) {
 	if err != nil || len(b) > maxTokenResponse {
 		return Entry{}, errors.New("cannot read the account service response")
 	}
+	// A refusal of the grant itself (an OAuth error with 200/400/401/403) is final; 408, 429 and 5xx
+	// are worth another try later and never end the session.
 	var tr tokenResponse
-	if json.Unmarshal(b, &tr) != nil {
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-			return Entry{}, errRejected{"http " + strconv.Itoa(resp.StatusCode)}
-		}
-		return Entry{}, errors.New("unexpected account service response (http " + strconv.Itoa(resp.StatusCode) + ")")
-	}
-	if tr.Error != "" || resp.StatusCode >= 400 && resp.StatusCode < 500 {
+	decoded := json.Unmarshal(b, &tr) == nil
+	switch resp.StatusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden:
 		return Entry{}, errRejected{safeCode(tr.Error, resp.StatusCode)}
+	case http.StatusOK:
+		if decoded && tr.Error != "" {
+			return Entry{}, errRejected{safeCode(tr.Error, resp.StatusCode)}
+		}
+	}
+	if !decoded || tr.Error != "" {
+		return Entry{}, errors.New("the account service is unavailable (http " + strconv.Itoa(resp.StatusCode) + ")")
 	}
 	if resp.StatusCode != http.StatusOK || tr.SimulatorToken == "" || strings.ContainsAny(tr.SimulatorToken, " \t\r\n") {
 		return Entry{}, errors.New("the account service returned no Simulator token (http " + strconv.Itoa(resp.StatusCode) + ")")
@@ -130,6 +135,13 @@ func safeCode(code string, status int) string {
 		return "http " + strconv.Itoa(status)
 	}
 	return b.String()
+}
+
+// UserOf reads the SuperAdmin id (sub) and nick of a Simulator JWT without checking its signature;
+// ok false unless sub is a positive id.
+func UserOf(token string) (int64, string, bool) {
+	c, ok := parseClaims(token)
+	return c.sub, c.nick, ok && c.sub > 0
 }
 
 type claims struct {

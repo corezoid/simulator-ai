@@ -184,7 +184,7 @@ func (c *Client) p2pTitle(ctx context.Context, low, high, self int64) (string, e
 		return "", err
 	}
 	nicks := []string{strconv.FormatInt(low, 10), strconv.FormatInt(high, 10)}
-	if user, ok := c.credentialUser(ctx); ok && user.Nick != "" {
+	if user, ok := c.credentialUser(); ok && user.Nick != "" {
 		nicks[map[bool]int{true: 0, false: 1}[self == low]] = user.Nick
 	}
 	for i, r := range users {

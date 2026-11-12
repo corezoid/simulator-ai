@@ -186,7 +186,12 @@ func (c *Client) legacyLink(in LinkInput) (Link, error) {
 	if in.Mode != "" && in.Mode != "layers" && in.Mode != "actors" && in.Mode != "trees" {
 		return Link{}, errors.New("mode is layers, actors or trees")
 	}
-	path, err := build(shortWorkspace(c.workspace()), in.escaped())
+	// No request is made here: a login without a chosen workspace must not yield a link without one.
+	ws := c.workspace()
+	if ws == "" {
+		return Link{}, errNoWorkspace
+	}
+	path, err := build(shortWorkspace(ws), in.escaped())
 	if err != nil {
 		return Link{}, err
 	}

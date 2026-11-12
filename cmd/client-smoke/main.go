@@ -85,16 +85,21 @@ func smoke(root, profile string) (evidence, error) {
 	env := []string{
 		"HOME=" + os.Getenv("HOME"), "PATH=" + filepath.Dir(binary) + string(os.PathListSeparator) + os.Getenv("PATH"),
 		"TMPDIR=" + temp, "CODEX_HOME=" + filepath.Join(temp, "codex"), "CLAUDE_CONFIG_DIR=" + filepath.Join(temp, "claude"),
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1", "DISABLE_AUTOUPDATER=1",
-		"SIMULATOR_AI_PROFILE=" + profile, "SIMULATOR_AI_ORIGIN=" + f.server.URL, "SIMULATOR_AI_WORKSPACE=synthetic-workspace", "SIMULATOR_AI_API_KEY=synthetic-client-key",
+		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1", "DISABLE_AUTOUPDATER=1", "SIMULATOR_AI_ORIGIN=" + f.server.URL,
 	}
-	if profile == "login" {
+	switch profile {
+	case "login":
 		// No host credential: the server starts in browser-login mode with an empty private store.
-		env = append(env[:len(env)-4], "SIMULATOR_AI_PROFILE=read", "SIMULATOR_AI_ORIGIN="+f.server.URL, "SIMULATOR_AI_CONFIG_DIR="+filepath.Join(temp, "config"))
-	} else if profile == "reactions-actor" {
+		env = append(env, "SIMULATOR_AI_PROFILE=read", "SIMULATOR_AI_CONFIG_DIR="+filepath.Join(temp, "config"))
+	case "reactions-actor":
 		env = append(env, "SIMULATOR_AI_PROFILE=reactions-read", "SIMULATOR_AI_ACTOR=synthetic-actor")
-	} else if profile == "graph-actor" {
+	case "graph-actor":
 		env = append(env, "SIMULATOR_AI_PROFILE=graph-read", "SIMULATOR_AI_ACTOR=synthetic-layer")
+	default:
+		env = append(env, "SIMULATOR_AI_PROFILE="+profile)
+	}
+	if profile != "login" {
+		env = append(env, "SIMULATOR_AI_WORKSPACE=synthetic-workspace", "SIMULATOR_AI_API_KEY=synthetic-client-key")
 	}
 	// Fail closed if a future smoke change accidentally attempts a model turn.
 	config := fmt.Sprintf("model = \"scripted-no-model\"\nmodel_provider = \"scripted\"\n[model_providers.scripted]\nname = \"Scripted smoke only\"\nbase_url = %q\nwire_api = \"responses\"\n", f.server.URL+"/disabled-model")
