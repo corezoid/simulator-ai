@@ -112,15 +112,15 @@ func (c *Client) OpenChat(ctx context.Context, in ChatOpenInput) (ChatOpened, er
 	}
 	if owner != self {
 		// The ref names someone else: take the quiet, just-made chat back.
-		if _, derr := call[map[string]any, json.RawMessage](ctx, c, "actor/delete", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID}); derr != nil {
+		if _, derr := call[map[string]any, json.RawMessage](ctx, c, "actor/delete", map[string]any{"accId": c.workspace(), "actorId": out.ChatID}); derr != nil {
 			return ChatOpened{}, fmt.Errorf("selfUserId %d is not you (chat %s was created by user %d) and the chat could not be deleted (%w): delete it, then pass the userId the request names", self, out.ChatID, owner, derr)
 		}
 		return ChatOpened{}, fmt.Errorf("selfUserId %d is not you: the chat was created by user %d and removed again; pass the userId the request names", self, owner)
 	}
 	if !who.Trusted {
-		if _, err := call[map[string]any, json.RawMessage](ctx, c, "access_rule/actor/share", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID, "actions": []accessAction{{Action: "create", UserID: other, Privs: chatPrivs}}, "isNotify": true}); err != nil {
+		if _, err := call[map[string]any, json.RawMessage](ctx, c, "access_rule/actor/share", map[string]any{"accId": c.workspace(), "actorId": out.ChatID, "actions": []accessAction{{Action: "create", UserID: other, Privs: chatPrivs}}, "isNotify": true}); err != nil {
 			// A chat its other side cannot open is no chat: take it back, so the next call starts clean.
-			if _, derr := call[map[string]any, json.RawMessage](ctx, c, "actor/delete", map[string]any{"accId": c.config.Workspace, "actorId": out.ChatID}); derr != nil {
+			if _, derr := call[map[string]any, json.RawMessage](ctx, c, "actor/delete", map[string]any{"accId": c.workspace(), "actorId": out.ChatID}); derr != nil {
 				return ChatOpened{}, fmt.Errorf("chat %s was created but not shared with user %d (%w) nor deleted (%w): share it with access_rules_save or delete it", out.ChatID, other, err, derr)
 			}
 			return ChatOpened{}, fmt.Errorf("the chat could not be shared with user %d and was removed again: %w", other, err)
@@ -135,7 +135,7 @@ func (c *Client) chatByRef(ctx context.Context, events int64, ref string, other 
 	chat, err := call[map[string]any, struct {
 		ID    string `json:"id"`
 		Title string `json:"title"`
-	}](ctx, c, "actor/by-ref/get", map[string]any{"accId": c.config.Workspace, "formId": events, "ref": ref, "fields": []string{"id", "title"}})
+	}](ctx, c, "actor/by-ref/get", map[string]any{"accId": c.workspace(), "formId": events, "ref": ref, "fields": []string{"id", "title"}})
 	var api *APIError
 	switch {
 	case errors.As(err, &api) && api.Reason == "notFound":
@@ -150,7 +150,7 @@ func (c *Client) chatByRef(ctx context.Context, events int64, ref string, other 
 // batch (notify tells them); it answers the chat and its creator.
 func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput, title, ref string, share, notify bool) (ChatOpened, int64, error) {
 	now := time.Now().Unix()
-	chat := map[string]any{"accId": c.config.Workspace, "formId": events, "title": title, "data": map[string]any{"chatType": in.Type, "startDate": now, "endDate": now, "scheduleMeeting": false}, "fields": []string{"id", "userId"}}
+	chat := map[string]any{"accId": c.workspace(), "formId": events, "title": title, "data": map[string]any{"chatType": in.Type, "startDate": now, "endDate": now, "scheduleMeeting": false}, "fields": []string{"id", "userId"}}
 	if ref != "" {
 		chat["ref"] = ref
 	}
@@ -160,7 +160,7 @@ func (c *Client) createChat(ctx context.Context, events int64, in ChatOpenInput,
 	}
 	items := []atomicItem{{Method: "actor/create", Params: chat}}
 	if share {
-		items = append(items, atomicItem{Method: "access_rule/actor/share", Params: map[string]any{"accId": c.config.Workspace, "actorId": "$0.id", "actions": actions, "isNotify": notify}, UseRefs: true})
+		items = append(items, atomicItem{Method: "access_rule/actor/share", Params: map[string]any{"accId": c.workspace(), "actorId": "$0.id", "actions": actions, "isNotify": notify}, UseRefs: true})
 	}
 	results, err := c.atomicItems(ctx, items)
 	if err != nil {

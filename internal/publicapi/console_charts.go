@@ -72,7 +72,7 @@ type chartActor struct {
 }
 
 func (c *Client) readChartActor(ctx context.Context, id string) (chartActor, error) {
-	return call[actorGetRequest, chartActor](ctx, c, "actor/get", actorGetRequest{AccID: c.config.Workspace, ActorID: id, Fields: []string{"id", "title", "formId", "data"}})
+	return call[actorGetRequest, chartActor](ctx, c, "actor/get", actorGetRequest{AccID: c.workspace(), ActorID: id, Fields: []string{"id", "title", "formId", "data"}})
 }
 
 // readFilterActor returns an existing ActorFilters actor's title and what it selects.

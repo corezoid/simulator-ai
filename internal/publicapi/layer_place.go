@@ -102,7 +102,7 @@ func (c *Client) planBornOpen(ctx context.Context, p NodePlacement, room layerRo
 	if kind == "" {
 		actor, err := call[map[string]any, struct {
 			FormID int64 `json:"formId"`
-		}](ctx, c, "actor/get", map[string]any{"accId": c.config.Workspace, "actorId": p.ActorID, "fields": []string{"id", "formId"}})
+		}](ctx, c, "actor/get", map[string]any{"accId": c.workspace(), "actorId": p.ActorID, "fields": []string{"id", "formId"}})
 		if err != nil {
 			return room, fmt.Errorf("actor/get %s: %w", p.ActorID, err)
 		}
@@ -146,7 +146,7 @@ type layerManageAnyRequest struct {
 
 // placeWithRoom sends the make-room directives and the placements in one atomic batch.
 func (c *Client) placeWithRoom(ctx context.Context, in PlacementsCreateInput, items []GraphPlacementItem, plan roomPlan) (GraphCreatedPlacements, error) {
-	manage := layerManageAnyRequest{AccID: c.config.Workspace, ActorID: in.LayerID, Items: make([]any, len(items))}
+	manage := layerManageAnyRequest{AccID: c.workspace(), ActorID: in.LayerID, Items: make([]any, len(items))}
 	for i, item := range items {
 		manage.Items[i] = item
 		if plan.open != nil && i < len(in.Nodes) && in.Nodes[i].Expand {
@@ -160,7 +160,7 @@ func (c *Client) placeWithRoom(ctx context.Context, in PlacementsCreateInput, it
 	}
 	batch := make([]atomicItem, 0, len(plan.directives)+1)
 	for _, d := range plan.directives {
-		batch = append(batch, atomicItem{Method: "graph/layer/actors/offset", Params: offsetRequest{AccID: c.config.Workspace, ActorID: in.LayerID, OffsetDirective: d}})
+		batch = append(batch, atomicItem{Method: "graph/layer/actors/offset", Params: offsetRequest{AccID: c.workspace(), ActorID: in.LayerID, OffsetDirective: d}})
 	}
 	batch = append(batch, atomicItem{Method: "graph/layer/actors/manage", Params: manage})
 	results, err := c.atomicItems(ctx, batch)

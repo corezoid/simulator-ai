@@ -37,6 +37,11 @@ The JSON evidence records client versions and these separate checks:
 | Codex MCP direct call | app-server mcpServer/tool/call returns one projected fixture actor |
 | Claude plugin install/details | Real installation and loaded skill inventory |
 | Claude mcp list | The installed plugin's server completes the client connection check |
+| Codex login mode (`-profile login`) | Without any credential the installed server starts; `whoami` reports an unsigned `login`, a domain tool refuses with "call the login tool", and nothing reaches the API |
+
+`-profile login` starts the server with no API key and an empty private
+`SIMULATOR_AI_CONFIG_DIR`. It never opens a browser or contacts SuperAdmin: a real sign-in is a
+live check done by a person (`login`, then `workspaces_list`/`workspace_set`/`whoami` and one read).
 
 Claude's connection check is not evidence of a Claude model choosing or executing a tool.
 The server's stdio call path is independently tested, and Codex calls the tool directly

@@ -10,7 +10,8 @@ The default profile is read-only. Profile registration code is authoritative; se
 [generated catalog](docs/tool-catalog.md) and [workflow guide](docs/tool-reference.md).
 Do not maintain another tool inventory or fixed counts in agent instructions or skills.
 
-Credentials, origin and workspace are host configuration, never model-selected arguments.
+Credentials, origin and workspace are host configuration or the person's own browser login,
+never model-selected arguments: the agent calls workspace_set only with the user's explicit choice.
 Delegated reads use only their explicit scoped token. Strict graph-create and Smart Forms
 writes require contract preflight and retained recovery keys/CAS; Console writes have
 backend-owned retry semantics. Preserve these separate contracts and current authorization

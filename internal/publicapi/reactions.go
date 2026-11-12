@@ -35,7 +35,7 @@ func (c *Client) GetReactionStats(ctx context.Context, actorID string) (Reaction
 		return nil, errors.New("actorId required, maximum 255 bytes")
 	}
 	// Pointers reject null counters instead of silently converting null to zero.
-	wire, err := call[reactionStatsRequest, map[string]*int64](ctx, c, "reaction/stats/get", reactionStatsRequest{AccID: c.config.Workspace, RootActorID: actorID})
+	wire, err := call[reactionStatsRequest, map[string]*int64](ctx, c, "reaction/stats/get", reactionStatsRequest{AccID: c.workspace(), RootActorID: actorID})
 	if err != nil {
 		return nil, err
 	}

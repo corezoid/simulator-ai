@@ -16,7 +16,11 @@ internal/third_party/pdf/README.md. It is included in Go compilation/vulnerabili
 bounded-input attachment tests. Upstream security fixes for copied code require explicit review;
 module scanning alone cannot identify that fork's upstream advisories.
 
-Credentials come only from process configuration, never tool arguments. Read-only profiles,
+Credentials come only from process configuration or the person's own browser login, never tool
+arguments. The login (OAuth2 PKCE through SuperAdmin) stores its token per API origin in the user's
+config directory (`credentials.json`, 0600, never a project file); a host credential in the
+environment always wins over it, and a host `SIMULATOR_AI_AUTHORIZATION` process exposes no login.
+Tokens never appear in tool results, errors or logs. Read-only profiles,
 workspace binding, no-redirect transport, response bounds and per-profile recovery rules remain
 security invariants. Skills and MCP annotations are not authorization. Never weaken tests or
 write preflight to obtain green CI. No model calls or production credentials belong in PR jobs.

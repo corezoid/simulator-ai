@@ -21,6 +21,7 @@ $start.Environment['SIMULATOR_AI_ORIGIN'] = 'http://127.0.0.1:1'
 $start.Environment['SIMULATOR_AI_WORKSPACE'] = 'windows-fixture'
 $start.Environment['SIMULATOR_AI_API_KEY'] = 'windows-synthetic-key'
 $start.Environment['SIMULATOR_AI_PROFILE'] = 'read'
+$start.Environment['SIMULATOR_AI_CONFIG_DIR'] = Join-Path $env:RUNNER_TEMP 'simulator-ai-config'
 $process = [System.Diagnostics.Process]::new()
 $process.StartInfo = $start
 function Read-Response {
@@ -38,7 +39,14 @@ try {
   $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}')
   $catalog = Read-Response
   if ($catalog.error -or $catalog.id -ne 2 -or 'actor_get' -notin $catalog.result.tools.name) { throw 'Missing read catalog' }
+  # Sign-in tools change only the local login state: not read-only, never destructive.
+  $account = @('login', 'logout', 'workspace_set')
+  if ('whoami' -notin $catalog.result.tools.name) { throw 'Missing account tools' }
   foreach ($tool in $catalog.result.tools) {
+    if ($tool.name -in $account) {
+      if ($tool.annotations.destructiveHint -ne $false) { throw "Destructive account tool: $($tool.name)" }
+      continue
+    }
     if ($tool.annotations.readOnlyHint -ne $true) { throw "Unexpected write tool: $($tool.name)" }
   }
   Write-Output "$version; native Windows stdio and read catalog verified"

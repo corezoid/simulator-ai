@@ -26,7 +26,7 @@ type LayerPlacement struct {
 
 // AllNodePlacements reads every node placement of a layer.
 func (c *Client) AllNodePlacements(ctx context.Context, layerID string) ([]LayerPlacement, error) {
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Fields: []string{"id", "title", "formId"}}
+	q := layerPageRequest{AccID: c.workspace(), ActorID: layerID, Fields: []string{"id", "title", "formId"}}
 	nodes, err := allLayerPages[layerNodeWire](ctx, c, "graph/layer/actors/list", "node", q)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func (c *Client) AllNodePlacements(ctx context.Context, layerID string) ([]Layer
 
 // AllEdgePlacements reads every edge placement of a layer, like AllNodePlacements.
 func (c *Client) AllEdgePlacements(ctx context.Context, layerID string) ([]LayerViewEdge, error) {
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID}
+	q := layerPageRequest{AccID: c.workspace(), ActorID: layerID}
 	edges, err := allLayerPages[layerEdgeWire](ctx, c, "graph/layer/edges/list", "edge", q)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (c *Client) HierarchyEdgeType(ctx context.Context) (int64, error) {
 	if !c.ParityAllowed("graph/list") {
 		return 0, errors.New("graph/list is not available in this profile")
 	}
-	t, err := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.config.Workspace, Name: "hierarchy"})
+	t, err := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.workspace(), Name: "hierarchy"})
 	if err == nil && t.ID < 1 {
 		err = errors.New("hierarchy edge type not found")
 	}

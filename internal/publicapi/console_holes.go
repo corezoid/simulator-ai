@@ -113,7 +113,7 @@ func (c *Client) CloseHole(ctx context.Context, in HoleCloseInput) (HoleClosed, 
 	if (in.ActorID == "") == (in.NewActor == nil) {
 		return HoleClosed{}, errors.New("close with an existing actor (actorId) or a new one (newActor), not both")
 	}
-	ws := c.config.Workspace
+	ws := c.workspace()
 	merge := map[string]any{"accId": ws, "layerId": in.LayerID, "holeActorId": in.HoleActorID}
 	if in.HoleLaID > 0 {
 		merge["holeLaId"] = in.HoleLaID
@@ -228,7 +228,7 @@ func (c *Client) CloseEdgeHole(ctx context.Context, in EdgeHoleCloseInput) (Edge
 	if !validID(in.LayerID) || !validID(in.HoleEdgeID) || len([]rune(in.Name)) > 1000 {
 		return EdgeHoleClosed{}, errors.New("layerId and holeEdgeId required")
 	}
-	ws := c.config.Workspace
+	ws := c.workspace()
 	merge := map[string]any{"accId": ws, "layerId": in.LayerID, "holeEdgeId": in.HoleEdgeID}
 	if in.EdgeID != "" {
 		if in.Name != "" {

@@ -59,7 +59,7 @@ type offsetRequest struct {
 func (c *Client) layerNode(ctx context.Context, layerID string, laID int64) (layerNodeFull, error) {
 	r, err := call[elementsListRequest, struct {
 		Nodes []layerNodeFull `json:"nodes"`
-	}](ctx, c, "graph/layer/elements/list", elementsListRequest{AccID: c.config.Workspace, ActorID: layerID, Nodes: []int64{laID},
+	}](ctx, c, "graph/layer/elements/list", elementsListRequest{AccID: c.workspace(), ActorID: layerID, Nodes: []int64{laID},
 		Fields: []string{"id", "title", "formId", "pictureObject"}})
 	if err != nil {
 		return layerNodeFull{}, err
@@ -151,9 +151,9 @@ func (c *Client) ExpandNode(ctx context.Context, in NodeExpandInput) (NodeExpand
 		return describeOpen(out, n, room), nil
 	}
 	items := []atomicItem{{Method: "graph/layer/actor_settings/save",
-		Params: actorSettingsPatch{AccID: c.config.Workspace, ActorID: in.LayerID, LaActorID: in.LaID, LayerSettings: patch}}}
+		Params: actorSettingsPatch{AccID: c.workspace(), ActorID: in.LayerID, LaActorID: in.LaID, LayerSettings: patch}}}
 	if dir != nil {
-		items = append(items, atomicItem{Method: "graph/layer/actors/offset", Params: offsetRequest{AccID: c.config.Workspace, ActorID: in.LayerID, OffsetDirective: *dir}})
+		items = append(items, atomicItem{Method: "graph/layer/actors/offset", Params: offsetRequest{AccID: c.workspace(), ActorID: in.LayerID, OffsetDirective: *dir}})
 	}
 	if _, err := c.atomicItems(ctx, items); err != nil {
 		return NodeExpanded{}, err

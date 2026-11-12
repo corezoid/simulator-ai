@@ -15,6 +15,7 @@ its profiles and read-only annotation directly from the server's registrations.
 | Use the broader interactive catalog | [Console tools and workflows](console.md) |
 | Read reaction counts or layer statistics | [Reaction statistics](reactions-read.md) · [Layer statistics](layer-stats.md) |
 | Supply narrowly scoped runtime authorization | [Delegated reads](delegated-read.md) |
+| Sign in as yourself and choose a workspace (`login`, `whoami`, `workspaces_list`, `workspace_set`, `logout`) | [Credentials and browser login](architecture.md#credentials-and-browser-login) |
 
 ## Write and recovery behavior
 

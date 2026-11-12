@@ -16,5 +16,5 @@ var reactionTools = []parityTool{
 var userTools = []parityTool{
 	{Name: "users_search", Method: "user/list", Description: "Find workspace members (people and API users) by name or login (query); without query, list them one page at a time (limit, default 20, max 200; offset). Each id is the userId of access rules, reactions and actor fields."},
 	{Name: "user_get", Method: "user/get", Description: "Read one workspace member by userId: nick, type, status, logins and roles."},
-	{Name: "workspaces_list", Method: "workspace/list", Description: "List the workspaces you belong to (query finds them by name), one page at a time (limit, default 20, max 100; offset). Every other tool works in the host workspace only."},
+	{Name: "workspaces_list", Method: "workspace/list", Description: "List the workspaces you belong to (query finds them by name), one page at a time (limit, default 20, max 100; offset). Every other tool works in the workspace in use (whoami shows it)."},
 }
