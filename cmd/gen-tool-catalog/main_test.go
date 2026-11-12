@@ -13,6 +13,9 @@ func TestCatalogDocumentsRestrictedProfiles(t *testing.T) {
 	// The same name has profile-specific contracts. Bound/delegated modes must
 	// remain visible instead of being accidentally described as the broad profile.
 	for _, row := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(row, "| `") {
+			continue // Only inventory rows; the header text names the profiles too.
+		}
 		if strings.Contains(row, "`graph-read (bound)`") && !strings.HasPrefix(row, "| `graph_layer_stats_get` |") {
 			t.Fatalf("bound layer inventory widened: %s", row)
 		}

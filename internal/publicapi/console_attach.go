@@ -41,7 +41,7 @@ func (c *Client) AttachToActor(ctx context.Context, in ActorAttachInput) (ActorA
 	if in.Kind != "form" && newForm {
 		return ActorAttached{}, errors.New("formId, title and data create a form card: kind form only")
 	}
-	ws := c.config.Workspace
+	ws := c.workspace()
 	switch in.Kind {
 	case "actor", "smartForm":
 		if !validID(in.TargetID) || in.TargetID == in.ActorID {

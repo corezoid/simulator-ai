@@ -96,7 +96,7 @@ func (c *Client) GetGraphElements(ctx context.Context, p GraphElementsInput) (Gr
 	if len(p.Nodes)+len(p.Edges) < 1 || len(p.Nodes)+len(p.Edges) > 100 {
 		return GraphElements{}, errors.New("select 1-100 combined placements")
 	}
-	wire, err := call[graphElementsRequest, graphElementsWire](ctx, c, "graph/layer/elements/list", graphElementsRequest{GraphElementsInput: p, AccID: c.config.Workspace, Fields: actorFields})
+	wire, err := call[graphElementsRequest, graphElementsWire](ctx, c, "graph/layer/elements/list", graphElementsRequest{GraphElementsInput: p, AccID: c.workspace(), Fields: actorFields})
 	if err != nil {
 		return GraphElements{}, err
 	}

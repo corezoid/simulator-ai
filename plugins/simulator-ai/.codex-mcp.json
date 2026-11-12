@@ -8,7 +8,9 @@
         "SIMULATOR_AI_WORKSPACE",
         "SIMULATOR_AI_API_KEY",
         "SIMULATOR_AI_PROFILE",
-        "SIMULATOR_AI_ACTOR"
+        "SIMULATOR_AI_ACTOR",
+        "SIMULATOR_AI_CONFIG_DIR",
+        "XDG_CONFIG_HOME"
       ]
     }
   }

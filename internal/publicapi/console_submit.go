@@ -98,14 +98,14 @@ func (c *Client) CreateDataForm(ctx context.Context, in DataFormInput) (DataForm
 	}
 	form, err := call[dataFormRequest, struct {
 		ID int64 `json:"id"`
-	}](ctx, c, "form/create", dataFormRequest{AccID: c.config.Workspace, Title: in.Title, IsTemplate: true, Sections: []templateSection{{Title: in.Title, Content: fields}}})
+	}](ctx, c, "form/create", dataFormRequest{AccID: c.workspace(), Title: in.Title, IsTemplate: true, Sections: []templateSection{{Title: in.Title, Content: fields}}})
 	if err != nil {
 		return DataForm{}, err
 	}
 	if form.ID < 1 {
 		return DataForm{}, errors.New("form/create returned no template id")
 	}
-	page, err := json.Marshal(dataPage(in, form.ID, c.config.Workspace))
+	page, err := json.Marshal(dataPage(in, form.ID, c.workspace()))
 	return DataForm{FormID: form.ID, Page: string(page)}, err
 }
 

@@ -194,7 +194,7 @@ func (b *GraphBuild) newLayer(ctx context.Context, title string) (bool, error) {
 		b.LayerID = *earlier.Actors[0].ID
 		return false, nil
 	}
-	layer, err := call[actorCreateRequest, Actor](ctx, b.c, "actor/create", actorCreateRequest{AccID: b.c.config.Workspace, FormID: formID,
+	layer, err := call[actorCreateRequest, Actor](ctx, b.c, "actor/create", actorCreateRequest{AccID: b.c.workspace(), FormID: formID,
 		Title: title, Data: json.RawMessage("{}"), Ref: ref.Ref, Fields: actorFields})
 	if err != nil {
 		return false, fmt.Errorf("layer: %w", err)

@@ -6,6 +6,8 @@
 
 This table comes from the server's actual profile registrations. `read` is the default.
 Bound profiles set `SIMULATOR_AI_ACTOR` and expose only the bound actor/layer counter.
+Every unbound profile except `delegated-read` also lists the account tools (`login`, `logout`, `whoami`,
+`workspaces_list`, `workspace_set`); a host that sets `SIMULATOR_AI_AUTHORIZATION` does not.
 Read-only means the MCP annotation is explicitly true; all other tools appear under **May write**.
 Annotations do not grant permissions or rule out documented backend maintenance side effects.
 A shared tool name can have different inputs and projections across profiles: inspect the running
@@ -178,6 +180,8 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `layer_skeleton_get` | `graph-read`, `console-full` |  |
 | `layer_stats_get` | `console`, `console-full` |  |
 | `layer_viewport` | `console`, `console-full` |  |
+| `login` |  | `read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`, `console`, `console-full` |
+| `logout` |  | `read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`, `console`, `console-full` |
 | `meet_transcription_list` | `console-full` |  |
 | `public_link_create` |  | `console-full` |
 | `public_link_get` | `console-full` |  |
@@ -233,4 +237,6 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `transfers_filter_count` | `console-full` |  |
 | `user_get` | `console-full` |  |
 | `users_search` | `console`, `console-full` |  |
-| `workspaces_list` | `console-full` |  |
+| `whoami` | `read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`, `console`, `console-full` |  |
+| `workspace_set` |  | `read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`, `console`, `console-full` |
+| `workspaces_list` | `read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`, `console`, `console-full` |  |

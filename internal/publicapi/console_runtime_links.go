@@ -124,7 +124,7 @@ func (c *Client) runtimeLink(ctx context.Context, in LinkInput) (Link, error) {
 		legacy.Legacy = true
 		return legacy, err
 	default:
-		if r, err = build(c.config.Workspace, in); err != nil {
+		if r, err = build(c.workspace(), in); err != nil {
 			return Link{}, err
 		}
 	}
@@ -153,7 +153,7 @@ func (c *Client) appKey(ctx context.Context, in LinkInput) (string, error) {
 	}
 	got, err := call[map[string]any, struct {
 		AppKey string `json:"appKey"`
-	}](ctx, c, "route/key/get", map[string]any{"accId": c.config.Workspace, "actorId": in.AppID})
+	}](ctx, c, "route/key/get", map[string]any{"accId": c.workspace(), "actorId": in.AppID})
 	if err != nil {
 		return "", fmt.Errorf("route/key/get: %w", err)
 	}

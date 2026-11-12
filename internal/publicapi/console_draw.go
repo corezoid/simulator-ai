@@ -69,7 +69,7 @@ func (c *Client) DrawOnLayer(ctx context.Context, in LayerDrawInput) (LayerDrawn
 	if len(pic.PNG) > MaxUploadBytes {
 		return LayerDrawn{}, fmt.Errorf("the drawing's PNG is %d KiB, over %d KiB: draw it smaller or in parts", len(pic.PNG)>>10, MaxUploadBytes>>10)
 	}
-	ws := c.config.Workspace
+	ws := c.workspace()
 	formID := in.FormID
 	if formID == 0 {
 		if formID, err = c.layerDefaultForm(ctx, in.LayerID); err != nil {
@@ -119,7 +119,7 @@ func (c *Client) DrawOnLayer(ctx context.Context, in LayerDrawInput) (LayerDrawn
 // Graph Editor falls back to the user's own default template (form/default/get), which is not a
 // public method, so without defForm the model is asked for formId.
 func (c *Client) layerDefaultForm(ctx context.Context, layerID string) (int64, error) {
-	layer, err := call[map[string]any, layerDefForm](ctx, c, "actor/get", map[string]any{"accId": c.config.Workspace, "actorId": layerID, "fields": []string{"id", "data.defForm"}})
+	layer, err := call[map[string]any, layerDefForm](ctx, c, "actor/get", map[string]any{"accId": c.workspace(), "actorId": layerID, "fields": []string{"id", "data.defForm"}})
 	if err != nil {
 		return 0, fmt.Errorf("actor/get layer: %w", err)
 	}

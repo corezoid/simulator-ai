@@ -191,7 +191,7 @@ func (c *Client) envs(ctx context.Context, appID string) (int64, int64, error) {
 	if !validID(appID) {
 		return 0, 0, errors.New("appId required")
 	}
-	r, e := call[appRequest, Environments](ctx, c, "application/env/list", appRequest{AccID: c.config.Workspace, ActorID: appID})
+	r, e := call[appRequest, Environments](ctx, c, "application/env/list", appRequest{AccID: c.workspace(), ActorID: appID})
 	if e != nil {
 		return 0, 0, e
 	}
@@ -210,7 +210,7 @@ func (c *Client) CreateSmartForm(ctx context.Context, in SmartFormCreateInput) (
 	if !smartFormRef.MatchString(in.Ref) || in.Title == "" || utf8.RuneCountInString(in.Title) > 255 || utf8.RuneCountInString(in.Description) > 10000 {
 		return SmartForm{}, errors.New("ref ^[0-9a-zA-Z_-]{5,255}$ and a 1..255 character title required")
 	}
-	r, e := call[smartFormCreateRequest, CreatedApplication](ctx, c, "application/create", smartFormCreateRequest{AccID: c.config.Workspace, Ref: in.Ref,
+	r, e := call[smartFormCreateRequest, CreatedApplication](ctx, c, "application/create", smartFormCreateRequest{AccID: c.workspace(), Ref: in.Ref,
 		Title: in.Title, Description: in.Description, SharedWith: in.SharedWith, CduVersion: 2})
 	if e != nil {
 		return SmartForm{}, e
@@ -241,11 +241,11 @@ func (c *Client) CreateSmartFormFiles(ctx context.Context, in SmartFormFilesCrea
 	if !validID(in.AppID) || len(in.Items) < 1 || len(in.Items) > 20 {
 		return SmartFormWritten{}, errors.New("appId and 1..20 files required")
 	}
-	pending, err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileCreate) *string { return configSource(it.Title, &it.Source) })
+	pending, err := wireConfigSources(in.Items, c.workspace(), in.AppID, func(it *SmartFormFileCreate) *string { return configSource(it.Title, &it.Source) })
 	if err != nil {
 		return SmartFormWritten{}, err
 	}
-	r, e := call[appFilesRequest[SmartFormFileCreate], Files](ctx, c, "app_file/create", appFilesRequest[SmartFormFileCreate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
+	r, e := call[appFilesRequest[SmartFormFileCreate], Files](ctx, c, "app_file/create", appFilesRequest[SmartFormFileCreate]{AccID: c.workspace(), ActorID: in.AppID, Items: in.Items})
 	if e != nil {
 		return SmartFormWritten{}, e
 	}
@@ -293,11 +293,11 @@ func (c *Client) UpdateSmartFormFiles(ctx context.Context, in SmartFormFilesUpda
 			return SmartFormWritten{}, fmt.Errorf("item %d: ifMatchHash required to overwrite a file: send the sourceHash smart_form_files_get lists for it (it changes with every write)", i)
 		}
 	}
-	pending, err := wireConfigSources(in.Items, c.config.Workspace, in.AppID, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) })
+	pending, err := wireConfigSources(in.Items, c.workspace(), in.AppID, func(it *SmartFormFileUpdate) *string { return configSource(it.Title, it.Source) })
 	if err != nil {
 		return SmartFormWritten{}, err
 	}
-	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.config.Workspace, ActorID: in.AppID, Items: in.Items})
+	r, e := call[appFilesRequest[SmartFormFileUpdate], Files](ctx, c, "app_file/update", appFilesRequest[SmartFormFileUpdate]{AccID: c.workspace(), ActorID: in.AppID, Items: in.Items})
 	if e != nil {
 		return SmartFormWritten{}, staleWrite(e, in.Items)
 	}
@@ -358,7 +358,7 @@ func (c *Client) ReleaseSmartForm(ctx context.Context, in SmartFormInput) (Smart
 	if e = c.checkPagesSend(ctx, in.AppID, dev); e != nil {
 		return SmartFormRelease{}, e
 	}
-	r, e := call[releaseCreateRequest, Release](ctx, c, "release/create", releaseCreateRequest{AccID: c.config.Workspace, ActorID: in.AppID, SourceEnvID: dev, TargetEnvID: prod})
+	r, e := call[releaseCreateRequest, Release](ctx, c, "release/create", releaseCreateRequest{AccID: c.workspace(), ActorID: in.AppID, SourceEnvID: dev, TargetEnvID: prod})
 	if e != nil {
 		return SmartFormRelease{}, e
 	}
@@ -386,7 +386,7 @@ func (c *Client) GetSmartFormRelease(ctx context.Context, in SmartFormReleaseInp
 		return SmartFormRelease{}, e
 	}
 	if in.ReleaseID == 0 {
-		k, e := call[appRequest, routeKeyWire](ctx, c, "route/key/get", appRequest{AccID: c.config.Workspace, ActorID: in.AppID})
+		k, e := call[appRequest, routeKeyWire](ctx, c, "route/key/get", appRequest{AccID: c.workspace(), ActorID: in.AppID})
 		if e != nil {
 			return SmartFormRelease{}, e
 		}
@@ -395,7 +395,7 @@ func (c *Client) GetSmartFormRelease(ctx context.Context, in SmartFormReleaseInp
 		}
 		in.ReleaseID = k.ActiveReleaseID
 	}
-	r, e := call[releaseGetRequest, Release](ctx, c, "release/get", releaseGetRequest{AccID: c.config.Workspace, ActorID: in.AppID, ReleaseID: in.ReleaseID})
+	r, e := call[releaseGetRequest, Release](ctx, c, "release/get", releaseGetRequest{AccID: c.workspace(), ActorID: in.AppID, ReleaseID: in.ReleaseID})
 	if e != nil {
 		return SmartFormRelease{}, e
 	}

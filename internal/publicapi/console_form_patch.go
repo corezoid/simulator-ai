@@ -87,7 +87,7 @@ func (c *Client) PatchFormFields(ctx context.Context, in FormPatchInput) (FormPa
 			return FormPatchResult{}, fmt.Errorf("form.%s is not a template property; allowed: %s", k, strings.Join(formUpdateKeys, ", "))
 		}
 	}
-	cur, err := call[map[string]any, formPatchWire](ctx, c, "form/get", map[string]any{"accId": c.config.Workspace, "formId": in.FormID, "with": []string{"editor"}})
+	cur, err := call[map[string]any, formPatchWire](ctx, c, "form/get", map[string]any{"accId": c.workspace(), "formId": in.FormID, "with": []string{"editor"}})
 	if err != nil {
 		return FormPatchResult{}, err
 	}
@@ -123,7 +123,7 @@ func (c *Client) PatchFormFields(ctx context.Context, in FormPatchInput) (FormPa
 	}
 	params["formId"], _ = json.Marshal(in.FormID)
 	params["expectedEditToken"], _ = json.Marshal(cur.EditToken)
-	params["accId"], _ = json.Marshal(c.config.Workspace)
+	params["accId"], _ = json.Marshal(c.workspace())
 	saved, err := call[map[string]json.RawMessage, formPatchWire](ctx, c, "form/update", params)
 	var api *APIError
 	if errors.As(err, &api) && api.Reason == "formEditConflict" {

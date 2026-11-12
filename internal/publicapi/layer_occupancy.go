@@ -170,7 +170,7 @@ type layerAnisotropyWire struct {
 // a boolean (LAYER_VIEW_SETTINGS_DEFAULTS, legacy LAYER_SETTINGS_DEFAULTS).
 func (c *Client) layerAnisotropy(ctx context.Context, layerID string) (bool, error) {
 	layer, err := call[map[string]any, layerAnisotropyWire](ctx, c, "actor/get",
-		map[string]any{"accId": c.config.Workspace, "actorId": layerID, "fields": []string{"id", "data.anisotropy"}})
+		map[string]any{"accId": c.workspace(), "actorId": layerID, "fields": []string{"id", "data.anisotropy"}})
 	if err != nil {
 		return false, fmt.Errorf("actor/get layer: %w", err)
 	}
@@ -181,7 +181,7 @@ func (c *Client) layerAnisotropy(ctx context.Context, layerID string) (bool, err
 func (c *Client) layerNodesPage(ctx context.Context, layerID string, limit, offset int64, fields []string) ([]layerNodeFull, error) {
 	page, err := call[layerPageRequest, struct {
 		List []layerNodeFull `json:"list"`
-	}](ctx, c, "graph/layer/actors/list", layerPageRequest{AccID: c.config.Workspace, ActorID: layerID, Limit: limit, Offset: offset, Fields: fields})
+	}](ctx, c, "graph/layer/actors/list", layerPageRequest{AccID: c.workspace(), ActorID: layerID, Limit: limit, Offset: offset, Fields: fields})
 	if err != nil {
 		return nil, err
 	}

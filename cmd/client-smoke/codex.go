@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/corezoid/simulator-ai/internal/auth"
 	"github.com/corezoid/simulator-ai/internal/mcpserver"
 	"github.com/corezoid/simulator-ai/internal/publicapi"
 )
@@ -97,7 +98,11 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 	// Compare the installed client's catalog to this checkout. Profile safety is tested
 	// independently in mcpserver; this smoke verifies plugin installation and loading.
 	cfg := publicapi.Config{Origin: "http://127.0.0.1", Workspace: "synthetic-workspace", APIKey: "synthetic-client-key", Profile: e.Profile}
-	if e.Profile == "reactions-actor" {
+	// Any process without a host Authorization lists the account tools too.
+	cfg.Account = auth.NewSession(auth.Options{Origin: cfg.Origin, ConfigDir: filepath.Join(dir, "unused")})
+	if e.Profile == "login" {
+		cfg.Profile, cfg.Workspace, cfg.APIKey = "read", "", ""
+	} else if e.Profile == "reactions-actor" {
 		cfg.Profile, cfg.ActorID = "reactions-read", "synthetic-actor"
 	} else if e.Profile == "graph-actor" {
 		cfg.Profile, cfg.ActorID = "graph-read", "synthetic-layer"
@@ -131,6 +136,9 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 			Text string `json:"text"`
 		} `json:"content"`
 		StructuredContent json.RawMessage `json:"structuredContent"`
+	}
+	if e.Profile == "login" {
+		return codexLoginMode(p, thread.Thread.ID, serverName, e)
 	}
 	if e.Profile != "reactions-actor" && e.Profile != "graph-actor" {
 		args := map[string]any{"actorId": "synthetic-actor"}
@@ -213,5 +221,39 @@ func codexSmoke(ctx context.Context, env []string, dir, root, executable string,
 		}
 		e.CodexCreate = true
 	}
+	return nil
+}
+
+// codexLoginMode checks a server started without a credential: whoami answers, domain tools say
+// to sign in, and nothing reaches the API.
+func codexLoginMode(p *peer, thread, server string, e *evidence) error {
+	var call struct {
+		IsError           bool            `json:"isError"`
+		StructuredContent json.RawMessage `json:"structuredContent"`
+		Content           []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := p.call("mcpServer/tool/call", map[string]any{"threadId": thread, "server": server, "tool": "whoami", "arguments": map[string]any{}}, &call); err != nil {
+		return err
+	}
+	var who struct {
+		Credential string `json:"credential"`
+		User       struct {
+			SignedIn bool `json:"signedIn"`
+		} `json:"user"`
+		WorkspaceSource string `json:"workspaceSource"`
+	}
+	if call.IsError || json.Unmarshal(call.StructuredContent, &who) != nil || who.Credential != "login" || who.User.SignedIn || who.WorkspaceSource != "none" {
+		return errors.New("codex whoami did not report an unsigned login")
+	}
+	if err := p.call("mcpServer/tool/call", map[string]any{"threadId": thread, "server": server, "tool": "actor_get", "arguments": map[string]any{"actorId": "synthetic-actor"}}, &call); err != nil {
+		return err
+	}
+	encoded, _ := json.Marshal(call)
+	if !call.IsError || !strings.Contains(string(encoded), "call the login tool") {
+		return errors.New("codex domain tool did not ask for a sign-in")
+	}
+	e.CodexLoginMode = true
 	return nil
 }

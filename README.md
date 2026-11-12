@@ -31,8 +31,8 @@ Your host client's normal model usage and billing still apply.
 ## Quick start
 
 You need Go **1.27.4+**, Git, a current Claude Code, Codex or Kiro client, and access to a Simulator
-instance with the public API enabled. Obtain an API-user key and workspace ID from your
-workspace administrator.
+instance with the public API enabled. You sign in with your own Simulator.Company account in the
+browser; an API-user key from your workspace administrator is an optional alternative.
 
 ### 1. Build the server
 
@@ -55,35 +55,40 @@ cd simulator-ai
 go build -p=1 -o bin/simulator-ai.exe ./cmd/simulator-ai
 $env:PATH = "$PWD\bin;$env:PATH"
 simulator-ai --version
-$env:SIMULATOR_AI_ORIGIN = "https://your-simulator.example"
-$env:SIMULATOR_AI_WORKSPACE = "your-workspace-id"
 $env:SIMULATOR_AI_PROFILE = "read"
 ```
 
-Supply `SIMULATOR_AI_API_KEY` through your secret-management mechanism before starting the
-client. The client install commands below also work from PowerShell. When a release archive
+With an API key instead of a browser login, also set `SIMULATOR_AI_ORIGIN` and
+`SIMULATOR_AI_WORKSPACE`, and supply `SIMULATOR_AI_API_KEY` through your secret-management
+mechanism before starting the client. The client install commands below also work from PowerShell. When a release archive
 is available, extract `simulator-ai-windows-amd64.zip` and add its `bin` directory to `PATH`;
 it contains the executable, plugin and skills together. You do not need Go to run that archive.
 
-### 2. Configure your workspace
+### 2. Sign in
 
-Set the following in the environment that starts your client:
+Nothing is required in the environment for production: the server starts, and in your client you
+ask the assistant to **log in to Simulator**. It calls `login`, your browser opens the
+Simulator.Company (SuperAdmin) sign-in page, and after you sign in there it lists your workspaces
+(`workspaces_list`) and asks which one to use (`workspace_set`). The session and the chosen
+workspace are kept per API origin in `~/.config/simulator-ai/credentials.json` (mode 0600, never in
+the project); the token is renewed with its refresh token when SuperAdmin issues one, otherwise
+you run `login` again when it expires. `whoami` shows who you are signed in as; `logout` forgets
+the stored login. Requests then act with **your own** permissions.
 
-```sh
-export SIMULATOR_AI_ORIGIN="https://your-simulator.example"
-export SIMULATOR_AI_WORKSPACE="your-workspace-id"
-export SIMULATOR_AI_PROFILE="read"
-```
-
-Also supply **`SIMULATOR_AI_API_KEY`** through your shell or client's secret-management
-mechanism. It is required; the example deliberately contains no credential.
+Optional settings, in the environment that starts your client:
 
 | Variable | Purpose |
 | --- | --- |
-| `SIMULATOR_AI_ORIGIN` | Your API origin, without a path or query string. HTTPS is required; literal loopback HTTP is supported for local development. |
-| `SIMULATOR_AI_WORKSPACE` | The workspace to use for this server process. |
-| `SIMULATOR_AI_API_KEY` | Your API-user credential. Keep it out of prompts, source control and shared configuration. |
+| `SIMULATOR_AI_ORIGIN` | Your API origin, without a path or query string; with a browser login `https://mw.simulator.company` when unset (required with an API key). HTTPS is required; literal loopback HTTP is supported for local development. |
 | `SIMULATOR_AI_PROFILE` | Tool profile; defaults to `read`. See the profile table below. |
+| `SIMULATOR_AI_WORKSPACE` | Pins the workspace (overrides `workspace_set`). Required with an API key. |
+| `SIMULATOR_AI_API_KEY` | An API-user credential instead of the browser login; it always wins over a stored login. Keep it out of prompts, source control and shared configuration. |
+| `SIMULATOR_AI_ACCOUNT_URL` | SuperAdmin of a non-production stand; `https://account.corezoid.com` when unset. |
+| `SIMULATOR_AI_CONFIG_DIR` | Where the login is stored instead of `~/.config/simulator-ai`. |
+
+```sh
+export SIMULATOR_AI_PROFILE="read"   # or graph-read, console, …
+```
 
 ### 3. Install the plugin
 
@@ -107,9 +112,10 @@ claude mcp list
 claude
 ```
 
-The plugin's Codex configuration forwards the required environment variables. Claude Code
-inherits them from its process environment. Restart the client after changing credentials,
-workspace or profile.
+The plugin's Codex configuration forwards the `SIMULATOR_AI_*` variables it uses (plus
+`XDG_CONFIG_HOME`; Codex passes `HOME` itself). Claude Code inherits them from its process
+environment. Restart the client after changing the origin, profile or an API key; a login and
+`workspace_set` take effect at once.
 
 **Kiro**
 

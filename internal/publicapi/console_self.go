@@ -2,12 +2,11 @@ package publicapi
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
+
+	"github.com/corezoid/simulator-ai/internal/auth"
 )
 
 // No public method says who the caller is. A "Simulator <jwt>" credential (the AI Console run's,
@@ -21,32 +20,23 @@ type tokenUser struct {
 	Nick string
 }
 
-// credentialUser is the user a Simulator JWT names; ok false for any other credential.
+// credentialUser is the user a Simulator JWT names (the host's, or the person's own login); ok
+// false for any other credential. It never renews a login: the claims are only read.
 func (c *Client) credentialUser() (tokenUser, bool) {
-	scheme, token, found := strings.Cut(c.config.Authorization, " ")
-	if !found || scheme != "Simulator" {
+	var (
+		id   int64
+		nick string
+		ok   bool
+	)
+	if c.CredentialMode() == "login" {
+		id, nick, ok = c.config.Account.User()
+	} else if scheme, token, found := strings.Cut(c.config.Authorization, " "); found && scheme == "Simulator" {
+		id, nick, ok = auth.UserOf(token)
+	}
+	if !ok {
 		return tokenUser{}, false
 	}
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return tokenUser{}, false
-	}
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return tokenUser{}, false
-	}
-	var claims struct {
-		Sub  string `json:"sub"`
-		Nick string `json:"nick"`
-	}
-	if json.Unmarshal(payload, &claims) != nil {
-		return tokenUser{}, false
-	}
-	id, err := strconv.ParseInt(claims.Sub, 10, 64)
-	if err != nil || id < 1 {
-		return tokenUser{}, false
-	}
-	return tokenUser{SAID: id, Nick: claims.Nick}, true
+	return tokenUser{SAID: id, Nick: nick}, true
 }
 
 type memberRow struct {
@@ -73,7 +63,7 @@ func (c *Client) selfUserID(ctx context.Context, claimed int64) (caller, error) 
 		return caller{ID: claimed}, nil
 	}
 	find := func(query string, offset int) (int64, int, error) {
-		params := map[string]any{"accId": c.config.Workspace, "limit": 200, "offset": offset}
+		params := map[string]any{"accId": c.workspace(), "limit": 200, "offset": offset}
 		if query != "" {
 			params["query"] = query
 		}
@@ -123,7 +113,7 @@ func (c *Client) isParticipant(ctx context.Context, actorID string, who caller) 
 			UserID int64 `json:"userId"`
 			SAID   int64 `json:"saId"`
 		} `json:"list"`
-	}](ctx, c, "access_rule/actor/list", map[string]any{"accId": c.config.Workspace, "actorId": actorID})
+	}](ctx, c, "access_rule/actor/list", map[string]any{"accId": c.workspace(), "actorId": actorID})
 	if err != nil {
 		return false, fmt.Errorf("access_rule/actor/list: %w", err)
 	}

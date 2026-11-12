@@ -94,7 +94,7 @@ func (r *buildRun) resolveEdge(ctx context.Context, e BuildEdge, end func(string
 	id, ok := types[name]
 	if !ok {
 		c := r.b.c
-		t, err := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.config.Workspace, Name: name})
+		t, err := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.workspace(), Name: name})
 		if err != nil {
 			return out, fmt.Errorf("edge type %q: %w", name, err)
 		}
@@ -179,7 +179,7 @@ func (r *buildRun) nodeChunks(pending []int) ([][]int, [][]atomicItem, []layerMa
 		if color == "" {
 			color = RandomActorColor()
 		}
-		create := atomicItem{Method: "actor/create", Params: actorCreateRequest{AccID: c.config.Workspace, FormID: n.FormID, Title: n.Title, Description: n.Description,
+		create := atomicItem{Method: "actor/create", Params: actorCreateRequest{AccID: c.workspace(), FormID: n.FormID, Title: n.Title, Description: n.Description,
 			Color: color, Data: data, Hole: n.Hole, Ref: BuildRef(r.b.op, n.Key), AddToRecent: notRecent, Fields: []string{"id"}}}
 		at := n.Position
 		place := GraphPlacementItem{Action: "create", Data: GraphPlacementData{Type: "node", Position: &at, LayerSettings: n.LayerSettings, AreaPicture: n.AreaPicture}}
@@ -188,7 +188,7 @@ func (r *buildRun) nodeChunks(pending []int) ([][]int, [][]atomicItem, []layerMa
 		k := len(chunks) - 1
 		if k < 0 || len(chunks[k]) >= buildChunk || size+len(a)+len(p) > buildChunkBytes {
 			chunks, creates = append(chunks, nil), append(creates, nil)
-			places = append(places, layerManageRequest{AccID: c.config.Workspace, ActorID: r.b.LayerID})
+			places = append(places, layerManageRequest{AccID: c.workspace(), ActorID: r.b.LayerID})
 			k, size = k+1, 0
 		}
 		place.Data.ID = "$" + strconv.Itoa(len(chunks[k])) + ".id"
@@ -239,7 +239,7 @@ func (r *buildRun) drawnEdges(ctx context.Context) (map[string]bool, error) {
 	if r.b.fresh {
 		return drawn, nil
 	}
-	rows, err := allLayerPages[layerEdgeWire](ctx, r.b.c, "graph/layer/edges/list", "edge", layerPageRequest{AccID: r.b.c.config.Workspace, ActorID: r.b.LayerID})
+	rows, err := allLayerPages[layerEdgeWire](ctx, r.b.c, "graph/layer/edges/list", "edge", layerPageRequest{AccID: r.b.c.workspace(), ActorID: r.b.LayerID})
 	for _, e := range rows {
 		drawn[e.ID] = true
 	}
@@ -268,10 +268,10 @@ func (r *buildRun) buildEdges(ctx context.Context, edges []buildEdgeEnds) {
 			continue
 		}
 		items := make([]atomicItem, len(chunk), len(chunk)+1)
-		place := layerManageRequest{AccID: c.config.Workspace, ActorID: r.b.LayerID, Items: make([]GraphPlacementItem, len(chunk))}
+		place := layerManageRequest{AccID: c.workspace(), ActorID: r.b.LayerID, Items: make([]GraphPlacementItem, len(chunk))}
 		for j, e := range chunk {
 			from, to := r.end(e.from), r.end(e.to)
-			items[j] = atomicItem{Method: "edge/create", Params: edgeCreateRequest{AccID: c.config.Workspace, Source: from.ActorID, Target: to.ActorID, EdgeTypeID: e.typeID, Name: e.Name, ForceDirection: true}}
+			items[j] = atomicItem{Method: "edge/create", Params: edgeCreateRequest{AccID: c.workspace(), Source: from.ActorID, Target: to.ActorID, EdgeTypeID: e.typeID, Name: e.Name, ForceDirection: true}}
 			src, dst := from.LaID, to.LaID
 			place.Items[j] = GraphPlacementItem{Action: "create", Data: GraphPlacementData{ID: "$" + strconv.Itoa(j) + ".id", Type: "edge", LaIDSource: &src, LaIDTarget: &dst}}
 		}

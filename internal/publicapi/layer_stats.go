@@ -49,7 +49,7 @@ func (c *Client) GetLayerStats(ctx context.Context, actorID string) (LayerStats,
 	if strings.TrimSpace(actorID) == "" || len(actorID) > 255 {
 		return LayerStats{}, errors.New("actorId required, maximum 255 bytes")
 	}
-	w, err := call[layerStatsRequest, layerStatsWire](ctx, c, "graph/layer/stats/get", layerStatsRequest{AccID: c.config.Workspace, ActorID: actorID})
+	w, err := call[layerStatsRequest, layerStatsWire](ctx, c, "graph/layer/stats/get", layerStatsRequest{AccID: c.workspace(), ActorID: actorID})
 	if err != nil {
 		return LayerStats{}, err
 	}

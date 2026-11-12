@@ -267,11 +267,11 @@ func (c *Client) CreateEdge(ctx context.Context, in EdgeCreateInput) (GraphCreat
 	if name == "" {
 		name = "hierarchy"
 	}
-	t, e := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.config.Workspace, Name: name})
+	t, e := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.workspace(), Name: name})
 	if e != nil {
 		return GraphCreatedEdge{}, e
 	}
-	r, e := call[edgeCreateRequest, GraphCreatedEdge](ctx, c, "edge/create", edgeCreateRequest{AccID: c.config.Workspace, Source: in.Source, Target: in.Target,
+	r, e := call[edgeCreateRequest, GraphCreatedEdge](ctx, c, "edge/create", edgeCreateRequest{AccID: c.workspace(), Source: in.Source, Target: in.Target,
 		EdgeTypeID: t.ID, Name: in.Name, CurveStyle: in.CurveStyle, Hole: in.Hole, ForceDirection: true})
 	if e == nil && (validateGraphEdge(r) != nil || r.Source != in.Source || r.Target != in.Target) {
 		return GraphCreatedEdge{}, errors.New("edge/create returned an edge with other endpoints")
@@ -325,7 +325,7 @@ func (c *Client) placeNodes(ctx context.Context, in PlacementsCreateInput, given
 	var r GraphCreatedPlacements
 	var e error
 	if len(plan.directives) == 0 && plan.open == nil {
-		r, e = call[layerManageRequest, GraphCreatedPlacements](ctx, c, "graph/layer/actors/manage", layerManageRequest{AccID: c.config.Workspace, ActorID: in.LayerID, Items: items})
+		r, e = call[layerManageRequest, GraphCreatedPlacements](ctx, c, "graph/layer/actors/manage", layerManageRequest{AccID: c.workspace(), ActorID: in.LayerID, Items: items})
 	} else {
 		r, e = c.placeWithRoom(ctx, in, items, plan)
 	}
@@ -357,7 +357,7 @@ func (c *Client) UpdatePositions(ctx context.Context, in PositionsUpdateInput) (
 		}
 		items[i] = positionItem{LaActorID: p.LaID, Position: at}
 	}
-	_, e := call[positionsRequest, json.RawMessage](ctx, c, "graph/layer/actors/positions/update", positionsRequest{AccID: c.config.Workspace, ActorID: in.LayerID, Items: items})
+	_, e := call[positionsRequest, json.RawMessage](ctx, c, "graph/layer/actors/positions/update", positionsRequest{AccID: c.workspace(), ActorID: in.LayerID, Items: items})
 	if e != nil {
 		return PositionsUpdated{}, e
 	}
@@ -383,7 +383,7 @@ func (c *Client) GetLayer(ctx context.Context, in LayerGetInput) (LayerView, err
 	if e != nil {
 		return LayerView{}, e
 	}
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: in.LayerID, Limit: limit, Offset: in.Offset}
+	q := layerPageRequest{AccID: c.workspace(), ActorID: in.LayerID, Limit: limit, Offset: in.Offset}
 	edges, e := call[layerPageRequest, layerEdgesWire](ctx, c, "graph/layer/edges/list", q)
 	if e != nil {
 		return LayerView{}, e

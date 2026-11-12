@@ -48,7 +48,7 @@ func smartCall[P smartRequest, R any](ctx context.Context, c *Client, method str
 	if !c.SmartFormsEnabled() {
 		return result, errors.New("smart forms profile is disabled")
 	}
-	p.setWorkspace(c.config.Workspace)
+	p.setWorkspace(c.workspace())
 	b, err := json.Marshal(p)
 	if err != nil || len(b) > MaxSmartFormInputBytes {
 		return result, errors.New("invalid or oversized Smart Form input")

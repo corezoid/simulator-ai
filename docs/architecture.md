@@ -16,8 +16,8 @@ reads discard unknown backend fields and strip denied actor details. The parity 
 including documented `fields`, `with` and editor options. Do not assume every profile returns
 metadata only. The backend enforces object permissions for every request.
 
-Origin/workspace/key come only from process config. HTTP is allowed only for literal
-loopback development; redirects are never followed. A key is sent as Authorization ApiKey,
+Origin, profile and any host credential come only from process config. HTTP is allowed only for
+literal loopback development; redirects are never followed. A key is sent as Authorization ApiKey,
 never as a tool argument. 30-second request timeout, caller cancellation, 4 MiB response
 limit, one stdio tool worker and bounded queue (32) keep local resource use bounded.
 Layer page maximum is 50, default 50. Offset pagination is not a consistent snapshot under
@@ -32,6 +32,41 @@ reasonParams, bounded to 2000 bytes, so the Console agent can correct a refused 
 arguments; the JSON-RPC transport performs no retries. File downloads have the bounded
 status-specific retry behavior documented in the tool reference. Invalid/unknown tool arguments fail before any
 request. Returned descriptions remain untrusted source data, never executable instructions.
+
+## Credentials and browser login
+
+The credential is chosen per request, in this order: `SIMULATOR_AI_AUTHORIZATION` (a host such as
+the Hermes relay hands over the run initiator's header; no account tools are registered),
+`SIMULATOR_AI_DELEGATED_TOKEN` (`delegated-read`), `SIMULATOR_AI_API_KEY`, and only then the
+person's own browser login. A process with none of them still starts; every domain tool then
+refuses before any request with "call the login tool".
+
+`login` (package `internal/auth`) runs OAuth2 authorization code + PKCE (S256) against SuperAdmin
+(`https://account.corezoid.com`, `SIMULATOR_AI_ACCOUNT_URL` for other stands) with the public client
+the legacy Simulator plugin registered. A random `state` guards the loopback callback
+(`http://localhost:<random port>/callback`); callbacks without it are refused without ending the
+sign-in, which times out after 5 minutes. The tool waits up to 45 s (under Codex's default tool
+timeout) and otherwise answers `pending`; the sign-in completes in the background. SuperAdmin's
+`simulator_token` is a Simulator JWT that sim-api accepts as `Authorization: Simulator <jwt>` and
+resolves to the person's own session, workspaces and roles; simulator-ai still calls only the
+public methods each profile allows.
+
+The token, the refresh token SuperAdmin may issue with it and the chosen workspace are stored per
+API origin in `credentials.json` under `$SIMULATOR_AI_CONFIG_DIR`, `$XDG_CONFIG_HOME/simulator-ai`
+or `~/.config/simulator-ai` (file 0600 written atomically under a `credentials.json.lock` shared by
+all client processes, directory 0700; a group/world-readable file is refused). Each request re-reads
+the token, so a login or renewal in another client process is used at once. A token within a minute
+of its `exp` is renewed with the refresh token; only a refusal of the grant (an OAuth error, 400,
+401 or 403 with an OAuth `error`) drops it and asks for `login` — 408, 429, 5xx and proxy pages leave it
+for the next request. Renewal writes are compare-and-set on the pair they started from, so a logout
+or another person's sign-in in another process always wins over a renewal in flight (a concurrent
+renewal of the same person that SuperAdmin refused does not). Tokens never enter tool results, errors or logs; `whoami` shows only the
+JWT's unverified `sub`/`nick`/`exp` for display. `workspace_set` accepts only a workspace that
+`workspace/list` returns for the person; `SIMULATOR_AI_WORKSPACE` overrides it, and with an API key
+the workspace is host configuration only. A sign-in as a different person forgets the previous
+workspace choice, the same person signing in again keeps it. A process reads the stored workspace
+once and keeps it while the same person is signed in: another client process choosing a workspace affects only processes started later,
+and tool calls run one at a time, so a workspace change never splits an operation.
 
 ## Validation boundaries
 

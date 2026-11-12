@@ -71,11 +71,11 @@ func (c *Client) SearchAll(ctx context.Context, in SearchAllInput) (SearchAll, e
 	req := atomicRequest{}
 	if users {
 		parts = append(parts, "users")
-		req.List = append(req.List, atomicItem{ID: "users", Method: "user/list", Params: userListParams{AccID: c.config.Workspace, Query: in.Query, Limit: in.Limit, Offset: in.Offset}})
+		req.List = append(req.List, atomicItem{ID: "users", Method: "user/list", Params: userListParams{AccID: c.workspace(), Query: in.Query, Limit: in.Limit, Offset: in.Offset}})
 	}
 	if actors {
 		parts = append(parts, "actors")
-		req.List = append(req.List, atomicItem{ID: "actors", Method: "actor/search/list", Params: actorSearchParams{AccID: c.config.Workspace, Query: in.Query,
+		req.List = append(req.List, atomicItem{ID: "actors", Method: "actor/search/list", Params: actorSearchParams{AccID: c.workspace(), Query: in.Query,
 			SearchType: searchType, FormID: in.FormID, Fields: in.Fields, Limit: in.Limit, Offset: in.Offset}})
 	}
 	wire, err := call[atomicRequest, atomicWire](ctx, c, "batch", req)

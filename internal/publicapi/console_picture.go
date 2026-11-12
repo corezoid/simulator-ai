@@ -55,7 +55,7 @@ func (c *Client) UploadActorPicture(ctx context.Context, in ActorPictureInput) (
 	if err != nil {
 		return ActorPicture{}, err
 	}
-	if _, err = call[pictureUpdate, Actor](ctx, c, "actor/update", pictureUpdate{AccID: c.config.Workspace, ActorID: in.ActorID, Picture: f.FileName, Fields: []string{"id"}}); err != nil {
+	if _, err = call[pictureUpdate, Actor](ctx, c, "actor/update", pictureUpdate{AccID: c.workspace(), ActorID: in.ActorID, Picture: f.FileName, Fields: []string{"id"}}); err != nil {
 		return ActorPicture{}, fmt.Errorf("%w (the image was uploaded as %s, file %d, and is not set)", err, f.FileName, f.ID)
 	}
 	return ActorPicture{ActorID: in.ActorID, Picture: f.FileName, FileID: f.ID}, nil

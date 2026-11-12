@@ -11,6 +11,8 @@ another model provider key.
    inherited by Kiro. On Windows, the executable is `simulator-ai.exe`.
 2. Set `SIMULATOR_AI_ORIGIN`, `SIMULATOR_AI_WORKSPACE` and `SIMULATOR_AI_API_KEY` in the
    environment that starts Kiro. Restart Kiro after changing them. Never paste a key into chat.
+   Without an API key the server starts in browser-login mode (`login`, then `workspace_set`),
+   as in the [quick start](../README.md#2-sign-in), provided Kiro passes `HOME` to the server.
 3. In **Powers → Add Custom Power → Import power from a folder**, choose
    `plugins/simulator-ai` from that same checkout/archive. Its `plugin.json`, `mcp.json`
    and `skills/` form one Power. Install either the Power or a manual MCP entry, not both.
@@ -32,7 +34,7 @@ separate: approving a tool never grants platform access.
 This follows Kiro's [Power format](https://kiro.dev/docs/powers/create/),
 [MCP configuration](https://kiro.dev/docs/mcp/configuration/) and
 [Agent Skills](https://kiro.dev/docs/skills/) support. It requires a Kiro version supporting
-`plugin.json` Powers. It does not use the legacy plugin's shell launcher, OAuth login,
+`plugin.json` Powers. It does not use the legacy plugin's shell launcher,
 `$CLAUDE_PLUGIN_ROOT` substitution or `.kiro-plugin` metadata. Skills and their relative
 reference files are already portable, so no generated copies or extra installer are needed.
 

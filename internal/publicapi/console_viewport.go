@@ -48,7 +48,7 @@ func (c *Client) MoveViewport(ctx context.Context, in ViewportInput) (ViewportMo
 	if !validID(in.LayerID) {
 		return ViewportMoved{}, errors.New("layerId required: the current layer of the request's context")
 	}
-	req := viewportRequest{AccID: c.config.Workspace, ViewportInput: in}
+	req := viewportRequest{AccID: c.workspace(), ViewportInput: in}
 	if in.Cell != "" {
 		at, err := CellCenter(in.Cell)
 		if err != nil {

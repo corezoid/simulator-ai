@@ -48,7 +48,7 @@ func graphCall[P, R any](ctx context.Context, c *Client, method string, input P)
 	if err = contracts.ValidateGraphInput(method, raw); err != nil {
 		return result, err
 	}
-	return call[graphRequest[P], R](ctx, c, method, graphRequest[P]{AccID: c.config.Workspace, Input: input})
+	return call[graphRequest[P], R](ctx, c, method, graphRequest[P]{AccID: c.workspace(), Input: input})
 }
 
 func (c *Client) SearchGraphBlocks(ctx context.Context, p GraphCatalogInput) (GraphCatalog, error) {
