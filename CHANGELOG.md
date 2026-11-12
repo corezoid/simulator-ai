@@ -14,7 +14,7 @@
   are kept per API origin in `~/.config/simulator-ai/credentials.json` (0600) and renewed with a refresh token when
   SuperAdmin issues one. `SIMULATOR_AI_API_KEY` / `SIMULATOR_AI_AUTHORIZATION` / `SIMULATOR_AI_DELEGATED_TOKEN` and
   `SIMULATOR_AI_WORKSPACE` keep precedence, and a host Authorization process (AI Console) gets no new tools.
-  `SIMULATOR_AI_ORIGIN` defaults to `https://mw.simulator.company`; new optional `SIMULATOR_AI_ACCOUNT_URL`,
+  In login mode `SIMULATOR_AI_ORIGIN` defaults to `https://mw.simulator.company` (host credentials still need it, and actor-bound profiles still need a host credential); new optional `SIMULATOR_AI_ACCOUNT_URL`,
   `SIMULATOR_AI_OAUTH_CLIENT_ID` and `SIMULATOR_AI_CONFIG_DIR`. `make client-smoke` gains `-profile login`.
 
 - Go 1.27.4 (`go.mod`) for GO-2026-6859 in `net/http`; a source build needs Go 1.27.4 or a toolchain download.

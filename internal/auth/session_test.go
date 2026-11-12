@@ -38,6 +38,7 @@ type fakeSA struct {
 	refreshes int
 	status    int
 	body      string
+	during    func() // runs while a refresh is in flight
 }
 
 func (f *fakeSA) serve(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +62,9 @@ func (f *fakeSA) serve(w http.ResponseWriter, r *http.Request) {
 		}
 	case "refresh_token":
 		f.refreshes++
+		if f.during != nil {
+			f.during()
+		}
 		if r.PostForm.Get("refresh_token") != "refresh-1" {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"` + canary + `"}`))
@@ -382,5 +386,60 @@ func TestStoreLockSerializesAndBreaksStale(t *testing.T) {
 	}
 	if _, err := os.Stat(lock); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("lock left behind")
+	}
+}
+
+func TestRenewalNeverOverwritesAnotherProcess(t *testing.T) {
+	soon := time.Now().Add(10 * time.Second)
+	// Another process logs out while this one renews: the logout stands.
+	s, sa, dir := newTestSession(t)
+	other := NewSession(Options{Origin: s.origin, ConfigDir: dir})
+	_ = s.save(context.Background(), Entry{AccessToken: jwt(42, "Ada", soon), RefreshToken: "refresh-1", ExpiresAt: soon})
+	sa.during = func() { _, _ = other.Logout() }
+	if _, err := s.Authorization(context.Background()); !errors.Is(err, ErrLoginRequired) || !strings.Contains(err.Error(), "not signed in") {
+		t.Fatalf("renewal after a logout: %v", err)
+	}
+	if e, _ := s.store.Get(s.origin); e.AccessToken != "" {
+		t.Fatal("renewal resurrected a logout")
+	}
+	// Another person signs in meanwhile: their sign-in stays, with their own id.
+	s, sa, dir = newTestSession(t)
+	other = NewSession(Options{Origin: s.origin, ConfigDir: dir})
+	_ = s.save(context.Background(), Entry{AccessToken: jwt(42, "Ada", soon), RefreshToken: "refresh-1", ExpiresAt: soon})
+	_ = s.SetWorkspace("ws-ada")
+	bob := jwt(77, "Bob", time.Now().Add(time.Hour))
+	sa.during = func() {
+		_ = other.save(context.Background(), Entry{AccessToken: bob, ExpiresAt: time.Now().Add(time.Hour)})
+	}
+	h, err := s.Authorization(context.Background())
+	if err != nil || h != "Simulator "+bob {
+		t.Fatalf("renewal raced a sign-in: %v", err)
+	}
+	if e, _ := s.store.Get(s.origin); e.AccessToken != bob || e.Subject != 77 {
+		t.Fatal("another person's sign-in was overwritten")
+	}
+	if w, _ := s.Workspace(); w != "" {
+		t.Fatal("the previous person's workspace followed the new sign-in")
+	}
+}
+
+func TestProxyErrorPageIsNotARefusal(t *testing.T) {
+	s, sa, _ := newTestSession(t)
+	soon := time.Now().Add(10 * time.Second)
+	_ = s.save(context.Background(), Entry{AccessToken: jwt(42, "Ada", soon), RefreshToken: "refresh-1", ExpiresAt: soon})
+	sa.status, sa.body = http.StatusForbidden, "<html>blocked</html>"
+	if _, err := s.Authorization(context.Background()); err == nil || errors.Is(err, ErrLoginRequired) {
+		t.Fatalf("WAF page ended the session: %v", err)
+	}
+	if e, _ := s.store.Get(s.origin); e.RefreshToken != "refresh-1" {
+		t.Fatal("session dropped")
+	}
+}
+
+func TestFloatExpClaim(t *testing.T) {
+	enc := base64.RawURLEncoding.EncodeToString
+	c, ok := parseClaims(enc([]byte("{}")) + "." + enc([]byte(`{"sub":42,"exp":2000000000.5}`)) + ".x")
+	if !ok || c.sub != 42 || c.exp.Unix() != 2000000000 {
+		t.Fatalf("%+v %v", c, ok)
 	}
 }

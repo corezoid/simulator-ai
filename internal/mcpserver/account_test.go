@@ -122,7 +122,7 @@ func TestAccountToolsWithHostCredentials(t *testing.T) {
 	}
 	// console-full keeps its own parity workspaces_list.
 	full, _ := accountServer(t, map[string]string{"SIMULATOR_AI_API_KEY": "k", "SIMULATOR_AI_WORKSPACE": "ws", "SIMULATOR_AI_PROFILE": "console-full"})
-	if !strings.Contains(full.GetTool("workspaces_list").Tool.Description, "host workspace only") || full.GetTool("whoami") == nil {
+	if !strings.Contains(full.GetTool("workspaces_list").Tool.Description, "workspace in use") || full.GetTool("whoami") == nil {
 		t.Fatal("console-full account tools")
 	}
 }

@@ -21,7 +21,7 @@ write or your answer. The person types their password only on the SuperAdmin pag
 
 | Variable | Value |
 | --- | --- |
-| `SIMULATOR_AI_ORIGIN` | the stand's origin only, `https://<host>` (no path; plain `http` only for literal loopback); production `https://mw.simulator.company` when unset |
+| `SIMULATOR_AI_ORIGIN` | the stand's origin only, `https://<host>` (no path; plain `http` only for literal loopback); with a browser login production `https://mw.simulator.company` when unset; required with a host credential |
 | `SIMULATOR_AI_WORKSPACE` | the workspace id; required with an API key, optional with a login (it then overrides `workspace_set`) |
 | `SIMULATOR_AI_API_KEY` | optional: an API-user key of that workspace instead of a browser login |
 | `SIMULATOR_AI_AUTHORIZATION` | instead of the key: a complete header value, `Bearer <token>`, `Simulator <jwt>` or `ApiKey <key>`; used when a host such as AI Console starts the process per request under the user's own credential |

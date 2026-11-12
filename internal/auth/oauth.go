@@ -99,9 +99,12 @@ func (p provider) token(ctx context.Context, form url.Values) (Entry, error) {
 	// are worth another try later and never end the session.
 	var tr tokenResponse
 	decoded := json.Unmarshal(b, &tr) == nil
+	// A non-JSON 4xx is a proxy or WAF page, not SuperAdmin's answer about the grant.
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden:
-		return Entry{}, errRejected{safeCode(tr.Error, resp.StatusCode)}
+		if decoded {
+			return Entry{}, errRejected{safeCode(tr.Error, resp.StatusCode)}
+		}
 	case http.StatusOK:
 		if decoded && tr.Error != "" {
 			return Entry{}, errRejected{safeCode(tr.Error, resp.StatusCode)}
@@ -164,7 +167,7 @@ func parseClaims(token string) (claims, bool) {
 	var raw struct {
 		Sub  json.RawMessage `json:"sub"`
 		Nick string          `json:"nick"`
-		Exp  int64           `json:"exp"`
+		Exp  float64         `json:"exp"`
 	}
 	if json.Unmarshal(payload, &raw) != nil {
 		return claims{}, false
@@ -175,7 +178,7 @@ func parseClaims(token string) (claims, bool) {
 		c.sub = id
 	}
 	if raw.Exp > 0 {
-		c.exp = time.Unix(raw.Exp, 0)
+		c.exp = time.Unix(int64(raw.Exp), 0)
 	}
 	return c, true
 }

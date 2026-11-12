@@ -93,25 +93,40 @@ const (
 	lockStale = 15 * time.Second // A holder never keeps it longer: no network inside Update.
 )
 
-// lock creates credentials.json.lock exclusively, waiting for another process to release it and
-// breaking a lock left behind by a crashed one.
+// lock creates credentials.json.lock exclusively with this holder's nonce, waiting for another
+// process to release it. A stale lock (a crashed holder) is broken by renaming it away, which only
+// one waiter can do; release removes the lock only while it still holds this nonce.
 func (s *Store) lock() (func(), error) {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
 		return nil, errors.New("cannot create the Simulator AI config directory")
+	}
+	nonce, err := randomToken()
+	if err != nil {
+		return nil, err
 	}
 	name := s.path + ".lock"
 	deadline := time.Now().Add(lockWait)
 	for {
 		f, err := os.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:gosec // G304: the lock beside the user's own credentials file.
 		if err == nil {
-			_ = f.Close()
-			return func() { _ = os.Remove(name) }, nil
+			_, werr := f.WriteString(nonce)
+			if cerr := f.Close(); werr == nil && cerr == nil {
+				return func() {
+					if b, rerr := os.ReadFile(name); rerr == nil && string(b) == nonce { //nolint:gosec // G304: as above.
+						_ = os.Remove(name)
+					}
+				}, nil
+			}
+			_ = os.Remove(name)
+			return nil, errors.New("cannot lock the credentials file")
 		}
 		if !errors.Is(err, os.ErrExist) {
 			return nil, errors.New("cannot lock the credentials file")
 		}
 		if info, serr := os.Stat(name); serr == nil && time.Since(info.ModTime()) > lockStale {
-			_ = os.Remove(name)
+			if os.Rename(name, name+".stale-"+nonce) == nil {
+				_ = os.Remove(name + ".stale-" + nonce)
+			}
 			continue
 		}
 		if time.Now().After(deadline) {

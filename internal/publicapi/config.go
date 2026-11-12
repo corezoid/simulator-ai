@@ -41,12 +41,14 @@ func (c Config) LogValue() slog.Value { return slog.StringValue(c.String()) }
 
 func LoadConfig(getenv func(string) string) (Config, error) {
 	c := Config{Origin: getenv("SIMULATOR_AI_ORIGIN"), Workspace: getenv("SIMULATOR_AI_WORKSPACE"), APIKey: getenv("SIMULATOR_AI_API_KEY"), Profile: getenv("SIMULATOR_AI_PROFILE"), ActorID: getenv("SIMULATOR_AI_ACTOR"), DelegatedToken: getenv("SIMULATOR_AI_DELEGATED_TOKEN"), Authorization: getenv("SIMULATOR_AI_AUTHORIZATION")}
-	if c.Origin == "" {
+	hostCredential := c.Authorization != "" || c.DelegatedToken != "" || c.Profile == "delegated-read"
+	// Only a browser login defaults to production; a host credential still needs an explicit origin.
+	if c.Origin == "" && !hostCredential && c.APIKey == "" {
 		c.Origin = DefaultOrigin
 	}
-	if c.Authorization == "" && c.DelegatedToken == "" && c.Profile != "delegated-read" {
+	if !hostCredential {
 		account := getenv("SIMULATOR_AI_ACCOUNT_URL")
-		if account != "" {
+		if account != "" && c.APIKey == "" {
 			if err := checkOrigin("SIMULATOR_AI_ACCOUNT_URL", account); err != nil {
 				return Config{}, err
 			}
@@ -129,6 +131,9 @@ func (c Config) validate() error {
 		// without them and its tools say what to do.
 		if c.Account == nil {
 			return errors.New("no credential: set SIMULATOR_AI_API_KEY, or run with a home directory so the login tool can store a sign-in")
+		}
+		if c.ActorID != "" {
+			return errors.New("SIMULATOR_AI_ACTOR binds a host credential: set SIMULATOR_AI_API_KEY or SIMULATOR_AI_AUTHORIZATION")
 		}
 		if c.Workspace != "" && !validToken(c.Workspace) {
 			return errors.New("workspace and selected credential must be nonempty without whitespace")

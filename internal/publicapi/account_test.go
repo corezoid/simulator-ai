@@ -53,7 +53,7 @@ func TestLoadConfigModes(t *testing.T) {
 	if client.CredentialMode() != "login" || client.WorkspacePinned() {
 		t.Fatal("login mode not selected")
 	}
-	if c, err = LoadConfig(env(map[string]string{"HOME": home, "SIMULATOR_AI_AUTHORIZATION": "Simulator a.b.c", "SIMULATOR_AI_WORKSPACE": "ws"})); err != nil || c.Account != nil {
+	if c, err = LoadConfig(env(map[string]string{"HOME": home, "SIMULATOR_AI_ORIGIN": "https://x.example", "SIMULATOR_AI_AUTHORIZATION": "Simulator a.b.c", "SIMULATOR_AI_WORKSPACE": "ws"})); err != nil || c.Account != nil {
 		t.Fatal("a host Authorization must not get a browser login", err)
 	}
 	if _, err = LoadConfig(env(map[string]string{"HOME": home, "SIMULATOR_AI_PROFILE": "delegated-read"})); err == nil {
@@ -64,6 +64,19 @@ func TestLoadConfigModes(t *testing.T) {
 	}
 	if _, err = LoadConfig(env(map[string]string{"HOME": home, "SIMULATOR_AI_API_KEY": "k"})); err == nil {
 		t.Fatal("API key without workspace accepted")
+	}
+	// Only a browser login defaults the origin; a host credential still needs one.
+	if _, err = LoadConfig(env(map[string]string{"HOME": home, "SIMULATOR_AI_API_KEY": "k", "SIMULATOR_AI_WORKSPACE": "ws"})); err == nil {
+		t.Fatal("API key sent to the default origin")
+	}
+	if _, err = LoadConfig(env(map[string]string{"HOME": home, "SIMULATOR_AI_AUTHORIZATION": "Simulator a.b.c", "SIMULATOR_AI_WORKSPACE": "ws"})); err == nil {
+		t.Fatal("host Authorization sent to the default origin")
+	}
+	if _, err = LoadConfig(env(map[string]string{"HOME": home, "SIMULATOR_AI_PROFILE": "reactions-read", "SIMULATOR_AI_ACTOR": "a"})); err == nil {
+		t.Fatal("actor-bound profile started on a browser login")
+	}
+	if _, err = LoadConfig(env(map[string]string{"HOME": home, "SIMULATOR_AI_ORIGIN": "https://x.example", "SIMULATOR_AI_API_KEY": "k", "SIMULATOR_AI_WORKSPACE": "ws", "SIMULATOR_AI_ACCOUNT_URL": "bad"})); err != nil {
+		t.Fatal("login-only setting blocked API-key mode:", err)
 	}
 	if c, err = LoadConfig(env(map[string]string{"SIMULATOR_AI_CONFIG_DIR": home, "XDG_CONFIG_HOME": "/elsewhere"})); err != nil || !strings.HasPrefix(c.Account.StorePath(), home) {
 		t.Fatal("SIMULATOR_AI_CONFIG_DIR ignored", err)

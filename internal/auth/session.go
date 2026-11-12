@@ -41,9 +41,11 @@ type Session struct {
 
 	mu      sync.Mutex // guards pending and workspace
 	pending *flow
-	// workspace is this process's choice, read from the store once and then kept, so another client
-	// process choosing a workspace never switches this one in the middle of its work.
+	// workspace is this process's choice for subject (the signed-in SuperAdmin id), read from the
+	// store once and then kept, so another client process choosing a workspace never switches this
+	// one in the middle of its work.
 	workspace string
+	subject   int64
 }
 
 func NewSession(o Options) *Session {
@@ -86,29 +88,59 @@ func (s *Session) Authorization(ctx context.Context) (string, error) {
 	if e.RefreshToken == "" {
 		return "", s.expired()
 	}
-	renewed, err := s.provider.refresh(ctx, e.RefreshToken)
+	// Detached from the tool call: a renewal SuperAdmin answered (and may have rotated) must be saved
+	// even when the caller gives up.
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
+	renewed, err := s.provider.refresh(rctx, e.RefreshToken)
+	// Every write below is a compare-and-set on the pair this renewal started from: another process
+	// may meanwhile have renewed, logged out or signed in as someone else, and that wins.
+	same := func(x *Entry) bool { return x.AccessToken == e.AccessToken && x.RefreshToken == e.RefreshToken }
 	if err != nil {
 		var rejected errRejected
 		if !errors.As(err, &rejected) {
 			return "", errors.New("cannot renew the sign-in: " + err.Error())
 		}
-		// Another process sharing the store may have renewed (and rotated) it first.
-		if again, gerr := s.store.Get(s.origin); gerr == nil && again.AccessToken != e.AccessToken && s.fresh(again) {
-			return "Simulator " + again.AccessToken, nil
-		}
 		// The person and their workspace choice stay; only the dead grant goes.
-		_ = s.store.Update(s.origin, func(x *Entry) { x.AccessToken, x.RefreshToken, x.ExpiresAt = "", "", time.Time{} })
-		return "", s.expired()
+		_ = s.store.Update(s.origin, func(x *Entry) {
+			if same(x) {
+				x.AccessToken, x.RefreshToken, x.ExpiresAt = "", "", time.Time{}
+			}
+		})
+		return s.current(e)
 	}
 	if renewed.RefreshToken == "" {
 		renewed.RefreshToken = e.RefreshToken
 	}
-	if err = s.store.Update(s.origin, func(x *Entry) {
-		x.AccessToken, x.RefreshToken, x.ExpiresAt = renewed.AccessToken, renewed.RefreshToken, renewed.ExpiresAt
-	}); err != nil {
-		return "", err
+	applied := false
+	err = s.store.Update(s.origin, func(x *Entry) {
+		if applied = same(x); applied {
+			x.AccessToken, x.RefreshToken, x.ExpiresAt = renewed.AccessToken, renewed.RefreshToken, renewed.ExpiresAt
+		}
+	})
+	if err != nil {
+		return "Simulator " + renewed.AccessToken, nil // Valid now; the next request renews again.
+	}
+	if !applied {
+		return s.current(e)
 	}
 	return "Simulator " + renewed.AccessToken, nil
+}
+
+// current is what another process left in the store after this one's renewal lost the race: its
+// fresh token, or the sign-in to repeat.
+func (s *Session) current(was Entry) (string, error) {
+	again, err := s.store.Get(s.origin)
+	if err != nil {
+		return "", err
+	}
+	if again.AccessToken != "" && again.AccessToken != was.AccessToken && s.fresh(again) {
+		return "Simulator " + again.AccessToken, nil
+	}
+	if again.AccessToken == "" && again.Subject == 0 {
+		return "", loginError{"not signed in to " + s.origin + ": call the login tool (it opens the browser), then pick a workspace"}
+	}
+	return "", s.expired()
 }
 
 func (s *Session) fresh(e Entry) bool { return e.ExpiresAt.After(s.now().Add(renewBefore)) }
@@ -198,7 +230,9 @@ func (s *Session) Login(ctx context.Context, wait time.Duration) (LoginResult, e
 	case <-timer.C:
 	case <-ctx.Done():
 	}
-	res.AuthorizationURL = f.authURL
+	if !res.BrowserOpened {
+		res.AuthorizationURL = f.authURL // The person opens it themselves.
+	}
 	res.User, _ = s.Status()
 	return res, nil
 }
@@ -241,25 +275,29 @@ func (s *Session) Logout() (bool, error) {
 }
 
 // Workspace is the workspace the person chose for this origin ("" when none). Once known it is kept
-// for the life of the process; workspace_set, logout or another person's sign-in here change it.
+// for the life of the process while the same person is signed in: another client process choosing
+// a workspace never switches this one mid-work, but a sign-in as someone else does.
 func (s *Session) Workspace() (string, error) {
+	e, err := s.store.Get(s.origin)
+	if err != nil {
+		return "", err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.workspace != "" {
-		return s.workspace, nil
+	if s.workspace == "" || s.subject != e.Subject {
+		s.workspace, s.subject = e.Workspace, e.Subject
 	}
-	e, err := s.store.Get(s.origin)
-	s.workspace = e.Workspace
-	return e.Workspace, err
+	return s.workspace, nil
 }
 
 // SetWorkspace remembers the person's workspace for this origin.
 func (s *Session) SetWorkspace(id string) error {
-	if err := s.store.Update(s.origin, func(x *Entry) { x.Workspace = id }); err != nil {
+	subject := int64(0)
+	if err := s.store.Update(s.origin, func(x *Entry) { x.Workspace, subject = id, x.Subject }); err != nil {
 		return err
 	}
 	s.mu.Lock()
-	s.workspace = id
+	s.workspace, s.subject = id, subject
 	s.mu.Unlock()
 	return nil
 }

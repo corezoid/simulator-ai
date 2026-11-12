@@ -79,7 +79,7 @@ Optional settings, in the environment that starts your client:
 
 | Variable | Purpose |
 | --- | --- |
-| `SIMULATOR_AI_ORIGIN` | Your API origin, without a path or query string; `https://mw.simulator.company` when unset. HTTPS is required; literal loopback HTTP is supported for local development. |
+| `SIMULATOR_AI_ORIGIN` | Your API origin, without a path or query string; with a browser login `https://mw.simulator.company` when unset (required with an API key). HTTPS is required; literal loopback HTTP is supported for local development. |
 | `SIMULATOR_AI_PROFILE` | Tool profile; defaults to `read`. See the profile table below. |
 | `SIMULATOR_AI_WORKSPACE` | Pins the workspace (overrides `workspace_set`). Required with an API key. |
 | `SIMULATOR_AI_API_KEY` | An API-user credential instead of the browser login; it always wins over a stored login. Keep it out of prompts, source control and shared configuration. |

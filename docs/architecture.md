@@ -57,12 +57,14 @@ or `~/.config/simulator-ai` (file 0600 written atomically under a `credentials.j
 all client processes, directory 0700; a group/world-readable file is refused). Each request re-reads
 the token, so a login or renewal in another client process is used at once. A token within a minute
 of its `exp` is renewed with the refresh token; only a refusal of the grant (an OAuth error, 400,
-401 or 403) drops it and asks for `login` — 408, 429 and 5xx leave it for the next request. Tokens never enter tool results, errors or logs; `whoami` shows only the
+401 or 403 with a JSON answer) drops it and asks for `login` — 408, 429, 5xx and proxy pages leave it
+for the next request. Renewal writes are compare-and-set on the pair they started from, so a logout
+or another person's sign-in in another process always wins over a renewal in flight. Tokens never enter tool results, errors or logs; `whoami` shows only the
 JWT's unverified `sub`/`nick`/`exp` for display. `workspace_set` accepts only a workspace that
 `workspace/list` returns for the person; `SIMULATOR_AI_WORKSPACE` overrides it, and with an API key
 the workspace is host configuration only. A sign-in as a different person forgets the previous
 workspace choice, the same person signing in again keeps it. A process reads the stored workspace
-once and keeps it: another client process choosing a workspace affects only processes started later,
+once and keeps it while the same person is signed in: another client process choosing a workspace affects only processes started later,
 and tool calls run one at a time, so a workspace change never splits an operation.
 
 ## Validation boundaries
