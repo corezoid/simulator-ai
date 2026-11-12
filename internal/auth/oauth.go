@@ -99,10 +99,10 @@ func (p provider) token(ctx context.Context, form url.Values) (Entry, error) {
 	// are worth another try later and never end the session.
 	var tr tokenResponse
 	decoded := json.Unmarshal(b, &tr) == nil
-	// A non-JSON 4xx is a proxy or WAF page, not SuperAdmin's answer about the grant.
+	// A 4xx without an OAuth error is a proxy, gateway or WAF answer, not SuperAdmin's about the grant.
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden:
-		if decoded {
+		if decoded && tr.Error != "" {
 			return Entry{}, errRejected{safeCode(tr.Error, resp.StatusCode)}
 		}
 	case http.StatusOK:

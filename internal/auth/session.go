@@ -114,7 +114,11 @@ func (s *Session) Authorization(ctx context.Context) (string, error) {
 	}
 	applied := false
 	err = s.store.Update(s.origin, func(x *Entry) {
-		if applied = same(x); applied {
+		// A concurrent renewal of the same pair that SuperAdmin refused (rotation) cleared the grant
+		// but kept the person: this successful renewal restores it. A logout empties the whole entry
+		// (no Subject), so it still stands.
+		refusedMeanwhile := x.AccessToken == "" && x.RefreshToken == "" && x.Subject != 0 && x.Subject == e.Subject
+		if applied = same(x) || refusedMeanwhile; applied {
 			x.AccessToken, x.RefreshToken, x.ExpiresAt = renewed.AccessToken, renewed.RefreshToken, renewed.ExpiresAt
 		}
 	})
@@ -279,11 +283,14 @@ func (s *Session) Logout() (bool, error) {
 // a workspace never switches this one mid-work, but a sign-in as someone else does.
 func (s *Session) Workspace() (string, error) {
 	e, err := s.store.Get(s.origin)
-	if err != nil {
-		return "", err
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err != nil {
+		if s.workspace != "" {
+			return s.workspace, nil // A passing read failure must not change the workspace mid-operation.
+		}
+		return "", err
+	}
 	if s.workspace == "" || s.subject != e.Subject {
 		s.workspace, s.subject = e.Workspace, e.Subject
 	}

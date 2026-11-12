@@ -443,3 +443,31 @@ func TestFloatExpClaim(t *testing.T) {
 		t.Fatalf("%+v %v", c, ok)
 	}
 }
+
+func TestRotationRaceKeepsTheWinningRenewal(t *testing.T) {
+	s, sa, dir := newTestSession(t)
+	other := NewSession(Options{Origin: s.origin, ConfigDir: dir, AccountURL: s.provider.accountURL})
+	soon := time.Now().Add(10 * time.Second)
+	_ = s.save(context.Background(), Entry{AccessToken: jwt(42, "Ada", soon), RefreshToken: "refresh-1", ExpiresAt: soon})
+	// While this renewal is in flight, the other process's renewal of the same pair is refused and
+	// clears the grant first.
+	sa.during = func() {
+		_ = other.store.Update(other.origin, func(x *Entry) { x.AccessToken, x.RefreshToken, x.ExpiresAt = "", "", time.Time{} })
+	}
+	h, err := s.Authorization(context.Background())
+	if err != nil || h != "Simulator "+sa.token {
+		t.Fatalf("winning renewal lost: %v", err)
+	}
+	if e, _ := s.store.Get(s.origin); e.AccessToken != sa.token || e.Subject != 42 {
+		t.Fatal("winning renewal not stored")
+	}
+}
+
+func TestGatewayJSONErrorIsNotARefusal(t *testing.T) {
+	s, sa, _ := newTestSession(t)
+	sa.status, sa.body = http.StatusForbidden, `{"message":"Forbidden"}`
+	var rejected errRejected
+	if _, err := s.provider.refresh(context.Background(), "refresh-1"); err == nil || errors.As(err, &rejected) {
+		t.Fatalf("gateway JSON counted as refusal: %v", err)
+	}
+}

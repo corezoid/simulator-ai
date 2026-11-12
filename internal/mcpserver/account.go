@@ -64,7 +64,7 @@ func accountTool[T any](name, description, schema string, readOnly, idempotent b
 func addAccount(s *server.MCPServer, c *publicapi.Client) {
 	a := c.Account()
 	login := c.CredentialMode() == "login"
-	loginDesc := "Sign in to Simulator.Company as yourself: opens the browser at the SuperAdmin sign-in page (OAuth2 PKCE) and stores the session for this API origin in the user's config directory, never in the project. Waits up to 45 s; if the answer is pending, the user finishes in the browser and you call whoami. Then list workspaces with workspaces_list and ask the user which one to use (workspace_set). Call it only when the user wants to sign in or a tool says the sign-in is missing or expired."
+	loginDesc := "Sign in to Simulator.Company as yourself: opens the browser at the SuperAdmin sign-in page (OAuth2 PKCE) and stores the session for this API origin in the user's config directory, never in the project. Waits up to 45 s; if the answer is pending, the user finishes in the browser and you call whoami. If no browser page appeared, call login again: it returns authorizationUrl for the user to open. Then list workspaces with workspaces_list and ask the user which one to use (workspace_set). Call it only when the user wants to sign in or a tool says the sign-in is missing or expired."
 	if !login {
 		loginDesc = "DISABLED here: this server uses the host API key (SIMULATOR_AI_API_KEY). Calling it only explains how to switch to a browser sign-in."
 	}
