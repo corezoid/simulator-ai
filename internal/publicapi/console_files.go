@@ -106,7 +106,7 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	form := multipart.NewWriter(&body)
 	// The route attaches to actorId itself and refuses an attach it may not make before storing the
 	// file (sim-api 606ff98e); an older stand stored the file and only logged the failure.
-	fields := [][2]string{{"accId", c.config.Workspace}, {"actorId", in.ActorID}, {"rootActorId", in.RootActorID}}
+	fields := [][2]string{{"accId", c.workspace()}, {"actorId", in.ActorID}, {"rootActorId", in.RootActorID}}
 	if in.TTL > 0 {
 		fields = append(fields, [2]string{"ttl", strconv.FormatInt(in.TTL, 10)})
 	}
@@ -127,7 +127,11 @@ func (c *Client) UploadAttachment(ctx context.Context, in AttachmentUploadInput)
 	if err != nil {
 		return Attachment{}, errors.New("invalid request")
 	}
-	req.Header.Set("Authorization", c.config.authorization())
+	authorization, err := c.ready(ctx, "rest/upload")
+	if err != nil {
+		return Attachment{}, err
+	}
+	req.Header.Set("Authorization", authorization)
 	req.Header.Set("Content-Type", form.FormDataContentType())
 	resp, err := c.http.Do(req)
 	if err != nil {

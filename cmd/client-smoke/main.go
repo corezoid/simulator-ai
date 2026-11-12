@@ -28,6 +28,7 @@ type evidence struct {
 	CodexReactionStats       bool   `json:"codexReactionStats"`
 	CodexLayerStats          bool   `json:"codexLayerStats"`
 	CodexEdgeTypes           bool   `json:"codexEdgeTypes"`
+	CodexLoginMode           bool   `json:"codexLoginMode,omitempty"`
 	ClaudeInstall            bool   `json:"claudeInstall"`
 	ClaudeSkill              bool   `json:"claudeSkill"`
 	ClaudeMCP                bool   `json:"claudeMCP"`
@@ -36,7 +37,7 @@ type evidence struct {
 
 func main() {
 	root := flag.String("repo", ".", "repository root containing the built bin/simulator-ai")
-	profile := flag.String("profile", "read", "read, smart-forms, reactions-read, reactions-actor, graph-read or graph-actor")
+	profile := flag.String("profile", "read", "read, smart-forms, reactions-read, reactions-actor, graph-read, graph-actor or login (no API key)")
 	flag.Parse()
 	result, err := smoke(*root, *profile)
 	if err != nil {
@@ -47,7 +48,7 @@ func main() {
 }
 func smoke(root, profile string) (evidence, error) {
 	var result evidence
-	if profile != "read" && profile != "smart-forms" && profile != "reactions-read" && profile != "reactions-actor" && profile != "graph-read" && profile != "graph-actor" {
+	if profile != "read" && profile != "smart-forms" && profile != "reactions-read" && profile != "reactions-actor" && profile != "graph-read" && profile != "graph-actor" && profile != "login" {
 		return result, errors.New("invalid profile")
 	}
 	result.Profile = profile
@@ -87,7 +88,10 @@ func smoke(root, profile string) (evidence, error) {
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1", "DISABLE_AUTOUPDATER=1",
 		"SIMULATOR_AI_PROFILE=" + profile, "SIMULATOR_AI_ORIGIN=" + f.server.URL, "SIMULATOR_AI_WORKSPACE=synthetic-workspace", "SIMULATOR_AI_API_KEY=synthetic-client-key",
 	}
-	if profile == "reactions-actor" {
+	if profile == "login" {
+		// No host credential: the server starts in browser-login mode with an empty private store.
+		env = append(env[:len(env)-4], "SIMULATOR_AI_PROFILE=read", "SIMULATOR_AI_ORIGIN="+f.server.URL, "SIMULATOR_AI_CONFIG_DIR="+filepath.Join(temp, "config"))
+	} else if profile == "reactions-actor" {
 		env = append(env, "SIMULATOR_AI_PROFILE=reactions-read", "SIMULATOR_AI_ACTOR=synthetic-actor")
 	} else if profile == "graph-actor" {
 		env = append(env, "SIMULATOR_AI_PROFILE=graph-read", "SIMULATOR_AI_ACTOR=synthetic-layer")
@@ -115,7 +119,9 @@ func smoke(root, profile string) (evidence, error) {
 	}
 	result.RejectedTokenCountProbes = f.tokenCountProbes.Load()
 	expectedReads := int32(1)
-	if profile == "reactions-read" {
+	if profile == "login" {
+		expectedReads = 0 // Nothing reaches the API before a sign-in.
+	} else if profile == "reactions-read" {
 		expectedReads = 2
 	} else if profile == "graph-read" {
 		expectedReads = 4

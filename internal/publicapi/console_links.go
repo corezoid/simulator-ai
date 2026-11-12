@@ -163,7 +163,7 @@ func (c *Client) BuildLink(ctx context.Context, in LinkInput) (Link, error) {
 		if !validID(in.Ref) || !validID(in.Route) {
 			return Link{}, errors.New("entity smartForm requires ref (the Smart Form's ref) and route (a route name its pages declare)")
 		}
-		r, err := call[routeBuildRequest, routeBuildWire](ctx, c, "route/build", routeBuildRequest{SourceTarget: routeTarget{Kind: "direct", WorkspaceID: c.config.Workspace,
+		r, err := call[routeBuildRequest, routeBuildWire](ctx, c, "route/build", routeBuildRequest{SourceTarget: routeTarget{Kind: "direct", WorkspaceID: c.workspace(),
 			ScriptRef: in.Ref, Environment: "production"}, Name: in.Route, Params: in.Params, Query: in.Query})
 		if err != nil {
 			return Link{}, err
@@ -186,7 +186,7 @@ func (c *Client) legacyLink(in LinkInput) (Link, error) {
 	if in.Mode != "" && in.Mode != "layers" && in.Mode != "actors" && in.Mode != "trees" {
 		return Link{}, errors.New("mode is layers, actors or trees")
 	}
-	path, err := build(shortWorkspace(c.config.Workspace), in.escaped())
+	path, err := build(shortWorkspace(c.workspace()), in.escaped())
 	if err != nil {
 		return Link{}, err
 	}

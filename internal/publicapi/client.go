@@ -111,6 +111,10 @@ func call[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 	if c.DelegatedReadEnabled() && method != "actor/get" && method != "form/get" {
 		return result, errors.New("method unavailable in delegated-read profile")
 	}
+	authorization, e := c.ready(ctx, method)
+	if e != nil {
+		return result, e
+	}
 	// Source: sim-api rpc_handler.Request.ID is a string. Preserve its exact wire type.
 	id := strconv.FormatUint(c.nextID.Add(1), 10)
 	b, e := json.Marshal(request[P]{"2.0", id, method, params})
@@ -121,7 +125,7 @@ func call[P, R any](ctx context.Context, c *Client, method string, params P) (R,
 	if e != nil {
 		return result, errors.New("invalid request")
 	}
-	req.Header.Set("Authorization", c.config.authorization())
+	req.Header.Set("Authorization", authorization)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-App-Platform", "simulator-ai")
 	req.Header.Set("X-App-Version", version.Current)
@@ -168,7 +172,7 @@ func (c *Client) GetActor(ctx context.Context, id string) (Actor, error) {
 	if strings.TrimSpace(id) == "" || len(id) > 255 {
 		return Actor{}, errors.New("actorId required")
 	}
-	a, e := read[ActorRequest, Actor](ctx, c, "actor/get", ActorRequest{AccID: c.config.Workspace, ActorID: id, Fields: actorFields})
+	a, e := read[ActorRequest, Actor](ctx, c, "actor/get", ActorRequest{AccID: c.workspace(), ActorID: id, Fields: actorFields})
 	if e == nil && (a.ID == nil || *a.ID != id) {
 		return Actor{}, errors.New("actor result identity mismatch")
 	}
@@ -178,7 +182,7 @@ func (c *Client) GetForm(ctx context.Context, id int64) (Form, error) {
 	if id < 1 {
 		return Form{}, errors.New("positive formId required")
 	}
-	f, e := read[FormRequest, Form](ctx, c, "form/get", FormRequest{AccID: c.config.Workspace, FormID: id})
+	f, e := read[FormRequest, Form](ctx, c, "form/get", FormRequest{AccID: c.workspace(), FormID: id})
 	if e == nil && (f.ID == nil || *f.ID != id) {
 		return Form{}, errors.New("form result identity mismatch")
 	}
@@ -188,7 +192,7 @@ func (c *Client) ListLayerActors(ctx context.Context, id string, limit, offset i
 	if strings.TrimSpace(id) == "" || len(id) > 255 || limit < 1 || limit > 50 || offset < 0 {
 		return LayerResult{}, errors.New("layerId required, limit 1..50 and offset >=0")
 	}
-	page, e := read[LayerRequest, LayerResult](ctx, c, "graph/layer/actors/list", LayerRequest{AccID: c.config.Workspace, ActorID: id, Limit: limit, Offset: offset, Fields: actorFields})
+	page, e := read[LayerRequest, LayerResult](ctx, c, "graph/layer/actors/list", LayerRequest{AccID: c.workspace(), ActorID: id, Limit: limit, Offset: offset, Fields: actorFields})
 	if e != nil {
 		return page, e
 	}

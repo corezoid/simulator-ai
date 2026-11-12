@@ -14,7 +14,8 @@ func TestAuthorizationConfig(t *testing.T) {
 		return Config{Origin: "http://127.0.0.1:9100", Workspace: "ws", Profile: "console", Authorization: auth}
 	}
 	for _, auth := range []string{"Bearer abc", "Simulator a.b.c", "ApiKey k1"} {
-		if e := base(auth).validate(); e != nil || base(auth).authorization() != auth {
+		c := &Client{config: base(auth)}
+		if got, e := c.authorization(context.Background()); base(auth).validate() != nil || e != nil || got != auth {
 			t.Fatal(auth, e)
 		}
 	}

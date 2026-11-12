@@ -24,7 +24,7 @@ const (
 
 // developTree lists the develop folders and files as slash paths, without sources.
 func (c *Client) developTree(ctx context.Context, appID string, dev int64) ([]SmartFormEntry, error) {
-	r, e := call[structRequest, structWire](ctx, c, "application/struct", structRequest{AccID: c.config.Workspace, ActorID: appID, EnvID: dev,
+	r, e := call[structRequest, structWire](ctx, c, "application/struct", structRequest{AccID: c.workspace(), ActorID: appID, EnvID: dev,
 		Fields: []string{"id", "title", "objType", "type", "sourceHash", "children"}})
 	if e != nil {
 		return nil, e

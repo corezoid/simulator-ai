@@ -69,7 +69,7 @@ func (c *Client) UpdateLayerSettings(ctx context.Context, in LayerSettingsInput)
 	if !validID(in.LayerID) {
 		return LayerSettingsSaved{}, errors.New("layerId required")
 	}
-	ws := c.config.Workspace
+	ws := c.workspace()
 	data := map[string]any{}
 	if in.DefaultFormID != nil {
 		switch id := *in.DefaultFormID; {

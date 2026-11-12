@@ -118,7 +118,7 @@ type pageWire[T any] struct {
 
 // systemFormID looks up a system template of the workspace by its exact title.
 func (c *Client) systemFormID(ctx context.Context, title string) (int64, error) {
-	f, err := call[systemFormRequest, GraphSystemForm](ctx, c, "form/system/get", systemFormRequest{AccID: c.config.Workspace, Title: title})
+	f, err := call[systemFormRequest, GraphSystemForm](ctx, c, "form/system/get", systemFormRequest{AccID: c.workspace(), Title: title})
 	if err != nil {
 		return 0, err
 	}
@@ -153,7 +153,7 @@ func (c *Client) FindSkills(ctx context.Context, in SkillsFindInput) (SkillsFoun
 	if err != nil {
 		return SkillsFound{}, err
 	}
-	page, err := call[actorFilterRequest, pageWire[Skill]](ctx, c, "actor/filter/list", actorFilterRequest{AccID: c.config.Workspace, FormID: formID,
+	page, err := call[actorFilterRequest, pageWire[Skill]](ctx, c, "actor/filter/list", actorFilterRequest{AccID: c.workspace(), FormID: formID,
 		Search: strings.TrimSpace(in.Query), Fields: skillRowFields, Limit: limit, Offset: in.Offset})
 	if err != nil {
 		return SkillsFound{}, err
@@ -177,13 +177,13 @@ func (c *Client) GetSkill(ctx context.Context, in SkillGetInput) (Skill, error) 
 		return Skill{}, errors.New("ref or id required, not both")
 	}
 	if id != "" {
-		return call[actorGetRequest, Skill](ctx, c, "actor/get", actorGetRequest{AccID: c.config.Workspace, ActorID: id, Fields: skillFields})
+		return call[actorGetRequest, Skill](ctx, c, "actor/get", actorGetRequest{AccID: c.workspace(), ActorID: id, Fields: skillFields})
 	}
 	formID, err := c.systemFormID(ctx, "Skills")
 	if err != nil {
 		return Skill{}, err
 	}
-	s, err := call[actorByRefRequest, Skill](ctx, c, "actor/by-ref/get", actorByRefRequest{AccID: c.config.Workspace, FormID: formID, Ref: ref, Fields: skillFields})
+	s, err := call[actorByRefRequest, Skill](ctx, c, "actor/by-ref/get", actorByRefRequest{AccID: c.workspace(), FormID: formID, Ref: ref, Fields: skillFields})
 	var api *APIError
 	if errors.As(err, &api) && api.Reason == "notFound" {
 		return Skill{}, fmt.Errorf("no skill with ref %q that you may see; skills_find lists them: %w", ref, err)
@@ -217,7 +217,7 @@ func (c *Client) FindAgents(ctx context.Context, in AgentsFindInput) (AgentsFoun
 		}
 	}
 	search := func(mode string) (pageWire[Agent], error) {
-		return call[actorSearchParams, pageWire[Agent]](ctx, c, "actor/search/list", actorSearchParams{AccID: c.config.Workspace, Query: query,
+		return call[actorSearchParams, pageWire[Agent]](ctx, c, "actor/search/list", actorSearchParams{AccID: c.workspace(), Query: query,
 			SearchType: mode, FormID: formID, Fields: agentRowFields, With: withAvatar, Limit: limit, Offset: in.Offset})
 	}
 	mode := in.SearchType
@@ -236,13 +236,13 @@ func (c *Client) FindAgents(ctx context.Context, in AgentsFindInput) (AgentsFoun
 
 func (c *Client) listAgents(ctx context.Context, formID, limit, offset int64) (AgentsFound, error) {
 	if formID == 0 {
-		page, err := call[userListParams, pageWire[Member]](ctx, c, "user/list", userListParams{AccID: c.config.Workspace, Limit: limit, Offset: offset})
+		page, err := call[userListParams, pageWire[Member]](ctx, c, "user/list", userListParams{AccID: c.workspace(), Limit: limit, Offset: offset})
 		if err != nil {
 			return AgentsFound{}, err
 		}
 		return AgentsFound{Members: page.List, HasMore: int64(len(page.List)) == limit}, nil
 	}
-	page, err := call[actorFilterRequest, pageWire[Agent]](ctx, c, "actor/filter/list", actorFilterRequest{AccID: c.config.Workspace, FormID: formID,
+	page, err := call[actorFilterRequest, pageWire[Agent]](ctx, c, "actor/filter/list", actorFilterRequest{AccID: c.workspace(), FormID: formID,
 		Fields: agentRowFields, With: withAvatar, Limit: limit, Offset: offset})
 	if err != nil {
 		return AgentsFound{}, err
@@ -260,10 +260,10 @@ func (c *Client) GetAgent(ctx context.Context, in AgentGetInput) (Agent, error) 
 		return Agent{}, errors.New("userId or actorId required, not both")
 	}
 	if id != "" {
-		return call[actorGetRequest, Agent](ctx, c, "actor/get", actorGetRequest{AccID: c.config.Workspace, ActorID: id, Fields: agentFields, With: withAvatar})
+		return call[actorGetRequest, Agent](ctx, c, "actor/get", actorGetRequest{AccID: c.workspace(), ActorID: id, Fields: agentFields, With: withAvatar})
 	}
 	user := strconv.FormatInt(in.UserID, 10)
-	a, err := call[systemActorRequest, Agent](ctx, c, "actor/by-system_obj/get", systemActorRequest{AccID: c.config.Workspace, ObjType: "user",
+	a, err := call[systemActorRequest, Agent](ctx, c, "actor/by-system_obj/get", systemActorRequest{AccID: c.workspace(), ObjType: "user",
 		ObjID: user, Fields: agentFields})
 	var api *APIError
 	if errors.As(err, &api) && api.Reason == "notFound" {

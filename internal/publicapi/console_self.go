@@ -22,8 +22,12 @@ type tokenUser struct {
 }
 
 // credentialUser is the user a Simulator JWT names; ok false for any other credential.
-func (c *Client) credentialUser() (tokenUser, bool) {
-	scheme, token, found := strings.Cut(c.config.Authorization, " ")
+func (c *Client) credentialUser(ctx context.Context) (tokenUser, bool) {
+	header := c.config.Authorization
+	if c.CredentialMode() == "login" {
+		header, _ = c.config.Account.Authorization(ctx)
+	}
+	scheme, token, found := strings.Cut(header, " ")
 	if !found || scheme != "Simulator" {
 		return tokenUser{}, false
 	}
@@ -68,12 +72,12 @@ type caller struct {
 // differs is refused. user/list needs the viewUsers permission, which an ordinary member lacks: on
 // accessDenied, and with any other credential, the argument is taken as it is, untrusted.
 func (c *Client) selfUserID(ctx context.Context, claimed int64) (caller, error) {
-	user, ok := c.credentialUser()
+	user, ok := c.credentialUser(ctx)
 	if !ok {
 		return caller{ID: claimed}, nil
 	}
 	find := func(query string, offset int) (int64, int, error) {
-		params := map[string]any{"accId": c.config.Workspace, "limit": 200, "offset": offset}
+		params := map[string]any{"accId": c.workspace(), "limit": 200, "offset": offset}
 		if query != "" {
 			params["query"] = query
 		}
@@ -123,7 +127,7 @@ func (c *Client) isParticipant(ctx context.Context, actorID string, who caller) 
 			UserID int64 `json:"userId"`
 			SAID   int64 `json:"saId"`
 		} `json:"list"`
-	}](ctx, c, "access_rule/actor/list", map[string]any{"accId": c.config.Workspace, "actorId": actorID})
+	}](ctx, c, "access_rule/actor/list", map[string]any{"accId": c.workspace(), "actorId": actorID})
 	if err != nil {
 		return false, fmt.Errorf("access_rule/actor/list: %w", err)
 	}

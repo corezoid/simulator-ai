@@ -32,7 +32,7 @@ func (c *Client) ListFlowchartBlocks(ctx context.Context, in FlowchartBlocksInpu
 	if len(in.BlockIDs) > 100 || utf8.RuneCountInString(in.Query) > 200 || in.Offset < 0 {
 		return GraphCatalog{}, errors.New("at most 100 blockIds and a query up to 200 characters")
 	}
-	wire, e := call[flowchartSearchRequest, graphCatalogWire](ctx, c, "form/flowchart-block/search", flowchartSearchRequest{AccID: c.config.Workspace,
+	wire, e := call[flowchartSearchRequest, graphCatalogWire](ctx, c, "form/flowchart-block/search", flowchartSearchRequest{AccID: c.workspace(),
 		Query: strings.TrimSpace(in.Query), BlockIDs: in.BlockIDs, Limit: 100, Offset: in.Offset})
 	if e != nil {
 		return GraphCatalog{}, e

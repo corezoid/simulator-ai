@@ -28,7 +28,18 @@ type LayerArgs struct {
 	Offset  int64  `json:"offset,omitempty"`
 }
 
+// New builds the profile's catalog; a process that may sign in as a person (see Client.Account)
+// also gets login, logout, whoami, workspaces_list and workspace_set. Actor-bound profiles keep
+// their single tool.
 func New(c *publicapi.Client) *server.MCPServer {
+	s := build(c)
+	if c.Account() != nil && !c.ReactionActorBound() && !c.LayerStatsActorBound() {
+		addAccount(s, c)
+	}
+	return s
+}
+
+func build(c *publicapi.Client) *server.MCPServer {
 	s := server.NewMCPServer("simulator-ai", Version, server.WithToolCapabilities(false), server.WithInputSchemaValidation(), server.WithRecovery())
 	if c.ReactionActorBound() {
 		addReactionReads(s, c)

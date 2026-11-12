@@ -47,7 +47,7 @@ func (c *Client) CreateAccountPair(ctx context.Context, in AccountPairInput) (Ac
 	if strings.TrimSpace(in.AccountName) == "" || utf8.RuneCountInString(in.AccountName) > 255 || strings.TrimSpace(in.CurrencyName) == "" || utf8.RuneCountInString(in.CurrencyName) > 255 {
 		return AccountPair{}, errors.New("an accountName and a currencyName of 1..255 characters required")
 	}
-	ws := c.config.Workspace
+	ws := c.workspace()
 	nameID, err := lookup[string](ctx, c, "account_name/list", in.AccountName)
 	if err != nil {
 		return AccountPair{}, fmt.Errorf("account_name/list: %w", err)
@@ -119,7 +119,7 @@ type named struct {
 func lookup[ID comparable](ctx context.Context, c *Client, method, name string) (ID, error) {
 	var none, folded ID
 	for offset := 0; offset < 1000; offset += 100 {
-		page, err := call[map[string]any, dictionaryEntry[ID]](ctx, c, method, map[string]any{"accId": c.config.Workspace, "query": name, "limit": 100, "offset": offset})
+		page, err := call[map[string]any, dictionaryEntry[ID]](ctx, c, method, map[string]any{"accId": c.workspace(), "query": name, "limit": 100, "offset": offset})
 		if err != nil {
 			return none, err
 		}

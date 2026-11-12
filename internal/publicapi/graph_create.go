@@ -53,7 +53,7 @@ func graphCreateCall[P, R any](ctx context.Context, c *Client, method string, p 
 			return zero, err
 		}
 	}
-	result, err := call[graphRequest[P], R](ctx, c, method, graphRequest[P]{AccID: c.config.Workspace, Input: p})
+	result, err := call[graphRequest[P], R](ctx, c, method, graphRequest[P]{AccID: c.workspace(), Input: p})
 	if err != nil && write {
 		return zero, &WriteError{Cause: err}
 	}

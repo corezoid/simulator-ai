@@ -88,7 +88,7 @@ func (c *Client) OpenAccount(ctx context.Context, in AccountOpenInput) (Accounts
 	if err != nil {
 		return AccountsOpened{}, err
 	}
-	ws := c.config.Workspace
+	ws := c.workspace()
 	base := map[string]any{"accId": ws, "nameId": pair.NameID, "currencyId": pair.CurrencyID}
 	open := func(accountType string, limits bool) map[string]any {
 		p := map[string]any{"accId": ws, "actorId": in.ActorID, "nameId": pair.NameID, "currencyId": pair.CurrencyID, "accountType": accountType, "ignoreIfExist": true}
@@ -199,7 +199,7 @@ func (c *Client) BindFormAccount(ctx context.Context, in FormAccountInput) (Form
 	if err != nil {
 		return FormAccountBound{}, err
 	}
-	ws := c.config.Workspace
+	ws := c.workspace()
 	out := FormAccountBound{FormID: in.FormID, NameID: pair.NameID, CurrencyID: pair.CurrencyID}
 	bound, err := call[map[string]any, struct {
 		List []named `json:"list"`
@@ -240,7 +240,7 @@ func (c *Client) openOnExisting(ctx context.Context, in FormAccountInput, pair A
 			List []struct {
 				ID string `json:"id"`
 			} `json:"list"`
-		}](ctx, c, "actor/filter/list", map[string]any{"accId": c.config.Workspace, "formId": in.FormID, "fields": []string{"id"}, "orderBy": "createdAt", "orderValue": "ASC", "limit": 100, "offset": offset})
+		}](ctx, c, "actor/filter/list", map[string]any{"accId": c.workspace(), "formId": in.FormID, "fields": []string{"id"}, "orderBy": "createdAt", "orderValue": "ASC", "limit": 100, "offset": offset})
 		if err != nil {
 			return fmt.Errorf("actor/filter/list (the binding is saved; repeat with offset %d to open it on existing actors): %w", offset, err)
 		}

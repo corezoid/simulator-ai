@@ -82,7 +82,7 @@ func TestCredentialUserReadsOnlyASimulatorJWT(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, got := c.credentialUser(); got != ok {
+		if _, got := c.credentialUser(context.Background()); got != ok {
 			t.Errorf("%.20s…: %v, want %v", auth, got, ok)
 		}
 	}

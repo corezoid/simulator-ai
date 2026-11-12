@@ -39,7 +39,7 @@ func (c *Client) ListGraphEdgeTypes(ctx context.Context, p GraphEdgeTypesInput) 
 	result := GraphEdgeTypes{List: make([]GraphEdgeType, 0, len(wire.List))}
 	previous := int64(0)
 	for _, item := range wire.List {
-		if item.ID <= previous || strings.TrimSpace(item.Name) == "" || item.AccID != c.config.Workspace || item.IsSystem == nil || item.IsTree == nil || item.CreatedAt == nil || (p.IsSystem != nil && *item.IsSystem != *p.IsSystem) {
+		if item.ID <= previous || strings.TrimSpace(item.Name) == "" || item.AccID != c.workspace() || item.IsSystem == nil || item.IsTree == nil || item.CreatedAt == nil || (p.IsSystem != nil && *item.IsSystem != *p.IsSystem) {
 			return GraphEdgeTypes{}, errors.New("invalid edge type identity, order or filter result")
 		}
 		previous = item.ID

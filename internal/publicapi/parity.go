@@ -112,7 +112,10 @@ func (c *Client) Pass(ctx context.Context, method string, args map[string]json.R
 			params[k] = v
 		}
 	}
-	params["accId"], _ = json.Marshal(c.config.Workspace)
+	// workspace/list takes no workspace; a login that has not chosen one yet must still list them.
+	if ws := c.workspace(); ws != "" || method != "workspace/list" {
+		params["accId"], _ = json.Marshal(ws)
+	}
 	return call[parityParams, json.RawMessage](ctx, c, method, params)
 }
 
@@ -149,7 +152,7 @@ func (c *Client) PassEach(ctx context.Context, method string, items []map[string
 		return nil, errors.New("1..100 items required")
 	}
 	req := batchRequest{List: make([]batchItem, len(items))}
-	workspace, _ := json.Marshal(c.config.Workspace)
+	workspace, _ := json.Marshal(c.workspace())
 	for i, item := range items {
 		params := parityParams{"accId": workspace}
 		for k, v := range item {

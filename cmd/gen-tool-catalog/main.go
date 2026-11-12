@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/corezoid/simulator-ai/internal/auth"
 	"github.com/corezoid/simulator-ai/internal/mcpserver"
 	"github.com/corezoid/simulator-ai/internal/publicapi"
 )
@@ -25,7 +26,10 @@ func generate() ([]byte, error) {
 		if strings.HasSuffix(label, " (bound)") {
 			config.ActorID = "catalog-actor"
 		}
-		if profile == "delegated-read" {
+		if profile != "delegated-read" {
+			// A desktop process (no host Authorization) also lists the account tools.
+			config.Account = auth.NewSession(auth.Options{Origin: config.Origin, ConfigDir: "/nonexistent"})
+		} else {
 			config.APIKey = ""
 			config.DelegatedToken = base64.RawURLEncoding.EncodeToString(make([]byte, 32))
 		}
@@ -54,6 +58,8 @@ func generate() ([]byte, error) {
 	out.WriteString("[Tool guide](tool-reference.md) · [API mappings](api-tools.md) · [Console workflows](console.md)\n\n")
 	out.WriteString("This table comes from the server's actual profile registrations. `read` is the default.\n")
 	out.WriteString("Bound profiles set `SIMULATOR_AI_ACTOR` and expose only the bound actor/layer counter.\n")
+	out.WriteString("Every unbound profile except `delegated-read` also lists the account tools (`login`, `logout`, `whoami`,\n")
+	out.WriteString("`workspaces_list`, `workspace_set`); a host that sets `SIMULATOR_AI_AUTHORIZATION` does not.\n")
 	out.WriteString("Read-only means the MCP annotation is explicitly true; all other tools appear under **May write**.\n")
 	out.WriteString("Annotations do not grant permissions or rule out documented backend maintenance side effects.\n")
 	out.WriteString("A shared tool name can have different inputs and projections across profiles: inspect the running\n")

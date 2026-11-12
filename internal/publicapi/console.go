@@ -90,7 +90,7 @@ func (c *Client) CreateActor(ctx context.Context, in ActorCreateInput) (Actor, e
 	if e != nil {
 		return Actor{}, e
 	}
-	a, e := call[actorCreateRequest, Actor](ctx, c, "actor/create", actorCreateRequest{AccID: c.config.Workspace, FormID: in.FormID,
+	a, e := call[actorCreateRequest, Actor](ctx, c, "actor/create", actorCreateRequest{AccID: c.workspace(), FormID: in.FormID,
 		Title: in.Title, Description: in.Description, Color: in.Color, Data: data, Fields: actorFields})
 	if e == nil && (a.ID == nil || *a.ID == "") {
 		return Actor{}, errors.New("actor/create returned no actor id")

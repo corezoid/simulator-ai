@@ -130,7 +130,7 @@ func (c *Client) CreateActors(ctx context.Context, in ActorsCreateInput) (Create
 		if color == "" {
 			color = RandomActorColor()
 		}
-		req := actorCreateRequest{AccID: c.config.Workspace, FormID: a.FormID, Title: a.Title, Description: a.Description, Color: color, Data: data, Hole: a.Hole, AddToRecent: notRecent, Fields: createdActorFields}
+		req := actorCreateRequest{AccID: c.workspace(), FormID: a.FormID, Title: a.Title, Description: a.Description, Color: color, Data: data, Hole: a.Hole, AddToRecent: notRecent, Fields: createdActorFields}
 		if in.OperationID != "" {
 			req.Ref = BuildRef(in.OperationID, strconv.Itoa(i))
 			refs[i] = actorRef{FormID: a.FormID, Ref: req.Ref}
@@ -198,7 +198,7 @@ type actorRefRequest struct {
 // there only in part was changed since (actors deleted, or other input): it is refused.
 func (c *Client) actorsByRef(ctx context.Context, refs []actorRef) (CreatedActors, bool, error) {
 	get := func(r actorRef) actorRefRequest {
-		return actorRefRequest{AccID: c.config.Workspace, actorRef: r, Fields: createdActorFields}
+		return actorRefRequest{AccID: c.workspace(), actorRef: r, Fields: createdActorFields}
 	}
 	first, err := call[actorRefRequest, CreatedActor](ctx, c, "actor/by-ref/get", get(refs[0]))
 	if err != nil {
@@ -249,13 +249,13 @@ func (c *Client) CreateEdges(ctx context.Context, in EdgesCreateInput) (CreatedE
 		}
 		id, ok := types[name]
 		if !ok {
-			t, err := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.config.Workspace, Name: name})
+			t, err := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.workspace(), Name: name})
 			if err != nil {
 				return CreatedEdges{}, fmt.Errorf("edge type %q: %w", name, err)
 			}
 			id, types[name] = t.ID, t.ID
 		}
-		params[i] = edgeCreateRequest{AccID: c.config.Workspace, Source: e.Source, Target: e.Target, EdgeTypeID: id, Name: e.Name, CurveStyle: e.CurveStyle, Hole: e.Hole, ForceDirection: true}
+		params[i] = edgeCreateRequest{AccID: c.workspace(), Source: e.Source, Target: e.Target, EdgeTypeID: id, Name: e.Name, CurveStyle: e.CurveStyle, Hole: e.Hole, ForceDirection: true}
 	}
 	results, err := c.atomic(ctx, "edge/create", params)
 	if err != nil {

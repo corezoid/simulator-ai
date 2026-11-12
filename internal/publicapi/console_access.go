@@ -76,7 +76,7 @@ func (c *Client) AccessRules(ctx context.Context, o AccessObject) (json.RawMessa
 	if e := consoleOnly(c); e != nil {
 		return nil, e
 	}
-	family, params, err := o.target(c.config.Workspace)
+	family, params, err := o.target(c.workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (c *Client) SaveAccessRules(ctx context.Context, in AccessRulesSaveInput) (
 	if e := consoleOnly(c); e != nil {
 		return nil, e
 	}
-	family, params, err := in.target(c.config.Workspace)
+	family, params, err := in.target(c.workspace())
 	if err != nil {
 		return nil, err
 	}

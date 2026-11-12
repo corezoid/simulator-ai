@@ -43,7 +43,7 @@ type appFileGetRequest struct {
 
 // appFile reads one develop file with its source and current sourceHash.
 func (c *Client) appFile(ctx context.Context, appID string, id int64) (File, error) {
-	f, e := call[appFileGetRequest, File](ctx, c, "app_file/get", appFileGetRequest{AccID: c.config.Workspace, ActorID: appID, FileID: id})
+	f, e := call[appFileGetRequest, File](ctx, c, "app_file/get", appFileGetRequest{AccID: c.workspace(), ActorID: appID, FileID: id})
 	if e == nil && f.ID != id {
 		e = errors.New("app_file/get returned another file")
 	}

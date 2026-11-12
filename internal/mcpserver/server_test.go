@@ -90,7 +90,7 @@ func runScriptedProfile(t *testing.T, profile string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	child := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestStdioChild$")
-	child.Env = append(os.Environ(), "SIMULATOR_AI_TEST_CHILD=1", "SIMULATOR_AI_ORIGIN="+api.URL, "SIMULATOR_AI_WORKSPACE=workspace-a", "SIMULATOR_AI_API_KEY="+key, "SIMULATOR_AI_PROFILE="+profile, "SIMULATOR_AI_DELEGATED_TOKEN="+token, "SIMULATOR_AI_ACTOR=")
+	child.Env = append(os.Environ(), "SIMULATOR_AI_TEST_CHILD=1", "SIMULATOR_AI_ORIGIN="+api.URL, "SIMULATOR_AI_WORKSPACE=workspace-a", "SIMULATOR_AI_API_KEY="+key, "SIMULATOR_AI_PROFILE="+profile, "SIMULATOR_AI_DELEGATED_TOKEN="+token, "SIMULATOR_AI_ACTOR=", "SIMULATOR_AI_CONFIG_DIR="+t.TempDir())
 	in, e := child.StdinPipe()
 	if e != nil {
 		t.Fatal(e)
@@ -147,8 +147,10 @@ func runScriptedProfile(t *testing.T, profile string) {
 		t.Fatal(e)
 	}
 	wanted := []string{"actor_get", "form_get"}
+	account := map[string]bool{"login": true, "logout": true, "workspace_set": true}
 	if !delegated {
-		wanted = append(wanted, "layer_actors_list")
+		// An API-key process also lists the account tools; login explains that it is disabled.
+		wanted = append(wanted, "layer_actors_list", "login", "logout", "whoami", "workspaces_list", "workspace_set")
 	}
 	if profile == "graph-read" || profile == "graph-create" {
 		wanted = append(wanted, "graph_elements_get", "flowchart_blocks_search", "graph_system_form_get", "graph_edge_types_list", "graph_layer_stats_get")
@@ -173,6 +175,13 @@ func runScriptedProfile(t *testing.T, profile string) {
 	for _, tool := range result.Tools {
 		seen[tool.Name] = true
 		write := profile == "graph-create" && strings.HasSuffix(tool.Name, "_create")
+		if account[tool.Name] {
+			// Local sign-in state only: not read-only, never destructive.
+			if tool.Annotations.ReadOnly || tool.Annotations.Destructive {
+				t.Fatal("unsafe account annotations")
+			}
+			continue
+		}
 		if tool.Annotations.ReadOnly == write || tool.Annotations.Destructive != write {
 			t.Fatal("unsafe annotations")
 		}

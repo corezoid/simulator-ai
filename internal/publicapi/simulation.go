@@ -55,14 +55,14 @@ type SimulationAccount struct {
 
 // SimulationNodes reads every node placement of a layer with each actor's data and template title.
 func (c *Client) SimulationNodes(ctx context.Context, layerID string) ([]SimulationNode, error) {
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID,
+	q := layerPageRequest{AccID: c.workspace(), ActorID: layerID,
 		Fields: []string{"id", "title", "formId", "data"}, With: []string{"formTitle"}}
 	return allLayerPages[SimulationNode](ctx, c, "graph/layer/actors/list", "node", q)
 }
 
 // SimulationEdges reads every edge placement of a layer.
 func (c *Client) SimulationEdges(ctx context.Context, layerID string) ([]SimulationEdge, error) {
-	q := layerPageRequest{AccID: c.config.Workspace, ActorID: layerID}
+	q := layerPageRequest{AccID: c.workspace(), ActorID: layerID}
 	return allLayerPages[SimulationEdge](ctx, c, "graph/layer/edges/list", "edge", q)
 }
 
@@ -79,7 +79,7 @@ func (c *Client) EdgeTypeNames(ctx context.Context) (map[int64]string, error) {
 		return nil, errors.New("edge_type/list is not available in this profile")
 	}
 	out := map[int64]string{}
-	q := edgeTypesRequest{AccID: c.config.Workspace, Limit: 1000}
+	q := edgeTypesRequest{AccID: c.workspace(), Limit: 1000}
 	for page := 0; page < maxLayerPages; page++ {
 		types, err := call[edgeTypesRequest, graphEdgeTypesWire](ctx, c, "edge_type/list", q)
 		if err != nil {
@@ -117,7 +117,7 @@ func (c *Client) SimulationAccounts(ctx context.Context, actorID string, from, t
 		return nil, errors.New("actorId required")
 	}
 	out := []SimulationAccount{}
-	q := simulationAccountsRequest{AccID: c.config.Workspace, ActorID: actorID, AccountType: "fact",
+	q := simulationAccountsRequest{AccID: c.workspace(), ActorID: actorID, AccountType: "fact",
 		With: []string{"meta"}, From: from, To: to, Limit: 100}
 	for page := 0; page < maxLayerPages; page++ {
 		rows, err := call[simulationAccountsRequest, listWire[SimulationAccount]](ctx, c, "account_actor/list", q)
@@ -134,4 +134,4 @@ func (c *Client) SimulationAccounts(ctx context.Context, actorID string, from, t
 }
 
 // Workspace is the configured workspace (accId) every call works in.
-func (c *Client) Workspace() string { return c.config.Workspace }
+func (c *Client) Workspace() string { return c.workspace() }

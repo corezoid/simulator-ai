@@ -54,7 +54,7 @@ const totalsTimeout = 2 * time.Second
 func (c *Client) layerTotals(ctx context.Context, layerID string) *LayerTotals {
 	ctx, cancel := context.WithTimeout(ctx, totalsTimeout)
 	defer cancel()
-	w, err := call[layerStatsRequest, layerStatsWire](ctx, c, "graph/layer/stats/get", layerStatsRequest{AccID: c.config.Workspace, ActorID: layerID})
+	w, err := call[layerStatsRequest, layerStatsWire](ctx, c, "graph/layer/stats/get", layerStatsRequest{AccID: c.workspace(), ActorID: layerID})
 	if err != nil || w.Nodes == nil || w.Edges == nil {
 		return nil
 	}

@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+- Sign in as yourself, without an API key: with no host credential the server starts in login mode, and `login`
+  opens the SuperAdmin page in the browser (OAuth2 PKCE, the legacy plugin's public client), `workspaces_list` and
+  `workspace_set` choose the workspace, `whoami` and `logout` complete the set. The session and the chosen workspace
+  are kept per API origin in `~/.config/simulator-ai/credentials.json` (0600) and renewed with a refresh token when
+  SuperAdmin issues one. `SIMULATOR_AI_API_KEY` / `SIMULATOR_AI_AUTHORIZATION` / `SIMULATOR_AI_DELEGATED_TOKEN` and
+  `SIMULATOR_AI_WORKSPACE` keep precedence, and a host Authorization process (AI Console) gets no new tools.
+  `SIMULATOR_AI_ORIGIN` defaults to `https://mw.simulator.company`; new optional `SIMULATOR_AI_ACCOUNT_URL`,
+  `SIMULATOR_AI_OAUTH_CLIENT_ID` and `SIMULATOR_AI_CONFIG_DIR`. `make client-smoke` gains `-profile login`.
+
 - Go 1.27.4 (`go.mod`) for GO-2026-6859 in `net/http`; a source build needs Go 1.27.4 or a toolchain download.
 - Build and edit large multi-page Smart Forms from the AI Console. `smart_form_files_get` answers at most 40,000
   characters of sources (files past that come without `source` and a `note`; one long file is cut with `next` and read

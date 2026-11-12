@@ -114,7 +114,7 @@ func (c *Client) UpdateChart(ctx context.Context, in ChartUpdateInput) (ChartUpd
 		return out, err
 	}
 	settings := chartLayerSettings{ExpandType: "chart", Expand: in.Expand == nil || *in.Expand, Width: in.Width, Height: in.Height}
-	if _, err = call[actorSettingsRequest, json.RawMessage](ctx, c, "graph/layer/actor_settings/save", actorSettingsRequest{AccID: c.config.Workspace,
+	if _, err = call[actorSettingsRequest, json.RawMessage](ctx, c, "graph/layer/actor_settings/save", actorSettingsRequest{AccID: c.workspace(),
 		ActorID: in.LayerID, LaActorID: in.LaID, LayerSettings: settings}); err != nil {
 		switch {
 		case in.changesSource() && out.FilterActorID != "":
@@ -130,7 +130,7 @@ func (c *Client) UpdateChart(ctx context.Context, in ChartUpdateInput) (ChartUpd
 
 // checkChartPlacement makes sure laId on layerId draws this chart, not another actor.
 func (c *Client) checkChartPlacement(ctx context.Context, in ChartUpdateInput) error {
-	r, err := call[layerElementsRequest, layerElementsWire](ctx, c, "graph/layer/elements/list", layerElementsRequest{AccID: c.config.Workspace,
+	r, err := call[layerElementsRequest, layerElementsWire](ctx, c, "graph/layer/elements/list", layerElementsRequest{AccID: c.workspace(),
 		ActorID: in.LayerID, Nodes: []int64{in.LaID}, Fields: []string{"id"}})
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func (c *Client) updateChartSource(ctx context.Context, in ChartUpdateInput, cha
 		}
 		setJSON(p.keys, "dynamicSource", p.dynamicSource(p.filterID, p.filterTitle, *p.newFilter))
 	}
-	if _, err = call[actorDataUpdate, json.RawMessage](ctx, c, "actor/update", actorDataUpdate{AccID: c.config.Workspace, ActorID: in.ChartID,
+	if _, err = call[actorDataUpdate, json.RawMessage](ctx, c, "actor/update", actorDataUpdate{AccID: c.workspace(), ActorID: in.ChartID,
 		Data: sourceData(p.keys), Fields: []string{"id"}}); err != nil {
 		if p.newFilter != nil {
 			err = orphan(err, "ActorFilters actor", p.filterID)
