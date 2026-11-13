@@ -34,5 +34,8 @@ A hidden reaction is an executors' note: a reply to one (`parentId`) is always h
 `hidden` says, and only a user who reads the note may answer it — anyone else gets "Parent actor
 not found". Do not try to show such a reply with `reaction_update {hidden: false}` (it fails with
 `notAllowed`). A hidden reaction never reaches a live meeting transcript, and hiding a transcribed
-one takes its line out.
+one takes its line out. A reply can still be visible while the reaction it answers is hidden (it
+predates that rule, or its parent was hidden later): `reactions_list` with `with: ["parentActor"]`
+then leaves `parentActor` out for a user without execute, and `parentId` alone names the parent —
+do not guess or look up its text another way.
 Pinned reactions are unsupported.
