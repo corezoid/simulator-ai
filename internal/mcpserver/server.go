@@ -85,6 +85,7 @@ func build(c *publicapi.Client) *server.MCPServer {
 		addSimulation(s, c)
 		addConsoleCharts(s, c)
 		addDashboard(s, c)
+		addLayerCollapse(s, c)
 		tagGroups(s)
 		if c.ConsoleCore() {
 			keepConsoleCore(s)
@@ -133,6 +134,9 @@ func build(c *publicapi.Client) *server.MCPServer {
 		addGraphEngines(s, c)
 		if c.DashboardReadsEnabled() {
 			addDashboard(s, c)
+		}
+		if c.CollapseReadsEnabled() {
+			addLayerCollapse(s, c)
 		}
 	}
 	if c.ReactionReadsEnabled() {

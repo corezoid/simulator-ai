@@ -1,0 +1,1194 @@
+{
+  "methods": [
+    {
+      "name": "graph/layer/collapse/children",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Layer actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "laId",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "Placement identifier (laId) of the fan parent",
+            "minimum": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "maxVisibleChildren",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "The layer's limit of direct children shown per actor — the ranks the fan shows and this list skips; linked children are never listed",
+            "minimum": 1,
+            "maximum": 200,
+            "x-validation-rules": [
+              "required",
+              "min=1",
+              "max=200"
+            ]
+          }
+        },
+        {
+          "name": "exclude",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Children (laId) the viewer has already shown",
+            "x-validation-rules": [
+              "max=500",
+              "dive",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string",
+            "description": "Case-insensitive substring of the child actor title",
+            "maxLength": 200,
+            "x-validation-rules": [
+              "max=200"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "type": "integer",
+            "description": "Page size, 10 by default",
+            "minimum": 1,
+            "maximum": 50,
+            "x-validation-rules": [
+              "min=1",
+              "max=50"
+            ]
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "type": "integer",
+            "description": "Rows to skip",
+            "minimum": 0,
+            "x-validation-rules": [
+              "min=0"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "hasMore": {
+              "type": "boolean",
+              "description": "More hidden children follow this page"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "accessDenied": {
+                    "type": "boolean",
+                    "description": "The viewer may not see this actor; actor is absent"
+                  },
+                  "actor": {
+                    "type": "object",
+                    "properties": {
+                      "color": {
+                        "type": "string",
+                        "description": "Actor color"
+                      },
+                      "formId": {
+                        "type": "integer",
+                        "description": "Template (form) identifier of the actor"
+                      },
+                      "id": {
+                        "type": "string",
+                        "description": "Actor identifier"
+                      },
+                      "picture": {
+                        "type": "string",
+                        "description": "Actor picture"
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "Actor title"
+                      }
+                    },
+                    "description": "The child actor"
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of the child"
+                  }
+                }
+              },
+              "description": "Hidden children, in fan rank order"
+            }
+          }
+        }
+      },
+      "x-audience": "public",
+      "x-scope": "actors.readonly"
+    },
+    {
+      "name": "graph/layer/collapse/count",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Layer actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "laId",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "description": "Placement identifier (laId) of the actor to collapse",
+            "minimum": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "condition",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "accountNameId": {
+                "type": "string",
+                "description": "Account name whose balance amountFrom/amountTo bound",
+                "minLength": 1,
+                "x-validation-rules": [
+                  "min=1"
+                ]
+              },
+              "amountFrom": {
+                "type": "number",
+                "description": "Lower bound (inclusive) on the account balance"
+              },
+              "amountTo": {
+                "type": "number",
+                "description": "Upper bound (inclusive) on the account balance"
+              },
+              "currencyId": {
+                "type": "integer",
+                "description": "Currency of the bounded account",
+                "minimum": 1,
+                "x-validation-rules": [
+                  "min=1"
+                ]
+              },
+              "formId": {
+                "type": "integer",
+                "description": "Account template the matching children carry",
+                "minimum": 1,
+                "x-validation-rules": [
+                  "required",
+                  "min=1"
+                ]
+              },
+              "incomeType": {
+                "type": "string",
+                "description": "Bound one side of the account; omitted bounds the signed balance (credit minus debit)",
+                "enum": [
+                  "credit",
+                  "debit"
+                ],
+                "x-validation-rules": [
+                  "oneof=credit debit"
+                ]
+              },
+              "q": {
+                "type": "string",
+                "description": "Condition on the children's template field values, in the saved actor-filter grammar: key=value terms joined by \u0026 (and), groups joined by || (or); operators = != \u003c \u003c= \u003e \u003e=",
+                "maxLength": 10000,
+                "x-validation-rules": [
+                  "max=10000"
+                ]
+              }
+            },
+            "required": [
+              "formId"
+            ],
+            "description": "Which direct children would fold: the actors of formId that q and the balance bounds select",
+            "x-validation-rules": [
+              "required"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "capped": {
+              "type": "boolean",
+              "description": "Present (true) only when the children exceed one read (the maxSkeletonNodes setting); both numbers then cover only the part that was read"
+            },
+            "childCount": {
+              "type": "integer",
+              "description": "Distinct direct children of the placement on the layer"
+            },
+            "count": {
+              "type": "integer",
+              "description": "Direct children the condition matches"
+            }
+          }
+        }
+      },
+      "x-audience": "public",
+      "x-scope": "actors.readonly"
+    },
+    {
+      "name": "graph/layer/collapse/resolve",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Layer actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "roots",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Placement identifiers (laId) of the actors collapsed whole, [] when only conditional ones are; placements not on the layer are reported in unknownRoots. Together with conditional at least 1 and at most 500, unless maxVisibleChildren is given",
+            "x-validation-rules": [
+              "required_without=MaxVisibleChildren",
+              "omitnil",
+              "max=500",
+              "dive",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "conditional",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "condition": {
+                  "type": "object",
+                  "properties": {
+                    "accountNameId": {
+                      "type": "string",
+                      "description": "Account name whose balance amountFrom/amountTo bound",
+                      "minLength": 1,
+                      "x-validation-rules": [
+                        "min=1"
+                      ]
+                    },
+                    "amountFrom": {
+                      "type": "number",
+                      "description": "Lower bound (inclusive) on the account balance"
+                    },
+                    "amountTo": {
+                      "type": "number",
+                      "description": "Upper bound (inclusive) on the account balance"
+                    },
+                    "currencyId": {
+                      "type": "integer",
+                      "description": "Currency of the bounded account",
+                      "minimum": 1,
+                      "x-validation-rules": [
+                        "min=1"
+                      ]
+                    },
+                    "formId": {
+                      "type": "integer",
+                      "description": "Account template the matching children carry",
+                      "minimum": 1,
+                      "x-validation-rules": [
+                        "required",
+                        "min=1"
+                      ]
+                    },
+                    "incomeType": {
+                      "type": "string",
+                      "description": "Bound one side of the account; omitted bounds the signed balance (credit minus debit)",
+                      "enum": [
+                        "credit",
+                        "debit"
+                      ],
+                      "x-validation-rules": [
+                        "oneof=credit debit"
+                      ]
+                    },
+                    "q": {
+                      "type": "string",
+                      "description": "Condition on the children's template field values, in the saved actor-filter grammar: key=value terms joined by \u0026 (and), groups joined by || (or); operators = != \u003c \u003c= \u003e \u003e=",
+                      "maxLength": 10000,
+                      "x-validation-rules": [
+                        "max=10000"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "formId"
+                  ],
+                  "description": "Which direct children fold: the actors of formId that q and the balance bounds select",
+                  "x-validation-rules": [
+                    "required"
+                  ]
+                },
+                "laId": {
+                  "type": "integer",
+                  "description": "Placement identifier (laId) of the collapsed actor",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "required",
+                    "min=1"
+                  ]
+                }
+              },
+              "required": [
+                "laId",
+                "condition"
+              ]
+            },
+            "description": "Actors collapsed by condition: only the direct children the condition matches fold, each with its subtree; the other children stay visible",
+            "x-validation-rules": [
+              "max=100",
+              "dive"
+            ]
+          }
+        },
+        {
+          "name": "maxVisibleChildren",
+          "schema": {
+            "type": "integer",
+            "description": "The layer's limit of direct children shown per actor; an actor with more shows the first ones (the viewer's own children ordering, then children linked elsewhere, then nearest) and folds the bare leaves past it; a child linked anywhere besides its parent never folds",
+            "minimum": 1,
+            "maximum": 200,
+            "x-validation-rules": [
+              "min=1",
+              "max=200"
+            ]
+          }
+        },
+        {
+          "name": "zone",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "x1": {
+                "type": "number",
+                "description": "Left boundary in graph units"
+              },
+              "x2": {
+                "type": "number",
+                "description": "Right boundary in graph units"
+              },
+              "y1": {
+                "type": "number",
+                "description": "Top boundary in graph units"
+              },
+              "y2": {
+                "type": "number",
+                "description": "Bottom boundary in graph units"
+              }
+            },
+            "description": "Where to look for wide fans, in graph units: the placements in the zone and their parents. Required with maxVisibleChildren",
+            "x-validation-rules": [
+              "required_with=MaxVisibleChildren"
+            ]
+          }
+        },
+        {
+          "name": "fanOpen",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Fan parents (laId) the viewer opened whole: they fold nothing",
+            "x-validation-rules": [
+              "max=500",
+              "dive",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "fanShown",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "children": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "Placement identifiers (laId) of the children shown",
+                  "x-validation-rules": [
+                    "required",
+                    "min=1",
+                    "max=500",
+                    "dive",
+                    "min=1"
+                  ]
+                },
+                "laId": {
+                  "type": "integer",
+                  "description": "Placement identifier (laId) of the fan parent",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "required",
+                    "min=1"
+                  ]
+                }
+              },
+              "required": [
+                "laId",
+                "children"
+              ]
+            },
+            "description": "Children the viewer showed one by one, per fan parent: they stay visible",
+            "x-validation-rules": [
+              "max=500",
+              "dive"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "fans": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "centroid": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number",
+                        "description": "Horizontal position in graph units"
+                      },
+                      "y": {
+                        "type": "number",
+                        "description": "Vertical position in graph units"
+                      }
+                    },
+                    "description": "Mean position of the folded bare leaves, in graph units"
+                  },
+                  "childCount": {
+                    "type": "integer",
+                    "description": "Distinct direct children of the parent on the layer"
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of the fan parent"
+                  },
+                  "shown": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "The children the fan shows: every child linked besides this parent plus bare leaves up to maxVisibleChildren in all, without the ones the viewer showed"
+                  }
+                }
+              },
+              "description": "The wide fans the zone touches, ordered by laId; empty without maxVisibleChildren"
+            },
+            "hidden": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fan": {
+                    "type": "boolean",
+                    "description": "True when a wide fan folds this placement rather than a collapsed actor"
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of a hidden actor"
+                  },
+                  "root": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of the nearest visible collapsed actor this placement is folded into; with fan, of the fan parent"
+                  },
+                  "via": {
+                    "type": "integer",
+                    "description": "With fan: the fan parent's own child this placement hangs under (itself for a child) — what to show to bring it back"
+                  }
+                }
+              },
+              "description": "Hidden actor placements, ordered by laId"
+            },
+            "roots": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "childCount": {
+                    "type": "integer",
+                    "description": "Distinct direct children of the collapsed actor on the layer"
+                  },
+                  "conditional": {
+                    "type": "boolean",
+                    "description": "True for an actor collapsed by condition"
+                  },
+                  "hiddenCount": {
+                    "type": "integer",
+                    "description": "Placements this collapsed actor folds: every hidden placement it reaches through hidden ones, a child shared with another collapsed actor counted under both (0 for a hidden one)"
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of the collapsed actor"
+                  },
+                  "matchedChildCount": {
+                    "type": "integer",
+                    "description": "Direct children the actor folds: those its condition matched, or every child when it is collapsed whole"
+                  },
+                  "sharedVisibleCount": {
+                    "type": "integer",
+                    "description": "Placements below this actor that stay visible because a parent outside the collapsed branches still holds them"
+                  },
+                  "visible": {
+                    "type": "boolean",
+                    "description": "False when another collapsed actor hides this one"
+                  }
+                }
+              },
+              "description": "One entry per requested placement that is on the layer, in request order: roots first, then conditional (a placement in both is collapsed whole)"
+            },
+            "truncated": {
+              "type": "boolean",
+              "description": "True when the collapsed branches exceed one read (the maxSkeletonNodes setting); hidden then covers only the part that was read"
+            },
+            "unknownRoots": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Requested placements that are not on the layer (removed or never there); empty when all were found"
+            }
+          }
+        }
+      },
+      "x-audience": "public",
+      "x-scope": "actors.readonly"
+    },
+    {
+      "name": "graph/layer/collapse/state/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Layer actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "conditional": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "type": "object",
+                    "properties": {
+                      "accountNameId": {
+                        "type": "string",
+                        "description": "Account name whose balance amountFrom/amountTo bound",
+                        "minLength": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      },
+                      "amountFrom": {
+                        "type": "number",
+                        "description": "Lower bound (inclusive) on the account balance"
+                      },
+                      "amountTo": {
+                        "type": "number",
+                        "description": "Upper bound (inclusive) on the account balance"
+                      },
+                      "currencyId": {
+                        "type": "integer",
+                        "description": "Currency of the bounded account",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      },
+                      "formId": {
+                        "type": "integer",
+                        "description": "Account template the matching children carry",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "required",
+                          "min=1"
+                        ]
+                      },
+                      "incomeType": {
+                        "type": "string",
+                        "description": "Bound one side of the account; omitted bounds the signed balance (credit minus debit)",
+                        "enum": [
+                          "credit",
+                          "debit"
+                        ],
+                        "x-validation-rules": [
+                          "oneof=credit debit"
+                        ]
+                      },
+                      "q": {
+                        "type": "string",
+                        "description": "Condition on the children's template field values, in the saved actor-filter grammar: key=value terms joined by \u0026 (and), groups joined by || (or); operators = != \u003c \u003c= \u003e \u003e=",
+                        "maxLength": 10000,
+                        "x-validation-rules": [
+                          "max=10000"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "formId"
+                    ],
+                    "description": "Which direct children fold: the actors of formId that q and the balance bounds select",
+                    "x-validation-rules": [
+                      "required"
+                    ]
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of the actor collapsed by condition",
+                    "minimum": 1,
+                    "x-validation-rules": [
+                      "required",
+                      "min=1"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string",
+                    "description": "The words the fold is shown with in the Graph Editor (its badge tooltip), e.g. \"Order: Stage = paid\"; empty when none was given",
+                    "maxLength": 500,
+                    "x-validation-rules": [
+                      "max=500"
+                    ]
+                  }
+                },
+                "required": [
+                  "laId",
+                  "condition"
+                ]
+              },
+              "description": "Placements the caller collapsed by condition, oldest first; [] when none"
+            },
+            "fanOpen": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Fan parents (laId) the caller opened whole: their fan folds nothing; [] when none"
+            },
+            "fanShown": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "children": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Placement identifiers (laId) of the children shown"
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of the fan parent"
+                  }
+                }
+              },
+              "description": "Children the caller showed one by one, per fan parent, ordered by laId; [] when none"
+            },
+            "maxVisibleChildren": {
+              "type": "integer",
+              "description": "The layer's own limit of direct children shown per actor (data.maxVisibleChildren, shared by every viewer): a whole number 1..200; 0 when wide fans do not fold"
+            },
+            "roots": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Placements (laId) the caller collapsed whole, oldest first; [] when none"
+            }
+          }
+        }
+      },
+      "x-audience": "public",
+      "x-scope": "actors.readonly"
+    },
+    {
+      "name": "graph/layer/collapse/state/update",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Layer actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "expandAll",
+          "schema": {
+            "type": "boolean",
+            "description": "Expand every collapsed actor first (whole and by condition); fans stay as they are"
+          }
+        },
+        {
+          "name": "expand",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Placements (laId) to expand; one that is not collapsed is ignored",
+            "x-validation-rules": [
+              "max=500",
+              "dive",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "collapse",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Placements (laId) to collapse whole: every placement below folds into them; replaces a fold by condition of the same placement",
+            "x-validation-rules": [
+              "max=500",
+              "dive",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "conditional",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "condition": {
+                  "type": "object",
+                  "properties": {
+                    "accountNameId": {
+                      "type": "string",
+                      "description": "Account name whose balance amountFrom/amountTo bound",
+                      "minLength": 1,
+                      "x-validation-rules": [
+                        "min=1"
+                      ]
+                    },
+                    "amountFrom": {
+                      "type": "number",
+                      "description": "Lower bound (inclusive) on the account balance"
+                    },
+                    "amountTo": {
+                      "type": "number",
+                      "description": "Upper bound (inclusive) on the account balance"
+                    },
+                    "currencyId": {
+                      "type": "integer",
+                      "description": "Currency of the bounded account",
+                      "minimum": 1,
+                      "x-validation-rules": [
+                        "min=1"
+                      ]
+                    },
+                    "formId": {
+                      "type": "integer",
+                      "description": "Account template the matching children carry",
+                      "minimum": 1,
+                      "x-validation-rules": [
+                        "required",
+                        "min=1"
+                      ]
+                    },
+                    "incomeType": {
+                      "type": "string",
+                      "description": "Bound one side of the account; omitted bounds the signed balance (credit minus debit)",
+                      "enum": [
+                        "credit",
+                        "debit"
+                      ],
+                      "x-validation-rules": [
+                        "oneof=credit debit"
+                      ]
+                    },
+                    "q": {
+                      "type": "string",
+                      "description": "Condition on the children's template field values, in the saved actor-filter grammar: key=value terms joined by \u0026 (and), groups joined by || (or); operators = != \u003c \u003c= \u003e \u003e=",
+                      "maxLength": 10000,
+                      "x-validation-rules": [
+                        "max=10000"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "formId"
+                  ],
+                  "description": "Which direct children fold: the actors of formId that q and the balance bounds select",
+                  "x-validation-rules": [
+                    "required"
+                  ]
+                },
+                "laId": {
+                  "type": "integer",
+                  "description": "Placement identifier (laId) of the actor collapsed by condition",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "required",
+                    "min=1"
+                  ]
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "The words the fold is shown with in the Graph Editor (its badge tooltip), e.g. \"Order: Stage = paid\"; empty when none was given",
+                  "maxLength": 500,
+                  "x-validation-rules": [
+                    "max=500"
+                  ]
+                }
+              },
+              "required": [
+                "laId",
+                "condition"
+              ]
+            },
+            "description": "Placements to collapse by condition: only the direct children the condition matches fold, each with its subtree; replaces an earlier fold of the same placement",
+            "x-validation-rules": [
+              "max=100",
+              "dive"
+            ]
+          }
+        },
+        {
+          "name": "fanReset",
+          "schema": {
+            "type": "boolean",
+            "description": "Close every opened fan first, the children shown one by one included"
+          }
+        },
+        {
+          "name": "fanOpen",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Fan parents (laId) to open whole: their wide fan folds nothing",
+            "x-validation-rules": [
+              "max=500",
+              "dive",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "fanClose",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Fan parents (laId) to close again: the layer's limit folds their fan, the children shown one by one hide too",
+            "x-validation-rules": [
+              "max=500",
+              "dive",
+              "min=1"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "changed": {
+              "type": "boolean",
+              "description": "False when the state already was what the change asks for: nothing was saved or sent"
+            },
+            "conditional": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "type": "object",
+                    "properties": {
+                      "accountNameId": {
+                        "type": "string",
+                        "description": "Account name whose balance amountFrom/amountTo bound",
+                        "minLength": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      },
+                      "amountFrom": {
+                        "type": "number",
+                        "description": "Lower bound (inclusive) on the account balance"
+                      },
+                      "amountTo": {
+                        "type": "number",
+                        "description": "Upper bound (inclusive) on the account balance"
+                      },
+                      "currencyId": {
+                        "type": "integer",
+                        "description": "Currency of the bounded account",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "min=1"
+                        ]
+                      },
+                      "formId": {
+                        "type": "integer",
+                        "description": "Account template the matching children carry",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "required",
+                          "min=1"
+                        ]
+                      },
+                      "incomeType": {
+                        "type": "string",
+                        "description": "Bound one side of the account; omitted bounds the signed balance (credit minus debit)",
+                        "enum": [
+                          "credit",
+                          "debit"
+                        ],
+                        "x-validation-rules": [
+                          "oneof=credit debit"
+                        ]
+                      },
+                      "q": {
+                        "type": "string",
+                        "description": "Condition on the children's template field values, in the saved actor-filter grammar: key=value terms joined by \u0026 (and), groups joined by || (or); operators = != \u003c \u003c= \u003e \u003e=",
+                        "maxLength": 10000,
+                        "x-validation-rules": [
+                          "max=10000"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "formId"
+                    ],
+                    "description": "Which direct children fold: the actors of formId that q and the balance bounds select",
+                    "x-validation-rules": [
+                      "required"
+                    ]
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of the actor collapsed by condition",
+                    "minimum": 1,
+                    "x-validation-rules": [
+                      "required",
+                      "min=1"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string",
+                    "description": "The words the fold is shown with in the Graph Editor (its badge tooltip), e.g. \"Order: Stage = paid\"; empty when none was given",
+                    "maxLength": 500,
+                    "x-validation-rules": [
+                      "max=500"
+                    ]
+                  }
+                },
+                "required": [
+                  "laId",
+                  "condition"
+                ]
+              },
+              "description": "Placements the caller collapsed by condition, oldest first; [] when none"
+            },
+            "fanOpen": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Fan parents (laId) the caller opened whole: their fan folds nothing; [] when none"
+            },
+            "fanShown": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "children": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Placement identifiers (laId) of the children shown"
+                  },
+                  "laId": {
+                    "type": "integer",
+                    "description": "Placement identifier (laId) of the fan parent"
+                  }
+                }
+              },
+              "description": "Children the caller showed one by one, per fan parent, ordered by laId; [] when none"
+            },
+            "maxVisibleChildren": {
+              "type": "integer",
+              "description": "The layer's own limit of direct children shown per actor (data.maxVisibleChildren, shared by every viewer): a whole number 1..200; 0 when wide fans do not fold"
+            },
+            "openTabs": {
+              "type": "integer",
+              "description": "The caller's browser tabs that have the layer open now (they re-read a change at once); 0: a change shows when the layer is opened next"
+            },
+            "roots": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Placements (laId) the caller collapsed whole, oldest first; [] when none"
+            }
+          }
+        }
+      },
+      "x-audience": "public",
+      "x-scope": "actors.readonly"
+    }
+  ]
+}
