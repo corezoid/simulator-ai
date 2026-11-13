@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/corezoid/simulator-ai/internal/publicapi"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 func TestChartDataGet(t *testing.T) {
@@ -53,6 +54,30 @@ func TestChartDataGet(t *testing.T) {
 	if strings.Contains(out, `"isError":true`) || !strings.Contains(out, `"structuredContent":{"data":[{"actorId":"a1"`) || !strings.Contains(out, `"total":{"value":520.5}`) {
 		t.Fatal(out)
 	}
+	// The handler's hand-written result type answers what the pinned output schema declares.
+	var envelope struct {
+		Result struct {
+			Structured any `json:"structuredContent"`
+		} `json:"result"`
+	}
+	var schema any
+	if err := json.Unmarshal([]byte(out), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(tool.Tool.RawOutputSchema, &schema); err != nil {
+		t.Fatal(err)
+	}
+	compiler := jsonschema.NewCompiler()
+	if err := compiler.AddResource("https://test.example/chart", schema); err != nil {
+		t.Fatal(err)
+	}
+	validator, err := compiler.Compile("https://test.example/chart")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validator.Validate(envelope.Result.Structured); err != nil {
+		t.Fatal(err)
+	}
 	if len(sent) != 1 || sent[0]["actorId"] != "chart" || sent[0]["accId"] != "workspace" || sent[0]["balanceOnDate"] != true || sent[0]["counterType"] != "amount" {
 		t.Fatalf("sent %v", sent)
 	}
@@ -64,6 +89,18 @@ func TestChartDataGet(t *testing.T) {
 	}
 	if len(sent) != 1 {
 		t.Fatal("refused arguments reached the backend")
+	}
+	// 100 actorIds of 255 bytes are schema-valid and fit the argument bound.
+	long := strings.Repeat("a", 255)
+	ids := `"` + long + `"` + strings.Repeat(`,"`+long+`"`, 99)
+	if out := call(`{"chartId":"chart","actorIds":[` + ids + `]}`); strings.Contains(out, `"isError":true`) {
+		t.Fatal("bounded actorIds refused", out[:200])
+	}
+	// An answer past the bound is refused with how to narrow it, not handed to the model.
+	points := strings.Repeat(`{"bucketStart":1788210000000,"value":1},`, 7000)
+	reply = `"result":{"data":[{"actorId":"a1","nameId":"n1","currencyId":7,"incomeType":"total","accountType":"fact","value":0,"data":[` + points[:len(points)-1] + `]}]}`
+	if out := call(`{"chartId":"chart","from":1,"to":2}`); !strings.Contains(out, `"isError":true`) || !strings.Contains(out, "coarser interval") {
+		t.Fatal("oversized answer returned", len(out))
 	}
 	for _, reason := range []string{"invalidParams", "accessDenied", "notFound"} {
 		reply = fmt.Sprintf(`"error":{"code":-32602,"message":"refused","data":{"reason":%q}}`, reason)

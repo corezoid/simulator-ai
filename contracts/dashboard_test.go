@@ -70,7 +70,7 @@ func TestDashboardSchemas(t *testing.T) {
 			`{}`, `{"chartId":""}`, `{"chartId":12}`, `{"actorId":"c"}`, `{"chartId":"c","accId":"foreign"}`,
 			`{"chartId":"c","source":{"accounts":[]}}`, `{"chartId":"c","with":["groups"]}`, `{"chartId":"c","with":["total","total"]}`,
 			`{"chartId":"c","interval":"week"}`, `{"chartId":"c","counterType":"turnover"}`, `{"chartId":"c","timezoneOffset":900}`,
-			`{"chartId":"c","from":1.5}`, `{"chartId":"c","actorIds":[""]}`, `{"chartId":"c","actorIds":[` + ids + `,"x"]}`,
+			`{"chartId":"c","from":1.5}`, `{"chartId":"c","actorIds":[]}`, `{"chartId":"c","actorIds":[""]}`, `{"chartId":"c","actorIds":[` + ids + `,"x"]}`,
 		}},
 		{output, []string{
 			`{"data":[]}`,

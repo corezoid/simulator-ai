@@ -70,9 +70,9 @@ type DashboardData struct {
 	Total *DashboardTotal   `json:"total,omitempty"`
 }
 
-// DashboardReadsEnabled is true in the console profiles, with the account reads, and the workspace graph-read
-// profile, with the graph reads. graph-create stays a write profile; an actor-bound graph-read
-// process has only its layer's counters.
+// DashboardReadsEnabled is true in the console profiles, with the account reads, and the workspace
+// graph-read profile, with the graph reads: a chart is read on its layer. Like the parity reads it
+// is not in graph-create, and an actor-bound graph-read process has only its layer's counters.
 func (c *Client) DashboardReadsEnabled() bool {
 	return c.ConsoleEnabled() || (c.config.Profile == "graph-read" && c.config.ActorID == "")
 }

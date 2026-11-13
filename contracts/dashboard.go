@@ -67,7 +67,8 @@ func DashboardSchemas() (json.RawMessage, json.RawMessage, error) {
 	chart := properties["chartId"].(map[string]any)
 	chart["maxLength"], chart["description"] = 255, "Chart (dashboard actor) id: chart_create's chartId, or an actor of the Dashboards template"
 	actors := properties["actorIds"].(map[string]any)
-	actors["maxItems"], actors["items"] = 100, map[string]any{"type": "string", "minLength": 1, "maxLength": 255}
+	// An empty list would be dropped and read every series: refuse it, as graph-read does elsewhere.
+	actors["minItems"], actors["maxItems"], actors["items"] = 1, 100, map[string]any{"type": "string", "minLength": 1, "maxLength": 255}
 	with := properties["with"].(map[string]any)
 	with["items"], with["uniqueItems"], with["maxItems"] = map[string]any{"type": "string", "enum": DashboardWith}, true, len(DashboardWith)
 	input, err := json.Marshal(map[string]any{"type": "object", "properties": properties, "required": []string{"chartId"}, "additionalProperties": false})
@@ -75,7 +76,7 @@ func DashboardSchemas() (json.RawMessage, json.RawMessage, error) {
 		return nil, nil, err
 	}
 	output := withoutExtensions(m.Result.Schema).(map[string]any)
-	if _, ok := output["properties"].(map[string]any)["data"]; !ok || output["type"] != "object" {
+	if props, ok := output["properties"].(map[string]any); !ok || props["data"] == nil || output["type"] != "object" {
 		return nil, nil, errors.New("dashboard result drift")
 	}
 	output["required"] = []string{"data"}
