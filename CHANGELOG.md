@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+- `reactions_list` and the reactions skill say that `with: ["parentActor"]` leaves the parent out when it is a
+  hidden reaction the caller cannot read (no `execute` on the actor) — sim-api now omits it for a still-visible
+  reply to such a note (CE-16234 follow-up); `parentId` keeps naming it. Description-only; tool schemas unchanged.
+
 - `reaction_create` / `reaction_update` and the reactions skill say how sim-api now treats hidden reactions
   (CE-16234): a reply to a hidden reaction is always hidden and only a user who reads that reaction may answer it
   (others get "Parent actor not found"); `reaction_update {hidden: false}` on such a reply fails with `notAllowed`;
