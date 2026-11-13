@@ -11,6 +11,7 @@ See the [complete mapping](tool-reference.md); host-bound mode is described sepa
 | `graph_system_form_get` | `form/system/get` | `forms.readonly` | `title` is exactly `Graphs`, `Layers` or `FlowchartBlock`. Returns id/title/type/form; no editor token or owner identity. |
 | `graph_edge_types_list` | `edge_type/list` | `actors.readonly` | Optional isSystem/filter/limit/offset; returns selected id/name/accId/userId/isSystem/createdAt/isTree. Unrecorded creator is null. See [edge-type parity](edge-types.md). |
 | `graph_layer_stats_get` | `graph/layer/stats/get` | `actors.readonly` | Layer actorId; six recipient-eligible placement/hole counters. Host-bound graph-read accepts only `{}` and exposes only this tool. |
+| `chart_data_get` | `dashboard/get` | `actors.readonly` | `chartId` (the dashboard actor) and an optional period `from`/`to` (Unix ms), `interval`, `timezoneOffset`, `balanceOnDate`, `counterType`, `actorIds`, `with` (`total`, `series`). Returns the chart's series (`data[]`, each with `value` and, for line/stackedBar or `with: ["series"]`, buckets) and, with `total`, their sum. The period is the caller's (the chart's saved range is not applied); answers over 256 KiB are refused with a hint to narrow. Workspace mode only; `console-full` has it too. |
 
 The host binds workspace and credential. Unknown properties, credentials, workspace changes,
 internal RPC names and arbitrary method forwarding are rejected. Workspace access and API

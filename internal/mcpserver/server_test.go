@@ -166,7 +166,7 @@ func runScriptedProfile(t *testing.T, profile string) {
 		wanted = append(wanted, "actor_by_ref_get", "actor_corezoid_processes_list", "actor_system_get", "actors_search", "actors_filter", "actors_filter_count", "forms_list", "forms_count", "form_accounts_list", "forms_tree_get", "form_linked_get", "search_all")
 	}
 	if profile == "graph-read" {
-		wanted = append(wanted, "edge_get", "edge_exist", "layer_placements_list", "layer_edges_list", "layer_skeleton_get", "layer_element_exist", "layer_actors_search", "graph_list", "graph_get", "layer_placements_all")
+		wanted = append(wanted, "edge_get", "edge_exist", "layer_placements_list", "layer_edges_list", "layer_skeleton_get", "layer_element_exist", "layer_actors_search", "graph_list", "graph_get", "layer_placements_all", "chart_data_get")
 	}
 	if len(result.Tools) != len(wanted) {
 		t.Fatalf("unexpected tools: %s", catalog["result"])

@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+- `chart_data_get` reads what a chart (dashboard actor) shows over a period through public `dashboard/get`
+  (CE-15981): one series per account, `data[]` buckets for line/stackedBar charts or with `with: ["series"]` for any
+  chart type, and with `with: ["total"]` the sum of every series as a whole and per bucket; `actorIds` keeps only
+  those actors' series. The period is the caller's (a chart's saved range is not applied); an answer over 256 KiB is
+  refused with a hint to narrow it. Read-only, in `graph-read` (workspace mode) and `console-full` (`charts` group,
+  not the `console` core). Pinned as its own projection (`contracts/dashboard-openrpc.json`, sim-api `0abeed1d`) by
+  `cmd/gen-graph-contract -profile dashboard`. The CDU v2 reference is regenerated from sim-api `0abeed1d` and
+  simulator-ui-kit `06ab3de5`.
+
 - Sign in as yourself, without an API key: with no host credential the server starts in login mode, and `login`
   opens the SuperAdmin page in the browser (OAuth2 PKCE, the legacy plugin's public client), `workspaces_list` and
   `workspace_set` choose the workspace, `whoami` and `logout` complete the set. The session and the chosen workspace

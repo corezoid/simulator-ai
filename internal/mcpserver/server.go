@@ -84,6 +84,7 @@ func build(c *publicapi.Client) *server.MCPServer {
 		addConsoleRegistry(s, c)
 		addSimulation(s, c)
 		addConsoleCharts(s, c)
+		addDashboard(s, c)
 		tagGroups(s)
 		if c.ConsoleCore() {
 			keepConsoleCore(s)
@@ -130,6 +131,9 @@ func build(c *publicapi.Client) *server.MCPServer {
 		// run belongs with the console's hole_close.
 		addParity(s, c, without(graphTools, "edge_types_list", "layer_stats_get", "hole_conditions_get"))
 		addGraphEngines(s, c)
+		if c.DashboardReadsEnabled() {
+			addDashboard(s, c)
+		}
 	}
 	if c.ReactionReadsEnabled() {
 		addReactionReads(s, c)

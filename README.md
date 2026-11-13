@@ -144,7 +144,7 @@ profile below and give the assistant the specific change you want it to make.
 | Profile | Capabilities | Writes |
 | --- | --- | --- |
 | `read` — default | Actor search and reads, form-template discovery, and paginated layer records. | No |
-| `graph-read` | Read tools plus graph relationships, nodes, edges, placements and statistics. | No |
+| `graph-read` | Read tools plus graph relationships, nodes, edges, placements, statistics and chart (dashboard) data. | No |
 | `reactions-read` | Metadata reads and reaction counts. | No |
 | `graph-create` | Graph reads, flowchart planning, and graph-element creation with recovery tools. | Create operations |
 | `smart-forms` | Metadata reads plus application creation, file editing, releases and recovery. | Yes |

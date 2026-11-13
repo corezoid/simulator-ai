@@ -59,6 +59,8 @@ With ids, step by step:
 - `accounts_list {actorId, ...filters}`: an actor's `fact` rows unless `accountType` or
   `accountTypes` asks for others, 20 per page; `from` and `to` (Unix ms) together give the
   turnover of a window; `accounts_count` counts.
+- What a chart (dashboard) shows for a period, its per-bucket values and their total:
+  `chart_data_get` (see the charts skill), not a rebuild from `accounts_list`.
 - `transactions_list {actorId, nameId, currencyId}` explains a balance; `account_transactions_list
   {accountId}` pages one row; `transactions_filter` searches the workspace. A window needs
   both `from` and `to` (Unix ms, at most about 12 months): one alone is ignored, and without

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type chartResult struct {
@@ -49,6 +50,9 @@ func charts(c *client, stamp string) error {
 		return err
 	}
 	if err := chartReadBack(c, layer.ID, made, "manual", 650); err != nil {
+		return err
+	}
+	if err := chartData(c, made.ChartID, series.ID); err != nil {
 		return err
 	}
 	var changed chartResult
@@ -121,4 +125,27 @@ func chartReadBack(c *client, layerID string, r chartResult, sourceType string, 
 		}
 	}
 	return fmt.Errorf("layer %s has no placement %d", layerID, r.LaID)
+}
+
+// chartData reads the new manual bar chart's last day through chart_data_get: its one series (an
+// account without movement, so 0) per day, and their total.
+func chartData(c *client, chartID, actorID string) error {
+	var shown struct {
+		Data []struct {
+			ActorID string  `json:"actorId"`
+			Value   float64 `json:"value"`
+		} `json:"data"`
+		Total *struct {
+			Value float64 `json:"value"`
+		} `json:"total"`
+	}
+	to := time.Now().UnixMilli()
+	if err := c.tool("chart_data_get", map[string]any{"chartId": chartID, "from": to - 86_400_000, "to": to, "interval": "hour",
+		"with": []string{"series", "total"}}, &shown); err != nil {
+		return err
+	}
+	if len(shown.Data) != 1 || shown.Data[0].ActorID != actorID || shown.Data[0].Value != 0 || shown.Total == nil || shown.Total.Value != 0 {
+		return fmt.Errorf("chart_data_get of chart %s returned %+v, want one empty series of %s and a zero total", chartID, shown, actorID)
+	}
+	return nil
 }

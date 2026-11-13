@@ -1,0 +1,406 @@
+{
+  "methods": [
+    {
+      "name": "dashboard/get",
+      "params": [
+        {
+          "name": "accId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workspace identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "actorId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Dashboard actor identifier",
+            "minLength": 1,
+            "x-validation-rules": [
+              "required",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "counterType",
+          "schema": {
+            "type": "string",
+            "description": "Runtime counter type override (amount, count)",
+            "enum": [
+              "amount",
+              "count"
+            ],
+            "x-validation-rules": [
+              "oneof=amount count"
+            ]
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "type": "integer",
+            "description": "Start timestamp (ms); required for line/stackedBar charts and for with:[\"series\"]"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "type": "integer",
+            "description": "End timestamp (ms); required for line/stackedBar charts and for with:[\"series\"]"
+          }
+        },
+        {
+          "name": "balanceOnDate",
+          "schema": {
+            "type": "boolean",
+            "description": "When true, return balance at 'from' as the base value for interval charts"
+          }
+        },
+        {
+          "name": "timezoneOffset",
+          "schema": {
+            "type": "integer",
+            "description": "Timezone offset in minutes",
+            "minimum": -720,
+            "maximum": 840,
+            "x-validation-rules": [
+              "min=-720",
+              "max=840"
+            ]
+          }
+        },
+        {
+          "name": "interval",
+          "schema": {
+            "type": "string",
+            "description": "Time interval of the series buckets (line/stackedBar charts, and every chart type with with:[\"series\"])",
+            "default": "day",
+            "enum": [
+              "minute",
+              "hour",
+              "day",
+              "month",
+              "year"
+            ],
+            "x-validation-rules": [
+              "oneof=minute hour day month year"
+            ]
+          }
+        },
+        {
+          "name": "source",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "accounts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "accountType": {
+                      "type": "string",
+                      "description": "Dashboard account type (fact, plan, min, max, avg)",
+                      "default": "fact",
+                      "enum": [
+                        "fact",
+                        "plan",
+                        "min",
+                        "max",
+                        "avg"
+                      ],
+                      "x-validation-rules": [
+                        "oneof=fact plan min max avg"
+                      ]
+                    },
+                    "actorId": {
+                      "type": "string",
+                      "description": "Actor identifier (mutually exclusive with formId+actorRef)"
+                    },
+                    "actorRef": {
+                      "type": "string",
+                      "description": "Actor reference for actorRef resolution"
+                    },
+                    "currencyId": {
+                      "type": "integer",
+                      "description": "Currency identifier",
+                      "minimum": 1,
+                      "x-validation-rules": [
+                        "required",
+                        "min=1"
+                      ]
+                    },
+                    "formId": {
+                      "type": "integer",
+                      "description": "Account template identifier for actorRef resolution"
+                    },
+                    "incomeType": {
+                      "type": "string",
+                      "description": "Income type",
+                      "enum": [
+                        "credit",
+                        "debit",
+                        "total"
+                      ],
+                      "x-validation-rules": [
+                        "required",
+                        "oneof=credit debit total"
+                      ]
+                    },
+                    "nameId": {
+                      "type": "string",
+                      "description": "Account name identifier",
+                      "minLength": 1,
+                      "x-validation-rules": [
+                        "required",
+                        "min=1"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "nameId",
+                    "currencyId",
+                    "incomeType"
+                  ]
+                },
+                "description": "Account list override",
+                "x-validation-rules": [
+                  "max=100",
+                  "dive"
+                ]
+              },
+              "chartType": {
+                "type": "string",
+                "description": "Chart type",
+                "enum": [
+                  "pie",
+                  "line",
+                  "bar",
+                  "stackedBar",
+                  "funnel",
+                  "doughnut",
+                  "table",
+                  "polarArea",
+                  "radar",
+                  "kpiCard"
+                ],
+                "x-validation-rules": [
+                  "oneof=pie line bar stackedBar funnel doughnut table polarArea radar kpiCard"
+                ]
+              },
+              "counterType": {
+                "type": "string",
+                "description": "Dashboard counter type (amount, count)",
+                "enum": [
+                  "amount",
+                  "count"
+                ],
+                "x-validation-rules": [
+                  "oneof=amount count"
+                ]
+              },
+              "skipNonExistAccounts": {
+                "type": "boolean",
+                "description": "Skip accounts that cannot be resolved"
+              }
+            },
+            "description": "Source override; when omitted, actor.data.source is used"
+          }
+        },
+        {
+          "name": "actorIds",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Return only the series of these actors; narrows the dashboard's own actors and never adds one",
+            "x-validation-rules": [
+              "max=100",
+              "dive",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "with",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Related data to include: total (adds the top-level total, the sum of every series), series (fills data[] for every chart type, not only line/stackedBar; needs from and to)"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "accountName": {
+                    "type": "string",
+                    "description": "Account name"
+                  },
+                  "accountType": {
+                    "type": "string",
+                    "description": "Account type: fact, plan, min, max or avg",
+                    "enum": [
+                      "fact",
+                      "plan",
+                      "min",
+                      "max",
+                      "avg"
+                    ],
+                    "x-validation-rules": [
+                      "required",
+                      "oneof=fact plan min max avg"
+                    ]
+                  },
+                  "actorColor": {
+                    "type": "string",
+                    "description": "Color of the actor that holds the account"
+                  },
+                  "actorId": {
+                    "type": "string",
+                    "description": "Actor that holds the account",
+                    "x-validation-rules": [
+                      "required"
+                    ]
+                  },
+                  "actorTitle": {
+                    "type": "string",
+                    "description": "Title of the actor that holds the account"
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "Series color set in the dashboard's source"
+                  },
+                  "currencyId": {
+                    "type": "integer",
+                    "description": "Currency identifier",
+                    "minimum": 1,
+                    "x-validation-rules": [
+                      "required",
+                      "min=1"
+                    ]
+                  },
+                  "currencyName": {
+                    "type": "string",
+                    "description": "Currency name"
+                  },
+                  "customName": {
+                    "type": "string",
+                    "description": "Series label set in the dashboard's source"
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "bucketStart": {
+                          "type": "integer",
+                          "description": "UTC timestamp (ms) of the interval bucket start"
+                        },
+                        "value": {
+                          "type": "number",
+                          "description": "Aggregated amount or count for the bucket"
+                        }
+                      }
+                    },
+                    "description": "Time series over from..to by interval: always for line/stackedBar, for other chart types only with with:[\"series\"]"
+                  },
+                  "errorFormula": {
+                    "type": "boolean",
+                    "description": "True when the account is calculated by a formula that cannot be evaluated"
+                  },
+                  "incomeType": {
+                    "type": "string",
+                    "description": "Income type: credit, debit or total (credit minus debit; credit plus debit for counterType count)",
+                    "enum": [
+                      "credit",
+                      "debit",
+                      "total"
+                    ],
+                    "x-validation-rules": [
+                      "required",
+                      "oneof=credit debit total"
+                    ]
+                  },
+                  "nameId": {
+                    "type": "string",
+                    "description": "Account name identifier",
+                    "x-validation-rules": [
+                      "required"
+                    ]
+                  },
+                  "precision": {
+                    "type": "integer",
+                    "description": "Number of decimal places the currency is shown with"
+                  },
+                  "showTrendLine": {
+                    "type": "boolean",
+                    "description": "Whether the dashboard draws a trend line for this series"
+                  },
+                  "value": {
+                    "type": "number",
+                    "description": "For a line/stackedBar dashboard the base the series starts from: the balance at 'from' with balanceOnDate, otherwise 0. For every other chart type the amount (or transaction count) over from..to, or the current value when no period is given"
+                  }
+                },
+                "required": [
+                  "actorId",
+                  "nameId",
+                  "currencyId",
+                  "incomeType",
+                  "accountType"
+                ]
+              },
+              "description": "List of computed account values"
+            },
+            "total": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bucketStart": {
+                        "type": "integer",
+                        "description": "UTC timestamp (ms) of the interval bucket start"
+                      },
+                      "value": {
+                        "type": "number",
+                        "description": "Aggregated amount or count for the bucket"
+                      }
+                    }
+                  },
+                  "description": "Per bucket, the sum of the series' points with that bucketStart, ordered by bucketStart; absent when no series has a time series"
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Sum of every series' value"
+                }
+              },
+              "description": "Sum of every series, as a whole and per bucket; only with with:[\"total\"]"
+            }
+          }
+        }
+      },
+      "x-audience": "public",
+      "x-scope": "actors.readonly"
+    }
+  ]
+}

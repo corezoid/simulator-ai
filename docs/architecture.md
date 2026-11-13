@@ -4,7 +4,7 @@ Flow: host agent → stdio MCP → public API client → POST /api/2.0/rpc.
 File upload/download tools also use the public file endpoints listed in the tool reference.
 The default `read` profile exposes read-only actor/form tools and paginated layer reads.
 Each optional profile has its own catalog; see the [tool reference](tool-reference.md).
-[Graph metadata](graph-read.md) adds three metadata reads, exact placement readback and six layer counters with projected input/output schemas.
+[Graph metadata](graph-read.md) adds three metadata reads, exact placement readback, six layer counters and chart data (`dashboard/get`) with projected input/output schemas.
 [Graph creation](graph-create.md) adds six create/recovery operations with mandatory
 receipts and a public-contract check before each write; no update/delete tools. There is no
 server orchestration, model SDK, database, shell tool or legacy fallback. Skills are packaged
