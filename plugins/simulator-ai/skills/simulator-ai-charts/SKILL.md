@@ -102,7 +102,8 @@ for you, and series the user may not see are left out.
 - **The period is yours.** The chart's saved `range` is NOT applied: take `from` and `to` (Unix ms,
   together) from the user's request ("for March", "last week"); when they name none and want what the
   chart shows, read its `range` (or `rangeDates`) from `actor_get {actorId: chartId, fields: ["data"]}`
-  (`data.source` is a JSON string) and turn it into `from`/`to` yourself. Buckets follow `interval`
+  (`data.source` is a JSON string, or an object) and turn it into `from`/`to` yourself; pass
+  `balanceOnDate: true` when its `chartViewMode` is `balanceOnDate`, as the web app does. Buckets follow `interval`
   (`minute`, `hour`, `day` default, `month`, `year`) in the user's `timezoneOffset` (minutes, JS sign:
   Kyiv summer is `-180`). Longest period: 2 hours for `minute`, 7 days for `hour`, 2 years otherwise.
 - **`value` depends on the chart type.** For `line` and `stackedBar` the period is required and
