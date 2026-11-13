@@ -13,9 +13,9 @@
   chart type, and with `with: ["total"]` the sum of every series as a whole and per bucket; `actorIds` keeps only
   those actors' series. The period is the caller's (a chart's saved range is not applied); an answer over 256 KiB is
   refused with a hint to narrow it. Read-only, in `graph-read` (workspace mode) and `console-full` (`charts` group,
-  not the `console` core). Pinned as its own projection (`contracts/dashboard-openrpc.json`, sim-api `0abeed1d`) by
-  `cmd/gen-graph-contract -profile dashboard`. The CDU v2 reference is regenerated from sim-api `0abeed1d` and
-  simulator-ui-kit `06ab3de5`.
+  not the `console` core). Pinned as its own projection (`contracts/dashboard-openrpc.json`, sim-api `d13fc772`: `timezoneOffset` -840..720, JS sign) by
+  `cmd/gen-graph-contract -profile dashboard`. The CDU v2 reference is regenerated from sim-api `d13fc772` and
+  simulator-ui-kit `edefb4b5`.
 
 - Sign in as yourself, without an API key: with no host credential the server starts in login mode, and `login`
   opens the SuperAdmin page in the browser (OAuth2 PKCE, the legacy plugin's public client), `workspaces_list` and

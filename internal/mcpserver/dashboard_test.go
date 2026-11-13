@@ -82,7 +82,7 @@ func TestChartDataGet(t *testing.T) {
 		t.Fatalf("sent %v", sent)
 	}
 	for _, args := range []string{`{}`, `{"actorId":"chart"}`, `{"chartId":"chart","accId":"other"}`, `{"chartId":"chart","with":["groups"]}`,
-		`{"chartId":"chart","source":{"chartType":"bar"}}`, `{"chartId":"chart","interval":"week"}`, `null`} {
+		`{"chartId":"chart","source":{"chartType":"bar"}}`, `{"chartId":"chart","interval":"week"}`, `{"chartId":"chart","timezoneOffset":721}`, `null`} {
 		if out := call(args); !strings.Contains(out, `"isError":true`) && !strings.Contains(out, `"error":`) {
 			t.Fatal("invalid arguments accepted", args, out)
 		}
