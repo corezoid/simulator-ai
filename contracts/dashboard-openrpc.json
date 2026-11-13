@@ -68,12 +68,12 @@
           "name": "timezoneOffset",
           "schema": {
             "type": "integer",
-            "description": "Timezone offset in minutes",
-            "minimum": -720,
-            "maximum": 840,
+            "description": "Viewer's timezone offset in minutes for bucketing, with the JavaScript Date#getTimezoneOffset sign, UTC minus local time (Kyiv summer -180, New York winter 300), -840..720",
+            "minimum": -840,
+            "maximum": 720,
             "x-validation-rules": [
-              "min=-720",
-              "max=840"
+              "min=-840",
+              "max=720"
             ]
           }
         },

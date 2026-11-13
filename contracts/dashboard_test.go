@@ -24,7 +24,7 @@ func TestDashboardSourcePin(t *testing.T) {
 	if err = json.Unmarshal(raw, &source); err != nil {
 		t.Fatal(err)
 	}
-	if source.Revision != "0abeed1d9382d0fc70b0a75bdd9c678b04fca81e" || source.Digest != fmt.Sprintf("%x", sha256.Sum256(DashboardSource)) || source.Methods != 1 {
+	if source.Revision != "d13fc772bf38a51e345f39f51f789b227189d547" || source.Digest != fmt.Sprintf("%x", sha256.Sum256(DashboardSource)) || source.Methods != 1 {
 		t.Fatal("dashboard contract source pin drift")
 	}
 }
@@ -66,10 +66,12 @@ func TestDashboardSchemas(t *testing.T) {
 			`{"chartId":"c"}`,
 			`{"chartId":"c","from":1788210000000,"to":1788382799000,"interval":"day","timezoneOffset":-180,"with":["total","series"],"balanceOnDate":true,"counterType":"count","actorIds":["a1"]}`,
 			`{"chartId":"c","actorIds":[` + ids + `]}`,
+			// JS Date#getTimezoneOffset sign: Kiribati (UTC+14) is -840, Baker Island (UTC-12) 720.
+			`{"chartId":"c","timezoneOffset":-840}`, `{"chartId":"c","timezoneOffset":720}`,
 		}, []string{
 			`{}`, `{"chartId":""}`, `{"chartId":12}`, `{"actorId":"c"}`, `{"chartId":"c","accId":"foreign"}`,
 			`{"chartId":"c","source":{"accounts":[]}}`, `{"chartId":"c","with":["groups"]}`, `{"chartId":"c","with":["total","total"]}`,
-			`{"chartId":"c","interval":"week"}`, `{"chartId":"c","counterType":"turnover"}`, `{"chartId":"c","timezoneOffset":900}`,
+			`{"chartId":"c","interval":"week"}`, `{"chartId":"c","counterType":"turnover"}`, `{"chartId":"c","timezoneOffset":721}`, `{"chartId":"c","timezoneOffset":-841}`,
 			`{"chartId":"c","from":1.5}`, `{"chartId":"c","actorIds":[]}`, `{"chartId":"c","actorIds":[""]}`, `{"chartId":"c","actorIds":[` + ids + `,"x"]}`,
 		}},
 		{output, []string{
