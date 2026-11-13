@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+- `reaction_create` / `reaction_update` and the reactions skill say how sim-api now treats hidden reactions
+  (CE-16234): a reply to a hidden reaction is always hidden and only a user who reads that reaction may answer it
+  (others get "Parent actor not found"); `reaction_update {hidden: false}` on such a reply fails with `notAllowed`;
+  a hidden reaction never goes into a live meeting transcript, and hiding a transcribed one takes its line out.
+  Tool input schemas are unchanged; the pinned parity projection (`contracts/parity-openrpc.json`) keeps its older
+  `hidden` field descriptions until its next whole-projection re-pin.
+
 - `chart_data_get` reads what a chart (dashboard actor) shows over a period through public `dashboard/get`
   (CE-15981): one series per account, `data[]` buckets for line/stackedBar charts or with `with: ["series"]` for any
   chart type, and with `with: ["total"]` the sum of every series as a whole and per bucket; `actorIds` keeps only
