@@ -33,7 +33,8 @@ var consoleGroups = map[string][]string{
 		"layer_element_exist", "layer_edge_settings_save", "hole_close"},
 	// layer_stats_get is in graph too: a large build is verified by its counts.
 	"graph_extra": {"hole_conditions_get", "hole_reopen", "edge_hole_close", "edge_hole_reopen", "layer_draw",
-		"layer_node_expand", "layer_settings_update", "layer_stats_get", "layer_compact", "layer_prune_long_edges"},
+		"layer_node_expand", "layer_settings_update", "layer_stats_get", "layer_compact", "layer_prune_long_edges",
+		"layer_collapse_get", "layer_collapse_count", "layer_collapse_update"},
 	"smart_forms": {"smart_form_components", "smart_form_create", "smart_form_data_form_create", "smart_form_files_get",
 		"smart_form_files_update", "smart_form_files_create", "smart_form_folders_create", "smart_form_release", "smart_form_release_get",
 		"smart_form_releases_list", "smart_form_release_diff", "smart_form_release_rollback", "smart_form_file_versions_list",

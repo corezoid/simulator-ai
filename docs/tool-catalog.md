@@ -163,6 +163,9 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `layer_actors_move` |  | `console-full` |
 | `layer_actors_search` | `graph-read`, `console-full` |  |
 | `layer_clean` |  | `console-full` |
+| `layer_collapse_count` | `graph-read`, `console-full` |  |
+| `layer_collapse_get` | `graph-read`, `console-full` |  |
+| `layer_collapse_update` |  | `console-full` |
 | `layer_compact` |  | `console-full` |
 | `layer_create` |  | `console`, `console-full` |
 | `layer_draw` |  | `console-full` |
