@@ -47,7 +47,7 @@
           "required": true,
           "schema": {
             "type": "integer",
-            "description": "The layer's limit of direct children shown per actor — the ranks the fan shows and this list skips",
+            "description": "The layer's limit of direct children shown per actor — the ranks the fan shows and this list skips; linked children are never listed",
             "minimum": 1,
             "maximum": 200,
             "x-validation-rules": [
@@ -443,7 +443,7 @@
           "name": "maxVisibleChildren",
           "schema": {
             "type": "integer",
-            "description": "The layer's limit of direct children shown per actor; an actor with more shows the first ones (the viewer's own children ordering, then nearest) and folds the rest",
+            "description": "The layer's limit of direct children shown per actor; an actor with more shows the first ones (the viewer's own children ordering, then children linked elsewhere, then nearest) and folds the bare leaves past it; a child linked anywhere besides its parent never folds",
             "minimum": 1,
             "maximum": 200,
             "x-validation-rules": [
@@ -561,7 +561,7 @@
                         "description": "Vertical position in graph units"
                       }
                     },
-                    "description": "Mean position of the children past the limit, in graph units"
+                    "description": "Mean position of the folded bare leaves, in graph units"
                   },
                   "childCount": {
                     "type": "integer",
@@ -576,7 +576,7 @@
                     "items": {
                       "type": "integer"
                     },
-                    "description": "The children the fan shows by rank (the first maxVisibleChildren), without the ones the viewer showed"
+                    "description": "The children the fan shows: every child linked besides this parent plus bare leaves up to maxVisibleChildren in all, without the ones the viewer showed"
                   }
                 }
               },
@@ -819,7 +819,7 @@
             },
             "maxVisibleChildren": {
               "type": "integer",
-              "description": "The layer's own limit of direct children shown per actor (data.maxVisibleChildren, shared by every viewer): 10, 25 or 50; 0 when wide fans do not fold"
+              "description": "The layer's own limit of direct children shown per actor (data.maxVisibleChildren, shared by every viewer): a whole number 1..200; 0 when wide fans do not fold"
             },
             "roots": {
               "type": "array",
@@ -1171,11 +1171,11 @@
             },
             "maxVisibleChildren": {
               "type": "integer",
-              "description": "The layer's own limit of direct children shown per actor (data.maxVisibleChildren, shared by every viewer): 10, 25 or 50; 0 when wide fans do not fold"
+              "description": "The layer's own limit of direct children shown per actor (data.maxVisibleChildren, shared by every viewer): a whole number 1..200; 0 when wide fans do not fold"
             },
             "openTabs": {
               "type": "integer",
-              "description": "The caller's browser tabs that have the layer open now and re-read it; 0: the change shows when the layer is opened next"
+              "description": "The caller's browser tabs that have the layer open now (they re-read a change at once); 0: a change shows when the layer is opened next"
             },
             "roots": {
               "type": "array",

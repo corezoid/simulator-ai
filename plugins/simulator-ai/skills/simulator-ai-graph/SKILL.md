@@ -90,7 +90,8 @@ is this; "згорни вузол" of an opened multi-layer node is that. The to
 - `layer_collapse_get {layerId}` — what is folded: `folds` (title, `hiddenCount`, whole or
   `conditional` with its `condition`/`summary`, `visible: false` = another fold hides it, `gone` =
   the actor left the layer), `fans` (actors with more direct children than the layer's
-  `maxVisibleChildren`: their `hiddenCount`, `opened`), `hiddenTotal`. Add `laId` of a fold or a
+  `maxVisibleChildren`: their bare leaves past it fold into "+K", a child linked elsewhere never
+  does; `hiddenCount`, `opened`), `fanOpen` (every fan the user opened), `hiddenTotal`. Add `laId` of a fold or a
   fan for `under`: one page of what hides there (`limit`, `offset`; `q` searches a fan's children
   by title). Answer "what is collapsed / what hangs under X" from this, not from `layer_get`.
 - `layer_collapse_update {layerId, …}` — change it: `collapse: [laId]` folds whole;
@@ -111,7 +112,7 @@ fold is labelled "<template>: <q>". A child the user cannot view never matches.
 `openTabs` in the answer: the user's open Graph Editor tabs of the layer that updated at once; `0`
 means they will see it when they open the layer — say so (offer `layer_viewport` or `build_link`).
 `changed: false`: it already was so. The fan LIMIT is not personal: it is the layer setting
-`maxVisibleChildren` (0 off, 10, 25, 50) in `layer_settings_update`, for every viewer — change it
+`maxVisibleChildren` (0 off, or 1–200; the editor offers 10, 25, 50) in `layer_settings_update`, for every viewer — change it
 only when asked for the layer, not for "show me less". With an API key (`owner: "apiUser"`) the
 state is the API user's own, which no person sees: `layer_collapse_update` refuses; tell the user
 to ask in the AI Console or sign in with `login`.
@@ -210,7 +211,7 @@ A layer's own settings (the Graph Editor's layer settings) are keys of the layer
 not of its placements: the default template of new objects (`defForm`), the default edge shape,
 anisotropy, outer edges, where it opens, **Accounts on the graph** (the balances drawn on
 every actor of the layer, with their period) and `maxVisibleChildren` ("show at most N children":
-0 off, 10, 25 or 50 — a wider fan folds the rest into "+K more" for every viewer). Change them with `layer_settings_update {layerId,
+0 off, or 1–200 — a wider fan folds its bare leaves past N into "+K more" for every viewer). Change them with `layer_settings_update {layerId,
 …}` (`console-full`): only the sent keys change; `accounts` names pairs
 (`[{accountName, currency}]`, the whole list, `[]` hides them) and is resolved for you. Read them
 with `actor_get {actorId: <layerId>, fields: ["id", "data"]}`. Never say a layer setting cannot

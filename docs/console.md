@@ -209,7 +209,7 @@ a rank wider than 60 cells wraps; `origin` is the layout's top-left cell.
 <details>
 <summary>layer_settings_update (console-full)</summary>
 
-**Public calls:** names → `account_name/list` / `account_currency/list`; `form/get` for the `defForm` title; one `actor/update` of the layer's `data` (`maxVisibleChildren` is one of 0, 10, 25, 50: the layer's fan limit, for every viewer)
+**Public calls:** names → `account_name/list` / `account_currency/list`; `form/get` for the `defForm` title; one `actor/update` of the layer's `data` (`maxVisibleChildren`: 0 off or 1–200, the layer's fan limit for every viewer)
 
 **Result:** `{layerId, keys}`
 
@@ -220,7 +220,7 @@ a rank wider than 60 cells wraps; `origin` is the layout's top-left cell.
 
 **Public calls:** `graph/layer/collapse/state/get` (the caller's own saved folds and fans, and the layer's `maxVisibleChildren`); with any fold or a fan limit `graph/layer/extent/get` (the zone of the fans, one cell of margin) + `graph/layer/collapse/resolve`; `graph/layer/elements/list` (titles of the folds and fan parents, at most 500). With `laId`: `graph/layer/collapse/children` for a folded fan (paged, `q` by title, the children the user showed excluded), else one page of the fold's hidden placements from the resolve + their titles
 
-**Result:** `{layerId, owner ("you" | "apiUser"), maxVisibleChildren, folds[{laId, title, conditional, condition, summary, visible, gone, hiddenCount, childCount, matchedChildCount, sharedVisibleCount}], fans[{laId, title, childCount, hiddenCount, opened}], fanShown, hiddenTotal, truncated, under{laId, kind (fold | fan), items[{laId, actorId, title, accessDenied}], hasMore}}`
+**Result:** `{layerId, owner ("you" | "apiUser"), maxVisibleChildren, folds[{laId, title, conditional, condition, summary, visible, gone, hiddenCount, childCount, matchedChildCount, sharedVisibleCount}], fans[{laId, title, childCount, hiddenCount, opened}], fanOpen, fanShown, hiddenTotal, truncated, under{laId, kind (fold | fan), items[{laId, actorId, title, accessDenied}], hasMore}}`
 
 </details>
 

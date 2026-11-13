@@ -14,7 +14,7 @@
   (console only) folds and unfolds for the user through public `graph/layer/collapse/state/update` — their open
   editor follows at once. The write is refused with an API key (it would change the API user's view, which nobody
   sees). Reads are also in `graph-read`; all three are in the `graph_extra` group, not the plain console catalog.
-  `layer_settings_update` takes `maxVisibleChildren` (0, 10, 25, 50: the layer's fan limit for every viewer).
+  `layer_settings_update` takes `maxVisibleChildren` (0 off or 1–200: the layer's fan limit for every viewer).
   The new public methods are pinned in `contracts/collapse-openrpc.json` (`cmd/gen-graph-contract -profile collapse`).
 
 - `reactions_list` and the reactions skill say that `with: ["parentActor"]` leaves the parent out when it is a

@@ -104,14 +104,17 @@ type CollapseHidden struct {
 type CollapseView struct {
 	LayerID string `json:"layerId"`
 	// Owner is whose view this is: "you" (the person of the token), or "apiUser" with an API key.
-	Owner              string             `json:"owner"`
-	MaxVisibleChildren int                `json:"maxVisibleChildren"`
-	Folds              []CollapseFold     `json:"folds"`
-	Fans               []CollapseFan      `json:"fans"`
-	FanShown           []CollapseFanShown `json:"fanShown,omitempty"`
-	HiddenTotal        int                `json:"hiddenTotal"`
-	Truncated          bool               `json:"truncated,omitempty"`
-	Under              *CollapseHidden    `json:"under,omitempty"`
+	Owner              string         `json:"owner"`
+	MaxVisibleChildren int            `json:"maxVisibleChildren"`
+	Folds              []CollapseFold `json:"folds"`
+	Fans               []CollapseFan  `json:"fans"`
+	// FanOpen are the fans the user opened whole, wide now or not (a fan that has narrowed, or a
+	// limit turned off, keeps its opening until fanClose).
+	FanOpen     []int64            `json:"fanOpen"`
+	FanShown    []CollapseFanShown `json:"fanShown,omitempty"`
+	HiddenTotal int                `json:"hiddenTotal"`
+	Truncated   bool               `json:"truncated,omitempty"`
+	Under       *CollapseHidden    `json:"under,omitempty"`
 }
 
 type layerRef struct {
@@ -189,7 +192,7 @@ func (c *Client) GetLayerCollapse(ctx context.Context, in CollapseGetInput) (Col
 		return CollapseView{}, fmt.Errorf("graph/layer/collapse/state/get: %w", err)
 	}
 	view := CollapseView{LayerID: in.LayerID, Owner: c.collapseOwner(), MaxVisibleChildren: state.MaxVisibleChildren,
-		Folds: []CollapseFold{}, Fans: []CollapseFan{}, FanShown: state.FanShown}
+		Folds: []CollapseFold{}, Fans: []CollapseFan{}, FanOpen: nonNil(state.FanOpen), FanShown: state.FanShown}
 	if len(state.Roots)+len(state.Conditional) == 0 && state.MaxVisibleChildren == 0 {
 		return view, c.collapseUnder(ctx, &view, in, nil, nil)
 	}

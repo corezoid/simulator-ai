@@ -96,7 +96,7 @@ func (c *Client) collapseUnder(ctx context.Context, view *CollapseView, in Colla
 				exclude = s.Children
 			}
 		}
-		page, err := call[map[string]any, struct {
+		page, err := call[collapseChildrenRequest, struct {
 			Items []struct {
 				LaID         int64 `json:"laId"`
 				AccessDenied bool  `json:"accessDenied"`
@@ -106,8 +106,8 @@ func (c *Client) collapseUnder(ctx context.Context, view *CollapseView, in Colla
 				} `json:"actor"`
 			} `json:"items"`
 			HasMore bool `json:"hasMore"`
-		}](ctx, c, "graph/layer/collapse/children", map[string]any{"accId": c.workspace(), "actorId": view.LayerID, "laId": in.LaID,
-			"maxVisibleChildren": view.MaxVisibleChildren, "exclude": nonNil(exclude), "q": strings.TrimSpace(in.Q), "limit": limit, "offset": in.Offset})
+		}](ctx, c, "graph/layer/collapse/children", collapseChildrenRequest{AccID: c.workspace(), ActorID: view.LayerID, LaID: in.LaID,
+			MaxVisibleChildren: view.MaxVisibleChildren, Exclude: nonNil(exclude), Q: strings.TrimSpace(in.Q), Limit: limit, Offset: in.Offset})
 		if err != nil {
 			return fmt.Errorf("graph/layer/collapse/children: %w", err)
 		}
@@ -158,6 +158,32 @@ func (c *Client) collapseUnder(ctx context.Context, view *CollapseView, in Colla
 	return nil
 }
 
+// collapseChildrenRequest is graph/layer/collapse/children's params.
+type collapseChildrenRequest struct {
+	AccID              string  `json:"accId"`
+	ActorID            string  `json:"actorId"`
+	LaID               int64   `json:"laId"`
+	MaxVisibleChildren int     `json:"maxVisibleChildren"`
+	Exclude            []int64 `json:"exclude"`
+	Q                  string  `json:"q,omitempty"`
+	Limit              int     `json:"limit"`
+	Offset             int     `json:"offset"`
+}
+
+// collapseCountRequest is graph/layer/collapse/count's params.
+type collapseCountRequest struct {
+	AccID     string            `json:"accId"`
+	ActorID   string            `json:"actorId"`
+	LaID      int64             `json:"laId"`
+	Condition CollapseCondition `json:"condition"`
+}
+
+// formRef is form/get's params as the collapse summary reads a template title.
+type formRef struct {
+	AccID  string `json:"accId"`
+	FormID int64  `json:"formId"`
+}
+
 // CollapseCountInput previews a fold by condition.
 type CollapseCountInput struct {
 	LayerID   string            `json:"layerId"`
@@ -180,8 +206,8 @@ func (c *Client) CountLayerCollapse(ctx context.Context, in CollapseCountInput) 
 	if !validID(in.LayerID) {
 		return CollapseCount{}, errors.New("layerId required: the current layer of the request's context")
 	}
-	return call[map[string]any, CollapseCount](ctx, c, "graph/layer/collapse/count",
-		map[string]any{"accId": c.workspace(), "actorId": in.LayerID, "laId": in.LaID, "condition": in.Condition})
+	return call[collapseCountRequest, CollapseCount](ctx, c, "graph/layer/collapse/count",
+		collapseCountRequest{AccID: c.workspace(), ActorID: in.LayerID, LaID: in.LaID, Condition: in.Condition})
 }
 
 // CollapseUpdateInput changes the person's collapse (graph/layer/collapse/state/update).
@@ -245,9 +271,9 @@ func (c *Client) UpdateLayerCollapse(ctx context.Context, in CollapseUpdateInput
 		}
 		title, ok := summaries[cond.Condition.FormID]
 		if !ok {
-			form, err := call[map[string]any, struct {
+			form, err := call[formRef, struct {
 				Title string `json:"title"`
-			}](ctx, c, "form/get", map[string]any{"accId": c.workspace(), "formId": cond.Condition.FormID})
+			}](ctx, c, "form/get", formRef{AccID: c.workspace(), FormID: cond.Condition.FormID})
 			if err != nil {
 				return CollapseUpdated{}, fmt.Errorf("conditional[%d]: form/get %d: %w", i, cond.Condition.FormID, err)
 			}

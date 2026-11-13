@@ -25,10 +25,10 @@ import (
 //     currencyName are written here too, its currency metadata is not (its reader fills it).
 //   - accountsPeriod {startDate?, endDate?, timeZoneOffset}: the balances' window, Unix seconds.
 //     A cleared period is {timeZoneOffset} alone, never {} (layerData.ts encodeAccountsPeriod).
-//   - maxVisibleChildren: "show at most N children" (CE-16245), one of 0 (off), 10, 25, 50
-//     (ui-kit MAX_VISIBLE_CHILDREN_OPTIONS; sim-api e_graph.MaxVisibleChildrenOptions): an actor with
-//     more direct children shows the first N and folds the rest for every viewer. Anything else
-//     stored there reads as off.
+//   - maxVisibleChildren: "show at most N children" (CE-16245), 0 (off) or a whole number 1..200
+//     (ui-kit MAX_VISIBLE_CHILDREN_LIMIT, the presets 10, 25, 50 or a typed one; sim-api
+//     e_graph.MaxVisibleChildrenLimit): an actor with more direct children folds its bare leaves
+//     past N for every viewer (a child linked elsewhere never folds). Anything else reads as off.
 
 type LayerSettingsInput struct {
 	LayerID string `json:"layerId"`
@@ -67,8 +67,8 @@ const maxLayerAccounts = 32
 
 var curveStyles = []string{"curved", "rounded", "roundedDownward", "straight"}
 
-// maxVisibleChildrenOptions are the fan limits the Graph Editor offers and reads (0 is off).
-var maxVisibleChildrenOptions = []int{0, 10, 25, 50}
+// maxVisibleChildrenLimit is the largest fan limit the Graph Editor and sim-api read (0 is off).
+const maxVisibleChildrenLimit = 200
 
 // UpdateLayerSettings writes the sent settings into the layer actor's data in one actor/update.
 func (c *Client) UpdateLayerSettings(ctx context.Context, in LayerSettingsInput) (LayerSettingsSaved, error) {
@@ -136,8 +136,8 @@ func (c *Client) UpdateLayerSettings(ctx context.Context, in LayerSettingsInput)
 		data["accountsPeriod"] = period
 	}
 	if v := in.MaxVisibleChildren; v != nil {
-		if !slices.Contains(maxVisibleChildrenOptions, *v) {
-			return LayerSettingsSaved{}, errors.New("maxVisibleChildren is 0 (off), 10, 25 or 50")
+		if *v < 0 || *v > maxVisibleChildrenLimit {
+			return LayerSettingsSaved{}, errors.New("maxVisibleChildren is 0 (off) or a whole number 1..200")
 		}
 		data["maxVisibleChildren"] = *v
 	}

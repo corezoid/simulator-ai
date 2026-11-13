@@ -12,8 +12,8 @@ import (
 
 const collapseGetDescription = "Read the user's own collapse of a layer — what their Graph Editor folds: folds (actors collapsed whole, " +
 	"or by condition: only the direct children the condition matches fold) with title, hiddenCount (placements folded into it), " +
-	"childCount/matchedChildCount and visible (false: another fold hides it); fans (actors with more direct children than the layer's " +
-	"maxVisibleChildren, their hiddenCount, opened: the user opened it whole); hiddenTotal. A fold whose actor left the layer is gone. " +
+	"childCount/matchedChildCount and visible (false: another fold hides it); fans (actors whose bare-leaf children past the layer's " +
+	"maxVisibleChildren fold into \"+K\"; a child linked elsewhere never folds), their hiddenCount, opened: the user opened it whole); fanOpen (every fan the user opened, wide now or not); hiddenTotal. A fold whose actor left the layer is gone. " +
 	"laId (a fold or a fan's parent) adds under: one page of the placements hidden under it (limit/offset; q searches a fan's by title). " +
 	"owner \"apiUser\": an API key reads the API user's own view, not a person's. Personal: nobody else's view. Skill simulator-ai-graph, Collapse."
 
@@ -30,7 +30,7 @@ const collapseUpdateDescription = "Change the user's own collapse of a layer (th
 	"Refused with an API key (it would fold the API user's view). The fan limit itself is layer_settings_update maxVisibleChildren."
 
 // collapseOutput is written by hand: the reflected one carries every nested type in full.
-const collapseOutput = `{"type":"object","properties":{"layerId":{"type":"string"},"owner":{"type":"string","enum":["you","apiUser"]},"maxVisibleChildren":{"type":"integer"},"folds":{"type":"array","items":{"type":"object"}},"fans":{"type":"array","items":{"type":"object"}},"fanShown":{"type":"array"},"hiddenTotal":{"type":"integer"},"truncated":{"type":"boolean"},"under":{"type":"object"}},"required":["layerId","owner","maxVisibleChildren","folds","fans","hiddenTotal"]}`
+const collapseOutput = `{"type":"object","properties":{"layerId":{"type":"string"},"owner":{"type":"string","enum":["you","apiUser"]},"maxVisibleChildren":{"type":"integer"},"folds":{"type":"array","items":{"type":"object"}},"fans":{"type":"array","items":{"type":"object"}},"fanOpen":{"type":"array","items":{"type":"integer"}},"fanShown":{"type":"array"},"hiddenTotal":{"type":"integer"},"truncated":{"type":"boolean"},"under":{"type":"object"}},"required":["layerId","owner","maxVisibleChildren","folds","fans","fanOpen","hiddenTotal"]}`
 
 // addLayerCollapse registers the collapse tools: the two reads wherever graph reads are, the
 // person's own write in the console.

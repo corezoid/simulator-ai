@@ -69,6 +69,9 @@ func TestGetLayerCollapseResolvesTheSavedState(t *testing.T) {
 	if f := view.Fans[0]; f.Title != "Hub" || f.HiddenCount != 4 || f.ChildCount != 14 || f.Opened {
 		t.Fatalf("%+v", f)
 	}
+	if view.FanOpen == nil || len(view.FanOpen) != 0 {
+		t.Fatalf("fanOpen %v", view.FanOpen)
+	}
 }
 
 func TestGetLayerCollapseListsWhatHidesUnder(t *testing.T) {
@@ -100,9 +103,10 @@ func TestGetLayerCollapseListsWhatHidesUnder(t *testing.T) {
 }
 
 func TestGetLayerCollapseWithNothingFoldedReadsOnlyTheState(t *testing.T) {
-	c, calls := collapseBackend(t, `{"roots":[],"conditional":[],"fanOpen":[],"fanShown":[],"maxVisibleChildren":0}`)
+	// A fan opened before the limit was turned off is still the user's: reported, so it can be closed.
+	c, calls := collapseBackend(t, `{"roots":[],"conditional":[],"fanOpen":[30],"fanShown":[],"maxVisibleChildren":0}`)
 	view, err := c.GetLayerCollapse(context.Background(), CollapseGetInput{LayerID: "L"})
-	if err != nil || len(view.Folds) != 0 || len(view.Fans) != 0 || methodsOf(*calls) != "graph/layer/collapse/state/get" {
+	if err != nil || len(view.Folds) != 0 || len(view.Fans) != 0 || len(view.FanOpen) != 1 || methodsOf(*calls) != "graph/layer/collapse/state/get" {
 		t.Fatal(view, err, methodsOf(*calls))
 	}
 }
@@ -164,8 +168,8 @@ func TestLayerSettingsMaxVisibleChildren(t *testing.T) {
 	if string(sent) != `{"maxVisibleChildren":25}` {
 		t.Fatal(string(sent))
 	}
-	bad := 7
+	bad := 201
 	if _, err := c.UpdateLayerSettings(context.Background(), LayerSettingsInput{LayerID: "L", MaxVisibleChildren: &bad}); err == nil || len(*calls) != 2 {
-		t.Fatal("7 accepted", err)
+		t.Fatal("201 accepted", err)
 	}
 }

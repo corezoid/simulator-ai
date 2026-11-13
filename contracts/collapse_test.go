@@ -22,7 +22,7 @@ func TestCollapseSourcePin(t *testing.T) {
 	if err = json.Unmarshal(raw, &source); err != nil {
 		t.Fatal(err)
 	}
-	if source.Revision != "f7c3eee6676fd1f204b9e13464fb45e16c8852b4" || source.Digest != fmt.Sprintf("%x", sha256.Sum256(CollapseSource)) || source.Methods != len(collapseParams) {
+	if source.Revision != "2b64aab1134821a20bc4a453148d450650abc05a" || source.Digest != fmt.Sprintf("%x", sha256.Sum256(CollapseSource)) || source.Methods != len(collapseParams) {
 		t.Fatal("collapse contract source pin drift")
 	}
 }
