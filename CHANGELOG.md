@@ -8,6 +8,11 @@
 
 ## [Unreleased]
 
+- The layer's default collapse (CE-16245): `layer_collapse_get` / `layer_collapse_update` read and change what the
+  user sees — the layer author's default (`data.collapseDefault`) under the user's own changes; expanding a default
+  fold expands it for the user only. The collapse contract is re-pinned (`state/get|update` answer `default` and
+  `expanded`; `graph/layer/collapse/children` lists a collapsed actor's hidden children with `roots`/`conditional`).
+
 - Collapsed branches for AI (CE-16204): `layer_collapse_get` reads the user's own Graph Editor collapse of a layer
   (folds whole or by condition with their hidden counts and titles, wide fans over the layer's limit, one page of
   what hides under a fold or a fan), `layer_collapse_count` previews a fold by condition, and `layer_collapse_update`

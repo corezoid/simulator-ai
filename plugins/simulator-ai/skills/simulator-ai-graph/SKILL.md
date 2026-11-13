@@ -109,6 +109,13 @@ A condition: `formId` (the children's template — `forms_list`/`form_get` for i
 (`accountNameId` + `currencyId`, `amountFrom` / `amountTo`, `incomeType`). Without `summary` the
 fold is labelled "<template>: <q>". A child the user cannot view never matches.
 
+**The layer's default collapse.** A layer may carry a collapse its author made for everyone
+(`data.collapseDefault`, set in the editor's layer settings, «Make default for everyone»). What
+`layer_collapse_get` shows is what the user SEES: that default under their own changes. Expanding a
+default fold expands it for this user only (it is saved as theirs; the default stays); a default fold
+they never touched follows the layer when its author changes it. Do not write `collapseDefault`
+yourself unless the user asks to change the layer's default for everyone.
+
 `openTabs` in the answer: the user's open Graph Editor tabs of the layer that updated at once; `0`
 means they will see it when they open the layer — say so (offer `layer_viewport` or `build_link`).
 `changed: false`: it already was so. The fan LIMIT is not personal: it is the layer setting

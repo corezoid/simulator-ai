@@ -17,7 +17,7 @@ var CollapseSource []byte
 
 // collapseParams is the exact param set of each collapse method this plugin was reviewed against.
 var collapseParams = map[string][]string{
-	"graph/layer/collapse/children":     {"accId", "actorId", "exclude", "laId", "limit", "maxVisibleChildren", "offset", "q"},
+	"graph/layer/collapse/children":     {"accId", "actorId", "conditional", "exclude", "laId", "limit", "maxVisibleChildren", "offset", "q", "roots"},
 	"graph/layer/collapse/count":        {"accId", "actorId", "condition", "laId"},
 	"graph/layer/collapse/resolve":      {"accId", "actorId", "conditional", "fanOpen", "fanShown", "maxVisibleChildren", "roots", "zone"},
 	"graph/layer/collapse/state/get":    {"accId", "actorId"},
@@ -25,7 +25,7 @@ var collapseParams = map[string][]string{
 }
 
 // collapseStateFields are the state/get result fields the tools read.
-var collapseStateFields = []string{"conditional", "fanOpen", "fanShown", "maxVisibleChildren", "roots"}
+var collapseStateFields = []string{"conditional", "default", "expanded", "fanOpen", "fanShown", "maxVisibleChildren", "roots"}
 
 // layerIDSchema is the layer argument of every collapse tool; actorId is its backend name.
 var layerIDSchema = map[string]any{"type": "string", "minLength": 1, "maxLength": 255,
