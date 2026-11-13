@@ -1,10 +1,11 @@
 ---
 name: simulator-ai-charts
-description: Create and change Simulator charts (dashboards of account values on a graph layer) with the public Simulator AI console tools. Use when the user wants to create, add or reconfigure a chart or dashboard, plot actor balances or transaction counts, change the chart type, range, sorting, series or size ("create chart", "add dashboard", "switch to bar chart", "show last week", "visualise account data", "створи графік", "додай дашборд", "покажи баланси на графіку", "создай график", "дашборд").
+description: Create, change and read Simulator charts (dashboards of account values on a graph layer) with the public Simulator AI tools. Use when the user wants to create, add or reconfigure a chart or dashboard, plot actor balances or transaction counts, change the chart type, range, sorting, series or size, or asks what a dashboard shows for a period, its totals or per-day values ("create chart", "add dashboard", "switch to bar chart", "show last week", "visualise account data", "dashboard data for March", "створи графік", "додай дашборд", "покажи баланси на графіку", "що показує дашборд за тиждень", "сума по дашборду", "создай график", "дашборд", "данные дашборда за период").
 ---
 
-Use the installed `simulator-ai` catalog with profile `console-full` (`chart_create` and
-`chart_update` are not in the `console` core). A **chart** is an actor of the `Dashboards` system
+Use the installed `simulator-ai` catalog with profile `console-full` (`chart_create`,
+`chart_update` and `chart_data_get` are not in the `console` core; `graph-read` has
+`chart_data_get` too). A **chart** is an actor of the `Dashboards` system
 template placed on a layer and opened as a chart; its `data.source` holds the configuration.
 
 ## Two kinds of chart
@@ -89,3 +90,41 @@ chart_update {chartId, layerId, laId, width: 900, height: 600}   // redraw the p
 
 Account inheritance from the layer's graph is not set up by these tools: a chart reads the
 accounts its source names.
+
+## Read what a chart shows
+
+`chart_data_get {chartId, from?, to?, interval?, timezoneOffset?, with?, actorIds?, balanceOnDate?, counterType?}`
+computes on the server what the saved chart shows: one item of `data[]` per series (`actorId`,
+`actorTitle`, `nameId`, `accountName`, `currencyId`, `currencyName`, `incomeType`, `value`). Never
+rebuild it from `accounts_list`: an actorFilter chart's top actors and its saved series are resolved
+for you, and series the user may not see are left out.
+
+- **Period**: `from` and `to` (Unix ms) together, bucketed by `interval` (`minute`, `hour`, `day`
+  default, `month`, `year`) in the user's `timezoneOffset` (minutes, JS sign: Kyiv summer is
+  `-180`). Longest period: 2 hours for `minute`, 7 days for `hour`, 2 years otherwise.
+- **`value` depends on the chart type.** For `line` and `stackedBar` the period is required and
+  `value` is only the **base** the series starts from: `0`, or the balance at `from` with
+  `balanceOnDate: true`. What happened in the period is in the buckets `data[] {bucketStart,
+  value}` (the movement in each bucket; a bucket without movement is absent), so a series' period
+  sum is the sum of its `data[]`. For every other type `value` IS the period's amount (or
+  transaction count with `counterType: "count"`), or the current value without a period.
+- `with: ["series"]` — buckets in `data[]` for **any** chart type (a bar or KPI chart per day); needs
+  `from` and `to`; `value` keeps its meaning.
+- `with: ["total"]` — a top-level `total {value, data[]}`: every series' `value` summed, and bucket by
+  bucket their `data[]`. For the period sum of all series: `total.value` on a non-line chart, the sum
+  of `total.data[]` on line/stackedBar (there `total.value` is the sum of the bases). An amount chart
+  whose series mix currencies has no sum: `invalidParams`; drop `total` and answer per currency.
+  Transaction counts add up across currencies.
+- `actorIds` keeps only those actors' series (never adds one). A long period at a fine interval is a
+  large answer: prefer `total`, a coarser `interval` or `actorIds`.
+- Errors: `notFound` — `chartId` is not a chart (find it with `actors_search` or on its layer);
+  `accessDenied` — no view on the chart or its ActorFilters actor; `invalidParams` — a missing or too
+  long period, `series` without `from`/`to`, a `groupBy` chart, or mixed currencies with `total`.
+
+```
+chart_data_get {chartId, from: 1788210000000, to: 1790888399000, interval: "day", timezoneOffset: -180, with: ["total"]}
+chart_data_get {chartId, from, to, with: ["series", "total"], interval: "month"}   // a bar chart month by month
+chart_data_get {chartId, from, to, actorIds: ["<actor id>"]}                      // one actor's figure
+```
+
+Amounts are real values; show them with each series' `precision` and `currencyName`.

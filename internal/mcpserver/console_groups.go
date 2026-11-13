@@ -64,8 +64,9 @@ var consoleGroups = map[string][]string{
 		"attachments_by_actor_list", "actor_picture_upload"},
 	"meetings": {"public_link_create", "public_link_get", "public_link_revoke", "meet_transcription_list"},
 	"jobs":     {"graph_export_create", "graph_import_create", "graph_file_upload", "task_get"},
-	// A chart plots accounts: their nameId and currencyId come from the finance reads.
-	"charts":     {"chart_create", "chart_update", "accounts_list", "account_names_list", "currencies_list"},
+	// A chart plots accounts: their nameId and currencyId come from the finance reads; chart_data_get
+	// reads what a chart shows over a period.
+	"charts":     {"chart_create", "chart_update", "chart_data_get", "accounts_list", "account_names_list", "currencies_list"},
 	"simulation": {"simulation_snapshot_get", "simulation_check", "simulation_run"},
 	"corezoid": {"corezoid_projects_list", "corezoid_stages_list", "corezoid_processes_list", "corezoid_project_get",
 		"corezoid_project_create", "corezoid_project_bind", "actor_corezoid_processes_list"},

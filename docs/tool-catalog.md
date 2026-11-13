@@ -94,6 +94,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `bbcode_tags_get` | `console-full` |  |
 | `build_link` | `console`, `console-full` |  |
 | `chart_create` |  | `console-full` |
+| `chart_data_get` | `graph-read`, `console-full` |  |
 | `chart_update` |  | `console-full` |
 | `chat_open` |  | `console`, `console-full` |
 | `corezoid_processes_list` | `console-full` |  |

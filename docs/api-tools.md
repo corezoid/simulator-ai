@@ -106,6 +106,7 @@ strict graph-create and Smart Forms tools have their own [recovery guides](tool-
 | --- | --- |
 | `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, placed open as `layer_placements_create` does (room checked before the actors are made, made with anisotropy) |
 | `chart_update` [updateChart] (settings, series or filter; with `laId` the placement's size) | `actor/get` + `form/system/get`, a new filter's `actor/create`, `actor/update`, `graph/layer/elements/list` + `graph/layer/actor_settings/save` |
+| `chart_data_get` [none] (what a saved chart shows over a period: series, buckets, total; also in `graph-read`) | `dashboard/get` (`chartId` is its `actorId`; `with` `total`/`series`, `actorIds`; no `source` override) |
 
 ## Applications and Corezoid
 

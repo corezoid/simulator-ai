@@ -125,7 +125,7 @@ func TestConsoleCatalog(t *testing.T) {
 		"actor_corezoid_processes_list,actor_create,actor_delete,actor_field_triggers_list,actor_field_triggers_set,actor_get,actor_picture_upload,actor_status_update," +
 		"actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count,actors_search,agent_get,agents_find,atom_transaction_create,attachment_attach," +
 		"attachment_detach,attachment_read,attachment_update,attachment_upload,attachments_by_actor_list,attachments_list,bbcode_tags_get,build_link,chart_create," +
-		"chart_update,chat_open,corezoid_processes_list,corezoid_project_bind,corezoid_project_create,corezoid_project_get,corezoid_projects_list,corezoid_stages_list," +
+		"chart_data_get,chart_update,chat_open,corezoid_processes_list,corezoid_project_bind,corezoid_project_create,corezoid_project_get,corezoid_projects_list,corezoid_stages_list," +
 		"counter_by_period_get,counter_get,counter_increment,counter_set,currencies_list,currency_create,currency_get,currency_update,edge_create,edge_delete," +
 		"edge_endpoints_update,edge_exist,edge_get,edge_hole_close,edge_hole_reopen,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
 		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_fields_patch,form_get,form_linked_get,form_status_update,form_update,forms_count," +
@@ -140,10 +140,10 @@ func TestConsoleCatalog(t *testing.T) {
 		"transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter,transactions_filter_count,transactions_list," +
 		"transfer_by_ref_get,transfer_create,transfer_get,transfers_filter,transfers_filter_count,user_get,users_search,workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 194 {
+	if got := strings.Join(names, ","); got != want || len(names) != 195 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
-	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get", "smart_form_reference_grep", "smart_form_reference_read"} {
+	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get", "smart_form_reference_grep", "smart_form_reference_read", "chart_data_get"} {
 		if !reads[name] {
 			t.Errorf("%s must be read-only", name)
 		}
