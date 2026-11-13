@@ -60,5 +60,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --generate-notes dist/*
+        # Notes are the curated "## [X.Y.Z]" CHANGELOG.md section at the tag (the heading may end
+        # in " - YYYY-MM-DD"); generated notes only when that section is missing or empty.
+        run: |
+          notes_file="$RUNNER_TEMP/release-notes.md"
+          awk -v heading="## [${RELEASE_TAG#v}]" \
+            'index($0, heading) == 1 {found = 1; next} found && /^## / {exit} found {print}' \
+            CHANGELOG.md > "$notes_file"
+          notes=(--generate-notes)
+          if grep -q '[^[:space:]]' "$notes_file"; then
+            notes=(--notes-file "$notes_file")
+            echo "::notice::Release notes from CHANGELOG.md section ## [${RELEASE_TAG#v}]"
+          else
+            echo "::warning::No CHANGELOG.md section ## [${RELEASE_TAG#v}]; using generated release notes"
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" "${notes[@]}" dist/*
       # Only sim-deploy publishes the verified draft after backend deployment.

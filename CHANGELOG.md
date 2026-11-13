@@ -1,12 +1,10 @@
 # Changelog
 
-## [0.1.0]
-
-### Changed
-- record verified release quality evidence without review gates
-- use a repository link in copied PR descriptions
-
 ## [Unreleased]
+
+- The Release workflow fills the draft GitHub release from the tag's `## [X.Y.Z]` section of `CHANGELOG.md`
+  (a ` - YYYY-MM-DD` suffix on the heading is fine) and falls back to generated notes only when that section is
+  missing or empty. `[Unreleased]` moves back to the top of this file.
 
 - `reactions_list` and the reactions skill say that `with: ["parentActor"]` leaves the parent out when it is a
   hidden reaction the caller cannot read (no `execute` on the actor) — sim-api now omits it for a still-visible
@@ -105,3 +103,9 @@
 ### Fixed
 - Upgrade the Go toolchain to 1.27.3 for GO-2026-6809.
 - Resolve static-analysis findings and refuse redirects in the live smoke HTTP client.
+
+## [0.1.0]
+
+### Changed
+- record verified release quality evidence without review gates
+- use a repository link in copied PR descriptions
