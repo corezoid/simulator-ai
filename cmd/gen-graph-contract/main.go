@@ -50,7 +50,7 @@ func projectNames(raw []byte, selectedNames []string) ([]byte, error) {
 }
 
 func main() {
-	profile := flag.String("profile", "read", "read, create, elements, layer-stats, reactions-read or dashboard")
+	profile := flag.String("profile", "read", "read, create, elements, layer-stats, reactions-read, dashboard or collapse")
 	input := flag.String("input", "", "reviewed local public OpenRPC artifact")
 	revision := flag.String("revision", "", "reviewed backend commit")
 	output := flag.String("output", "contracts/graph-openrpc.json", "projection destination")
@@ -73,6 +73,8 @@ func main() {
 		selected = []string{"graph/layer/stats/get"}
 	} else if *profile == "dashboard" {
 		selected = []string{"dashboard/get"}
+	} else if *profile == "collapse" {
+		selected = collapseNames
 	} else if *profile != "read" {
 		fail(fmt.Errorf("unsupported profile"))
 	}
@@ -87,3 +89,7 @@ func main() {
 	fmt.Printf("%d public graph-%s methods; backend %s; projection sha256 %x\n", len(selected), *profile, *revision, sha256.Sum256(result))
 }
 func fail(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+
+// collapseNames are the public collapse methods behind the layer_collapse_* tools.
+var collapseNames = []string{"graph/layer/collapse/children", "graph/layer/collapse/count", "graph/layer/collapse/resolve",
+	"graph/layer/collapse/state/get", "graph/layer/collapse/state/update"}

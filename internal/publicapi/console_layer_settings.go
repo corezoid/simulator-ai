@@ -25,6 +25,10 @@ import (
 //     currencyName are written here too, its currency metadata is not (its reader fills it).
 //   - accountsPeriod {startDate?, endDate?, timeZoneOffset}: the balances' window, Unix seconds.
 //     A cleared period is {timeZoneOffset} alone, never {} (layerData.ts encodeAccountsPeriod).
+//   - maxVisibleChildren: "show at most N children" (CE-16245), one of 0 (off), 10, 25, 50
+//     (ui-kit MAX_VISIBLE_CHILDREN_OPTIONS; sim-api e_graph.MaxVisibleChildrenOptions): an actor with
+//     more direct children shows the first N and folds the rest for every viewer. Anything else
+//     stored there reads as off.
 
 type LayerSettingsInput struct {
 	LayerID string `json:"layerId"`
@@ -36,6 +40,8 @@ type LayerSettingsInput struct {
 	InitialCell    string          `json:"initialCell,omitempty"`
 	Accounts       *[]LayerAccount `json:"accounts,omitempty"`
 	AccountsPeriod *LayerPeriod    `json:"accountsPeriod,omitempty"`
+	// MaxVisibleChildren is the layer's fan limit; 0 turns it off.
+	MaxVisibleChildren *int `json:"maxVisibleChildren,omitempty"`
 }
 
 // LayerAccount names an account pair shown on the layer's actors.
@@ -60,6 +66,9 @@ type LayerSettingsSaved struct {
 const maxLayerAccounts = 32
 
 var curveStyles = []string{"curved", "rounded", "roundedDownward", "straight"}
+
+// maxVisibleChildrenOptions are the fan limits the Graph Editor offers and reads (0 is off).
+var maxVisibleChildrenOptions = []int{0, 10, 25, 50}
 
 // UpdateLayerSettings writes the sent settings into the layer actor's data in one actor/update.
 func (c *Client) UpdateLayerSettings(ctx context.Context, in LayerSettingsInput) (LayerSettingsSaved, error) {
@@ -125,6 +134,12 @@ func (c *Client) UpdateLayerSettings(ctx context.Context, in LayerSettingsInput)
 			period["endDate"] = *p.EndDate
 		}
 		data["accountsPeriod"] = period
+	}
+	if v := in.MaxVisibleChildren; v != nil {
+		if !slices.Contains(maxVisibleChildrenOptions, *v) {
+			return LayerSettingsSaved{}, errors.New("maxVisibleChildren is 0 (off), 10, 25 or 50")
+		}
+		data["maxVisibleChildren"] = *v
 	}
 	if len(data) == 0 {
 		return LayerSettingsSaved{}, errors.New("nothing to change: send at least one setting")

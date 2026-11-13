@@ -1,0 +1,6 @@
+{
+  "source": "sim-api internal/server/testdata/public-openrpc.json (reviewed committed public OpenRPC baseline), projected by cmd/gen-graph-contract -profile collapse",
+  "revision": "f7c3eee6676fd1f204b9e13464fb45e16c8852b4",
+  "projectionSha256": "f42aad460139b4a50e978ed8f9024fd1d168903b65602489fa9472bdaeeb6d80",
+  "methods": 5
+}

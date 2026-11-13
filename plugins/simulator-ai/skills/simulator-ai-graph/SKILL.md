@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes, nodes opened in place (multi-layers) and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, open or close an actor or a layer in place, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form, anisotropy), close holes or draw on it ("рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "розкрий шар", "розгорни актора", "згорни", "анізотропія", "создай блок-схему", "нарисуй процесс", "что на слое", "раскрой слой").
+description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes, nodes opened in place (multi-layers) and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, open or close an actor or a layer in place, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form, anisotropy), close holes or draw on it, fold or unfold branches in the user's own view (collapse whole or by condition, wide fans "+K more") ("згорни гілку", "розгорни все", "що згорнуто", "згорни оплачені замовлення", "свернуть ветку", "collapse branch", "рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "розкрий шар", "розгорни актора", "згорни", "анізотропія", "создай блок-схему", "нарисуй процесс", "что на слое", "раскрой слой").
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
@@ -78,6 +78,43 @@ current layer of the Current context.
 
 A field the action does not take is refused. `openTabs: 0` means the user does not have the
 layer open, so nothing moved: say so (and offer `build_link` to the layer) rather than "done".
+
+## Collapse branches (the user's own view)
+
+The Graph Editor folds a branch for ONE person: a collapsed actor shows a "+N" badge and everything
+below it hides; nothing moves and nobody else sees it. Not the same as opening/closing a node in
+place (`layer_node_expand`, next sections): "згорни гілку / свернуть ветку / collapse the branch"
+is this; "згорни вузол" of an opened multi-layer node is that. The tools (`console-full`, group
+`graph_extra`; reads also in `graph-read`):
+
+- `layer_collapse_get {layerId}` — what is folded: `folds` (title, `hiddenCount`, whole or
+  `conditional` with its `condition`/`summary`, `visible: false` = another fold hides it, `gone` =
+  the actor left the layer), `fans` (actors with more direct children than the layer's
+  `maxVisibleChildren`: their `hiddenCount`, `opened`), `hiddenTotal`. Add `laId` of a fold or a
+  fan for `under`: one page of what hides there (`limit`, `offset`; `q` searches a fan's children
+  by title). Answer "what is collapsed / what hangs under X" from this, not from `layer_get`.
+- `layer_collapse_update {layerId, …}` — change it: `collapse: [laId]` folds whole;
+  `conditional: [{laId, condition, summary?}]` folds only the direct children the condition
+  matches (each with its subtree; the rest stay); `expand: [laId]` / `expandAll: true` unfolds;
+  `fanOpen` / `fanClose` / `fanReset` open a wide fan whole or fold it again. Expansions go first,
+  so one call replaces a fold. `laId` is the placement (`layer_get` nodes), not the actor id.
+- `layer_collapse_count {layerId, laId, condition}` — preview a condition before folding by it:
+  `count` of `childCount` direct children match. Say "3 of 12 will fold" and fold on agreement
+  when the user's words were vague; a precise request ("collapse the paid orders under ACME")
+  needs no preview.
+
+A condition: `formId` (the children's template — `forms_list`/`form_get` for ids and field names),
+`q` (`stage=paid`, `amount>100&stage!=new`, `a=1||b=2`), optional balance bounds
+(`accountNameId` + `currencyId`, `amountFrom` / `amountTo`, `incomeType`). Without `summary` the
+fold is labelled "<template>: <q>". A child the user cannot view never matches.
+
+`openTabs` in the answer: the user's open Graph Editor tabs of the layer that updated at once; `0`
+means they will see it when they open the layer — say so (offer `layer_viewport` or `build_link`).
+`changed: false`: it already was so. The fan LIMIT is not personal: it is the layer setting
+`maxVisibleChildren` (0 off, 10, 25, 50) in `layer_settings_update`, for every viewer — change it
+only when asked for the layer, not for "show me less". With an API key (`owner: "apiUser"`) the
+state is the API user's own, which no person sees: `layer_collapse_update` refuses; tell the user
+to ask in the AI Console or sign in with `login`.
 
 ## Visualize in the chat
 
@@ -171,8 +208,9 @@ node; a placeholder link: `edges_create` with `hole: true`.
 
 A layer's own settings (the Graph Editor's layer settings) are keys of the layer actor's `data`,
 not of its placements: the default template of new objects (`defForm`), the default edge shape,
-anisotropy, outer edges, where it opens, and **Accounts on the graph** (the balances drawn on
-every actor of the layer, with their period). Change them with `layer_settings_update {layerId,
+anisotropy, outer edges, where it opens, **Accounts on the graph** (the balances drawn on
+every actor of the layer, with their period) and `maxVisibleChildren` ("show at most N children":
+0 off, 10, 25 or 50 — a wider fan folds the rest into "+K more" for every viewer). Change them with `layer_settings_update {layerId,
 …}` (`console-full`): only the sent keys change; `accounts` names pairs
 (`[{accountName, currency}]`, the whole list, `[]` hides them) and is resolved for you. Read them
 with `actor_get {actorId: <layerId>, fields: ["id", "data"]}`. Never say a layer setting cannot
@@ -305,7 +343,8 @@ Both need the `import_export:management` workspace permission.
 - `graph-read` adds read-only native metadata: `graph_system_form_get` (Graphs/Layers ids),
   `graph_edge_types_list`, `flowchart_blocks_search`, `graph_elements_get` (exact geometry of
   known node/edge laIds, 1–100 per call) and `graph_layer_stats_get` (with
-  `SIMULATOR_AI_ACTOR` it is the only tool and takes `{}`).
+  `SIMULATOR_AI_ACTOR` it is the only tool and takes `{}`), and the collapse reads
+  `layer_collapse_get` / `layer_collapse_count` (the folding itself is the console's).
 - `graph-create` creates a flowchart with recovery receipts: `graph_flowchart_plan` (the
   plan: positions and payloads) → `graph_actor_create` → `graph_edge_create` →
   `graph_placements_create`. Give every write its own stable `operationId`, save the plan and

@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+- Collapsed branches for AI (CE-16204): `layer_collapse_get` reads the user's own Graph Editor collapse of a layer
+  (folds whole or by condition with their hidden counts and titles, wide fans over the layer's limit, one page of
+  what hides under a fold or a fan), `layer_collapse_count` previews a fold by condition, and `layer_collapse_update`
+  (console only) folds and unfolds for the user through public `graph/layer/collapse/state/update` — their open
+  editor follows at once. The write is refused with an API key (it would change the API user's view, which nobody
+  sees). Reads are also in `graph-read`; all three are in the `graph_extra` group, not the plain console catalog.
+  `layer_settings_update` takes `maxVisibleChildren` (0, 10, 25, 50: the layer's fan limit for every viewer).
+  The new public methods are pinned in `contracts/collapse-openrpc.json` (`cmd/gen-graph-contract -profile collapse`).
+
 - `reactions_list` and the reactions skill say that `with: ["parentActor"]` leaves the parent out when it is a
   hidden reaction the caller cannot read (no `execute` on the actor) — sim-api now omits it for a still-visible
   reply to such a note (CE-16234 follow-up); `parentId` keeps naming it. Description-only; tool schemas unchanged.

@@ -209,9 +209,36 @@ a rank wider than 60 cells wraps; `origin` is the layout's top-left cell.
 <details>
 <summary>layer_settings_update (console-full)</summary>
 
-**Public calls:** names → `account_name/list` / `account_currency/list`; `form/get` for the `defForm` title; one `actor/update` of the layer's `data`
+**Public calls:** names → `account_name/list` / `account_currency/list`; `form/get` for the `defForm` title; one `actor/update` of the layer's `data` (`maxVisibleChildren` is one of 0, 10, 25, 50: the layer's fan limit, for every viewer)
 
 **Result:** `{layerId, keys}`
+
+</details>
+
+<details>
+<summary>layer_collapse_get (console-full, graph-read)</summary>
+
+**Public calls:** `graph/layer/collapse/state/get` (the caller's own saved folds and fans, and the layer's `maxVisibleChildren`); with any fold or a fan limit `graph/layer/extent/get` (the zone of the fans, one cell of margin) + `graph/layer/collapse/resolve`; `graph/layer/elements/list` (titles of the folds and fan parents, at most 500). With `laId`: `graph/layer/collapse/children` for a folded fan (paged, `q` by title, the children the user showed excluded), else one page of the fold's hidden placements from the resolve + their titles
+
+**Result:** `{layerId, owner ("you" | "apiUser"), maxVisibleChildren, folds[{laId, title, conditional, condition, summary, visible, gone, hiddenCount, childCount, matchedChildCount, sharedVisibleCount}], fans[{laId, title, childCount, hiddenCount, opened}], fanShown, hiddenTotal, truncated, under{laId, kind (fold | fan), items[{laId, actorId, title, accessDenied}], hasMore}}`
+
+</details>
+
+<details>
+<summary>layer_collapse_count (console-full, graph-read)</summary>
+
+**Public calls:** `graph/layer/collapse/count`
+
+**Result:** `{count, childCount, capped}`
+
+</details>
+
+<details>
+<summary>layer_collapse_update (console-full)</summary>
+
+**Public calls:** `form/get` (the default `summary` of a fold by condition: "<template>: <q>", balance bounds) + `graph/layer/collapse/state/update` (writes the caller's own `graphCollapse_` / `graphCollapseConditions_` / `graphFan_` user settings and sends `graphCollapseChanged` to their tabs). Refused before any call with an API key (`ApiKey` credential): the state would be the API user's, which no person sees
+
+**Result:** `{layerId, roots, conditional, fanOpen, fanShown, maxVisibleChildren, changed, openTabs}`
 
 </details>
 
