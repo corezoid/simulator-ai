@@ -70,7 +70,7 @@ type DashboardData struct {
 	Total *DashboardTotal   `json:"total,omitempty"`
 }
 
-// DashboardReadsEnabled: the console profiles, with the account reads, and the workspace graph-read
+// DashboardReadsEnabled is true in the console profiles, with the account reads, and the workspace graph-read
 // profile, with the graph reads. graph-create stays a write profile; an actor-bound graph-read
 // process has only its layer's counters.
 func (c *Client) DashboardReadsEnabled() bool {
