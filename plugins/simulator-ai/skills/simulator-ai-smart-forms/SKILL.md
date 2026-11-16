@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-smart-forms
-description: "Build and change Simulator Smart Forms (CDU v2 mini-apps): pages, components, data template, view model, locale, releases. Triggers: \"smart form\", \"add a component\", \"створи смарт форму\"."
+description: "Build and change Simulator Smart Forms (CDU v2 mini-apps), a form people fill in: pages, components, view model, releases. Triggers: \"smart form\", \"форма для заявки\", \"додай поле на сторінку\"."
 ---
 
 Use the installed `simulator-ai` catalog. In `console`: `smart_form_create`,

@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-agents
-description: "Simulator digital twins and agents: find who can do a task, delegate it, ask someone's agent. Triggers: \"delegate to\", \"who should do this\", \"делегуй\", \"хто це зробить\", \"кто это сделает\"."
+description: "Simulator digital twins and agents: find who can do a task, delegate it, ask someone's agent. Triggers: \"delegate to\", \"find someone to\", \"can X do this\", \"делегуй\", \"кто это сделает\"."
 ---
 
 Use the installed `simulator-ai` catalog with profile `console-full` (`agents_find` and `agent_get`
