@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-tasks
-description: Create a Simulator task or an order addressed to someone and assign its executor, approvers and signers with the public Simulator AI console tools. Use when the user wants to create or set a task, assign it, add approvers, require a signature, or issue an order or directive to a person ("створи задачу", "признач виконавця", "додай погоджувача", "потрібен підпис", "наказ на", "создай задачу", "приказ").
+description: "Simulator tasks and orders for people: create, assign an executor, add approvers or signers. Triggers: \"create a task\", \"assign this to\", \"needs approval\", \"створи задачу\", \"приказ\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console`). A task is an actor of the Events

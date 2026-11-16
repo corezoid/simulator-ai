@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-meetings
-description: Schedule and configure Simulator meetings (video / SIP rooms), share their join links and read a call's transcript with the public Simulator AI console tools. A meeting is an actor of the Events system template with data.scheduleMeeting true and no chatType; the actor is the room. Use when the user wants to schedule a meeting, create a call or video room, set up a recurring meeting or a standing room, add an agenda, set a moderator, get or revoke a join link, invite people, or read or summarise what was said on a call ("запланувати зустріч", "створи мітинг", "посилання на зустріч", "транскрипція дзвінка", "підсумуй дзвінок", "запланируй встречу", "ссылка на встречу", "транскрипция звонка").
+description: "Simulator meetings and video/SIP rooms: schedule, recurring, agenda, join link; read or summarise a call transcript. Triggers: \"schedule a meeting\", \"запланируй встречу\", \"транскрипція дзвінка\"."
 ---
 
 Use the installed `simulator-ai` catalog with profile `console-full` (the guest-link and

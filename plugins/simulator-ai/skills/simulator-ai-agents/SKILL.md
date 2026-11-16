@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-agents
-description: Consult a Simulator agent and delegate work to it with the public Simulator AI console tools. An agent is any actor whose description holds an "# Agent" profile (what it does and knows); usually a workspace user's twin actor, but also a team, service, bot or process. Use when the user wants to "delegate", "assign this to", asks "can X do this", "who should do this", "find someone to …", "ask X's agent", "what has X worked on" ("делегуй", "доручи X", "хто це зробить", "підбери виконавця", "запитай агента X", "над чим працював X", "делегируй", "кто это сделает", "подбери исполнителя").
+description: "Simulator digital twins and agents: find who can do a task, delegate it, ask someone's agent. Triggers: \"delegate to\", \"who should do this\", \"делегуй\", \"хто це зробить\", \"кто это сделает\"."
 ---
 
 Use the installed `simulator-ai` catalog with profile `console-full` (`agents_find` and `agent_get`

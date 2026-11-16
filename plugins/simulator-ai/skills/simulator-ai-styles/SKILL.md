@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-styles
-description: Style a CDU v2 Smart Form — its theme file (built-in or own themes, brand colours, fonts, radius and density presets, tokens, a theme the viewer can switch) and the visual props of its components — with the public Simulator AI tools. Use when the user wants to restyle or brand a Smart Form, give it a theme or dark mode, change its colours, fonts or spacing, or make it look like a reference ("style the smart form", "theme the form", "застилізувати смартформу", "тема для форми", "застилизовать смартформу", "тема формы").
+description: "Style a Simulator Smart Form: theme file, brand colours, fonts, density, dark mode, component look. Triggers: \"style the smart form\", \"make it look like\", \"тема для форми\", \"тема формы\"."
 ---
 
 Use the installed `simulator-ai` catalog (`smart_form_files_get`, `smart_form_files_create`,

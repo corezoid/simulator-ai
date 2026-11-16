@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes, nodes opened in place (multi-layers) and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, open or close an actor or a layer in place, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form, anisotropy), close holes or draw on it, fold or unfold branches in the user's own view (collapse whole or by condition, wide fans "+K more") ("згорни гілку", "розгорни все", "що згорнуто", "згорни оплачені замовлення", "свернуть ветку", "collapse branch", "рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "розкрий шар", "розгорни актора", "згорни", "анізотропія", "создай блок-схему", "нарисуй процесс", "что на слое", "раскрой слой").
+description: "Simulator graphs and layers: flowcharts, nodes, edges, layer settings, holes, collapse, open in place, export, what is on a layer. Triggers: \"build a flowchart\", \"що на шарі\", \"свернуть ветку\"."
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,

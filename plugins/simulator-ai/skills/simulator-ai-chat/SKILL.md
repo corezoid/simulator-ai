@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-chat
-description: Message a Simulator user and open or reuse a p2p or group chat with the public Simulator AI console tools. Use when the user wants to write to, message or DM someone, open a chat or reply in a chat ("напиши повідомлення користувачу", "надішли повідомлення", "відкрий чат з", "напиши сообщение пользователю", "открой чат с").
+description: "Simulator messages and chats: write to a user, open or reuse a 1:1 or group chat. Triggers: \"send N a message\", \"open a chat with\", \"напиши користувачу\", \"открой чат с\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console`). A chat is an actor of the Events

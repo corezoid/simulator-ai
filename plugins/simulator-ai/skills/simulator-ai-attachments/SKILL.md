@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-attachments
-description: Upload, attach, list, read, rename and detach files with the public Simulator AI console tools. Use when the user wants to upload a file, attach a document or picture to an actor or a comment, set an actor's picture, read an attached file, or list a record's files ("завантаж файл", "прикріпи документ", "прочитай вкладення", "відкріпи файл", "загрузи файл").
+description: "Simulator files: upload, attach to an actor or comment, read, list, rename, detach; an actor's picture. Triggers: \"upload a file\", \"attach this document\", \"прикріпи файл\", \"загрузи файл\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console`; the list, attach, rename and

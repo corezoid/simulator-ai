@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-init
-description: Connect the public Simulator AI MCP to a Simulator stand — origin, workspace, credential and profile through the client's environment — and check the connection. Use when the user wants to set up, connect, log in to or configure Simulator, switch workspace or profile, or the simulator-ai tools are missing or refuse to start ("init", "setup", "connect to simulator", "set workspace", "підключи симулятор", "налаштуй", "подключи симулятор").
+description: "Connect simulator-ai to Simulator.Company: origin, workspace, login or API key, profile; tools missing or not starting. Triggers: \"connect to simulator\", \"set workspace\", \"підключи симулятор\"."
 ---
 
 The `simulator-ai` server signs in one of two ways:
