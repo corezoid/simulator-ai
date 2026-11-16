@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-smart-forms-runtime
-description: Go through an existing Simulator Smart Form on the user's behalf — find the right app, read what it asks for, gather the values from the conversation or an attached document, and produce the record it would submit — with the public Simulator AI tools. Use when the user wants to run or use a Smart Form, fill in a form, create what an app produces (a contract, a request) or turn a document into records through an app ("run the app", "fill the form", "запусти застосунок", "заповни форму", "оформи договір", "заполни форму").
+description: "Use an existing Simulator Smart Form for the user: find the app, fill it in, submit, turn a document into records. Triggers: \"run the app\", \"fill the form\", \"заповни форму\", \"оформи договір\"."
 ---
 
 Use the installed `simulator-ai` catalog. You run an app; building or editing one is

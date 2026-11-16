@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+- Skill descriptions cut to at most 200 characters each (11 586 → 4 098 characters across the 22 skills): what the
+  skill does, named as Simulator's, plus a few EN/UK/RU trigger phrases and the words that tell look-alike skills
+  apart (chat / meetings / tasks, agents / tasks, the Smart Form skills). Hosts load every description into every
+  session that has the plugin, Simulator task or not, and once Claude Code's skill listing overflows it shows skills
+  by name only. Skill bodies are unchanged. A `cmd/client-smoke` test fails `make test` when a description is over 200
+  characters or a skill's `name` differs from its directory; it parses the frontmatter as YAML, so a folded or
+  multi-line description is measured whole.
+
 - The layer's default collapse (CE-16245): `layer_collapse_get` / `layer_collapse_update` read and change what the
   user sees — the layer author's default (`data.collapseDefault`) under the user's own changes; expanding a default
   fold expands it for the user only. The collapse contract is re-pinned (`state/get|update` answer `default` and

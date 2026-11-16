@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-smart-forms-logic
-description: Plan and brief the Corezoid process behind a CDU v2 Smart Form — a page view model loaded from Corezoid (/get) and form submits handled by it (/send) — and hand the authoring to the Corezoid plugin's corezoid-create and corezoid-edit skills. Use when a Smart Form must load dynamic data, react to a submit, navigate, notify or write back to actors, or its existing backend must change ("smart form backend", "wire smart form to corezoid", "/get /send process", "submit handler", "логіка смарт форми", "бекенд смарт форми", "процес для смарт форми", "логика смарт формы").
+description: "Corezoid backend of a Simulator Smart Form: /get page data and /send submit handlers; briefs corezoid-create/edit. Triggers: \"smart form backend\", \"submit handler\", \"логика смарт формы\"."
 ---
 
 Layout, texts, the stored view model and the theme live in the Smart Form's files

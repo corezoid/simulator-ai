@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-smart-forms
-description: Create, edit and release CDU v2 Smart Forms (mini-apps) through the public Simulator AI tools — pages from the component catalog, a form that saves what is submitted into its own data template, view model, locale, definitions, releases, and showing the form in an AI Console reply or inside an actor or comment. Use when the user wants to build or change a Smart Form, CDU app, page or form, add a component, release it, or recover an interrupted Smart Form write ("смарт форма", "створи форму для заявки", "додай поле на сторінку", "смарт форма", "создай форму").
+description: "Build and change Simulator Smart Forms (CDU v2 mini-apps), a form people fill in: pages, components, view model, releases. Triggers: \"smart form\", \"форма для заявки\", \"додай поле на сторінку\"."
 ---
 
 Use the installed `simulator-ai` catalog. In `console`: `smart_form_create`,

@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-finance
-description: Manage Simulator accounts, balances, transactions, transfers, currencies, account names and counters with the public Simulator AI tools (profile console-full). Use when the user wants to open an account on an actor, read a balance or its history, record a transaction, move value between actors, add a currency or category, track a counter, set a balance, write a formula, or tag accounts and bind triggers ("баланс рахунку", "запиши транзакцію", "переказ коштів", "лічильник", "баланс счёта", "перевод средств").
+description: "Accounts on Simulator actors: balances, transactions, transfers, currencies, counters, formulas, triggers. Triggers: \"record a transaction\", \"account balance\", \"переказ коштів\", \"баланс счёта\"."
 ---
 
 Use the installed `simulator-ai` catalog. Plain `console` (AI Console) has `account_create`,
