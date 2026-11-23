@@ -10,14 +10,17 @@ import (
 
 func TestPlacementRowsDropPicturesAndShapes(t *testing.T) {
 	in := `{"list":[{"laId":1,"id":"a","position":{"x":12.6,"y":50},"cellPosition":{"x":"A","y":2},"areaPicture":{"img":"data:image/svg+xml;base64,AAAA"},` +
-		`"layerSettings":{"blockId":"process","width":200,"shape":{"type":"primitive"},"textFrame":{"x":1}},"createdAt":1,"actor":{"id":"a","title":"A"}}],"hasMore":true}`
+		`"layerSettings":{"blockId":"process","width":200,"shape":{"type":"primitive"},"textFrame":{"x":1},` +
+		`"baseline":{"startDate":1,"endDate":2},"neighbors":["b"],"ganttOrder":1.5,"ganttPhase":"p"},"createdAt":1,"actor":{"id":"a","title":"A"}}],"hasMore":true}`
 	got := string(placementRows(json.RawMessage(in)))
 	for _, gone := range []string{"areaPicture", "cellPosition", "shape", "textFrame", "12.6", "createdAt"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("kept %s: %s", gone, got)
 		}
 	}
-	for _, kept := range []string{`"position":{"x":13,"y":50}`, `"blockId":"process"`, `"width":200`, `"actor":{"title":"A"}`, `"id":"a"`, `"hasMore":true`} {
+	for _, kept := range []string{`"position":{"x":13,"y":50}`, `"blockId":"process"`, `"width":200`, `"actor":{"title":"A"}`, `"id":"a"`, `"hasMore":true`,
+		// The Gantt placement keys (sim-api CE-16071) stay: the AI reads them only here.
+		`"baseline":{"startDate":1,"endDate":2}`, `"neighbors":["b"]`, `"ganttOrder":1.5`, `"ganttPhase":"p"`} {
 		if !strings.Contains(got, kept) {
 			t.Errorf("lost %s: %s", kept, got)
 		}

@@ -38,4 +38,13 @@ func TestPinnedContractAndGeneration(t *testing.T) {
 	if _, e = generate(b); e == nil {
 		t.Fatal("required projection removal not detected")
 	}
+	// A nullable type list decodes (the pinned layerSettings Gantt keys have one), but a projected
+	// field cannot take it.
+	var nullable Schema
+	if e = json.Unmarshal([]byte(`{"type":["string","null"]}`), &nullable); e != nil || nullable.Type != "string|null" {
+		t.Fatalf("type list: %q %v", nullable.Type, e)
+	}
+	if _, e = wireType(nullable); e == nil {
+		t.Fatal("nullable projected field admitted")
+	}
 }

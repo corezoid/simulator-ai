@@ -40,7 +40,7 @@ Use the original receipt for uncertain write recovery. Compare returned current
 geometry/metadata against the saved plan and receipts before claiming completion;
 a human move/rename after creation is current state, not a retry instruction.
 
-Source: pinned backend `5e9f16c699dea8d831e353e32bb69accde7d04bb`,
+Source: pinned backend `b2d4aeb9cfd6ede2b4f81826ede8ff2b59660ef5`,
 `rpc_graph.layerElementsList`, `layerNodeRes`, `layerGraphEdgeRes`, and
 `e_graph.ActorLayerSettings` native Extra keys as written by UI Kit. The generated
 single-method projection is `contracts/graph-elements-openrpc.json`; refresh with
