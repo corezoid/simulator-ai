@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+- Form-field transfers (sim-api !587 / CE-16150): `transfers_filter` / `transfers_filter_count` take
+  `kind: "formFields"` (only form-field and owner transfers, any field) and `formFields` (narrow to
+  `(formId, fieldId)` pairs); neither combines with `accounts` / `accountType`. `actorIds` now also matches an
+  owner change that moved the actor (`value[].value`), with `kind` and without. The finance skill says how to
+  search transfers. `contracts/parity-openrpc.json` is re-pinned as a whole at sim-api develop `87dd69ce`: besides
+  the two transfer methods it brings `ownerId` / `extraData` on `actor/create` / `actor/update`, the Gantt
+  placement keys on `graph/layer/actors/manage` items, drops the `ds` type from `reaction/create`, and refreshes
+  descriptions of seven more methods.
+
 - Template avatar on actor reads (sim-api !585 / CE-16164): with `with: ["avatar"]` sim-api adds `formColor` and
   `formPictureObject` — the account template's colour and picture a graph draws an actor with when it has none of its
   own. The pinned contracts already carry both (re-pinned at sim-api `b2d4aeb9`); `actor_get` and the actors skill now

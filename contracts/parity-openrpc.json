@@ -246,6 +246,36 @@
      }
     },
     {
+     "name": "ownerId",
+     "required": false,
+     "schema": {
+      "description": "Owner (user id) to hand the new actor to; omitted means the creator. Records no transfer",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "extraData",
+     "required": false,
+     "schema": {
+      "description": "Extra data recorded with the create: ownerId.comment",
+      "properties": {
+       "ownerId": {
+        "description": "Extra data of an owner change (ownerId)",
+        "properties": {
+         "comment": {
+          "description": "Comment of the owner change, kept on the owner transfer and on the ownerId history row",
+          "maxLength": 4000,
+          "type": "string"
+         }
+        },
+        "type": "object"
+       }
+      },
+      "type": "object"
+     }
+    },
+    {
      "name": "fields",
      "required": false,
      "schema": {
@@ -591,6 +621,36 @@
        "type": "integer"
       },
       "type": "array"
+     }
+    },
+    {
+     "name": "ownerId",
+     "required": false,
+     "schema": {
+      "description": "New owner (user id). Allowed to the current owner or a user with transfers:management (API key: transfers.management scope); records an owner transfer. The current owner's id changes nothing",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "extraData",
+     "required": false,
+     "schema": {
+      "description": "Extra data recorded with the change: ownerId.comment",
+      "properties": {
+       "ownerId": {
+        "description": "Extra data of an owner change (ownerId)",
+        "properties": {
+         "comment": {
+          "description": "Comment of the owner change, kept on the owner transfer and on the ownerId history row",
+          "maxLength": 4000,
+          "type": "string"
+         }
+        },
+        "type": "object"
+       }
+      },
+      "type": "object"
      }
     },
     {
@@ -1851,7 +1911,7 @@
      "name": "pictureObject",
      "required": false,
      "schema": {
-      "description": "Legacy account template actor picture object",
+      "description": "Account template actor picture {type, img, width, height}: img is the stored file name of an uploaded image (upload it first), width/height the size actors of this template are drawn at on a graph when they have no picture of their own. Stored in the template's form JSON, the one place both the legacy and the new stack read it from",
       "type": [
        "object",
        "null"
@@ -2070,7 +2130,7 @@
      "name": "pictureObject",
      "required": false,
      "schema": {
-      "description": "Legacy account template actor picture object patch",
+      "description": "Account template actor picture patch {type, img, width, height} (omitted keeps, null clears): img is the stored file name of an uploaded image (upload it first). Stored in the template's form JSON, the one place both the legacy and the new stack read it from",
       "type": [
        "object",
        "null"
@@ -3012,6 +3072,23 @@
              "description": "Whether anisotropic texture filtering is enabled",
              "type": "boolean"
             },
+            "baseline": {
+             "description": "Gantt: the dates the actor had before it was first moved on the Gantt chart (unix seconds, startDate ≤ endDate). null clears it",
+             "properties": {
+              "endDate": {
+               "description": "Planned end, unix seconds",
+               "type": "integer"
+              },
+              "startDate": {
+               "description": "Planned start, unix seconds",
+               "type": "integer"
+              }
+             },
+             "type": [
+              "object",
+              "null"
+             ]
+            },
             "expand": {
              "description": "Whether the node is open in place, showing the content named by expandType",
              "type": "boolean"
@@ -3036,6 +3113,20 @@
             "fullScreen": {
              "description": "Whether the expanded node is in full screen",
              "type": "boolean"
+            },
+            "ganttOrder": {
+             "description": "Gantt: manual sort key of the row among its siblings, ascending; a fraction drops a row between two others without renumbering them. null clears it (the list falls back to its date order)",
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "ganttPhase": {
+             "description": "Gantt: id (uuid) of the Phase actor the row was manually put into; overrides the date rule that otherwise assigns rows to phases. null clears it",
+             "type": [
+              "string",
+              "null"
+             ]
             },
             "height": {
              "description": "Box height in graph units; same meaning as width",
@@ -3124,6 +3215,16 @@
               }
              },
              "type": "object"
+            },
+            "neighbors": {
+             "description": "Gantt, Phase actors only: ids of the actors right after the phase, the first one first (at most 100); breaks the tie when an actor starts at the same moment as the phase. null clears it",
+             "items": {
+              "type": "string"
+             },
+             "type": [
+              "array",
+              "null"
+             ]
             },
             "offset": {
              "description": "How far an expanded node reaches past its cell. Typed here as {x, y}, while legacy clients and the graph editor store {top, right, bottom, left}: such a value reads back as {x: 0, y: 0}, and one sent here is stored as {x: 0, y: 0}. Do not send it",
@@ -4965,7 +5066,7 @@
      "name": "type",
      "required": true,
      "schema": {
-      "description": "Reaction type: comment, done, freeze, rating, view, reject, sign or ds",
+      "description": "Reaction type: comment, done, freeze, rating, view, reject or sign",
       "enum": [
        "comment",
        "done",
@@ -4973,8 +5074,7 @@
        "rating",
        "view",
        "reject",
-       "sign",
-       "ds"
+       "sign"
       ],
       "type": "string"
      }
@@ -5176,7 +5276,7 @@
      "name": "hidden",
      "required": false,
      "schema": {
-      "description": "Hide the reaction from users without execute access to the root actor",
+      "description": "Hide the reaction from users without execute access to the root actor. A reply to a hidden reaction (parentId) is always hidden, whatever is sent, and only users who read that reaction may reply to it",
       "type": "boolean"
      }
     },
@@ -5204,7 +5304,7 @@
      "name": "sipTranscription",
      "required": false,
      "schema": {
-      "description": "Also write the reaction into the live meeting transcript of the root actor (flags extra.sipTranscription)",
+      "description": "Write the reaction into the live meeting transcript of the root actor (flags extra.sipTranscription). A hidden reaction (or a reply to one) is never written, even with true. Omitted: a person's reaction is written whenever the root actor's call runs, except view and empty ones; false keeps it out",
       "type": "boolean"
      }
     },
@@ -5288,7 +5388,7 @@
      "name": "hidden",
      "required": false,
      "schema": {
-      "description": "Hide or show the reaction for users without execute access to the root actor",
+      "description": "Hide or show the reaction for users without execute access to the root actor. Hiding a reaction removes it from the live meeting transcript; a reply to a hidden reaction cannot be shown (false is refused)",
       "type": "boolean"
      }
     },
@@ -5911,7 +6011,7 @@
      "name": "accId",
      "required": true,
      "schema": {
-      "description": "Workspace identifier",
+      "description": "Workspace the link names — its accId or short id. A member of it finds only its actors; a person who is not a member may still ask, in the actor's own workspace",
       "minLength": 1,
       "type": "string"
      }
@@ -5937,7 +6037,7 @@
      "name": "sendEvent",
      "required": false,
      "schema": {
-      "description": "Send notification event (default: true)",
+      "description": "Create an Access Request event for the actor's hosts, signed to confirm and rejected to decline (default: true). Only a new request creates one",
       "type": "boolean"
      }
     }
@@ -6007,7 +6107,7 @@
      "name": "accId",
      "required": true,
      "schema": {
-      "description": "Workspace identifier",
+      "description": "The workspace of the request (the accId request/create and request/get return). A person outside it may withdraw only their own request",
       "minLength": 1,
       "type": "string"
      }
@@ -9321,7 +9421,7 @@
      "name": "with",
      "required": false,
      "schema": {
-      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row)",
+      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row), actors (every actor the details name, with its labels and avatar sources), privs (whether transfer/create would take each account from the caller)",
       "items": {
        "type": "string"
       },
@@ -9356,7 +9456,7 @@
      "name": "with",
      "required": false,
      "schema": {
-      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row)",
+      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row), actors (every actor the details name, with its labels and avatar sources), privs (whether transfer/create would take each account from the caller)",
       "items": {
        "type": "string"
       },
@@ -9397,7 +9497,7 @@
      "name": "actorIds",
      "required": false,
      "schema": {
-      "description": "Actor filter — matches a leg on either side. Combined with accounts and/or accountType, all must hold on the same leg",
+      "description": "Actor filter — matches a leg on either side, or an owner transfer that moved one of these actors (the actor whose owner changed). Combined with accounts, accountType or formFields, all must hold on the same leg",
       "items": {
        "type": "string"
       },
@@ -9438,6 +9538,45 @@
       "enum": [
        "fact",
        "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "formFields",
+     "required": false,
+     "schema": {
+      "description": "Form-field filter: (formId, fieldId) pairs — matches a form-field transfer with a leg on any of them, on either side. Combined with actorIds both must hold on the same leg. Not combinable with accounts or accountType",
+      "items": {
+       "properties": {
+        "fieldId": {
+         "description": "Item id of the field in its template (select_1, ownerId) — not the data.* key",
+         "maxLength": 255,
+         "minLength": 1,
+         "type": "string"
+        },
+        "formId": {
+         "description": "Account template id of the field. Matched whether the transfer stored it as a number or as a string",
+         "minimum": 1,
+         "type": "integer"
+        }
+       },
+       "required": [
+        "formId",
+        "fieldId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "kind",
+     "required": false,
+     "schema": {
+      "description": "formFields: only form-field transfers (owner transfers included), on any field. Not combinable with accounts or accountType",
+      "enum": [
+       "formFields"
       ],
       "type": "string"
      }
@@ -9545,7 +9684,7 @@
      "name": "actorIds",
      "required": false,
      "schema": {
-      "description": "Actor filter — matches a leg on either side. Combined with accounts and/or accountType, all must hold on the same leg",
+      "description": "Actor filter — matches a leg on either side, or an owner transfer that moved one of these actors (the actor whose owner changed). Combined with accounts, accountType or formFields, all must hold on the same leg",
       "items": {
        "type": "string"
       },
@@ -9586,6 +9725,45 @@
       "enum": [
        "fact",
        "plan"
+      ],
+      "type": "string"
+     }
+    },
+    {
+     "name": "formFields",
+     "required": false,
+     "schema": {
+      "description": "Form-field filter: (formId, fieldId) pairs — matches a form-field transfer with a leg on any of them, on either side. Combined with actorIds both must hold on the same leg. Not combinable with accounts or accountType",
+      "items": {
+       "properties": {
+        "fieldId": {
+         "description": "Item id of the field in its template (select_1, ownerId) — not the data.* key",
+         "maxLength": 255,
+         "minLength": 1,
+         "type": "string"
+        },
+        "formId": {
+         "description": "Account template id of the field. Matched whether the transfer stored it as a number or as a string",
+         "minimum": 1,
+         "type": "integer"
+        }
+       },
+       "required": [
+        "formId",
+        "fieldId"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "kind",
+     "required": false,
+     "schema": {
+      "description": "formFields: only form-field transfers (owner transfers included), on any field. Not combinable with accounts or accountType",
+      "enum": [
+       "formFields"
       ],
       "type": "string"
      }

@@ -94,6 +94,13 @@ transaction id) or `parentRef`. After a timeout read `transfer_by_ref_get {ref}`
 retrying. Between people, find each person (`users_search`) and their twin actor
 (`actor_system_get {objType: "user", objId: <userId>}`), then their account rows.
 
+Find transfers with `transfers_filter` (`transfers_filter_count` totals the same filter):
+`actorIds` lists an actor's transfers, a leg of the actor or an owner change that moved it.
+A change of a form field's value between actors (and of the owner) is a transfer too:
+`kind: "formFields"` keeps only those, any field, and `formFields: [{formId, fieldId}]` narrows
+to fields (`fieldId` is the template item id, `select_1` or `ownerId`). Neither combines with
+`accounts` or `accountType`. The window is `from` and `to` (Unix ms), this month by default.
+
 ## Counters
 
 `counter_increment`, `counter_set`, `counter_get`, `counter_by_period_get` address a counter by
