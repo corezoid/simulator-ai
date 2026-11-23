@@ -186,11 +186,12 @@ image body (`areaPicture {img, width, height}`). Use it for flowchart blocks onl
 `layer_placements_list` / `layer_actors_search` return them: `baseline {startDate, endDate}` (unix
 seconds, the plan before the row was first moved), `ganttOrder` (the row's manual sort key among its
 siblings; a fraction sits between two rows), `ganttPhase` (the uuid of the Phase actor the row was
-put into by hand, overriding the dates) and `neighbors` (on a Phase: up to 100 actor ids, its first
-rows). Unlike other keys, `null` clears them; a `null` key reads as not set. The user changes them
-in the Gantt view, no tool here does. A broken value sent on a `layer_placements_manage` create is
-refused with `invalidParams` naming the key (`items[0].data.layerSettings.ganttPhase: not an actor
-id (uuid)`; `startDate` after `endDate`, a non-finite `ganttOrder`, over 100 `neighbors`).
+put into by hand, overriding the dates) and `neighbors` (on a Phase: actor ids, its first rows).
+Unlike other keys, `null` clears them; a `null` key reads as not set. The user changes them in the
+Gantt view; no tool here edits them on an existing placement. `layer_placements_manage` passes them
+through on a create, and a broken one fails the whole call with `invalidParams` naming the key
+(`items[0].data.layerSettings.ganttPhase: not an actor id (uuid)`; a negative date, `startDate`
+after `endDate`, over 100 `neighbors`), so leave them out when you copy a bag from a read.
 
 ## Holes
 

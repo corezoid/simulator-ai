@@ -12,11 +12,14 @@
   view — `baseline {startDate, endDate}`, `neighbors`, `ganttOrder`, `ganttPhase` — on public
   `graph/layer/actor_settings/save` and `graph/layer/actors/manage` creates (`null` clears one; a broken value is
   `invalidParams` naming the key). The graph skill explains them; `layer_placements_list` / `layer_actors_search`
-  already return them (a test now holds that). No tool writes them. `contracts/public-openrpc.json` and
-  `contracts/graph-elements-openrpc.json` are re-pinned at sim-api `b2d4aeb9` (also brings `actor/get` / `form/get`
-  additive fields and the elements `timezoneOffset` -840..720 bounds the tool does not use); `cmd/gen-client` decodes
-  a nullable type list (`["number","null"]`) and refuses it on a projected field. `parity-openrpc.json` and
-  `graph-create-openrpc.json` keep their pins (see the PR).
+  already return them (a test now holds that). No tool edits them on an existing placement; `layer_placements_manage`
+  passes them through on a create. `contracts/public-openrpc.json` and `contracts/graph-elements-openrpc.json` are
+  re-pinned at sim-api `b2d4aeb9` (also brings additive actor fields on `actor/get` / `graph/layer/actors/list`
+  and `form/get`, and the elements `timeZoneOffset` -840..720 bounds, a param the tool does not send);
+  `cmd/gen-client` decodes a nullable type list (`["number","null"]`) and refuses it on a projected field.
+  `parity-openrpc.json` keeps its pin until its next whole-projection re-pin (a re-pin rewrites many tool input
+  schemas, e.g. `actor/create` gains `ownerId`/`extraData`); `graph-create-openrpc.json` keeps its pin because its
+  `*/operation/get` receipt methods are not on sim-api develop.
 
 - The layer's default collapse (CE-16245): `layer_collapse_get` / `layer_collapse_update` read and change what the
   user sees — the layer author's default (`data.collapseDefault`) under the user's own changes; expanding a default
