@@ -8,6 +8,11 @@
 
 ## [Unreleased]
 
+- Template avatar on actor reads (sim-api !585 / CE-16164): with `with: ["avatar"]` sim-api adds `formColor` and
+  `formPictureObject` — the account template's colour and picture a graph draws an actor with when it has none of its
+  own. The pinned contracts already carry both (re-pinned at sim-api `b2d4aeb9`); `actor_get` and the actors skill now
+  say what they mean, and a test holds that `layer_placements_list` / `layer_actors_search` compaction keeps them.
+
 - Gantt placement keys (CE-16071): sim-api types four placement `layerSettings` keys of the Graph Editor's Gantt
   view — `baseline {startDate, endDate}`, `neighbors`, `ganttOrder`, `ganttPhase` — on public
   `graph/layer/actor_settings/save` and `graph/layer/actors/manage` creates (`null` clears one; a broken value is

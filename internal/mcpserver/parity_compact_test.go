@@ -88,3 +88,16 @@ func TestCompactAllSummarizesAndCaps(t *testing.T) {
 		t.Fatalf("%+v", full)
 	}
 }
+
+// The template avatar a with:["avatar"] read adds (sim-api formColor / formPictureObject) is how the
+// graph draws an actor with no colour or picture of its own: compaction keeps it, unlike areaPicture.
+func TestPlacementRowsKeepTemplateAvatar(t *testing.T) {
+	in := `{"list":[{"laId":1,"id":"a","actor":{"id":"a","title":"A","formColor":"#c6dcba",` +
+		`"formPictureObject":{"img":"pic.png","type":"image","width":120,"height":80}}}]}`
+	got := string(placementRows(json.RawMessage(in)))
+	for _, kept := range []string{`"formColor":"#c6dcba"`, `"formPictureObject":{"img":"pic.png","type":"image","width":120,"height":80}`} {
+		if !strings.Contains(got, kept) {
+			t.Errorf("lost %s: %s", kept, got)
+		}
+	}
+}
