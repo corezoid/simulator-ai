@@ -1,7 +1,7 @@
 {
   "repository": "pong/sim-api",
-  "revision": "d1b467c97835a408d34386e199102d01b7c1b243",
-  "publicOpenRPCSHA256": "d6b7f157b2ab56f5970c0d1a57619f157206de15b88bf9c92b01d393cef0a841",
+  "revision": "b2d4aeb9cfd6ede2b4f81826ede8ff2b59660ef5",
+  "publicOpenRPCSHA256": "bb20739b181a842029304e7b864ff343799ba28aa9af05254b4c615fe1fc74f6",
   "projection": ["actor/get", "form/get", "graph/layer/actors/list"],
   "scope": "R1.1 metadata subset, no full legacy parity"
 }

@@ -96,12 +96,12 @@
           "name": "timeZoneOffset",
           "schema": {
             "type": "integer",
-            "description": "Timezone offset in minutes, applied to the layer's balance period",
-            "minimum": -720,
-            "maximum": 840,
+            "description": "Timezone offset in minutes, applied to the layer's balance period, with the JavaScript Date#getTimezoneOffset sign, UTC minus local time (Kyiv summer -180, New York winter 300), -840..720",
+            "minimum": -840,
+            "maximum": 720,
             "x-validation-rules": [
-              "min=-720",
-              "max=840"
+              "min=-840",
+              "max=720"
             ]
           }
         }
@@ -124,7 +124,7 @@
                         "description": "Identifier of the edge hole closed by this placement"
                       }
                     },
-                    "description": "The edge hole this placement closed; omitted on list/element reads if its source is denied by recipient policy or missing"
+                    "description": "The edge hole this placement closed, when it was dropped onto one"
                   },
                   "edge": {
                     "type": "object",
@@ -373,6 +373,10 @@
                             "saId": {
                               "type": "integer",
                               "description": "The subject's SuperAdmin (account.corezoid.com) id"
+                            },
+                            "status": {
+                              "type": "string",
+                              "description": "The subject's status in the rule's workspace: active, blocked (by a workspace admin, or by a superadmin everywhere) or deleted (an API key deleted or a user removed from the workspace); such a subject keeps its rules"
                             },
                             "userId": {
                               "type": "integer",
@@ -658,6 +662,10 @@
                               "type": "integer",
                               "description": "The subject's SuperAdmin (account.corezoid.com) id"
                             },
+                            "status": {
+                              "type": "string",
+                              "description": "The subject's status in the rule's workspace: active, blocked (by a workspace admin, or by a superadmin everywhere) or deleted (an API key deleted or a user removed from the workspace); such a subject keeps its rules"
+                            },
                             "userId": {
                               "type": "integer",
                               "description": "Subject the rule is for: a user, group or API user id"
@@ -707,6 +715,10 @@
                         },
                         "description": "Sign/ds/execute workflow-order state (opt-in via with:[\"executionState\"])"
                       },
+                      "formColor": {
+                        "type": "string",
+                        "description": "Account template color: how a graph paints an actor that has no color of its own (opt-in via with:[\"avatar\"])"
+                      },
                       "formId": {
                         "type": "integer",
                         "description": "Account template the actor was built from (its primary template)"
@@ -714,6 +726,28 @@
                       "formPicture": {
                         "type": "string",
                         "description": "Account template picture, the avatar fallback (opt-in via with:[\"avatar\"])"
+                      },
+                      "formPictureObject": {
+                        "type": "object",
+                        "properties": {
+                          "height": {
+                            "type": "number",
+                            "description": "Height the actor is drawn at on a graph, in graph units"
+                          },
+                          "img": {
+                            "type": "string",
+                            "description": "Picture source: the stored file name (served under /download/) for an uploaded image, or a data: URL for a napkin drawing"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "Picture kind as legacy writes it: image (uploaded) or napkin (drawn)"
+                          },
+                          "width": {
+                            "type": "number",
+                            "description": "Width the actor is drawn at on a graph, in graph units"
+                          }
+                        },
+                        "description": "Account template actor picture: how a graph draws an actor that has no picture or pictureObject of its own (opt-in via with:[\"avatar\"])"
                       },
                       "formTitle": {
                         "type": "string",
@@ -1012,6 +1046,14 @@
                               "reactionId": {
                                 "type": "string",
                                 "description": "Reaction (comment) the line was posted as, if any"
+                              },
+                              "reactionRating": {
+                                "type": "integer",
+                                "description": "Rating (1-5) of a rating reaction the line was posted as"
+                              },
+                              "reactionType": {
+                                "type": "string",
+                                "description": "Type of the reaction the line was posted as when it is not a comment (sign, done, reject, rating, ds); absent on comments and on legacy lines"
                               },
                               "saId": {
                                 "type": "integer",
@@ -1427,7 +1469,7 @@
                         "description": "Identifier of the hole actor closed by this placement"
                       }
                     },
-                    "description": "The hole this placement closed; omitted on list/search/element reads if its source is denied by recipient policy"
+                    "description": "The hole this placement closed, when it was dropped onto one"
                   },
                   "createdAt": {
                     "type": "integer",
@@ -1451,6 +1493,23 @@
                       "anisotropy": {
                         "type": "boolean",
                         "description": "Whether anisotropic texture filtering is enabled"
+                      },
+                      "baseline": {
+                        "properties": {
+                          "endDate": {
+                            "type": "integer",
+                            "description": "Planned end, unix seconds"
+                          },
+                          "startDate": {
+                            "type": "integer",
+                            "description": "Planned start, unix seconds"
+                          }
+                        },
+                        "description": "Gantt: the dates the actor had before it was first moved on the Gantt chart (unix seconds, startDate ≤ endDate). null clears it",
+                        "type": [
+                          "object",
+                          "null"
+                        ]
                       },
                       "expand": {
                         "type": "boolean",
@@ -1479,6 +1538,20 @@
                       "fullScreen": {
                         "type": "boolean",
                         "description": "Whether the expanded node is in full screen"
+                      },
+                      "ganttOrder": {
+                        "description": "Gantt: manual sort key of the row among its siblings, ascending; a fraction drops a row between two others without renumbering them. null clears it (the list falls back to its date order)",
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "ganttPhase": {
+                        "description": "Gantt: id (uuid) of the Phase actor the row was manually put into; overrides the date rule that otherwise assigns rows to phases. null clears it",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
                       },
                       "height": {
                         "type": "number",
@@ -1604,6 +1677,16 @@
                           }
                         },
                         "description": "Text-node typography override"
+                      },
+                      "neighbors": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Gantt, Phase actors only: ids of the actors right after the phase, the first one first (at most 100); breaks the tie when an actor starts at the same moment as the phase. null clears it",
+                        "type": [
+                          "array",
+                          "null"
+                        ]
                       },
                       "offset": {
                         "type": "object",

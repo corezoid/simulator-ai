@@ -13,11 +13,30 @@ import (
 )
 
 type Schema struct {
-	Type        string            `json:"type"`
+	Type        SchemaType        `json:"type"`
 	Description string            `json:"description"`
 	Properties  map[string]Schema `json:"properties"`
 	Items       *Schema           `json:"items"`
 }
+
+// SchemaType is a JSON Schema type. A type list (a nullable key such as ["number","null"]) is kept
+// joined, "number|null": it decodes anywhere in the document, but no projected field can use it.
+type SchemaType string
+
+func (t *SchemaType) UnmarshalJSON(b []byte) error {
+	var one string
+	if json.Unmarshal(b, &one) == nil {
+		*t = SchemaType(one)
+		return nil
+	}
+	var many []string
+	if err := json.Unmarshal(b, &many); err != nil {
+		return err
+	}
+	*t = SchemaType(strings.Join(many, "|"))
+	return nil
+}
+
 type Param struct {
 	Name   string `json:"name"`
 	Schema Schema `json:"schema"`

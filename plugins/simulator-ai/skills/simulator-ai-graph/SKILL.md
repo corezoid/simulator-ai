@@ -182,6 +182,16 @@ first) also places special nodes through `layerSettings`: a text label (`isTextN
 image body (`areaPicture {img, width, height}`). Use it for flowchart blocks only through
 `layer_placements_create`, which keeps them on the grid.
 
+**Gantt keys.** The Graph Editor's Gantt view keeps four keys in a placement's `layerSettings`, and
+`layer_placements_list` / `layer_actors_search` return them: `baseline {startDate, endDate}` (unix
+seconds, the plan before the row was first moved), `ganttOrder` (the row's manual sort key among its
+siblings; a fraction sits between two rows), `ganttPhase` (the uuid of the Phase actor the row was
+put into by hand, overriding the dates) and `neighbors` (on a Phase: up to 100 actor ids, its first
+rows). Unlike other keys, `null` clears them; a `null` key reads as not set. The user changes them
+in the Gantt view, no tool here does. A broken value sent on a `layer_placements_manage` create is
+refused with `invalidParams` naming the key (`items[0].data.layerSettings.ganttPhase: not an actor
+id (uuid)`; `startDate` after `endDate`, a non-finite `ganttOrder`, over 100 `neighbors`).
+
 ## Holes
 
 A hole stands on a layer for an actor (or a link) that is expected but not known yet. **Closing**
