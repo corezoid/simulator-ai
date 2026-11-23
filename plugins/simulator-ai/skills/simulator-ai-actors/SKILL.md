@@ -61,9 +61,10 @@ it. Closing a hole on a layer with a real actor is `hole_close` (`simulator-ai-g
   `reactionsStats` and the like only when needed. By ref: `actor_by_ref_get {formId, ref}`.
 - How a graph draws an actor: an actor with no `color` of its own is painted in its template's
   colour, one with no `picture`/`pictureObject` is drawn as the template's picture.
-  `with: ["avatar"]` adds them as `formColor` and `formPictureObject` (also on `actors_search`,
-  `actors_filter` and `layer_placements_list`). Actors created here always get their own colour,
-  so a new template colour repaints only actors without one.
+  `with: ["avatar"]` adds them as `formColor` and `formPictureObject` on `actor_get` and on the
+  list reads that take `with` (not on `actor_by_ref_get` / `actor_system_get`). A new template
+  colour repaints only actors without their own; `actor_create` without `color` still gives the
+  actor its own (a palette colour), so it is not repainted.
 - `actor_update {actorId, ...}` changes only the keys you send; `data` merges key by key
   (`replaceEmpty` replaces the whole object). Send `[]` to clear a multi-value field. `ref` can
   be set or changed later.
