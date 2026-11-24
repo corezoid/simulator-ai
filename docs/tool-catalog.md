@@ -53,6 +53,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `accounts_count` | `console-full` |  |
 | `accounts_list` | `console`, `console-full` |  |
 | `actor_attach` |  | `console`, `console-full` |
+| `actor_backlinks_get` | `console-full` |  |
 | `actor_by_ref_get` | `read`, `graph-read`, `console`, `console-full` |  |
 | `actor_corezoid_processes_list` | `read`, `graph-read`, `console-full` |  |
 | `actor_create` |  | `console`, `console-full` |
@@ -122,6 +123,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `edge_update` |  | `console-full` |
 | `edges_by_nodes_delete` |  | `console-full` |
 | `edges_create` |  | `console`, `console-full` |
+| `entity_context_get` | `console-full` |  |
 | `flowchart_blocks_list` | `console`, `console-full` |  |
 | `flowchart_blocks_search` | `graph-read`, `graph-create` |  |
 | `flowchart_layout` | `console`, `console-full` |  |
@@ -153,9 +155,13 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `graph_import_create` |  | `console-full` |
 | `graph_layer_stats_get` | `graph-read`, `graph-create`, `graph-read (bound)` |  |
 | `graph_list` | `graph-read`, `console-full` |  |
+| `graph_path_find` | `console-full` |  |
 | `graph_placements_create` |  | `graph-create` |
 | `graph_placements_operation_get` | `graph-create` |  |
 | `graph_system_form_get` | `graph-read`, `graph-create` |  |
+| `graph_traverse` | `console-full` |  |
+| `graph_tree_get` | `console-full` |  |
+| `history_list` | `console-full` |  |
 | `hole_close` |  | `console`, `console-full` |
 | `hole_conditions_get` | `console-full` |  |
 | `hole_reopen` |  | `console-full` |
@@ -168,6 +174,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `layer_collapse_update` |  | `console-full` |
 | `layer_compact` |  | `console-full` |
 | `layer_create` |  | `console`, `console-full` |
+| `layer_digest` | `console-full` |  |
 | `layer_draw` |  | `console-full` |
 | `layer_edge_settings_save` |  | `console-full` |
 | `layer_edges_list` | `graph-read`, `console-full` |  |
@@ -187,6 +194,10 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `login` |  | `read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`, `console`, `console-full` |
 | `logout` |  | `read`, `graph-read`, `graph-create`, `smart-forms`, `reactions-read`, `console`, `console-full` |
 | `meet_transcription_list` | `console-full` |  |
+| `memory_get` | `console-full` |  |
+| `memory_save` |  | `console-full` |
+| `ontology_apply` |  | `console-full` |
+| `ontology_get` | `console-full` |  |
 | `public_link_create` |  | `console-full` |
 | `public_link_get` | `console-full` |  |
 | `public_link_revoke` |  | `console-full` |
@@ -197,6 +208,9 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `reactions_count` | `console-full` |  |
 | `reactions_list` | `console`, `console-full` |  |
 | `reactions_mark_read` |  | `console-full` |
+| `saved_view_create` |  | `console-full` |
+| `saved_view_run` | `console-full` |  |
+| `saved_views_find` | `console-full` |  |
 | `search_all` | `read`, `graph-read`, `console-full` |  |
 | `simulation_check` | `console-full` |  |
 | `simulation_run` | `console-full` |  |
@@ -236,6 +250,7 @@ server's `tools/list` schema before calling it. Hosts may further restrict the a
 | `transactions_list` | `console-full` |  |
 | `transfer_by_ref_get` | `console-full` |  |
 | `transfer_create` |  | `console`, `console-full` |
+| `transfer_form_fields_create` |  | `console-full` |
 | `transfer_get` | `console-full` |  |
 | `transfers_filter` | `console-full` |  |
 | `transfers_filter_count` | `console-full` |  |

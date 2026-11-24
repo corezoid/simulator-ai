@@ -23,6 +23,13 @@ credential; enabling a tool does not grant additional platform permissions.
 - **Work with graphs:** inspect relationships and placements, plan flowcharts, and create graph elements with the appropriate profile.
 - **Build Smart Forms:** create applications, edit their files and manage releases with guided workflows.
 - **Use workspace tools:** Console profiles add access management, chats, files, accounts, charts and simulation.
+- **Ask the graph as a knowledge base (AI Console):** `ontology_get` says what the workspace is made of,
+  `entity_context_get` answers one actor's card (data, links, balances, who paid it and how much, comments,
+  changes) in one call, `actor_backlinks_get` finds where it is mentioned, and `graph_traverse`, `graph_path_find`,
+  `graph_tree_get` and `history_list` walk links and changes. Ledger reads split periods over 366 days, and searches
+  leave AI Console dialogs out unless asked.
+- **Write knowledge:** `ontology_apply` turns a patch of actors, links, accounts and postings into graph and ledger
+  writes after a strict dry run; saved views and the person's own memory live on existing platform entities.
 
 The plugin includes skills that teach the assistant how to use these tools for common tasks.
 It uses the model provided by your host client; no separate model API key is needed by the plugin.

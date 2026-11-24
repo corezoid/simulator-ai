@@ -23,14 +23,22 @@ const groupsMeta = "simulator-ai/groups"
 // router and the Hermes relay to know it.
 var consoleGroups = map[string][]string{
 	"core": {"actor_get", "actors_search", "actor_by_ref_get", "actor_create", "actor_update", "form_get", "forms_list", "forms_count",
-		"users_search", "reactions_list", "reaction_create", "attachment_read", "skills_find", "skill_get", "build_link"},
+		"users_search", "reactions_list", "reaction_create", "attachment_read", "skills_find", "skill_get", "build_link",
+		// The person's own memory: "remember that I…" can come with any request.
+		"memory_get", "memory_save",
+		// What the workspace is made of, and everything about one actor in one call.
+		"ontology_get", "entity_context_get"},
 	"graph": {"actors_create", "actor_delete", "actor_status_update", "actor_system_get",
 		"graph_get", "graph_list", "flowchart_blocks_list", "flowchart_layout", "graph_build", "graph_build_delete", "edge_types_list",
 		"edge_create", "edges_create", "edge_get", "edge_update", "edge_delete", "edge_endpoints_update", "edge_exist", "edges_by_nodes_delete",
 		"layer_create", "layer_get", "layer_placements_create", "layer_positions_update", "layer_viewport",
 		"layer_placements_list", "layer_placements_all", "layer_placements_manage", "layer_actors_search", "layer_actors_move",
 		"layer_clean", "layer_skeleton_get", "layer_stats_get", "layer_edges_list",
-		"layer_element_exist", "layer_edge_settings_save", "hole_close"},
+		"layer_element_exist", "layer_edge_settings_save", "hole_close",
+		// Knowledge into the graph: actors, edges, accounts and postings by keys, with a strict dry run.
+		"ontology_apply",
+		// A layer summarised in one call: structure, key fields, balances, transfers.
+		"layer_digest"},
 	// layer_stats_get is in graph too: a large build is verified by its counts.
 	"graph_extra": {"hole_conditions_get", "hole_reopen", "edge_hole_close", "edge_hole_reopen", "layer_draw",
 		"layer_node_expand", "layer_settings_update", "layer_stats_get", "layer_compact", "layer_prune_long_edges",
@@ -42,7 +50,8 @@ var consoleGroups = map[string][]string{
 		"smart_form_page_render", "smart_form_page_submit", "corezoid_project_create", "corezoid_project_get",
 		"smart_form_page_patch", "smart_form_reference_grep", "smart_form_reference_read"},
 	"forms": {"form_create", "form_update", "form_fields_patch", "form_delete", "form_status_update", "forms_tree_get", "form_linked_get",
-		"form_accounts_list", "form_account_create", "form_account_delete", "actors_filter", "actors_filter_count"},
+		"form_accounts_list", "form_account_create", "form_account_delete", "actors_filter", "actors_filter_count",
+		"saved_view_create", "saved_views_find", "saved_view_run", "transfer_form_fields_create"},
 	// finance is the everyday money of a request: an actor's accounts, a balance, a transfer, a
 	// transaction, their history; finance_setup the rest, which shapes the ledger.
 	"finance": {"account_create", "accounts_list", "account_get", "account_by_id_get", "account_pair_create",
@@ -57,7 +66,8 @@ var consoleGroups = map[string][]string{
 		"counter_get", "counter_by_period_get", "counter_increment", "counter_set",
 		"account_tags_list", "account_tag_add", "account_tags_set", "account_actor_tags_list", "account_actor_tags_count",
 		"account_triggers_list", "account_triggers_set", "account_actor_triggers_list", "account_actor_triggers_set",
-		"actor_field_triggers_list", "actor_field_triggers_set", "form_accounts_list", "form_account_create"},
+		"actor_field_triggers_list", "actor_field_triggers_set", "form_accounts_list", "form_account_create",
+		"transfer_form_fields_create"},
 	"people": {"access_rules_get", "access_rules_save", "access_requests_list", "access_request_create", "access_request_confirm",
 		"access_request_cancel", "user_get", "workspaces_list", "search_all", "actor_system_get", "chat_open", "actor_attach",
 		"reaction_update", "reaction_delete", "reactions_count", "reactions_mark_read", "agents_find", "agent_get", "bbcode_tags_get"},
@@ -67,8 +77,16 @@ var consoleGroups = map[string][]string{
 	"jobs":     {"graph_export_create", "graph_import_create", "graph_file_upload", "task_get"},
 	// A chart plots accounts: their nameId and currencyId come from the finance reads; chart_data_get
 	// reads what a chart shows over a period.
-	"charts":     {"chart_create", "chart_update", "chart_data_get", "accounts_list", "account_names_list", "currencies_list"},
+	"charts": {"chart_create", "chart_update", "chart_data_get", "accounts_list", "account_names_list", "currencies_list",
+		"saved_views_find", "saved_view_create"},
 	"simulation": {"simulation_snapshot_get", "simulation_check", "simulation_run"},
+	// knowledge answers questions about the graph as an ontology: what the workspace is made of,
+	// one actor's card, walks and paths, where an actor is mentioned, history and whole trees
+	// (the name sim-api's router uses).
+	"knowledge": {"ontology_get", "entity_context_get", "graph_traverse", "graph_path_find", "actor_backlinks_get",
+		"history_list", "graph_tree_get", "graph_get", "actors_search", "search_all", "layer_digest",
+		// "Which payment went through contract X", "who paid whom in April": the transfer reads.
+		"transfer_get", "transfers_filter", "transfer_by_ref_get"},
 	"corezoid": {"corezoid_projects_list", "corezoid_stages_list", "corezoid_processes_list", "corezoid_project_get",
 		"corezoid_project_create", "corezoid_project_bind", "actor_corezoid_processes_list"},
 }
@@ -93,7 +111,7 @@ var toolGroups = func() map[string][]string {
 	return out
 }()
 
-var groupOrder = []string{"core", "graph", "graph_extra", "smart_forms", "forms", "finance", "finance_setup", "people", "files", "meetings", "jobs", "charts", "simulation", "corezoid"}
+var groupOrder = []string{"core", "knowledge", "graph", "graph_extra", "smart_forms", "forms", "finance", "finance_setup", "people", "files", "meetings", "jobs", "charts", "simulation", "corezoid"}
 
 // tagGroups writes each console tool's groups into its _meta, keeping its handler.
 func tagGroups(s *server.MCPServer) {

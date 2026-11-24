@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes, nodes opened in place (multi-layers) and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, open or close an actor or a layer in place, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form, anisotropy), close holes or draw on it, fold or unfold branches in the user's own view (collapse whole or by condition, wide fans "+K more") ("згорни гілку", "розгорни все", "що згорнуто", "згорни оплачені замовлення", "свернуть ветку", "collapse branch", "рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "розкрий шар", "розгорни актора", "згорни", "анізотропія", "создай блок-схему", "нарисуй процесс", "что на слое", "раскрой слой").
+description: Draw or read a layer or flowchart, what is on it, how many — build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes, nodes opened in place (multi-layers) and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, open or close an actor or a layer in place, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form, anisotropy), close holes or draw on it, fold or unfold branches in the user's own view (collapse whole or by condition, wide fans "+K more") ("згорни гілку", "розгорни все", "що згорнуто", "згорни оплачені замовлення", "свернуть ветку", "collapse branch", "рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "розкрий шар", "розгорни актора", "згорни", "анізотропія", "создай блок-схему", "нарисуй процесс", "что на слое", "раскрой слой").
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
@@ -24,7 +24,7 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
   `flowchart_layout` answer each node's `cell`; `layer_placements_create` and
   `layer_positions_update` take `cell` instead of a position (the cell's centre).
 - An **edge** joins two actors (`source → target`, direction kept) and has an edge type
-  (`hierarchy` by default; `edge_types_list` lists them). Tree types refuse a second parent and
+  (`hierarchy` by default; `edge_types_list` lists them, `ontology_get` with their roles). Tree types refuse a second parent and
   cycles. An edge is drawn on a layer by its own placement between two node `laId`s. Node and
   edge `laId`s are separate numbering.
 - A **hole** is a placeholder: an actor with `hole: true` (its data fields are the conditions
@@ -41,6 +41,11 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
 
 "What is on this graph/layer" means that layer's placements, never a workspace search. In a
 URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
+
+**Summarise a layer** ("підсумуй шар", a report for a manager: structure, key records, money):
+`layer_digest {layerId}` FIRST — one call answers its counts, actors per template and per hierarchy
+level, each actor's filled fields and balances (credit − debit), totals per account and the
+transfers between its actors. Read further only for what it leaves out (`notes`; `full: true`).
 
 - `layer_get {layerId}`: compact nodes `{laId, actorId, title, formId, cell, blockId, hole, open}`
   and edges `{laId, edgeId, laIdSource, laIdTarget, name, hole}` (an edge's actors are the
@@ -313,6 +318,7 @@ edges stay the way to model a process.
 | Rename, recolour, describe a node | `actor_update` (`console`) |
 | Move nodes (edges follow) | `layer_positions_update {layerId, items: [{laId, x, y}]}` or `[{laId, cell: "C, 7"}]` (`console`); all or none, refused when a target cell is taken |
 | Edge label, curve, pin, linked actor | `edge_update` (an omitted `name` clears the label) |
+| Money edges (`transfersAmount_*`) | never: the edge tools refuse to draw, re-point or relink them — a transfer draws them (`simulator-ai-finance`); a wrong payment is corrected by a reversing transfer |
 | Re-point an edge | `edge_endpoints_update {edgeId, source?, target?}` |
 | Take a node or edge off a layer only | `layer_placements_manage` with `delete` items |
 | Delete edges | `edge_delete {edgeId}` or `edges_by_nodes_delete {links: [{source, target, edgeTypeId}]}` (every layer) |

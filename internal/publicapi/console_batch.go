@@ -237,6 +237,11 @@ func (c *Client) CreateEdges(ctx context.Context, in EdgesCreateInput) (CreatedE
 	if e := consoleOnly(c); e != nil {
 		return CreatedEdges{}, e
 	}
+	for i, e := range in.Edges { // before any read: no money edge in the batch at all
+		if err := LedgerEdgeError(e.EdgeType); err != nil {
+			return CreatedEdges{}, fmt.Errorf("edge %d: %w", i, err)
+		}
+	}
 	types := map[string]int64{}
 	params := make([]any, len(in.Edges))
 	for i, e := range in.Edges {
