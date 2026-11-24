@@ -8,6 +8,100 @@
 
 ## [Unreleased]
 
+- Eval fixes (transfers-14, transfers-07, multihop-14):
+  - `transfer_get`, `transfers_filter` and `transfer_by_ref_get` are in the `knowledge` group too.
+    `entity_context_get` answers `payments`: the transfers of the last 366 days the actor is a party to or whose
+    comment holds a number token of its title (`№22`), from one batch of `transfer/filter`; payments between actors
+    nobody may see are only counted (`paymentsHidden`). `payments` is a section of `fields`, never sent to sim-api.
+  - `transfers_filter` / `transfers_filter_count {dateBy: "originalDate"}` filter by the legs' business date on the
+    server: sim-api `transfer/filter` and `transfer/filter/count` take `dateBy` (feature/ai-knowledge-base 7a91aefa:
+    042766e1, 0ed345c8, review de912af4). The two methods are re-pinned, deliberately and only they
+    (`parity-source.json` `ledgerDates`); the plugin's own walk over `transaction/filter` is removed. `dateBy:
+    "originalDate"` with `formFields` or `kind: formFields` is refused by sim-api (-32602): a form-field transfer has
+    no business date. Long periods keep the 366-day windows, each with `dateBy`.
+  - `graph_traverse` answers `countsByForm` (reached actors per template, start and denied ones left out); the
+    knowledge skill reads "how many" from it.
+
+- Eval fixes (write-10, write-18, layer-07):
+  - Money edges (`transfersAmount_*`, `transfersFormField_*`) are refused by every edge write, not only
+    `ontology_apply`: `edge_create`, `edges_create` (before any read) and `graph_build` (in its validation) by the
+    type name; `edge_endpoints_update` and `edge_update` with `linkedActorId`/`hole` read the edge's type by id from
+    `ontology/get` (per-account types included) and refuse to re-point or relink one. Labels and looks stay editable.
+  - Posting side: `ontology_apply` gives a transaction without `side` the side other actors post the pair on (one
+    `transaction/filter` over the last 366 days, transfer legs left out, each actor counted once), else credit; the
+    dry run's detail says "convention: credit (N actors, M on the other side)" and a side against it is a warning.
+    `account_create` answers `postingSide`; the finance skill puts the convention before "spending on debit".
+  - New `layer_digest` (groups `knowledge` and `graph`): a layer in one call — stats, actors per template and per
+    hierarchy level, each actor's filled fields and fact balances (credit − debit; the pairs the layer shows, else
+    every non-zero one), totals per account, transfers between its actors; one batch of `actor/context/get` per 100
+    actors. Compact (80 actors, 4 fields, values cut) unless `full`. Skills route "summarise this layer" to it.
+
+- Eval fixes (asof-07, multihop-08): `history_list` sends a template field named by its title («Сума») or bare id
+  (`amount`) as the stored key `data.<id>` (`fieldKey` says so; sim-api's `history/list` matches a bare id itself since `a5d500b6`, a title or a column in another case never) and
+  reads a window given in Unix seconds as seconds (`note`); its `from`/`to`/`field` descriptions say milliseconds and
+  how to ask for the whole history. `graph_traverse`, `graph_path_find` and `graph_get` answer `edgeTypes [{id, name,
+  role}]` for the types their edges hold (one `ontology/get {fields: ["edgeTypes"]}`; a per-account money type by its
+  weight), and `ontology_get` says it is the list of edge types; the knowledge skill explains Gantt dependencies.
+
+- Knowledge-base reads (AI Console brief `ai-knowledge-base-architecture-2026-11-24`, phases 1–2; eval baseline 14/19):
+  - New tools on public sim-api methods: `ontology_get` (`ontology/get`), `entity_context_get` (`actor/context/get`),
+    `graph_traverse`, `graph_path_find`, `actor_backlinks_get`, `history_list` (`history/list`, now public) and
+    `graph_tree_get` (`graph/tree/get`). Console only for now. `contracts/parity-openrpc.json` adds these eight methods
+    (with `ontology/count`), deliberately and only these, from sim-api `feature/ai-knowledge-base` `b4e60674`
+    (`parity-source.json` records it under `knowledgeBase`; the other 156 keep the develop `87dd69ce` pin), 164 methods.
+  - New tool group `knowledge` (the name sim-api's router uses): the seven reads plus `graph_get`, `actors_search` and
+    `search_all`; `core` also takes `ontology_get` and `entity_context_get`. The plain `console` catalog stays as it
+    was (no room under its 108 KiB budget).
+  - "Who paid whom how much": `entity_context_get` sums the money edges (`transfersAmount_*`) per counterparty into
+    `transfers` (direction, amount, account, currency, transferIds — the edges' Transfers actors resolved to transfer
+    ids; `partial` when the group had more edges than `perType`; `full: true` keeps the edges), and `graph_get`
+    lists its money edges as `transfers`. The finance skill starts there and reads details with `transfer_get`.
+  - Long periods: `transfers_filter`, `transactions_filter`, `transactions_list`, `account_transactions_list` and the
+    two `*_filter_count` tools split a period over sim-api's 366-day window into windows (at most 5, newest first):
+    counts summed, pages joined up to `limit` with `next` to read on; `from`/`to` say so.
+  - AI Console dialogs (Events with `metaInfo.aiDialogParentId`) and their comments are left out unless
+    `includeAiDialogs: true`: by sim-api itself for an AI agent's token in `actors_search`, `search_all`,
+    `entity_context_get`, `actor_backlinks_get`, `graph_traverse` and `graph_path_find` (the switch is passed through;
+    these methods and `history/list`'s bare-id `field` re-pinned from sim-api `a5d500b6`), by the plugin in
+    `layer_actors_search` (`aiDialogsHidden` counts them) and `reactions_list` under a dialog.
+  - `ontology_apply` takes the ledger mode from `ontology/get`'s `ledgerWrite` instead of a legless `transfer/create`
+    probe, and with a layer and transfers adds the transfers' account pairs to the layer's `data.accounts`
+    (`layerAccounts`), so the Graph Editor draws them.
+  - Skills: new `simulator-ai-knowledge` (mentions, an actor's card, links, history and a value on a date); the guide
+    says to read `ontology_get` first and `entity_context_get` for one actor, and routes the knowledge tasks; the
+    first words of the guide, finance, ontology and graph descriptions name their tasks (Hermes shows ~57 characters).
+
+- Knowledge-base write (AI Console brief `ai-knowledge-base-architecture-2026-11-24`, W1–W4, W7):
+  - `ontology_apply` writes an "ontology patch" by the model's own keys: actors (new by `form`/`formId`, or
+    `existing`), `parent` (a hierarchy edge), edges (`hierarchy`, `gantt` = the Gantt dependency type
+    `directedInteraction`, or any workspace type), accounts (name × currency), transactions (one account) and
+    transfers (an exchange; `authorized` holds, `hold` closes). `dryRun` checks the patch strictly — the template
+    exists, `data` keys are its field ids (an unknown key is refused with the template's fields), choice values are
+    its options (stored as `[{value, title}]`), the account name and currency exist, every posting's account will
+    exist, transfers are balanced in one currency, `existing` is visible — and answers a diff (create / exists /
+    existing, edges, accounts, postings) with the ledger mode and the bulk warning (> 50 objects). Recognition finds
+    the operation's own actors (ref `gb:<operationId>:<key>`) and candidates by title and `data.aliases`; the apply
+    refuses a candidate unless the patch names it `existing` or sets `new`. Phase a is one atomic `batch` with result
+    references (actors, placements on an optional layer, edges and their placements, `account_actor/create`);
+    phase b posts `transaction/atom/create` and `transfer/create` with ref `<operationId>:<key>`, looked up first, so
+    a repeated patch writes nothing twice. A `transfersAmount_*` edge is refused (a transfer draws it). A workspace
+    still on the legacy ledger (`ledgerWrongAPI`) keeps the structure and skips the postings with a sentence for the
+    person; the dry run says so beforehand. `source` adds a chip (`[file=…]`, `[actor=…]`, `[quote=…]`) to the
+    description.
+  - Saved views on `ActorFilters`: `saved_view_create` (conditions written in the filter editor's `q`),
+    `saved_views_find`, `saved_view_run` (`filterActorId`, with `count`).
+  - Personal memory on the person's twin actor: `memory_save` / `memory_get` keep Basic Memory's micro-syntax in
+    `data.aiMemory`; a relation `- type [[Actor]]` is also an edge from the twin, and `forget` deletes that edge.
+    Whose memory is the credential's to say (the run's JWT), never the model's `selfUserId`.
+  - `transfer_form_fields_create` (`transfer/form-fields/create`): `contracts/parity-openrpc.json` projects one more
+    method from the same pinned document (sim-api `87dd69ce`, sha256 unchanged; develop `056c970f` serves the same
+    document), 156 methods.
+  - Groups: `ontology_apply` in `graph` (the plain `console` catalog has no room under its 108 KiB budget);
+    saved views in `forms` (and `saved_views_find`/`saved_view_create` in `charts`); memory in `core`;
+    `transfer_form_fields_create` in `forms` and `finance_setup`. `ledgerWrongAPI` is a known error reason.
+  - Skills: new `simulator-ai-ontology`; the guide routes to it; `simulator-ai-finance` explains transactions vs
+    transfers and the legacy ledger.
+
 - Form-field transfers (sim-api !587 / CE-16150, `formFields` from !547 / CE-16152): `transfers_filter` /
   `transfers_filter_count` take `kind: "formFields"` (only form-field and owner transfers, any field) and
   `formFields` (narrow to `(formId, fieldId)` pairs); neither combines with `accounts` / `accountType`. `actorIds`

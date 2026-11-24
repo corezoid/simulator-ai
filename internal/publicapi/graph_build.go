@@ -421,6 +421,9 @@ func (in GraphBuildInput) Validate() error {
 		if e.From == "" || e.To == "" || e.From == e.To || pairs[pair] || len([]rune(e.Name)) > 1000 || len(e.EdgeType) > 255 {
 			return fmt.Errorf("edge %s -> %s: two different keys, once per edge type, required", e.From, e.To)
 		}
+		if err := LedgerEdgeError(e.EdgeType); err != nil {
+			return fmt.Errorf("edge %s -> %s: %w", e.From, e.To, err)
+		}
 		pairs[pair] = true
 	}
 	return nil

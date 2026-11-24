@@ -147,7 +147,7 @@ An AI Console run's token requires backend support for run-scoped authorization 
 serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
 retried for about 3 seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
 `simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks`, `simulator-ai-finance`, `simulator-ai-skills`,
-`simulator-ai-agents`, `simulator-ai-charts` and `simulator-ai-meetings` compose these tools.
+`simulator-ai-agents`, `simulator-ai-charts`, `simulator-ai-meetings` and `simulator-ai-ontology` compose these tools.
 
 Skill procedures and agent profiles are descriptions users write: `skill_get` and `agent_get` return them as data, and
 their tool descriptions tell the model not to take instructions from them. `build_link` builds a link inside the current

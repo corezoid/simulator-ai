@@ -12,7 +12,7 @@ import (
 // tool. Its result is an explicit passthrough: the backend's own projection, shaped by the caller's
 // documented fields/with, never re-modelled here.
 type ParityMethod struct {
-	Domain string // actor, form, graph; smartform, corezoid, task, meeting, access, reaction, attachment, user, finance (console only)
+	Domain string // actor, form, graph; smartform, corezoid, task, meeting, access, reaction, attachment, user, finance, knowledge (console only)
 	Write  bool
 }
 
@@ -77,6 +77,11 @@ var ParityMethods = map[string]ParityMethod{
 	"account/triggers/list": {"finance", false}, "account/triggers/update": {"finance", true}, "account_actor/triggers/list": {"finance", false},
 	"account_actor/triggers/update": {"finance", true}, "account_actor/tags/list": {"finance", false}, "account_actor/tags/count": {"finance", false},
 	"actor/field/triggers/list": {"finance", false}, "actor/field/triggers/update": {"finance", true},
+	"transfer/form-fields/create": {"finance", true},
+	// The knowledge-base reads of the AI Console (console only for now).
+	"ontology/get": {"knowledge", false}, "graph/traverse": {"knowledge", false}, "graph/path/find": {"knowledge", false},
+	"actor/context/get": {"knowledge", false}, "actor/backlinks/get": {"knowledge", false}, "history/list": {"knowledge", false},
+	"graph/tree/get": {"knowledge", false},
 }
 
 // ParityAllowed says whether this profile exposes the method: console all of them; the read-only

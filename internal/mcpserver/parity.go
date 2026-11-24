@@ -38,6 +38,12 @@ type parityTool struct {
 	Local map[string]json.RawMessage
 	// Shape, when set, rewrites the backend's answer with the call's Local arguments.
 	Shape func(local map[string]json.RawMessage, v json.RawMessage) (json.RawMessage, error)
+	// Around, when set, makes the call instead of one c.Pass: it gets the arguments (defaults
+	// filled) and the Local ones, and may call the method several times or read more (a long
+	// period in windows, the AI Console dialogs to leave out). Strip and Shape still follow.
+	Around func(ctx context.Context, c *publicapi.Client, method string, args, local map[string]json.RawMessage) (json.RawMessage, error)
+	// Describe replaces the descriptions of these method params (a limit the plugin handles).
+	Describe map[string]string
 }
 
 // rowFields is the compact projection of list rows and graph nodes unless the caller sends fields.
@@ -58,6 +64,9 @@ func addParity(s *server.MCPServer, c *publicapi.Client, tools []parityTool) {
 		}
 		if err == nil && len(t.Local) > 0 {
 			schema, err = withLocal(schema, t.Local)
+		}
+		if err == nil && len(t.Describe) > 0 {
+			schema, err = describeParams(schema, t.Describe)
 		}
 		if err != nil {
 			panic(err) // pinned build artifact, never remote input
@@ -103,7 +112,12 @@ func parityHandler(c *publicapi.Client, t parityTool) server.ToolHandlerFunc {
 			}
 			args["edgeTypeId"], _ = json.Marshal(id)
 		}
-		v, err := c.Pass(ctx, t.Method, args)
+		var v json.RawMessage
+		if t.Around != nil {
+			v, err = t.Around(ctx, c, t.Method, args, local)
+		} else {
+			v, err = c.Pass(ctx, t.Method, args)
+		}
 		if err == nil && len(t.Strip) > 0 {
 			v, err = strip(v, t.Strip)
 		}
@@ -185,6 +199,26 @@ func withLocal(schema json.RawMessage, local map[string]json.RawMessage) (json.R
 			return nil, fmt.Errorf("local param %s shadows a method param", k)
 		}
 		properties[k] = v
+	}
+	doc["properties"], _ = json.Marshal(properties)
+	return json.Marshal(doc)
+}
+
+// describeParams sets the descriptions of method params; a param the schema lacks is a bug.
+func describeParams(schema json.RawMessage, notes map[string]string) (json.RawMessage, error) {
+	var doc map[string]json.RawMessage
+	var properties map[string]map[string]any
+	if err := json.Unmarshal(schema, &doc); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(doc["properties"], &properties); err != nil {
+		return nil, err
+	}
+	for k, note := range notes {
+		if properties[k] == nil {
+			return nil, fmt.Errorf("described param %s is not in the schema", k)
+		}
+		properties[k]["description"] = note
 	}
 	doc["properties"], _ = json.Marshal(properties)
 	return json.Marshal(doc)

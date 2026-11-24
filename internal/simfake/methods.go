@@ -40,12 +40,24 @@ func (s *Server) run(method string, params json.RawMessage) (any, *rpcError) {
 		_ = json.Unmarshal(params, &p)
 		out := map[string]any{"id": p.ActorID, "data": map[string]any{"anisotropy": false}}
 		if a := s.Actors[p.ActorID]; a != nil {
-			out["color"], out["formId"] = a.Color, a.FormID
+			out["color"], out["formId"], out["title"], out["description"] = a.Color, a.FormID, a.Title, a.Description
+			if a.Data != nil {
+				out["data"] = a.Data
+			}
+		} else if s.KB.Strict {
+			return nil, fail("notFound", "actor not found")
 		}
 		return out, nil
 	case "actor/delete":
 		return s.actorDelete(params)
 	case "form/system/get":
+		var p struct {
+			Title string `json:"title"`
+		}
+		_ = json.Unmarshal(params, &p)
+		if id, ok := s.KB.SystemForms[p.Title]; ok {
+			return map[string]any{"id": id, "title": p.Title, "type": "system", "form": map[string]any{}}, nil
+		}
 		return map[string]any{"id": 7, "title": "Layers", "type": "system", "form": map[string]any{}}, nil
 	case "form/flowchart-block/search":
 		return json.RawMessage(s.Blocks), nil
@@ -59,6 +71,10 @@ func (s *Server) run(method string, params json.RawMessage) (any, *rpcError) {
 			return map[string]any{"id": 3, "name": p.Name}, nil
 		case "flow":
 			return map[string]any{"id": 4, "name": p.Name}, nil
+		case "directedInteraction":
+			return map[string]any{"id": 5, "name": p.Name}, nil
+		case "interaction":
+			return map[string]any{"id": 6, "name": p.Name}, nil
 		}
 		return nil, fail("notFound", "edge type not found")
 	case "edge/create":
@@ -89,6 +105,9 @@ func (s *Server) run(method string, params json.RawMessage) (any, *rpcError) {
 		}
 		return map[string]any{"nodes": nodes, "edges": edges}, nil
 	}
+	if run, ok := kbMethods[method]; ok {
+		return run(s, params)
+	}
 	if run, ok := appMethods[method]; ok {
 		return run(s, params)
 	}
@@ -106,6 +125,7 @@ func (s *Server) actorCreate(params json.RawMessage) (any, *rpcError) {
 		Ref         string          `json:"ref"`
 		Color       string          `json:"color"`
 		Data        json.RawMessage `json:"data"`
+		Description string          `json:"description"`
 		AddToRecent *bool           `json:"addToRecent"`
 	}
 	_ = json.Unmarshal(params, &p)
@@ -116,10 +136,14 @@ func (s *Server) actorCreate(params json.RawMessage) (any, *rpcError) {
 	if _, taken := s.Refs[key]; p.Ref != "" && taken {
 		return nil, fail("invalidParams", "duplicate params - ref, formId")
 	}
-	a := &Actor{ID: s.id("actor"), Title: p.Title, Ref: p.Ref, Color: p.Color, FormID: p.FormID, Recent: p.AddToRecent == nil || *p.AddToRecent}
+	a := &Actor{ID: s.id("actor"), Title: p.Title, Ref: p.Ref, Color: p.Color, FormID: p.FormID, Recent: p.AddToRecent == nil || *p.AddToRecent, Description: p.Description}
+	_ = json.Unmarshal(p.Data, &a.Data)
 	s.Actors[a.ID] = a
 	if p.Ref != "" {
 		s.Refs[key] = a.ID
+	}
+	for _, b := range s.KB.FormAccounts[p.FormID] { // a template opens its accounts on a new actor
+		s.Ledger.Accounts = append(s.Ledger.Accounts, Account{ActorID: a.ID, NameID: b.NameID, CurrencyID: b.CurrencyID, Type: b.Type, Credit: s.id("credit"), Debit: s.id("debit")})
 	}
 	return actorJSON(a), nil
 }
