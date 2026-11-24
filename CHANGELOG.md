@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+- `actorLocked` passes through: sim-api answers it while another write holds the actor for more than ~1.5 s —
+  `actor/update` already did, and sim-api !598 (CE-16160) adds status and read-only changes, Smart Form edits, the
+  Corezoid bind and `reaction/create` / `reaction/delete` of freeze, sign, done and reject. The refused write
+  changes nothing in Simulator. The client used to report it as `remote_error`; it now keeps the reason, and the
+  main skill says to retry, reusing anything a multi-step tool already created.
+
 - Eval fixes (transfers-14, transfers-07, multihop-14):
   - `transfer_get`, `transfers_filter` and `transfer_by_ref_get` are in the `knowledge` group too.
     `entity_context_get` answers `payments`: the transfers of the last 366 days the actor is a party to or whose

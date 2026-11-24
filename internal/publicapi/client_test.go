@@ -279,3 +279,17 @@ func TestInvalidPlacementResults(t *testing.T) {
 		})
 	}
 }
+
+func TestActorLockedReasonPassesThrough(t *testing.T) {
+	c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"jsonrpc":"2.0","id":"1","error":{"code":1,"message":"synthetic-test-key","data":{"reason":"actorLocked"}}}`)
+	})
+	_, e := c.GetActor(context.Background(), "a")
+	var apiErr *APIError
+	if !errors.As(e, &apiErr) || apiErr.Code != 1 || apiErr.Reason != "actorLocked" {
+		t.Fatalf("actorLocked reason lost: %v", e)
+	}
+	if strings.Contains(e.Error(), "synthetic-test-key") {
+		t.Fatal("server message echoed outside the console profile")
+	}
+}
