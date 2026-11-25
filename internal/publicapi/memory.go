@@ -39,8 +39,6 @@ type Memory struct {
 	UserID    int64            `json:"userId"`
 	Notes     []MemoryNote     `json:"notes"`
 	Relations []MemoryRelation `json:"relations"`
-	// Unparsed are lines of the section that are not the micro-syntax (the person's own); kept.
-	Unparsed []string `json:"unparsed,omitempty"`
 	// Legacy says data.aiMemory still holds facts: the next memory_save moves them.
 	Legacy  bool `json:"legacy,omitempty"`
 	Added   int  `json:"added,omitempty"`
@@ -120,7 +118,6 @@ func memoryOf(t twinState) memoryDoc {
 				doc.Relations = append(doc.Relations, r)
 			}
 		}
-		doc.Other = append(doc.Other, legacy.Other...)
 	}
 	return doc
 }
@@ -136,7 +133,7 @@ func (c *Client) GetMemory(ctx context.Context, in MemoryInput) (Memory, error) 
 		return Memory{}, err
 	}
 	doc := memoryOf(t)
-	return Memory{ActorID: t.ID, UserID: userID, Notes: doc.Notes, Relations: doc.Relations, Unparsed: unparsed(doc.Other), Legacy: strings.TrimSpace(t.Legacy) != ""}, nil
+	return Memory{ActorID: t.ID, UserID: userID, Notes: doc.Notes, Relations: doc.Relations, Legacy: strings.TrimSpace(t.Legacy) != ""}, nil
 }
 
 // memoryChange is one save's change, applied to whatever the twin holds when it is written.
@@ -235,7 +232,7 @@ func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, er
 			return Memory{}, fmt.Errorf("write the memory on your actor: %w", err)
 		}
 	}
-	out.Notes, out.Relations, out.Unparsed = doc.Notes, doc.Relations, unparsed(doc.Other)
+	out.Notes, out.Relations = doc.Notes, doc.Relations
 	return out, nil
 }
 
@@ -245,17 +242,6 @@ func newRelations(late, seen []MemoryRelation) []MemoryRelation {
 	for _, r := range late {
 		if !hasRelation(memoryDoc{Relations: seen}, r) {
 			out = append(out, r)
-		}
-	}
-	return out
-}
-
-// unparsed are the person's own lines of the section, without its blank ones.
-func unparsed(other []string) []string {
-	var out []string
-	for _, line := range other {
-		if strings.TrimSpace(line) != "" {
-			out = append(out, line)
 		}
 	}
 	return out

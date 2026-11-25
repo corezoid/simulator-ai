@@ -9,7 +9,7 @@ import (
 	"github.com/corezoid/simulator-ai/internal/simfake"
 )
 
-// The section is found only as a heading line and ends at the next [h3]; writing it keeps every
+// The block is found only as a heading line and ends at its last memory line; writing it keeps every
 // byte outside it, appends a new one after a blank line and removes an emptied one.
 func TestMemorySectionKeepsTheRestOfTheDescription(t *testing.T) {
 	doc := memoryDoc{Notes: []MemoryNote{{Category: "preferences", Text: "Відповідати коротко #style"}},
@@ -48,20 +48,54 @@ func TestMemorySectionKeepsTheRestOfTheDescription(t *testing.T) {
 	}
 }
 
-// Stored lines are read leniently: a [br] the editor writes splits lines, the old [[actor:id|T]]
-// and chips are relations, and a person's own line is kept as it is.
+// Stored lines are read as the editor writes them: a [br] splits lines, the old [[actor:id|T]] and
+// chips are relations; the first line that is not memory ends the block and stays where it is.
 func TestMemorySectionReadsWhatPeopleAndEditorsWrite(t *testing.T) {
 	desc := "[h3]AI memory[/h3][br]- [role] Юрист #work[br]- interaction [actor=p-1]Project X[/actor]\n- works_on [[actor:p-2|Project Y]]\nmy own note\n"
 	doc := readSection(desc)
-	if len(doc.Notes) != 1 || doc.Notes[0].Tags[0] != "work" || len(doc.Relations) != 2 || doc.Relations[1].ActorID != "p-2" || doc.Relations[1].Target != "Project Y" ||
-		len(doc.Other) != 1 || doc.Other[0] != "my own note" {
+	if len(doc.Notes) != 1 || doc.Notes[0].Tags[0] != "work" || len(doc.Relations) != 2 || doc.Relations[1].ActorID != "p-2" || doc.Relations[1].Target != "Project Y" {
 		t.Fatalf("%+v", doc)
 	}
-	if got := doc.render(); !strings.HasSuffix(got, "- works_on [actor=p-2]Project Y[/actor]\n\nmy own note\n") {
-		t.Fatalf("render %q", got)
+	got, _ := writeSection(desc, doc)
+	if want := "[h3]AI memory[/h3]\n- [role] Юрист #work\n- interaction [actor=p-1]Project X[/actor]\n- works_on [actor=p-2]Project Y[/actor]\nmy own note\n"; got != want {
+		t.Fatalf("write\n got %q\nwant %q", got, want)
 	}
 	if _, err := parseFacts("- [a] b\nnot a fact"); err == nil || !strings.Contains(err.Error(), "line 2") {
 		t.Fatalf("facts: %v", err)
+	}
+}
+
+// The person's text after the block is never memory, even where it looks like memory lines: a
+// "- [x] done" checklist after a paragraph or after a blank line stays where it is, byte for byte,
+// when the memory grows and when it is emptied. (The same vectors as sim-api's e_ai_memory.)
+func TestMemoryBlockLeavesThePersonsChecklist(t *testing.T) {
+	const after = "My checklist:\n- [x] buy milk\n- [ ] call Ann\n"
+	for _, tc := range []struct{ name, desc, grown, emptied string }{
+		{"after a paragraph", "[h3]AI memory[/h3]\n- [role] Юрист\n" + after,
+			"[h3]AI memory[/h3]\n- [role] Юрист\n- [rule] Short answers\n" + after, after},
+		{"after a blank line", "Intro\n\n[h3]AI memory[/h3]\n- [role] Юрист\n\n- [x] done\n",
+			"Intro\n\n[h3]AI memory[/h3]\n- [role] Юрист\n- [rule] Short answers\n\n- [x] done\n", "Intro\n\n- [x] done\n"},
+		{"in an # Agent profile", "# Agent\nrole: lawyer\n\n[h3]AI memory[/h3]\n- [role] Юрист\n\n## Checklist\n- [x] read the contract\n",
+			"# Agent\nrole: lawyer\n\n[h3]AI memory[/h3]\n- [role] Юрист\n- [rule] Short answers\n\n## Checklist\n- [x] read the contract\n",
+			"# Agent\nrole: lawyer\n\n## Checklist\n- [x] read the contract\n"},
+	} {
+		doc := readSection(tc.desc)
+		if len(doc.Notes) != 1 || doc.Notes[0].Category != "role" || len(doc.Relations) != 0 {
+			t.Errorf("%s: read %+v", tc.name, doc)
+			continue
+		}
+		doc.Notes = append(doc.Notes, MemoryNote{Category: "rule", Text: "Short answers"})
+		if got, err := writeSection(tc.desc, doc); err != nil || got != tc.grown {
+			t.Errorf("%s: grown\n got %q\nwant %q (%v)", tc.name, got, tc.grown, err)
+		} else if again, _ := writeSection(got, readSection(got)); again != got {
+			t.Errorf("%s: a rewrite changed the text: %q", tc.name, again)
+		}
+		if got, _ := writeSection(tc.desc, newMemoryDoc()); got != tc.emptied {
+			t.Errorf("%s: emptied\n got %q\nwant %q", tc.name, got, tc.emptied)
+		}
+	}
+	if doc := readSection("[h3]AI memory[/h3] about me\n- [role] X\n"); len(doc.Notes) != 0 {
+		t.Errorf("text on the heading's line is not memory, nor what follows it: %+v", doc)
 	}
 }
 
@@ -74,13 +108,13 @@ func TestMemoryFactsAreNotMarkup(t *testing.T) {
 	}
 	desc, _ := writeSection("", doc)
 	desc += "\n[h3]Next[/h3]\nX"
-	if read := readSection(desc); len(read.Notes) != 1 || len(read.Other) != 0 {
+	if read := readSection(desc); len(read.Notes) != 1 || !strings.HasSuffix(desc, "\n[h3]Next[/h3]\nX") {
 		t.Fatalf("read back %+v from %q", read, desc)
 	}
 }
 
 // Text the person typed under the memory (an "# Agent" profile, a paragraph) keeps its lines and
-// blank lines; a heading the editor wrote after [br] is the section, not a reason for a second one.
+// blank lines; a heading the editor wrote after [br] is the block, not a reason for a second one.
 func TestMemorySectionKeepsThePersonsText(t *testing.T) {
 	const profile = "# Agent\n\nrole: lawyer\n\n  indented: yes"
 	desc := "Intro\n\n[h3]AI memory[/h3]\n- [role] Юрист\n\n" + profile + "\n"

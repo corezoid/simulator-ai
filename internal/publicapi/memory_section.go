@@ -7,23 +7,24 @@ import (
 	"strings"
 )
 
-// The person's memory is a section of their twin's description, so they see it on their own actor
-// and edit it there like any text. The section starts with the line memoryHeading and runs to the
-// next "[h3]" or the end of the description; everything outside it (the agent profile "# Agent",
-// the person's own text) is kept byte for byte. Its lines are Basic Memory's micro-syntax:
+// The person's memory is a block of their twin's description, so they see it on their own actor and
+// edit it there like any text. The block is the line memoryHeading and the memory lines right after
+// it, with no line between them; the first line that is not a memory line (a blank line, a
+// paragraph, a next "[h3]") ends it, and everything after it is the person's text, never read as
+// memory even when it looks like a memory line (a "- [x] done" checklist of an "# Agent" profile).
+// Everything outside the block is kept byte for byte. Its lines are Basic Memory's micro-syntax:
 //
 //	[h3]AI memory[/h3]
-//	- [preferences] Відповідати українською #language
+//	- [preference] Відповідати українською #language
 //	- works_on [actor=<id>]Project X[/actor]
 //
 // A relation is an actor chip (shown in the UI, found by backlinks) and an edge from the twin. The
 // model may write [[Title]] or [[actor:<id>]]: the tool turns them into chips. sim-api writes the
-// same section after a dialog; both sides merge lines, neither rewrites the other's.
+// same block after a dialog (e_ai_memory, the same rules and vectors); both merge lines.
 
-// memoryHeading opens the section; memoryBreak is where a next section starts.
+// memoryHeading opens the block.
 const (
 	memoryHeading  = "[h3]AI memory[/h3]"
-	memoryBreak    = "[h3]"
 	maxMemoryBytes = 8 << 10
 )
 
@@ -49,12 +50,10 @@ type MemoryRelation struct {
 	ActorID string `json:"actorId,omitempty"`
 }
 
-// memoryDoc is the section's facts in order; Other keeps the lines that are neither (a person's
-// own remark in their memory), written back as they were.
+// memoryDoc is the block's facts in order.
 type memoryDoc struct {
 	Notes     []MemoryNote     `json:"notes"`
 	Relations []MemoryRelation `json:"relations"`
-	Other     []string         `json:"-"`
 }
 
 func newMemoryDoc() memoryDoc {
@@ -140,48 +139,44 @@ func cleanFact(text string) string {
 	return strings.Join(strings.Fields(factCleaner.Replace(text)), " ")
 }
 
-// parseSection reads stored lines leniently. What is not the micro-syntax (a person's remark, an
-// "# Agent" profile typed below the memory) is kept as Other, line for line with its blank lines,
-// and a raw line is split at [br] only when every piece of it is a memory line.
+// memoryRaw reads one stored line of the block: its pieces between the [br]s the description
+// editor writes; ok false when a piece is not a memory line or the line is blank (the block ends).
+func memoryRaw(raw string) (notes []MemoryNote, relations []MemoryRelation, ok bool) {
+	for _, piece := range strings.Split(raw, "[br]") {
+		if strings.TrimSpace(piece) == "" {
+			continue
+		}
+		n, r, isMemory := memoryLine(piece)
+		switch {
+		case !isMemory:
+			return nil, nil, false
+		case n != nil:
+			notes = append(notes, *n)
+		default:
+			relations = append(relations, *r)
+		}
+	}
+	return notes, relations, len(notes)+len(relations) > 0
+}
+
+// parseSection reads the block's lines (section bounds them; the rest of the heading's own line is
+// blank or "[br]- …"), up to the first that is not memory.
 func parseSection(body string) memoryDoc {
 	doc := newMemoryDoc()
 	for _, raw := range strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n") {
-		if strings.TrimSpace(raw) == "" {
-			if len(doc.Other) > 0 {
-				doc.Other = append(doc.Other, raw)
-			}
+		if strings.TrimSpace(strings.ReplaceAll(raw, "[br]", "")) == "" {
 			continue
 		}
-		var notes []MemoryNote
-		var relations []MemoryRelation
-		facts := true
-		for _, piece := range strings.Split(raw, "[br]") {
-			if strings.TrimSpace(piece) == "" {
-				continue
-			}
-			n, r, ok := memoryLine(piece)
-			switch {
-			case !ok:
-				facts = false
-			case n != nil:
-				notes = append(notes, *n)
-			default:
-				relations = append(relations, *r)
-			}
-		}
-		if !facts {
-			doc.Other = append(doc.Other, raw)
-			continue
+		notes, relations, ok := memoryRaw(raw)
+		if !ok {
+			break
 		}
 		doc.Notes, doc.Relations = append(doc.Notes, notes...), append(doc.Relations, relations...)
-	}
-	for len(doc.Other) > 0 && strings.TrimSpace(doc.Other[len(doc.Other)-1]) == "" {
-		doc.Other = doc.Other[:len(doc.Other)-1]
 	}
 	return doc
 }
 
-// render writes the section's lines: notes, relations as actor chips, then the other lines.
+// render writes the block's lines: notes, then relations as actor chips.
 func (d memoryDoc) render() string {
 	var b strings.Builder
 	for _, n := range d.Notes {
@@ -198,17 +193,13 @@ func (d memoryDoc) render() string {
 		}
 		fmt.Fprintf(&b, "- %s [actor=%s]%s[/actor]\n", r.Type, r.ActorID, title)
 	}
-	if len(d.Other) > 0 && b.Len() > 0 {
-		b.WriteString("\n") // the person's own text stays apart from the memory lines
-	}
-	for _, o := range d.Other {
-		b.WriteString(o + "\n")
-	}
 	return b.String()
 }
 
-// section finds the memory section: where its heading line starts, where its body starts and
-// where it ends (the next [h3] or the end); found false when the description has none.
+// section finds the memory block: where its heading line starts, where its lines start and where
+// they end (after the last memory line's newline); found false when the description has none. The
+// heading is a line of its own (at the start, after a newline or after the editor's [br]), never
+// the words inside a sentence.
 func section(desc string) (start, body, end int, found bool) {
 	at := 0
 	for at <= len(desc) {
@@ -217,17 +208,40 @@ func section(desc string) (start, body, end int, found bool) {
 			return len(desc), len(desc), len(desc), false
 		}
 		i += at
-		// A heading line, not the words inside a sentence; the editor may break the line with [br].
 		if i == 0 || desc[i-1] == '\n' || strings.HasSuffix(desc[:i], "[br]") {
 			body = i + len(memoryHeading)
-			if next := strings.Index(desc[body:], memoryBreak); next >= 0 {
-				return i, body, body + next, true
-			}
-			return i, body, len(desc), true
+			return i, body, blockEnd(desc, body), true
 		}
 		at = i + len(memoryHeading)
 	}
 	return len(desc), len(desc), len(desc), false
+}
+
+// blockEnd is where the memory lines that start at body end: the rest of the heading's line
+// ("[br]- …" from the editor) and every next line while it is a memory line.
+func blockEnd(desc string, body int) int {
+	pos := body
+	lineEnd := func(from int) (int, int) { // the line's end and the next line's start
+		if i := strings.IndexByte(desc[from:], '\n'); i >= 0 {
+			return from + i, from + i + 1
+		}
+		return len(desc), len(desc)
+	}
+	end, next := lineEnd(pos)
+	if rest := strings.TrimSuffix(desc[pos:end], "\r"); strings.TrimSpace(rest) != "" {
+		if _, _, ok := memoryRaw(rest); !ok {
+			return pos // text on the heading's own line: no memory lines
+		}
+	}
+	pos = next
+	for pos < len(desc) {
+		end, next = lineEnd(pos)
+		if _, _, ok := memoryRaw(strings.TrimSuffix(desc[pos:end], "\r")); !ok {
+			break
+		}
+		pos = next
+	}
+	return pos
 }
 
 // readSection is the description's memory, empty without a section.
@@ -240,7 +254,8 @@ func readSection(desc string) memoryDoc {
 }
 
 // writeSection puts the memory into the description and keeps the rest of it byte for byte: a new
-// section is appended after a blank line, an existing one replaced in place, an empty one removed.
+// block is appended after a blank line, an existing one replaced in place, an empty one removed
+// (with the line break that set it apart from the text after it).
 func writeSection(desc string, doc memoryDoc) (string, error) {
 	rendered := doc.render()
 	// The heading counts, as in sim-api's MaxSectionBytes: past it sim-api drops the oldest lines.
@@ -254,13 +269,11 @@ func writeSection(desc string, doc memoryDoc) (string, error) {
 			return desc, nil
 		}
 		if after == "" {
-			before = strings.TrimSuffix(before, "\n\n") // the blank line the section was appended after
+			before = strings.TrimSuffix(before, "\n\n") // the blank line the block was appended after
+		} else {
+			after = strings.TrimPrefix(after, "\n") // the blank line between the block and the text
 		}
 		return before + after, nil
-	}
-	block := memoryHeading + "\n" + rendered
-	if after != "" {
-		block += "\n" // a blank line before the next section
 	}
 	switch {
 	case found || desc == "":
@@ -270,5 +283,5 @@ func writeSection(desc string, doc memoryDoc) (string, error) {
 	default:
 		before += "\n\n"
 	}
-	return before + block + after, nil
+	return before + memoryHeading + "\n" + rendered + after, nil
 }
