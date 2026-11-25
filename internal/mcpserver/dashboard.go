@@ -21,7 +21,9 @@ const chartDataDescription = "Read a chart's (dashboard actor's) series computed
 	"a whole and per bucket, beside the series (an amount chart mixing currencies is refused with invalidParams). actorIds keeps only " +
 	"those actors' series. An actorFilter chart's top actors are ranked by their current balance whatever the period. The answer is " +
 	"bounded: narrow a large one with a shorter period, a coarser interval, actorIds or (non-line charts) without series. Series the " +
-	"caller may not see are left out. Needs view on the chart (and its ActorFilters actor); notFound when chartId is not a chart."
+	"caller may not see are left out. An answer without series is not an error and not a period without movement: the chart has " +
+	"none to show (never configured, no accounts, all hidden or gone, or actorIds matched none). Needs view on the chart (and its " +
+	"ActorFilters actor); notFound when chartId is not a chart."
 
 // maxChartDataBytes bounds the answer: a structured result rides in the model context whole, and
 // 100 series of 2 years by day would be about 3 MB.

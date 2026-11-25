@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+- `chart_data_get` says what an answer without series means: sim-api's public `dashboard/get` now reads a chart
+  nobody configured (a `Dashboards` actor without a saved source) as an empty chart instead of refusing it with
+  `invalidParams`. The tool description and the charts skill state that an answer without series
+  is a chart with none to show — never configured, without accounts, with its series hidden or gone, or `actorIds`
+  that matched none — and not a period without movement; the skill no longer lists a missing source among the
+  `invalidParams` causes. Params and result schema are unchanged, so the pinned `dashboard/get` contract stays as is.
+
 - `layer_digest` answers money a person can repeat (eval r11251105 layer-01, layer-07): `balances` lists what each
   actor holds now (credit − debit, as `entity_context_get`), `balanceSums` add them per template and account as
   `sumOfBalances` — the old `totals` added every actor's balance into one figure (2 000 000 over company, departments
