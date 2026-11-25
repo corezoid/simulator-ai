@@ -280,16 +280,28 @@ func TestInvalidPlacementResults(t *testing.T) {
 	}
 }
 
-func TestActorLockedReasonPassesThrough(t *testing.T) {
-	c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"jsonrpc":"2.0","id":"1","error":{"code":1,"message":"synthetic-test-key","data":{"reason":"actorLocked"}}}`)
-	})
-	_, e := c.GetActor(context.Background(), "a")
-	var apiErr *APIError
-	if !errors.As(e, &apiErr) || apiErr.Code != 1 || apiErr.Reason != "actorLocked" {
-		t.Fatalf("actorLocked reason lost: %v", e)
-	}
-	if strings.Contains(e.Error(), "synthetic-test-key") {
-		t.Fatal("server message echoed outside the console profile")
+// Retryable reasons reach every profile as sent; only the console profile also gets the message.
+func TestRetryableReasonsPassThrough(t *testing.T) {
+	for _, tc := range []struct {
+		reason string
+		code   int
+	}{{"actorLocked", 1}, {"timeout", -32000}} {
+		for _, profile := range []string{"read", "console"} {
+			body := fmt.Sprintf(`{"jsonrpc":"2.0","id":"1","error":{"code":%d,"message":"server-detail","data":{"reason":%q}}}`, tc.code, tc.reason)
+			api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, body) }))
+			c, err := New(Config{Origin: api.URL, Workspace: "ws", Profile: profile, APIKey: "synthetic-test-key"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, e := c.GetActor(context.Background(), "a")
+			api.Close()
+			var apiErr *APIError
+			if !errors.As(e, &apiErr) || apiErr.Code != tc.code || apiErr.Reason != tc.reason {
+				t.Fatalf("%s/%s: reason lost: %v", tc.reason, profile, e)
+			}
+			if strings.Contains(e.Error(), "server-detail") != (profile == "console") {
+				t.Fatalf("%s/%s: message %q", tc.reason, profile, e)
+			}
+		}
 	}
 }

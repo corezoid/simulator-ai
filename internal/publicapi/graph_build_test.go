@@ -372,7 +372,9 @@ func TestGraphBuildFailKinds(t *testing.T) {
 	if r.out.Chunks[0].Status != "failed" || strings.Contains(r.out.Resume, "no answer") || !strings.Contains(r.out.Error, "no access") {
 		t.Fatalf("%+v", r.out)
 	}
-	for _, lost := range []error{errors.New("public API transport unavailable"), &APIError{HTTPStatus: 504, Reason: "http_error"}, &APIError{Reason: "timeout"}} {
+	timeout := &rpcError{Code: -32000}
+	timeout.Data.Reason = "timeout" // through apiError, as the server's answer reaches fail
+	for _, lost := range []error{errors.New("public API transport unavailable"), &APIError{HTTPStatus: 504, Reason: "http_error"}, (&Client{}).apiError(timeout)} {
 		r = &buildRun{}
 		if r.fail("nodes", 3, lost, nil); r.out.Chunks[0].Status != "unknown" {
 			t.Fatalf("%v: %+v", lost, r.out)

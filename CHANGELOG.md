@@ -8,11 +8,14 @@
 
 ## [Unreleased]
 
-- `actorLocked` passes through: sim-api answers it while another write holds the actor for more than ~1.5 s —
-  `actor/update` already did, and sim-api !598 (CE-16160) adds status and read-only changes, Smart Form edits, the
-  Corezoid bind and `reaction/create` / `reaction/delete` of freeze, sign, done and reject. The refused write
-  changes nothing in Simulator. The client used to report it as `remote_error`; it now keeps the reason, and the
-  main skill says to retry, reusing anything a multi-step tool already created.
+- `actorLocked` passes through: sim-api answers it while another write holds the actor, and after sim-api !598
+  (CE-16160) any call that writes an actor can — `actor/update`, status and read-only changes, Smart Form edits, the
+  Corezoid bind, `transfer/form-fields/create` and `reaction/create` / `reaction/delete` of freeze, sign, done and
+  reject among them. The refused write changes nothing in Simulator. The client used to report it as
+  `remote_error`; it now keeps the reason, and the main skill says to retry a few times, reusing anything a
+  multi-step tool already created, and then to tell the user the actor is busy.
+- `timeout` passes through as well: `graph_build` reads a server timeout as an unknown outcome ("repeat the
+  call"), but the client turned it into `remote_error`, so it was reported as a refusal to fix.
 
 - Eval fixes (transfers-14, transfers-07, multihop-14):
   - `transfer_get`, `transfers_filter` and `transfer_by_ref_get` are in the `knowledge` group too.
