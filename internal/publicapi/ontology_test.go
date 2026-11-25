@@ -274,16 +274,20 @@ func TestOntologyShape(t *testing.T) {
 	}
 }
 
-// A source becomes a chip in the description: an actor chip, or a quote of a comment; a template
+// A source becomes a chip in the description: an actor chip, also for a comment (an actor; [quote]
+// is not in the actor-description tag set) labelled with its text without markup; a template
 // that refuses the batch leaves nothing written and names the actor.
 func TestApplyOntologySourcesAndRefusedBatch(t *testing.T) {
 	c, f, project := kbClient(t)
-	comment := f.AddActor(30, "Pay in two parts [draft]", nil)
+	comment := f.AddActor(30, "", nil)
+	f.Set(func(s *simfake.Server) {
+		s.Actors[comment].Description = "[b]Pay[/b] in two parts,\n[i]by Friday[/i] " + strings.Repeat("and more ", 20)
+	})
 	out := mustApply(t, c, `{"operationId":"kb-test-10","actors":[{"key":"a","formId":14,"title":"From actor","desc":"Notes.","source":"actor:`+project+`","new":true},`+
 		`{"key":"b","formId":14,"title":"From comment","source":"reaction:`+comment+`"}]}`)
 	a, _ := f.ActorData(out.Actors[0].ActorID)
 	b, _ := f.ActorData(out.Actors[1].ActorID)
-	if a.Description != "Notes.\n\nSource: [actor="+project+"]Project X[/actor]" || b.Description != "Source: [quote="+comment+"]Pay in two parts (draft)[/quote]" {
+	if a.Description != "Notes.\n\nSource: [actor="+project+"]Project X[/actor]" || b.Description != "Source: [actor="+comment+"]comment: Pay in two parts, by Friday and more and more and more and more and more and mo…[/actor]" || strings.Contains(b.Description, "[quote") {
 		t.Fatalf("%q / %q", a.Description, b.Description)
 	}
 	for _, src := range []string{"web:x", "actor:missing", "attachment:"} {

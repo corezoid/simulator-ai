@@ -170,11 +170,22 @@ cleared, at most 32): the Graph Editor draws transfers only for the pairs a laye
 A saved view is an `ActorFilters` actor (`form/system/get`, `actor/create`): `data.filter` is the JSON string the filter
 editor writes, with `formId`, `selectedForms`, `q` (`field=value&other>=10||…`, values without `&` or `|`), `status`
 and the order; `saved_view_run` is `actor/filter/list` (and `actor/filter/count`) with `filterActorId`.
-Personal memory is `data.aiMemory` on the person's twin (`actor/by-system_obj/get {objType: user}`; the user is the
-one the Simulator JWT names, found via `user/list`; without viewUsers `selfUserId` finds the twin and its access rule
-must carry the JWT's SuperAdmin id; a credential that names no user is refused), written with `actor/update` after
-every relation and edge type is resolved; a relation is also an `edge/create`
-from the twin (atomic `batch`) of a workspace edge type; `forget` deletes a forgotten relation's edge (`edge/by-node/delete`).
+Personal memory is a section of the description of the person's twin (`actor/by-system_obj/get {objType: user}`; the
+user is the one the Simulator JWT names, found via `user/list`; without viewUsers `selfUserId` finds the twin and its
+access rule must carry the JWT's SuperAdmin id; a credential that names no user is refused). The memory block is the
+line `[h3]AI memory[/h3]` and the memory lines right after it with no other line between them; the first line that is
+not a memory line (a blank line, a paragraph, a next `[h3]`) ends it, and everything after it is the person's text,
+never read as memory even when it looks like a memory line (a `- [x] done` checklist). Everything outside the block
+(the agent profile `# Agent`, the person's text) is kept byte for byte. Its lines are `- [category] fact #tag` (category in
+English, the fact in the person's language) and `- relation_type [actor=<id>]Title[/actor]` (`[[Title]]` and
+`[[actor:<id>]]` from the model become the chip); a fact's brackets
+are written as parentheses and its category as sim-api writes it (`preference`, `role`, `responsibility`, `works_with`,
+`rule`, `note`); at most 8 KiB with the heading, as sim-api counts. `memory_save`
+resolves every relation and edge type first, reads the twin again (`actor/get`) right before writing and merges its
+change into what the section holds then (a section sim-api wrote after a dialog is kept), then writes the
+`description` with `actor/update`; a relation is also an `edge/create` from the twin (atomic `batch`), and `forget`
+deletes a forgotten relation's edge (`edge/by-node/delete`). A legacy `data.aiMemory` text is shown by `memory_get`
+(`legacy: true`) and moved into the section, and the key cleared, by the next `memory_save`. Known risk: memory_save has no conditional write: a fact sim-api adds after the twin is read again and before the write can be lost (a window of milliseconds); sim-api uses the same block rules and vectors (`e_ai_memory`).
 
 </details>
 
