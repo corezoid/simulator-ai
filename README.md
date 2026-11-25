@@ -29,7 +29,7 @@ credential; enabling a tool does not grant additional platform permissions.
   `graph_tree_get` and `history_list` walk links and changes. Ledger reads split periods over 366 days, and searches
   leave AI Console dialogs out unless asked.
 - **Write knowledge:** `ontology_apply` turns a patch of actors, links, accounts and postings into graph and ledger
-  writes after a strict dry run; saved views and the person's own memory live on existing platform entities.
+  writes after a strict dry run; saved views and the person's own memory (a section of their actor's description) live on existing platform entities.
 
 The plugin includes skills that teach the assistant how to use these tools for common tasks.
 It uses the model provided by your host client; no separate model API key is needed by the plugin.

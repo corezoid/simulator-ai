@@ -31,6 +31,9 @@ type KB struct {
 	Twins map[int64]string
 	// Strict answers actor/get of an unknown actor notFound.
 	Strict bool
+	// BeforeRead runs on a twin actor/by-system_obj/get returns, after the answer is taken: a
+	// concurrent writer that changes the twin between a save's first read and its write.
+	BeforeRead func(*Actor)
 	// NoViewUsers refuses user/list as sim-api does a member without the viewUsers permission.
 	NoViewUsers bool
 	// Unregistered are pairs ("<nameId>/<currencyId>") with no access rules: access_rule/account/list
@@ -313,8 +316,9 @@ func (s *Server) actorFilterCount(params json.RawMessage) (any, *rpcError) {
 
 func (s *Server) actorUpdate(params json.RawMessage) (any, *rpcError) {
 	var p struct {
-		ActorID string         `json:"actorId"`
-		Data    map[string]any `json:"data"`
+		ActorID     string         `json:"actorId"`
+		Data        map[string]any `json:"data"`
+		Description *string        `json:"description"`
 	}
 	_ = json.Unmarshal(params, &p)
 	a := s.Actors[p.ActorID]
@@ -324,7 +328,10 @@ func (s *Server) actorUpdate(params json.RawMessage) (any, *rpcError) {
 	if a.Data == nil {
 		a.Data = map[string]any{}
 	}
-	maps.Copy(a.Data, p.Data)
+	maps.Copy(a.Data, p.Data) // a merge, as sim-api's: a key sent null is stored null
+	if p.Description != nil {
+		a.Description = *p.Description
+	}
 	return map[string]any{"id": a.ID}, nil
 }
 
@@ -339,7 +346,11 @@ func (s *Server) systemActor(params json.RawMessage) (any, *rpcError) {
 	if p.ObjType != "user" || a == nil {
 		return nil, fail("notFound", "system actor not found")
 	}
-	return map[string]any{"id": a.ID, "title": a.Title, "data": a.Data}, nil
+	out := map[string]any{"id": a.ID, "title": a.Title, "description": a.Description, "data": maps.Clone(a.Data)}
+	if s.KB.BeforeRead != nil {
+		s.KB.BeforeRead(a) // a writer that changes the twin after this read
+	}
+	return out, nil
 }
 
 func (s *Server) userList(json.RawMessage) (any, *rpcError) {

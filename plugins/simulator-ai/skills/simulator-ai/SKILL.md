@@ -113,7 +113,7 @@ descriptions.
 | Templates: fields, tree, default accounts | `simulator-ai-forms` |
 | Graphs, layers, flowcharts | `simulator-ai-graph` |
 | Accounts, transactions, transfers, counters | `simulator-ai-finance` |
-| Put facts into the graph: several related records, links, accounts and payments at once (`ontology_apply`, a patch with a dry run); saved views; remembering the person's facts | `simulator-ai-ontology` |
+| Put facts into the graph: several related records, links, accounts and payments at once (`ontology_apply`, a patch with a dry run); saved views; remembering the person's facts (in their language, on their own actor) | `simulator-ai-ontology` |
 | Sharing, permissions, access requests | `simulator-ai-access` |
 | Comments and reaction counts | `simulator-ai-reactions` |
 | Messages and chats | `simulator-ai-chat` |

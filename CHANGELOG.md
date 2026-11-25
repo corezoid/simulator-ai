@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+- Personal memory moves into the description of the person's twin, so they see it in the UI (owner's decision):
+  `memory_save` / `memory_get` read and write the section that starts with the line `[h3]AI memory[/h3]` and runs to
+  the next `[h3]` or the end; the rest of the description (the agent profile `# Agent`, the person's text) is kept
+  byte for byte. Lines are `- [category] fact #tag` (category in English, the fact in the person's language, English
+  when unclear or mixed) and `- relation_type [actor=<id>]Title[/actor]` (the model's `[[Title]]` / `[[actor:<id>]]`
+  become the chip; the edge from the twin stays). At most 8 KiB; the person's own lines are kept (`unparsed`). A save
+  reads the twin again right before writing and merges into the section as it is then, so a section sim-api writes
+  after a dialog is not lost. A legacy `data.aiMemory` is shown by `memory_get` (`legacy`) and moved into the section,
+  and the key cleared, by the next `memory_save`. The ontology skill and the guide say the fact's language.
+
 - Eval fixes (transfers-14, transfers-07, multihop-14):
   - `transfer_get`, `transfers_filter` and `transfer_by_ref_get` are in the `knowledge` group too.
     `entity_context_get` answers `payments`: the transfers of the last 366 days the actor is a party to or whose
