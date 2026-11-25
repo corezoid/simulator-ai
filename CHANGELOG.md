@@ -8,7 +8,7 @@
 
 ## [Unreleased]
 
-- Skill descriptions cut to at most 200 characters each (4 472 characters across the 24 skills; the first 22 were
+- Skill descriptions cut to at most 200 characters each (4 496 characters across the 24 skills; the first 22 were
   11 586): what the skill does, its first ~57 characters naming the task (the Hermes index shows that much), named
   as Simulator's, plus a few EN/UK/RU trigger phrases and the words that tell look-alike skills apart (chat / meetings / tasks, agents / tasks, the Smart Form skills). Hosts load every description into every
   session that has the plugin, Simulator task or not, and once Claude Code's skill listing overflows it shows skills

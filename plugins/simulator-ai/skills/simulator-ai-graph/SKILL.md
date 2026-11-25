@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: "Draw or read a layer or flowchart, what is on it, how many: Simulator nodes, edges, layer settings, holes, collapse. Triggers: \"build a flowchart\", \"що на шарі\", \"підсумуй шар\", \"свернуть ветку\"."
+description: "Draw or read a layer or flowchart, what is on it, how many: Simulator nodes, edges, settings, holes, collapse, export. Triggers: \"build a flowchart\", \"що на шарі\", \"підсумуй шар\", \"свернуть ветку\"."
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,

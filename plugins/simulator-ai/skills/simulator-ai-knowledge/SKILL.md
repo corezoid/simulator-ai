@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-knowledge
-description: "Answer about an actor: mentions, links, history, its card, a value on a date, from the Simulator graph. Triggers: \"де згадується\", \"що відомо про\", \"как связаны\", \"where is X mentioned\"."
+description: "Answer about an actor: mentions, links, what changed, its card, a value on a date, from the Simulator graph. Triggers: \"where is X mentioned\", \"що відомо про\", \"як пов'язані\", \"что изменилось\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console-full`; a Console run gets these tools

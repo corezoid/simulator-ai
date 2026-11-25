@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-ontology
-description: "Put facts into the graph: several records, links, payments at once (ontology_apply); saved views; the person's memory. Triggers: \"занеси в граф\", \"запам'ятай\", \"remember that I\"."
+description: "Put facts into the graph: several records, links, payments at once, a file into records (ontology_apply); saved views; the person's memory. Triggers: \"занеси в граф\", \"збережи фільтр\", \"запам'ятай\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console-full`, or a Console run with the

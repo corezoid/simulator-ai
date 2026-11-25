@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-finance
-description: "Balances, who paid whom how much, payments: Simulator accounts, transactions, transfers, currencies, counters, formulas. Triggers: \"account balance\", \"хто заплатив\", \"переказ коштів\", \"баланс счёта\"."
+description: "Balances, who paid whom how much, payments: Simulator accounts, transactions, transfers, currencies, counters. Triggers: \"record a transaction\", \"хто заплатив\", \"переказ коштів\", \"баланс счёта\"."
 ---
 
 Use the installed `simulator-ai` catalog. Plain `console` (AI Console) has `account_create`,
