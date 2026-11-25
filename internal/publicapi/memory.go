@@ -5,104 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 )
 
-// Personal memory is what a person asked the agent to remember about them, kept on their twin actor
-// (the System actor of their user, actor/by-system_obj/get), so it has the twin's rights and the
-// person sees and erases it there; nothing is held outside the graph. It is written in Basic
-// Memory's micro-syntax, one fact per line:
-//
-//	- [preference] Answers in Ukrainian #language
-//	- works_on [[Project X]]
-//
-// An observation ("- [category] fact #tag") is stored as such in data.aiMemory, a Markdown text; a
-// relation ("- <edge type> [[Actor title]]" or "[[actor:<id>]]") becomes an edge from the twin to
-// that actor too, of a known edge type.
+// Personal memory is what a person asked the agent to remember about them, kept as a section of
+// their twin actor's description (memory_section.go): the twin of their user
+// (actor/by-system_obj/get), so it has the twin's rights and the person sees and edits it on their
+// own actor; nothing is held outside the graph. A relation is also an edge from the twin.
 
-// memoryKey is the twin's data key of the memory text.
-const memoryKey = "aiMemory"
-
-const maxMemoryBytes = 32 << 10
-
-var (
-	noteLine     = regexp.MustCompile(`^\s*[-*]\s*\[([^\]\[]{1,64})\]\s*(.+?)\s*$`)
-	relationLine = regexp.MustCompile(`^\s*[-*]\s*([A-Za-z_][A-Za-z0-9_-]{0,254})\s*\[\[(.+?)\]\]\s*$`)
-	tagPattern   = regexp.MustCompile(`(?:^|\s)#([\p{L}\p{N}_-]{1,64})`)
-)
-
-// MemoryNote is one observation.
-type MemoryNote struct {
-	Category string   `json:"category"`
-	Text     string   `json:"text"`
-	Tags     []string `json:"tags,omitempty"`
-}
-
-// MemoryRelation is one typed link to an actor.
-type MemoryRelation struct {
-	Type    string `json:"type"`
-	Target  string `json:"target"`
-	ActorID string `json:"actorId,omitempty"`
-}
-
-// memoryDoc is the parsed memory: observations and relations in their order.
-type memoryDoc struct {
-	Notes     []MemoryNote     `json:"notes"`
-	Relations []MemoryRelation `json:"relations"`
-}
-
-// parseMemory reads the micro-syntax; any other non-empty line is refused with its number.
-func parseMemory(text string) (memoryDoc, error) {
-	doc := memoryDoc{Notes: []MemoryNote{}, Relations: []MemoryRelation{}}
-	for i, line := range strings.Split(text, "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		if m := relationLine.FindStringSubmatch(line); m != nil {
-			r := MemoryRelation{Type: m[1], Target: strings.TrimSpace(m[2])}
-			// [[actor:<id>|Title]]: a stored relation keeps its actor and the title it was named by;
-			// [[actor:<id>]] names its actor alone (forget must still find its edge).
-			ref, title, titled := strings.Cut(r.Target, "|")
-			if id, ok := strings.CutPrefix(strings.TrimSpace(ref), "actor:"); ok {
-				r.ActorID = strings.TrimSpace(id)
-				if titled {
-					r.Target = strings.TrimSpace(title)
-				}
-			}
-			doc.Relations = append(doc.Relations, r)
-			continue
-		}
-		m := noteLine.FindStringSubmatch(line)
-		if m == nil {
-			return memoryDoc{}, fmt.Errorf("line %d: %q is neither \"- [category] fact #tag\" nor \"- relation_type [[Actor]]\"", i+1, strings.TrimSpace(line))
-		}
-		note := MemoryNote{Category: strings.TrimSpace(m[1]), Text: m[2]}
-		for _, t := range tagPattern.FindAllStringSubmatch(m[2], -1) {
-			note.Tags = append(note.Tags, t[1])
-		}
-		doc.Notes = append(doc.Notes, note)
-	}
-	return doc, nil
-}
-
-// text writes the memory back in the micro-syntax; a relation keeps its resolved actor id.
-func (d memoryDoc) text() string {
-	var b strings.Builder
-	for _, n := range d.Notes {
-		fmt.Fprintf(&b, "- [%s] %s\n", n.Category, n.Text)
-	}
-	for _, r := range d.Relations {
-		target := r.Target
-		if r.ActorID != "" && !strings.HasPrefix(r.Target, "actor:") {
-			target = "actor:" + r.ActorID + "|" + r.Target
-		}
-		fmt.Fprintf(&b, "- %s [[%s]]\n", r.Type, target)
-	}
-	return b.String()
-}
+// legacyMemoryKey is the twin's data key the memory was kept under before it moved into the
+// description; a save moves what it holds into the section and clears it.
+const legacyMemoryKey = "aiMemory"
 
 // MemoryInput names whose memory: the person the run acts for (selfUserId as in chat_open; a
 // Simulator JWT names them itself).
@@ -124,68 +39,132 @@ type Memory struct {
 	UserID    int64            `json:"userId"`
 	Notes     []MemoryNote     `json:"notes"`
 	Relations []MemoryRelation `json:"relations"`
-	Added     int              `json:"added,omitempty"`
-	Removed   int              `json:"removed,omitempty"`
-	Edges     int              `json:"edges,omitempty"`
+	// Legacy says data.aiMemory still holds facts: the next memory_save moves them.
+	Legacy  bool `json:"legacy,omitempty"`
+	Added   int  `json:"added,omitempty"`
+	Removed int  `json:"removed,omitempty"`
+	Edges   int  `json:"edges,omitempty"`
 }
 
-// twin finds the person's twin actor and its memory text.
-func (c *Client) twin(ctx context.Context, in MemoryInput) (string, int64, string, error) {
+// twinState is the twin as one save reads it: its description and the legacy memory text.
+type twinState struct {
+	ID, Desc, Legacy string
+}
+
+type twinWire struct {
+	ID          string                     `json:"id"`
+	Description string                     `json:"description"`
+	Data        map[string]json.RawMessage `json:"data"`
+}
+
+func (w twinWire) state() twinState {
+	t := twinState{ID: w.ID, Desc: w.Description}
+	if raw := w.Data[legacyMemoryKey]; len(raw) > 0 {
+		_ = json.Unmarshal(raw, &t.Legacy)
+	}
+	return t
+}
+
+var twinFields = []string{"id", "description", "data." + legacyMemoryKey}
+
+// twin finds the person's twin actor.
+func (c *Client) twin(ctx context.Context, in MemoryInput) (twinState, int64, error) {
 	// Whose memory is the credential's to say, never the model's: a run's JWT names its user. The
 	// argument only helps find them when the member list is closed to the caller (no viewUsers),
 	// and is then proven by the twin's own access rule carrying the token's SuperAdmin id.
 	who, err := c.selfUserID(ctx, in.SelfUserID)
 	if err != nil {
-		return "", 0, "", err
+		return twinState{}, 0, err
 	}
 	if !who.Trusted && who.SAID == 0 {
-		return "", 0, "", errors.New("personal memory needs a credential that names its user (a Simulator login or an AI Console run)")
+		return twinState{}, 0, errors.New("personal memory needs a credential that names its user (a Simulator login or an AI Console run)")
 	}
 	if who.ID < 1 {
-		return "", 0, "", errors.New("selfUserId required: the user id the run acts for (your credential cannot list the members to find it)")
+		return twinState{}, 0, errors.New("selfUserId required: the user id the run acts for (your credential cannot list the members to find it)")
 	}
-	a, err := call[map[string]any, struct {
-		ID   string                     `json:"id"`
-		Data map[string]json.RawMessage `json:"data"`
-	}](ctx, c, "actor/by-system_obj/get", map[string]any{"accId": c.workspace(), "objType": "user", "objId": strconv.FormatInt(who.ID, 10), "fields": []string{"id", "data"}})
+	a, err := call[map[string]any, twinWire](ctx, c, "actor/by-system_obj/get", map[string]any{"accId": c.workspace(), "objType": "user", "objId": strconv.FormatInt(who.ID, 10), "fields": twinFields})
 	if err != nil {
-		return "", 0, "", fmt.Errorf("your actor (user %d): %w", who.ID, err)
+		return twinState{}, 0, fmt.Errorf("your actor (user %d): %w", who.ID, err)
 	}
 	if !who.Trusted {
 		if mine, err := c.isParticipant(ctx, a.ID, who); err != nil || !mine {
-			return "", 0, "", fmt.Errorf("selfUserId %d is not the user your credential names", who.ID)
+			return twinState{}, 0, fmt.Errorf("selfUserId %d is not the user your credential names", who.ID)
 		}
 	}
-	var text string
-	if raw := a.Data[memoryKey]; len(raw) > 0 {
-		_ = json.Unmarshal(raw, &text)
-	}
-	return a.ID, who.ID, text, nil
+	return a.state(), who.ID, nil
 }
 
-// GetMemory reads a person's memory from their twin.
+// rereadTwin reads the twin again right before a write, from the primary.
+func (c *Client) rereadTwin(ctx context.Context, id string) (twinState, error) {
+	a, err := call[map[string]any, twinWire](ctx, c, "actor/get", map[string]any{"accId": c.workspace(), "actorId": id, "fields": twinFields})
+	if err != nil {
+		return twinState{}, fmt.Errorf("read your actor again before writing: %w", err)
+	}
+	return a.state(), nil
+}
+
+// memoryOf is the twin's memory: the section with what the legacy key still holds merged in.
+func memoryOf(t twinState) memoryDoc {
+	doc := readSection(t.Desc)
+	if strings.TrimSpace(t.Legacy) != "" {
+		legacy := parseSection(t.Legacy)
+		for _, n := range legacy.Notes {
+			if !hasNote(doc, n) {
+				doc.Notes = append(doc.Notes, n)
+			}
+		}
+		for _, r := range legacy.Relations {
+			if !hasRelation(doc, r) {
+				doc.Relations = append(doc.Relations, r)
+			}
+		}
+	}
+	return doc
+}
+
+// GetMemory reads a person's memory from their twin. Read-only: a legacy data.aiMemory is shown
+// merged in and moved into the description by the next memory_save.
 func (c *Client) GetMemory(ctx context.Context, in MemoryInput) (Memory, error) {
 	if e := consoleOnly(c); e != nil {
 		return Memory{}, e
 	}
-	actorID, userID, text, err := c.twin(ctx, in)
+	t, userID, err := c.twin(ctx, in)
 	if err != nil {
 		return Memory{}, err
 	}
-	doc, err := parseMemory(text)
-	if err != nil {
-		// Edited by hand: hand it back as one note, bounded as a saved memory is.
-		raw := strings.TrimSpace(text)
-		if len(raw) > maxMemoryBytes {
-			raw = strings.ToValidUTF8(raw[:maxMemoryBytes], "") + " …"
-		}
-		doc = memoryDoc{Notes: []MemoryNote{{Category: "unparsed", Text: raw}}, Relations: []MemoryRelation{}}
-	}
-	return Memory{ActorID: actorID, UserID: userID, Notes: doc.Notes, Relations: doc.Relations}, nil
+	doc := memoryOf(t)
+	return Memory{ActorID: t.ID, UserID: userID, Notes: doc.Notes, Relations: doc.Relations, Legacy: strings.TrimSpace(t.Legacy) != ""}, nil
 }
 
-// SaveMemory adds and erases facts on the person's twin; a new relation is also an edge from the
-// twin to its actor. Facts already there are not added twice.
+// memoryChange is one save's change, applied to whatever the twin holds when it is written.
+type memoryChange struct {
+	adding memoryDoc
+	forget []string
+}
+
+// apply merges the change into the twin's memory: forget, then add what is not there yet.
+func (m memoryChange) apply(t twinState) (doc memoryDoc, fresh, dropped []MemoryRelation, added, removed int) {
+	doc = memoryOf(t)
+	held := len(doc.Notes) + len(doc.Relations)
+	doc, dropped = forget(doc, m.forget)
+	removed = held - len(doc.Notes) - len(doc.Relations)
+	for _, n := range m.adding.Notes {
+		if !hasNote(doc, n) {
+			doc.Notes, added = append(doc.Notes, n), added+1
+		}
+	}
+	for _, r := range m.adding.Relations {
+		if !hasRelation(doc, r) {
+			doc.Relations, fresh = append(doc.Relations, r), append(fresh, r)
+		}
+	}
+	return doc, fresh, dropped, added + len(fresh), removed
+}
+
+// SaveMemory adds and erases facts in the person's memory section. Facts already there are not
+// added twice; a new relation is also an edge from the twin, a forgotten one loses its edge. The
+// twin is read again right before the write and the change merged into what it holds then, so a
+// section sim-api wrote meanwhile (after a dialog) is kept, not overwritten.
 func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, error) {
 	if e := consoleOnly(c); e != nil {
 		return Memory{}, e
@@ -193,64 +172,79 @@ func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, er
 	if strings.TrimSpace(in.Text) == "" && len(in.Forget) == 0 || utf8.RuneCountInString(in.Text) > 4000 || len(in.Forget) > 50 {
 		return Memory{}, errors.New("text (facts to remember, up to 4000 characters) or forget (up to 50) required")
 	}
-	adding, err := parseMemory(in.Text)
+	adding, err := parseFacts(in.Text)
 	if err != nil {
 		return Memory{}, err
 	}
-	actorID, userID, text, err := c.twin(ctx, in.MemoryInput)
+	first, userID, err := c.twin(ctx, in.MemoryInput)
 	if err != nil {
 		return Memory{}, err
-	}
-	doc, err := parseMemory(text)
-	if err != nil {
-		return Memory{}, fmt.Errorf("the memory on your actor is not in the micro-syntax any more (edited by hand?); fix data.%s first: %w", memoryKey, err)
-	}
-	out := Memory{ActorID: actorID, UserID: userID}
-	held := len(doc.Notes) + len(doc.Relations)
-	var dropped []MemoryRelation
-	doc, dropped = forget(doc, in.Forget)
-	out.Removed = held - len(doc.Notes) - len(doc.Relations)
-	for _, n := range adding.Notes {
-		if !hasNote(doc, n) {
-			doc.Notes, out.Added = append(doc.Notes, n), out.Added+1
-		}
 	}
 	// Everything is resolved and checked before anything is written: a bad relation or an
 	// oversized memory leaves the twin and its edges as they were.
-	var fresh []MemoryRelation
-	for _, r := range adding.Relations {
-		if r.ActorID, err = c.relationTarget(ctx, r.Target); err != nil {
+	for i := range adding.Relations {
+		r := &adding.Relations[i]
+		if r.ActorID, r.Target, err = c.relationTarget(ctx, *r); err != nil {
 			return Memory{}, err
 		}
-		if !hasRelation(doc, r) {
-			fresh = append(fresh, r)
-			doc.Relations = append(doc.Relations, r)
-		}
 	}
-	draw, err := c.relationEdges(ctx, actorID, fresh)
+	change := memoryChange{adding: adding, forget: in.Forget}
+	doc, fresh, dropped, _, _ := change.apply(first)
+	if _, err = writeSection(first.Desc, doc); err != nil {
+		return Memory{}, err
+	}
+	draw, err := c.relationEdges(ctx, first.ID, fresh)
 	if err != nil {
 		return Memory{}, err
 	}
-	out.Added += len(fresh)
-	saved := doc.text()
-	if len(saved) > maxMemoryBytes {
-		return Memory{}, fmt.Errorf("the memory would be %d bytes, more than %d: forget something first", len(saved), maxMemoryBytes)
-	}
-	if err = c.forgetEdges(ctx, actorID, dropped); err != nil {
+	if err = c.forgetEdges(ctx, first.ID, dropped); err != nil {
 		return Memory{}, err
 	}
+	out := Memory{ActorID: first.ID, UserID: userID}
 	if len(draw) > 0 {
 		if _, err = c.atomicItems(ctx, draw); err != nil {
-			return Memory{}, fmt.Errorf("draw the relations, the memory text was not saved: %w", err)
+			return Memory{}, fmt.Errorf("draw the relations, the memory was not saved: %w", err)
 		}
 		out.Edges = len(draw)
 	}
-	value, _ := json.Marshal(map[string]string{memoryKey: saved})
-	if _, err = call[map[string]any, json.RawMessage](ctx, c, "actor/update", map[string]any{"accId": c.workspace(), "actorId": actorID, "data": json.RawMessage(value), "fields": []string{"id"}}); err != nil {
-		return Memory{}, fmt.Errorf("write the memory on your actor: %w", err)
+	// The edges are the slow part; the twin is read again only now, and the change merged into
+	// what its description holds at this moment.
+	t, err := c.rereadTwin(ctx, first.ID)
+	if err != nil {
+		return Memory{}, err
+	}
+	var late []MemoryRelation
+	doc, _, late, out.Added, out.Removed = change.apply(t)
+	desc, err := writeSection(t.Desc, doc)
+	if err != nil {
+		return Memory{}, err
+	}
+	// A relation forget names that sim-api wrote after the first read loses its edge too.
+	if err = c.forgetEdges(ctx, t.ID, newRelations(late, dropped)); err != nil {
+		return Memory{}, err
+	}
+	update := map[string]any{"accId": c.workspace(), "actorId": t.ID, "description": desc, "fields": []string{"id"}}
+	if strings.TrimSpace(t.Legacy) != "" {
+		update["data"] = map[string]any{legacyMemoryKey: nil} // moved into the description
+	}
+	if desc != t.Desc || update["data"] != nil {
+		if _, err = call[map[string]any, json.RawMessage](ctx, c, "actor/update", update); err != nil {
+			return Memory{}, fmt.Errorf("write the memory on your actor: %w", err)
+		}
 	}
 	out.Notes, out.Relations = doc.Notes, doc.Relations
 	return out, nil
+}
+
+// newRelations are the relations of late that seen does not hold.
+func newRelations(late, seen []MemoryRelation) []MemoryRelation {
+	var out []MemoryRelation
+	for _, r := range late {
+		if !hasRelation(memoryDoc{Relations: seen}, r) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // forget drops the notes and relations names name and answers the relations it dropped.
@@ -321,27 +315,29 @@ func hasNote(doc memoryDoc, n MemoryNote) bool {
 
 func hasRelation(doc memoryDoc, r MemoryRelation) bool {
 	for _, m := range doc.Relations {
-		if m.Type == r.Type && (m.ActorID == r.ActorID || strings.EqualFold(m.Target, r.Target)) {
+		if m.Type == r.Type && (m.ActorID != "" && m.ActorID == r.ActorID || m.ActorID == "" && strings.EqualFold(m.Target, r.Target)) {
 			return true
 		}
 	}
 	return false
 }
 
-// relationTarget resolves [[actor:<id>]] or [[Title]] (one actor of exactly that title) to an id.
-func (c *Client) relationTarget(ctx context.Context, target string) (string, error) {
-	if id, ok := strings.CutPrefix(target, "actor:"); ok {
-		got, err := call[map[string]any, actorBrief](ctx, c, "actor/get", map[string]any{"accId": c.workspace(), "actorId": strings.TrimSpace(id), "fields": []string{"id"}})
+// relationTarget resolves a relation's actor and title: a chip or [[actor:<id>]] by its id, [[Title]]
+// by the one actor of exactly that title.
+func (c *Client) relationTarget(ctx context.Context, r MemoryRelation) (string, string, error) {
+	if r.ActorID != "" {
+		got, err := call[map[string]any, actorBrief](ctx, c, "actor/get", map[string]any{"accId": c.workspace(), "actorId": r.ActorID, "fields": []string{"id", "title"}})
 		if err != nil || got.ID == "" {
-			return "", fmt.Errorf("[[%s]]: no such actor you see", target)
+			return "", "", fmt.Errorf("actor %s: no such actor you see", r.ActorID)
 		}
-		return got.ID, nil
+		return got.ID, got.Title, nil
 	}
+	target := r.Target
 	page, err := call[map[string]any, struct {
 		List []actorBrief `json:"list"`
 	}](ctx, c, "actor/search/list", map[string]any{"accId": c.workspace(), "query": target, "searchType": "text", "limit": 20, "fields": []string{"id", "title", "formId"}})
 	if err != nil {
-		return "", fmt.Errorf("[[%s]]: %w", target, err)
+		return "", "", fmt.Errorf("[[%s]]: %w", target, err)
 	}
 	var hits []actorBrief
 	for _, a := range page.List {
@@ -351,15 +347,15 @@ func (c *Client) relationTarget(ctx context.Context, target string) (string, err
 	}
 	switch len(hits) {
 	case 1:
-		return hits[0].ID, nil
+		return hits[0].ID, hits[0].Title, nil
 	case 0:
-		return "", fmt.Errorf("[[%s]]: no actor has this title; name it [[actor:<id>]] (actors_search)", target)
+		return "", "", fmt.Errorf("[[%s]]: no actor has this title; name it [[actor:<id>]] (actors_search)", target)
 	}
 	ids := make([]string, len(hits))
 	for i, h := range hits {
 		ids[i] = h.ID
 	}
-	return "", fmt.Errorf("[[%s]]: %d actors have this title (%s): name one as [[actor:<id>]]", target, len(hits), strings.Join(ids, ", "))
+	return "", "", fmt.Errorf("[[%s]]: %d actors have this title (%s): name one as [[actor:<id>]]", target, len(hits), strings.Join(ids, ", "))
 }
 
 // relationEdges is an edge/create of each relation's type from the twin to its actor, for one

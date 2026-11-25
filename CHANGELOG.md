@@ -8,6 +8,23 @@
 
 ## [Unreleased]
 
+- `ontology_apply` `source: reaction:<id>` writes an actor chip of the comment (`[actor=<id>]comment: <its text
+  without markup, up to 80 characters>[/actor]`) instead of `[quote=…]`: `[quote]` is not in the actor-description
+  tag set (bbcode-tags.json; ui-kit's description editor shows it as literal text), the actor chip is, and backlinks
+  find it.
+
+- Personal memory moves into the description of the person's twin, so they see it in the UI (owner's decision):
+  `memory_save` / `memory_get` read and write the block of the line `[h3]AI memory[/h3]` and the memory lines right
+  after it: the first other line (a blank line, a paragraph, a next `[h3]`) ends it, and what follows is the person's
+  text, never read as memory even when it looks like it (a `- [x] done` checklist); the rest of the description (the
+  agent profile `# Agent`, the person's text) is kept byte for byte. Lines are `- [category] fact #tag` (category in English, the fact in the person's language, English
+  when unclear or mixed) and `- relation_type [actor=<id>]Title[/actor]` (the model's `[[Title]]` / `[[actor:<id>]]`
+  become the chip; the edge from the twin stays). At most 8 KiB with the heading; a fact is
+  text (brackets as parentheses), its category as sim-api writes it. A save
+  reads the twin again right before writing and merges into the section as it is then, so a section sim-api writes
+  after a dialog is not lost. A legacy `data.aiMemory` is shown by `memory_get` (`legacy`) and moved into the section,
+  and the key cleared, by the next `memory_save`. The ontology skill and the guide say the fact's language. Known
+  risk: memory_save has no conditional write: a fact sim-api adds after the twin is read again and before the write can be lost (a window of milliseconds).
 - `graph_build {newLayer}` no longer makes a second layer of the same title when a build is repeated in a new turn
   with a new `operationId` (eval build-01): before creating the layer it searches the layers the caller sees
   (`actor/search/list` on the Layers template) for the title, spaces and case aside; one found answers `done: false`,

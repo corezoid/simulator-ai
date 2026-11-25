@@ -85,8 +85,8 @@ func TestPersonalMemoryOnTheTwin(t *testing.T) {
 		t.Fatalf("%+v %v", got, err)
 	}
 	stored, _ := f.ActorData(twin)
-	if text, _ := stored.Data["aiMemory"].(string); text != "- [preference] Answers in Ukrainian #language\n- interaction [[actor:"+project+"|Project X]]\n" {
-		t.Fatalf("stored %q", text)
+	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Answers in Ukrainian #language\n- interaction [actor="+project+"]Project X[/actor]\n" {
+		t.Fatalf("stored %q", stored.Description)
 	}
 	edge := false
 	f.Set(func(s *simfake.Server) {
