@@ -1,5 +1,38 @@
 {
- "source": "sim-api feature/simulator-ai a6209ab5, internal/server/testdata/public-openrpc.json",
- "documentSha256": "a908ad76594bdc0ba4f00ef8d39883c6cdd7e36dc07d96e6ba8cbb482826e96e",
- "methods": 155
+ "source": "sim-api develop 87dd69ce, internal/server/testdata/public-openrpc.json",
+ "documentSha256": "987fd9d40b36adaa175f9cf7b2936b39ea4612381e4b2f66f7e24c148722d006",
+ "note": "Each method comes from source unless a record below names it.",
+ "knowledgeBase": {
+  "source": "sim-api develop cf12b49c (AI Console knowledge base), internal/server/testdata/public-openrpc.json",
+  "documentSha256": "e2e313a05840761fd0dea91b2bb2a3c5406bafcf66a5263f969a903b0a924255",
+  "methods": [
+   "ontology/get",
+   "ontology/count",
+   "graph/traverse",
+   "graph/path/find",
+   "actor/context/get",
+   "actor/backlinks/get",
+   "history/list",
+   "graph/tree/get"
+  ],
+  "note": "Only these methods are projected from the knowledge-base document; the other 156 keep the develop 87dd69ce pin until the next whole-projection re-pin."
+ },
+ "ledgerDates": {
+  "source": "sim-api develop cf12b49c (AI Console knowledge base; dateBy), internal/server/testdata/public-openrpc.json",
+  "documentSha256": "e2e313a05840761fd0dea91b2bb2a3c5406bafcf66a5263f969a903b0a924255",
+  "methods": [
+   "transfer/filter",
+   "transfer/filter/count"
+  ],
+  "note": "Only these two are re-projected from this document (dateBy, the business date); the next whole-projection re-pin from develop drops this record."
+ },
+ "aiDialogs": {
+  "source": "sim-api develop cf12b49c (AI Console knowledge base), internal/server/testdata/public-openrpc.json",
+  "documentSha256": "e2e313a05840761fd0dea91b2bb2a3c5406bafcf66a5263f969a903b0a924255",
+  "methods": [
+   "actor/search/list"
+  ],
+  "note": "includeAiDialogs: sim-api leaves the AI Console dialogs out of the search for an AI agent's token; only this method is re-projected for it, the next whole-projection re-pin from develop drops this record."
+ },
+ "methods": 164
 }

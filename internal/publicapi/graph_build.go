@@ -111,10 +111,12 @@ type GraphBuildResult struct {
 	// Area is the box the nodes cover by its corner cells.
 	Area string `json:"area,omitempty"`
 	// IDs maps the keys asked for to actor ids.
-	IDs     map[string]string `json:"ids,omitempty"`
-	Error   string            `json:"error,omitempty"`
-	Resume  string            `json:"resume,omitempty"`
-	Warning string            `json:"warning,omitempty"`
+	IDs map[string]string `json:"ids,omitempty"`
+	// ExistingLayerID is a layer of the newLayer title that already exists: nothing was built.
+	ExistingLayerID string `json:"existingLayerId,omitempty"`
+	Error           string `json:"error,omitempty"`
+	Resume          string `json:"resume,omitempty"`
+	Warning         string `json:"warning,omitempty"`
 }
 
 // GraphBuildTarget names the layer of a build: an existing one, or a new one by its title.
@@ -122,6 +124,8 @@ type GraphBuildTarget struct {
 	LayerID     string
 	NewLayer    string
 	OperationID string
+	// AllowDuplicateTitle creates the new layer although a layer of that title exists.
+	AllowDuplicateTitle bool
 }
 
 // buildPlaced is a node on the layer.
@@ -159,7 +163,7 @@ func (c *Client) OpenGraphBuild(ctx context.Context, t GraphBuildTarget) (*Graph
 	}
 	b := &GraphBuild{c: c, LayerID: t.LayerID, op: t.OperationID, refs: map[string]buildPlaced{}, laIDs: map[string]int64{}, start: time.Now()}
 	if t.NewLayer != "" {
-		created, err := b.newLayer(ctx, t.NewLayer)
+		created, err := b.newLayer(ctx, t.NewLayer, t.AllowDuplicateTitle)
 		if err != nil || created {
 			b.fresh = true
 			return b, err
@@ -180,7 +184,7 @@ func (c *Client) OpenGraphBuild(ctx context.Context, t GraphBuildTarget) (*Graph
 }
 
 // newLayer finds the layer this operation created, or creates it; created says it is new and empty.
-func (b *GraphBuild) newLayer(ctx context.Context, title string) (bool, error) {
+func (b *GraphBuild) newLayer(ctx context.Context, title string, allowDuplicate bool) (bool, error) {
 	formID, err := b.c.systemFormID(ctx, "Layers")
 	if err != nil {
 		return false, err
@@ -193,6 +197,11 @@ func (b *GraphBuild) newLayer(ctx context.Context, title string) (bool, error) {
 	if found {
 		b.LayerID = *earlier.Actors[0].ID
 		return false, nil
+	}
+	if !allowDuplicate {
+		if err = b.c.refuseTakenTitle(ctx, formID, title); err != nil {
+			return false, err
+		}
 	}
 	layer, err := call[actorCreateRequest, Actor](ctx, b.c, "actor/create", actorCreateRequest{AccID: b.c.workspace(), FormID: formID,
 		Title: title, Data: json.RawMessage("{}"), Ref: ref.Ref, Fields: actorFields})
@@ -420,6 +429,9 @@ func (in GraphBuildInput) Validate() error {
 		pair := BuildEdge{From: e.From, To: e.To, EdgeType: edgeTypeName(e.EdgeType)}
 		if e.From == "" || e.To == "" || e.From == e.To || pairs[pair] || len([]rune(e.Name)) > 1000 || len(e.EdgeType) > 255 {
 			return fmt.Errorf("edge %s -> %s: two different keys, once per edge type, required", e.From, e.To)
+		}
+		if err := LedgerEdgeError(e.EdgeType); err != nil {
+			return fmt.Errorf("edge %s -> %s: %w", e.From, e.To, err)
 		}
 		pairs[pair] = true
 	}

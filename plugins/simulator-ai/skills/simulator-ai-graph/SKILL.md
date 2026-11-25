@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: "Simulator graphs and layers: flowcharts, nodes, edges, layer settings, holes, collapse, open in place, export, what is on a layer. Triggers: \"build a flowchart\", \"що на шарі\", \"свернуть ветку\"."
+description: "Draw or read a layer or flowchart, what is on it, how many: Simulator nodes, edges, layer settings, holes, collapse. Triggers: \"build a flowchart\", \"що на шарі\", \"підсумуй шар\", \"свернуть ветку\"."
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
@@ -24,7 +24,7 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
   `flowchart_layout` answer each node's `cell`; `layer_placements_create` and
   `layer_positions_update` take `cell` instead of a position (the cell's centre).
 - An **edge** joins two actors (`source → target`, direction kept) and has an edge type
-  (`hierarchy` by default; `edge_types_list` lists them). Tree types refuse a second parent and
+  (`hierarchy` by default; `edge_types_list` lists them, `ontology_get` with their roles). Tree types refuse a second parent and
   cycles. An edge is drawn on a layer by its own placement between two node `laId`s. Node and
   edge `laId`s are separate numbering.
 - A **hole** is a placeholder: an actor with `hole: true` (its data fields are the conditions
@@ -41,6 +41,11 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
 
 "What is on this graph/layer" means that layer's placements, never a workspace search. In a
 URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
+
+**Summarise a layer** ("підсумуй шар", a report for a manager: structure, key records, money):
+`layer_digest {layerId}` FIRST — one call answers its counts, actors per template and per hierarchy
+level, each actor's filled fields and balances (credit − debit), totals per account and the
+transfers between its actors. Read further only for what it leaves out (`notes`; `full: true`).
 
 - `layer_get {layerId}`: compact nodes `{laId, actorId, title, formId, cell, blockId, hole, open}`
   and edges `{laId, edgeId, laIdSource, laIdTarget, name, hole}` (an edge's actors are the
@@ -141,7 +146,12 @@ your own `key`; no actor ids, `laId`s or coordinates.
    `process`, `decision`, ...; the workspace's catalog is the truth). Ask about real ambiguity
    before writing.
 2. **Layer:** the one the user named, else the current layer of the request's Current context
-   (AI Console: `layer <id>`); only with neither, or when asked, `newLayer: "<title>"`.
+   (AI Console: `layer <id>`); only with neither, or when asked, `newLayer: "<title>"`. A layer of
+   that title may exist already (the same request in an earlier turn): `graph_build` then builds
+   nothing and answers `existingLayerId`. A repeat ("build it again", the same request) builds on
+   that layer — `layerId: <existingLayerId>` with `use`/`existing` for what is on it — never a copy;
+   a separate layer gets another title, and `allowDuplicateTitle: true` only when the person asks
+   for a second layer of the same name.
 3. **Build:** `graph_build {operationId, layerId, kind | formId, nodes: [[key, title], ...],
    edges: [[from, to, "label"?], ...]}`. `kind` (a blockId) or `formId` is the default; a node
    that differs is an object `{key, title, kind | formId, data, color, hole}`, an edge of
@@ -181,6 +191,17 @@ first) also places special nodes through `layerSettings`: a text label (`isTextN
 `labelStyle`, `opacity`, `rotation`, `zIndex`; and an
 image body (`areaPicture {img, width, height}`). Use it for flowchart blocks only through
 `layer_placements_create`, which keeps them on the grid.
+
+**Gantt keys.** The Graph Editor's Gantt view keeps four keys in a placement's `layerSettings`, and
+`layer_placements_list` / `layer_actors_search` return them: `baseline {startDate, endDate}` (unix
+seconds, the plan before the row was first moved), `ganttOrder` (the row's manual sort key among its
+siblings; a fraction sits between two rows), `ganttPhase` (the uuid of the Phase actor the row was
+put into by hand, overriding the dates) and `neighbors` (on a Phase: actor ids, its first rows).
+Unlike other keys, `null` clears them; a `null` key reads as not set. The user changes them in the
+Gantt view; no tool here edits them on an existing placement. `layer_placements_manage` passes them
+through on a create, and a broken one fails the whole call with `invalidParams` naming the key
+(`items[0].data.layerSettings.ganttPhase: not an actor id (uuid)`; a negative date, `startDate`
+after `endDate`, over 100 `neighbors`), so leave them out when you copy a bag from a read.
 
 ## Holes
 
@@ -302,6 +323,7 @@ edges stay the way to model a process.
 | Rename, recolour, describe a node | `actor_update` (`console`) |
 | Move nodes (edges follow) | `layer_positions_update {layerId, items: [{laId, x, y}]}` or `[{laId, cell: "C, 7"}]` (`console`); all or none, refused when a target cell is taken |
 | Edge label, curve, pin, linked actor | `edge_update` (an omitted `name` clears the label) |
+| Money edges (`transfersAmount_*`) | never: the edge tools refuse to draw, re-point or relink them — a transfer draws them (`simulator-ai-finance`); a wrong payment is corrected by a reversing transfer |
 | Re-point an edge | `edge_endpoints_update {edgeId, source?, target?}` |
 | Take a node or edge off a layer only | `layer_placements_manage` with `delete` items |
 | Delete edges | `edge_delete {edgeId}` or `edges_by_nodes_delete {links: [{source, target, edgeTypeId}]}` (every layer) |

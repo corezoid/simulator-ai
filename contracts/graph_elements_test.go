@@ -21,7 +21,7 @@ func TestGraphElementsPinAndSchema(t *testing.T) {
 	if err = json.Unmarshal(raw, &pin); err != nil {
 		t.Fatal(err)
 	}
-	if pin.Revision != "5e9f16c699dea8d831e353e32bb69accde7d04bb" || pin.Digest != fmt.Sprintf("%x", sha256.Sum256(GraphElementsSource)) || pin.Methods != 1 {
+	if pin.Revision != "b2d4aeb9cfd6ede2b4f81826ede8ff2b59660ef5" || pin.Digest != fmt.Sprintf("%x", sha256.Sum256(GraphElementsSource)) || pin.Methods != 1 {
 		t.Fatal("exact graph source pin drift")
 	}
 	good := `{"actorId":"layer","nodes":[11],"edges":[11]}`

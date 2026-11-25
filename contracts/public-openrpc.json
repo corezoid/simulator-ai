@@ -3,13 +3,13 @@
   "info": {
     "title": "Simulator.Company API",
     "version": "2.0.0-beta",
-    "description": "The Simulator.Company API lets an integration read and change a workspace: its **actors** (every\nobject is an actor — a record built from an **account template**), the **edges** that link actors into a\ngraph, the **accounts** and **transactions** that carry balances, and the **reactions**,\n**attachments** and **access rules** around them.\n\nThis is the **public integration contract** (beta). Every method here is a support promise:\nincompatible changes come with a documented migration and a compatibility window.\n\n## Names in the API\n\nThe API keeps older names for two entities the product renames: an **account template** is a\n*form* in method and field names (`form/*`, `formId`, `forms`), and a **Smart Form** is an\n*application* (`application/*`, `app_*`). This reference uses the product names in prose and the\nAPI names in code.\n\n## Making a request\n\nThe API is [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over HTTPS. There is one endpoint —\nevery method is a `POST` to it, and the method name travels in the body:\n\n```http\nPOST /api/2.0/rpc\nContent-Type: application/json\nAuthorization: ApiKey <key>\n\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"method\": \"actor/get\",\n  \"params\": { \"accId\": \"f54fd368-6ebf-427a-89a3-72283e320f6a\", \"actorId\": \"a55cd656-e33e-425c-9971-b0a258bfd914\" }\n}\n```\n\n- `id` **must be a string**. It is echoed in the response so you can match answers to calls.\n- `params` is always an object of named parameters.\n- The reference shows each method at its own anchor (`/rpc#actor/get`); the fragment is only an\n  anchor — every call goes to `/api/2.0/rpc`.\n\nA response carries either `result` or `error`, never both:\n\n```json\n{ \"jsonrpc\": \"2.0\", \"id\": \"1\", \"result\": { \"id\": \"a55cd656-e33e-425c-9971-b0a258bfd914\", \"title\": \"Order #1042\" } }\n```\n\n## Authentication\n\nSend credentials in the `Authorization` header.\n\n| Scheme | Header | Acts as |\n|--------|--------|---------|\n| API key | `Authorization: ApiKey <key>` | The API user the key was issued for, in **one** workspace |\n| User token | `Authorization: Bearer <token>` | A person, through their SuperAdmin (account.corezoid.com) OAuth session |\n\nAn **API key** is bound to the workspace it was issued in, so every call made with it must name\nthat workspace in `accId`; a method that takes no `accId` cannot be called with a key. A key also\ncarries **scopes**, and each method lists the scope it needs (see below). A **user token** is not\nscope-checked: the call runs with that person's own access.\n\nEither way, authentication only gets you to the method. What you can see and change is decided per\nobject by its **access rules** (`view`, `modify`, `remove`, `sign`, `execute`); a call on an object\nthe caller has no access to fails with `accessDenied`.\n\n## Scopes\n\n| Scope | Grants |\n|-------|--------|\n| `actors.readonly` / `actors.management` | Read / change actors, edges, graphs and layers, accounts, counters, transactions, reactions, access rules and Smart Forms |\n| `forms.readonly` / `forms.management` | Read / change account templates |\n| `transfers.readonly` / `transfers.management` | Read / create transfers between accounts |\n| `attachments.readonly` / `attachments.management` | Read / change file attachments |\n| `workspaces.readonly` | Read the workspace, its users and groups |\n\n## Identifiers\n\n| Value | Format | Example |\n|-------|--------|---------|\n| `accId` — workspace | UUID string | `f54fd368-6ebf-427a-89a3-72283e320f6a` |\n| `actorId`, `edgeId`, account `nameId` | UUID string | `a55cd656-e33e-425c-9971-b0a258bfd914` |\n| `formId`, `currencyId`, `userId` | integer | `19` |\n| `ref` | your own string key, unique within an account template | `order-1042` |\n\nMost entities can be addressed by your own `ref` instead of their id — see the `…/by-ref/…` methods.\nRefs make imports safe to retry: a second create with the same `ref` in the same account template is refused\ninstead of creating a duplicate.\n\n## Shaping responses\n\nList and get methods accept two response-only parameters:\n\n- **`fields`** — a projection: keep only these keys (`data.<key>` narrows a template field). It never\n  adds anything.\n- **`with`** — opt into related entities that are not on the record itself, e.g. `owner`,\n  `attachments`, `attachments:user`. It never changes the type of a field that is already there.\n\nLists page with `limit` and `offset`. A list never reports a total; ask the sibling `…/count`\nmethod with the same filter.\n\n## Errors\n\nOn failure `result` is absent and `error` is set. **The HTTP status is still 200** — check the body.\n\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"error\": {\n    \"code\": 1,\n    \"message\": \"access denied: no view access to the actor\",\n    \"data\": { \"reason\": \"accessDenied\", \"reqId\": \"d3b07384d113edec49eaa6238ad5ff00\" }\n  }\n}\n```\n\nBranch on `error.data.reason`, never on `message` — reasons are stable, messages are not.\n\n| Reason | Code | Meaning |\n|--------|------|---------|\n| `invalidParams` | -32602 | A parameter is missing or malformed; `message` names it |\n| `notAuthorized` | 1 | Missing, expired or wrong credentials, or a key used outside its workspace |\n| `accessDenied` | 1 | Authenticated, but the access rules do not allow this |\n| `notAllowed` | 1 | The operation is not allowed here: the method is not available to this kind of caller, or the object refuses it (a read-only production environment, a system folder that cannot be renamed or deleted) |\n| `notFound` | 1 | The object does not exist (or you cannot see it) |\n| `alreadyExists` | 1 | A create collided with an object that already exists |\n| `actorLocked` | 1 | Another write holds the actor; retry shortly |\n| `timeout` | -32000 | The call ran out of time; it may or may not have been applied |\n| `methodNotFound` | -32601 | No such method, or it is not part of the public API |\n\nQuote `data.reqId` when you report a problem.\n\n## Batches\n\n[`batch`](#tag/batch) runs several calls in one request, in order — each item sees what the earlier\nones wrote, and an item can use an earlier result (`\"useRefs\": true`, then `\"$0.id\"`). With\n`\"isAtomic\": true` the whole batch commits or rolls back together; only methods marked safe for\natomic batches are accepted there.\n\n## Drawing a graph\n\nA graph is drawn with ordinary actors and edges: the graph and each of its layers are actors of the\n`Graphs` and `Layers` system account templates, and a layer is the canvas that places actors and edges at\npositions.\n\n1. **Look up the workspace's ids once.** `form/system/list` returns the `Graphs` and `Layers`\n   templates (their ids differ per workspace); `edge_type/get` with `name: \"hierarchy\"` returns the\n   edge type that links a graph to its layers and the editor uses for drawn links.\n2. **Create the canvas** in one atomic batch: an `actor/create` of the `Graphs` template, an\n   `actor/create` of the `Layers` template, and an `edge/create` of the hierarchy type from the graph to\n   the layer. The layer actor's id is the `actorId` of every `graph/layer/…` method.\n3. **Create and place the content** in one atomic batch: the actors (`actor/create`), the edges\n   between them (`edge/create`), then `graph/layer/actors/manage` placing the actors at positions\n   (graph units, y downward, snapped to 50), then a second `graph/layer/actors/manage` placing the\n   edges between the placements the first one returned (`\"$<i>.nodes.<n>.laId\"`).\n4. **Style it** with `graph/layer/actor_settings/save` and `graph/layer/edge_settings/save`, and set\n   a background with `graph/layer/picture/update`.\n\nRead it back with `graph/layer/actors/list` and `graph/layer/edges/list` (or\n`graph/layer/skeleton/get` for a large layer), and walk the stored relations with `graph/get`.\n`graph/layer/actors/manage` shows the full batch. To show a layer live to the people who have it\nopen, start a presentation with `graph/layer/presentation/start`.\n\n## Building a Smart Form\n\nA Smart Form (an *application* in the API) is an actor of the `Scripts` system template with a **develop** and a\n**production** environment, each a folder tree of page configs, locale, view model, styles and\nscripts. You edit develop; a release copies it into production, which is what users open.\n\n1. **Create it** with `application/create` (`cduVersion: 2`, a `ref`): both environments come\n   seeded with a start page. `application/install` creates one from a template instead.\n2. **Write the pages** in develop with `app_folder/create` and `app_file/create` /\n   `app_file/update` — page configs are checked against the CDU component catalog when saved.\n   `application/struct` shows the tree and the ids. One page should declare the root route (`/`)\n   for the short URL to open something.\n3. **Connect the backend** (optional) with `application/env/update` for each environment, or let\n   `corezoid/project/create` give the Smart Form a Corezoid project of its own.\n4. **Preview** develop with `page/render` (`envTitle: \"develop\"`).\n5. **Publish** with `release/create` from develop to production. The release checks every page and\n   route; the first one also gives the Smart Form its short URL key (`route/key/set` picks it yourself).\n6. **Open it**: `route/key/get` returns the key, `<app>/sf/<appKey>` is the address, and\n   `page/render` / `page/submit` serve and submit its pages. `release/rollback` returns production\n   to an earlier release."
+    "description": "The Simulator.Company API lets an integration read and change a workspace: its **actors** (every\nobject is an actor — a record built from an **account template**), the **edges** that link actors into a\ngraph, the **accounts** and **transactions** that carry balances, and the **reactions**,\n**attachments** and **access rules** around them.\n\nThis is the **public integration contract** (beta). Every method here is a support promise:\nincompatible changes come with a documented migration and a compatibility window.\n\n## Names in the API\n\nThe API keeps older names for two entities the product renames: an **account template** is a\n*form* in method and field names (`form/*`, `formId`, `forms`), and a **Smart Form** is an\n*application* (`application/*`, `app_*`). This reference uses the product names in prose and the\nAPI names in code.\n\n## Making a request\n\nThe API is [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over HTTPS. There is one endpoint —\nevery method is a `POST` to it, and the method name travels in the body:\n\n```http\nPOST /api/2.0/rpc\nContent-Type: application/json\nAuthorization: ApiKey <key>\n\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"method\": \"actor/get\",\n  \"params\": { \"accId\": \"f54fd368-6ebf-427a-89a3-72283e320f6a\", \"actorId\": \"a55cd656-e33e-425c-9971-b0a258bfd914\" }\n}\n```\n\n- `id` **must be a string**. It is echoed in the response so you can match answers to calls.\n- `params` is always an object of named parameters.\n- The reference shows each method at its own anchor (`/rpc#actor/get`); the fragment is only an\n  anchor — every call goes to `/api/2.0/rpc`.\n\nA response carries either `result` or `error`, never both:\n\n```json\n{ \"jsonrpc\": \"2.0\", \"id\": \"1\", \"result\": { \"id\": \"a55cd656-e33e-425c-9971-b0a258bfd914\", \"title\": \"Order #1042\" } }\n```\n\n## Authentication\n\nSend credentials in the `Authorization` header.\n\n| Scheme | Header | Acts as |\n|--------|--------|---------|\n| API key | `Authorization: ApiKey <key>` | The API user the key was issued for, in **one** workspace |\n| User token | `Authorization: Bearer <token>` | A person, through their SuperAdmin (account.corezoid.com) OAuth session |\n\nAn **API key** is bound to the workspace it was issued in, so every call made with it must name\nthat workspace in `accId`; a method that takes no `accId` cannot be called with a key. A key also\ncarries **scopes**, and each method lists the scope it needs (see below). A **user token** is not\nscope-checked: the call runs with that person's own access.\n\nEither way, authentication only gets you to the method. What you can see and change is decided per\nobject by its **access rules** (`view`, `modify`, `remove`, `sign`, `execute`); a call on an object\nthe caller has no access to fails with `accessDenied`.\n\n## Scopes\n\n| Scope | Grants |\n|-------|--------|\n| `actors.readonly` / `actors.management` | Read / change actors, edges, graphs and layers, accounts, counters, transactions, reactions, access rules and Smart Forms |\n| `forms.readonly` / `forms.management` | Read / change account templates |\n| `transfers.readonly` / `transfers.management` | Read / create transfers between accounts |\n| `attachments.readonly` / `attachments.management` | Read / change file attachments |\n| `workspaces.readonly` | Read the workspace, its users and groups |\n\n## Identifiers\n\n| Value | Format | Example |\n|-------|--------|---------|\n| `accId` — workspace | UUID string | `f54fd368-6ebf-427a-89a3-72283e320f6a` |\n| `actorId`, `edgeId`, account `nameId` | UUID string | `a55cd656-e33e-425c-9971-b0a258bfd914` |\n| `formId`, `currencyId`, `userId` | integer | `19` |\n| `ref` | your own string key, unique within an account template | `order-1042` |\n\nMost entities can be addressed by your own `ref` instead of their id — see the `…/by-ref/…` methods.\nRefs make imports safe to retry: a second create with the same `ref` in the same account template is refused\ninstead of creating a duplicate.\n\n## Shaping responses\n\nList and get methods accept two response-only parameters:\n\n- **`fields`** — a projection: keep only these keys (`data.<key>` narrows a template field). It never\n  adds anything.\n- **`with`** — opt into related entities that are not on the record itself, e.g. `owner`,\n  `attachments`, `attachments:user`. It never changes the type of a field that is already there.\n\nLists page with `limit` and `offset`. A list never reports a total; ask the sibling `…/count`\nmethod with the same filter.\n\n## Errors\n\nOn failure `result` is absent and `error` is set. **The HTTP status is still 200** — check the body.\n\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"1\",\n  \"error\": {\n    \"code\": 1,\n    \"message\": \"access denied: no view access to the actor\",\n    \"data\": { \"reason\": \"accessDenied\", \"reqId\": \"d3b07384d113edec49eaa6238ad5ff00\" }\n  }\n}\n```\n\nBranch on `error.data.reason`, never on `message` — reasons are stable, messages are not.\n\n| Reason | Code | Meaning |\n|--------|------|---------|\n| `invalidParams` | -32602 | A parameter is missing or malformed; `message` names it |\n| `notAuthorized` | 1 | Missing, expired or wrong credentials, or a key used outside its workspace |\n| `accessDenied` | 1 | Authenticated, but the access rules do not allow this |\n| `notAllowed` | 1 | The operation is not allowed here: the method is not available to this kind of caller, or the object refuses it (a read-only production environment, a system folder that cannot be renamed or deleted) |\n| `notFound` | 1 | The object does not exist (or you cannot see it) |\n| `alreadyExists` | 1 | A create collided with an object that already exists |\n| `actorLocked` | 1 | Another write holds the actor; retry shortly |\n| `timeout` | -32000 | The call ran out of time; it may or may not have been applied |\n| `methodNotFound` | -32601 | No such method, or it is not part of the public API |\n\nQuote `data.reqId` when you report a problem.\n\n## Batches\n\n[`batch`](#tag/batch) runs several calls in one request, in order — each item sees what the earlier\nones wrote, and an item can use an earlier result (`\"useRefs\": true`, then `\"$0.id\"`). With\n`\"isAtomic\": true` the whole batch commits or rolls back together; only methods marked safe for\natomic batches are accepted there.\n\n## Drawing a graph\n\nA graph is drawn with ordinary actors and edges: the graph and each of its layers are actors of the\n`Graphs` and `Layers` system account templates, and a layer is the canvas that places actors and edges at\npositions.\n\n1. **Look up the workspace's ids once.** `form/system/list` returns the `Graphs` and `Layers`\n   templates (their ids differ per workspace); `edge_type/get` with `name: \"hierarchy\"` returns the\n   edge type that links a graph to its layers and the editor uses for drawn links.\n2. **Create the canvas** in one atomic batch: an `actor/create` of the `Graphs` template, an\n   `actor/create` of the `Layers` template, and an `edge/create` of the hierarchy type from the graph to\n   the layer. The layer actor's id is the `actorId` of every `graph/layer/…` method.\n3. **Create and place the content** in one atomic batch: the actors (`actor/create`), the edges\n   between them (`edge/create`), then `graph/layer/actors/manage` placing the actors at positions\n   (graph units, y downward, snapped to 50), then a second `graph/layer/actors/manage` placing the\n   edges between the placements the first one returned (`\"$<i>.nodes.<n>.laId\"`).\n4. **Style it** with `graph/layer/actor_settings/save` and `graph/layer/edge_settings/save`, and set\n   a background with `graph/layer/picture/update`.\n\nRead it back with `graph/layer/actors/list` and `graph/layer/edges/list` (or\n`graph/layer/skeleton/get` for a large layer), and walk the stored relations with `graph/get`.\n`graph/layer/actors/manage` shows the full batch. To show a layer live to the people who have it\nopen, start a presentation with `graph/layer/presentation/start`.\n\n## Building a Smart Form\n\nA Smart Form (an *application* in the API) is an actor of the `Scripts` system template with a **develop** and a\n**production** environment, each a folder tree of page configs, locale, view model, styles and\nscripts. You edit develop; a release copies it into production, which is what users open.\n\n1. **Create it** with `application/create` (`cduVersion: 2`, a `ref`): both environments come\n   seeded with a start page. `application/install` creates one from a template instead.\n2. **Write the pages** in develop with `app_folder/create` and `app_file/create` /\n   `app_file/update` — page configs are checked against the CDU component catalog when saved.\n   `application/struct` shows the tree and the ids. One page should declare the root route (`/`)\n   for the short URL to open something.\n3. **Connect the backend** (optional) with `application/env/update` for each environment, or let\n   `corezoid/project/create` give the Smart Form a Corezoid project of its own.\n4. **Preview** develop with `page/render` (`envTitle: \"develop\"`).\n5. **Publish** with `release/create` from develop to production. The release checks every page and\n   route; the first one also gives the Smart Form its short URL key (`route/key/set` picks it yourself).\n6. **Open it**: `route/key/get` returns the key, `<app>/sf/<appKey>` is the address, and\n   `page/render` / `page/submit` serve and submit its pages. `release/rollback` returns production\n   to an earlier release.\n\n## For AI agents\n\nThe reference is also published as plain markdown for AI agents and coding assistants:\n[llms.txt](llms.txt) is the index (one line per method), [llms-full.txt](llms-full.txt) is the whole\nreference in one file, and `methods/<method>.md` is one method, e.g. `methods/actor/get.md`."
   },
   "methods": [
     {
       "name": "actor/get",
       "summary": "Retrieves details of a specific actor by ID",
-      "description": "Returns one actor by its id: its title, the account template it was built from, and its\ntemplate field values (`data`).\n\nThe caller needs `view` access to the actor. By default the response carries the actor's own\ncolumns only; related information is opt-in through `with` (unknown values are ignored):\n\n| `with` value | Adds |\n|--------------|------|\n| `owner` | `owner` and `ownerId` — the actor's owner |\n| `user` | `user` — the user who created the actor |\n| `privs` | `privs` — what the **caller** may do with this actor |\n| `access`, `defaultAccess` | the actor's access rules / its account template's default rules |\n| `attachments`, `attachments:user` | attached files (and who attached them) |\n| `lastReaction`, `lastComment` (`:user`) | the most recent reaction / comment |\n| `reactionsStats`, `unreadReactions`, `unread`, `starred` | reaction counters and the caller's read state |\n| `executionState` | the approval workflow stage, for actors with sign/execute rules |\n| `notificationSettings` | the caller's notification settings for this actor |\n| `meeting` | the live call on the actor: room, participants, last transcript line |\n| `forms` | every account template attached to the actor, in order (templates the caller cannot view come back as `accessDenied` stubs) |\n| `avatar` | what an avatar needs beyond `picture`: `systemObjType`/`systemObjId` (what a system actor is the twin of: a user or the workspace), for a user actor that user's SuperAdmin id `systemObjSAId`, and the account template's `formPicture`/`formType` (the fallback). A source that does not apply or no longer exists is omitted |\n\nUse `fields` to cut the answer down, e.g. `[\"id\", \"title\", \"data.amount\"]` returns only those\nkeys and only the `amount` field of `data`.\n\nTo look an actor up by your own key instead of its id, use `actor/by-ref/get`.",
+      "description": "Returns one actor by its id: its title, the account template it was built from, and its\ntemplate field values (`data`).\n\nThe caller needs `view` access to the actor. By default the response carries the actor's own\ncolumns only; related information is opt-in through `with` (unknown values are ignored):\n\n| `with` value | Adds |\n|--------------|------|\n| `owner` | `owner` and `ownerId` — the actor's owner |\n| `user` | `user` — the user who created the actor |\n| `privs` | `privs` — what the **caller** may do with this actor |\n| `access`, `defaultAccess` | the actor's access rules / its account template's default rules |\n| `attachments`, `attachments:user` | attached files (and who attached them) |\n| `lastReaction`, `lastComment` (`:user`) | the most recent reaction / comment |\n| `reactionsStats`, `unreadReactions`, `unread`, `starred` | reaction counters and the caller's read state |\n| `executionState` | the approval workflow stage, for actors with sign/execute rules |\n| `notificationSettings` | the caller's notification settings for this actor |\n| `meeting` | the live call on the actor: room, participants, last transcript line |\n| `forms` | every account template attached to the actor, in order (templates the caller cannot view come back as `accessDenied` stubs) |\n| `avatar` | what an avatar needs beyond `picture`: `systemObjType`/`systemObjId` (what a system actor is the twin of: a user or the workspace), for a user actor that user's SuperAdmin id `systemObjSAId`, and the account template's `formPicture`/`formType` (the fallback), `formColor` (the template's color, which a graph paints an actor with no `color` of its own in — the actor's own `color` is never filled from it) and `formPictureObject` (the template's actor picture). A source that does not apply or no longer exists is omitted |\n\nUse `fields` to cut the answer down, e.g. `[\"id\", \"title\", \"data.amount\"]` returns only those\nkeys and only the `amount` field of `data`.\n\nTo look an actor up by your own key instead of its id, use `actor/by-ref/get`.",
       "params": [
         {
           "name": "accId",
@@ -140,13 +140,17 @@
                     "type": "integer",
                     "description": "The subject's SuperAdmin (account.corezoid.com) id"
                   },
+                  "status": {
+                    "type": "string",
+                    "description": "The subject's status in the rule's workspace: active, blocked (by a workspace admin, or by a superadmin everywhere) or deleted (an API key deleted or a user removed from the workspace); such a subject keeps its rules"
+                  },
                   "userId": {
                     "type": "integer",
                     "description": "Subject the rule is for: a user, group or API user id"
                   },
                   "userType": {
                     "type": "string",
-                    "description": "Subject type: user, group or api"
+                    "description": "Subject type: user, group, api (an API key), system (the system user, id 0, which owns the system templates) or anonymous (a guest let in by a public link)"
                   }
                 }
               },
@@ -424,13 +428,17 @@
                     "type": "integer",
                     "description": "The subject's SuperAdmin (account.corezoid.com) id"
                   },
+                  "status": {
+                    "type": "string",
+                    "description": "The subject's status in the rule's workspace: active, blocked (by a workspace admin, or by a superadmin everywhere) or deleted (an API key deleted or a user removed from the workspace); such a subject keeps its rules"
+                  },
                   "userId": {
                     "type": "integer",
                     "description": "Subject the rule is for: a user, group or API user id"
                   },
                   "userType": {
                     "type": "string",
-                    "description": "Subject type: user, group or api"
+                    "description": "Subject type: user, group, api (an API key), system (the system user, id 0, which owns the system templates) or anonymous (a guest let in by a public link)"
                   }
                 }
               },
@@ -473,6 +481,10 @@
               },
               "description": "Sign/ds/execute workflow-order state (opt-in via with:[\"executionState\"])"
             },
+            "formColor": {
+              "type": "string",
+              "description": "Account template color: how a graph paints an actor that has no color of its own (opt-in via with:[\"avatar\"])"
+            },
             "formId": {
               "type": "integer",
               "description": "Account template the actor was built from (its primary template)"
@@ -480,6 +492,28 @@
             "formPicture": {
               "type": "string",
               "description": "Account template picture, the avatar fallback (opt-in via with:[\"avatar\"])"
+            },
+            "formPictureObject": {
+              "type": "object",
+              "properties": {
+                "height": {
+                  "type": "number",
+                  "description": "Height the actor is drawn at on a graph, in graph units"
+                },
+                "img": {
+                  "type": "string",
+                  "description": "Picture source: the stored file name (served under /download/) for an uploaded image, or a data: URL for a napkin drawing"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Picture kind as legacy writes it: image (uploaded) or napkin (drawn)"
+                },
+                "width": {
+                  "type": "number",
+                  "description": "Width the actor is drawn at on a graph, in graph units"
+                }
+              },
+              "description": "Account template actor picture: how a graph draws an actor that has no picture or pictureObject of its own (opt-in via with:[\"avatar\"])"
             },
             "formTitle": {
               "type": "string",
@@ -778,6 +812,14 @@
                     "reactionId": {
                       "type": "string",
                       "description": "Reaction (comment) the line was posted as, if any"
+                    },
+                    "reactionRating": {
+                      "type": "integer",
+                      "description": "Rating (1-5) of a rating reaction the line was posted as"
+                    },
+                    "reactionType": {
+                      "type": "string",
+                      "description": "Type of the reaction the line was posted as when it is not a comment (sign, done, reject, rating, ds); absent on comments and on legacy lines"
                     },
                     "saId": {
                       "type": "integer",
@@ -1307,7 +1349,7 @@
     {
       "name": "form/get",
       "summary": "Retrieves details of a specific account template",
-      "description": "Returns one account template (account templates are called *forms* in the API): its settings\nand, in `form`, the full template body — the `sections` with every template field an actor of\nthis template carries. A field's `id` is the key of its value in actor `data`.\n\nThe caller needs `view` access to the account template. Optional includes via `with`:\n\n| `with` value | Adds |\n|--------------|------|\n| `editor` | `canModify`, `editToken` (pass it to `form/update` as `expectedEditToken`) and `accountTemplateEditor` |\n| `parents` | `parents` — the ancestor chain, immediate parent first; ancestors the caller cannot view are `accessDenied` stubs, and a complete chain ends with a template without `parentId` |\n\nTo look an account template up by your own key, use `form/by-ref/get`.",
+      "description": "Returns one account template (account templates are called *forms* in the API): its settings\nand, in `form`, the full template body — the `sections` with every template field an actor of\nthis template carries. A field's `id` is the key of its value in actor `data`.\n\nThe caller needs `view` access to the account template. Every read carries `canModify` — whether\nthe caller may change the template — so a host learns the right without the editor include.\nOptional includes via `with`:\n\n| `with` value | Adds |\n|--------------|------|\n| `editor` | `canManageActorsAccess`, `editToken` (pass it to `form/update` as `expectedEditToken`) and `accountTemplateEditor` |\n| `parents` | `parents` — the ancestor chain, immediate parent first, each viewable ancestor with its own `canModify`; ancestors the caller cannot view are `accessDenied` stubs, and a complete chain ends with a template without `parentId` |\n\nOnly `editor` brings the edit token; a plain or `parents` read does not.\n\n`canModify` is always `false` on a system or connector template. `canManageActorsAccess` is the\ncheck of `access_rule/templateActors/share`: `modify` on a regular template; on a system template\n(Events, Reactions, …) the `system_actors:management` permission, which the workspace owner and\nadmin roles carry — there it can be `true` while `canModify` is `false`.\n\nTo look an account template up by your own key, use `form/by-ref/get`.",
       "params": [
         {
           "name": "accId",
@@ -1390,6 +1432,10 @@
                 }
               },
               "description": "Template editor capabilities of this server (with editor)"
+            },
+            "canManageActorsAccess": {
+              "type": "boolean",
+              "description": "Whether the current user may change the access every actor of this account template inherits (access_rule/templateActors/share): modify on a regular template, the system_actors:management permission (workspace owner and admin roles) on a system one (form/get with editor, form/create, form/update)"
             },
             "canModify": {
               "type": "boolean",
@@ -1507,6 +1553,7 @@
           "result": {
             "name": "result",
             "value": {
+              "canModify": true,
               "collapsed": false,
               "color": "#8ca285",
               "createdAt": 1741251600,
@@ -1591,6 +1638,7 @@
                   "forms"
                 ]
               },
+              "canManageActorsAccess": true,
               "canModify": true,
               "collapsed": false,
               "color": "#8ca285",
@@ -1638,6 +1686,7 @@
               "parentId": 17,
               "parents": [
                 {
+                  "canModify": false,
                   "collapsed": false,
                   "color": "#c9a96e",
                   "createdAt": 1741251500,
@@ -1838,13 +1887,17 @@
                               "type": "integer",
                               "description": "The subject's SuperAdmin (account.corezoid.com) id"
                             },
+                            "status": {
+                              "type": "string",
+                              "description": "The subject's status in the rule's workspace: active, blocked (by a workspace admin, or by a superadmin everywhere) or deleted (an API key deleted or a user removed from the workspace); such a subject keeps its rules"
+                            },
                             "userId": {
                               "type": "integer",
                               "description": "Subject the rule is for: a user, group or API user id"
                             },
                             "userType": {
                               "type": "string",
-                              "description": "Subject type: user, group or api"
+                              "description": "Subject type: user, group, api (an API key), system (the system user, id 0, which owns the system templates) or anonymous (a guest let in by a public link)"
                             }
                           }
                         },
@@ -2122,13 +2175,17 @@
                               "type": "integer",
                               "description": "The subject's SuperAdmin (account.corezoid.com) id"
                             },
+                            "status": {
+                              "type": "string",
+                              "description": "The subject's status in the rule's workspace: active, blocked (by a workspace admin, or by a superadmin everywhere) or deleted (an API key deleted or a user removed from the workspace); such a subject keeps its rules"
+                            },
                             "userId": {
                               "type": "integer",
                               "description": "Subject the rule is for: a user, group or API user id"
                             },
                             "userType": {
                               "type": "string",
-                              "description": "Subject type: user, group or api"
+                              "description": "Subject type: user, group, api (an API key), system (the system user, id 0, which owns the system templates) or anonymous (a guest let in by a public link)"
                             }
                           }
                         },
@@ -2171,6 +2228,10 @@
                         },
                         "description": "Sign/ds/execute workflow-order state (opt-in via with:[\"executionState\"])"
                       },
+                      "formColor": {
+                        "type": "string",
+                        "description": "Account template color: how a graph paints an actor that has no color of its own (opt-in via with:[\"avatar\"])"
+                      },
                       "formId": {
                         "type": "integer",
                         "description": "Account template the actor was built from (its primary template)"
@@ -2178,6 +2239,28 @@
                       "formPicture": {
                         "type": "string",
                         "description": "Account template picture, the avatar fallback (opt-in via with:[\"avatar\"])"
+                      },
+                      "formPictureObject": {
+                        "type": "object",
+                        "properties": {
+                          "height": {
+                            "type": "number",
+                            "description": "Height the actor is drawn at on a graph, in graph units"
+                          },
+                          "img": {
+                            "type": "string",
+                            "description": "Picture source: the stored file name (served under /download/) for an uploaded image, or a data: URL for a napkin drawing"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "Picture kind as legacy writes it: image (uploaded) or napkin (drawn)"
+                          },
+                          "width": {
+                            "type": "number",
+                            "description": "Width the actor is drawn at on a graph, in graph units"
+                          }
+                        },
+                        "description": "Account template actor picture: how a graph draws an actor that has no picture or pictureObject of its own (opt-in via with:[\"avatar\"])"
                       },
                       "formTitle": {
                         "type": "string",
@@ -2476,6 +2559,14 @@
                               "reactionId": {
                                 "type": "string",
                                 "description": "Reaction (comment) the line was posted as, if any"
+                              },
+                              "reactionRating": {
+                                "type": "integer",
+                                "description": "Rating (1-5) of a rating reaction the line was posted as"
+                              },
+                              "reactionType": {
+                                "type": "string",
+                                "description": "Type of the reaction the line was posted as when it is not a comment (sign, done, reject, rating, ds); absent on comments and on legacy lines"
                               },
                               "saId": {
                                 "type": "integer",
@@ -2916,6 +3007,23 @@
                         "type": "boolean",
                         "description": "Whether anisotropic texture filtering is enabled"
                       },
+                      "baseline": {
+                        "properties": {
+                          "endDate": {
+                            "type": "integer",
+                            "description": "Planned end, unix seconds"
+                          },
+                          "startDate": {
+                            "type": "integer",
+                            "description": "Planned start, unix seconds"
+                          }
+                        },
+                        "description": "Gantt: the dates the actor had before it was first moved on the Gantt chart (unix seconds, startDate ≤ endDate). null clears it",
+                        "type": [
+                          "object",
+                          "null"
+                        ]
+                      },
                       "expand": {
                         "type": "boolean",
                         "description": "Whether the node is open in place, showing the content named by expandType"
@@ -2943,6 +3051,20 @@
                       "fullScreen": {
                         "type": "boolean",
                         "description": "Whether the expanded node is in full screen"
+                      },
+                      "ganttOrder": {
+                        "description": "Gantt: manual sort key of the row among its siblings, ascending; a fraction drops a row between two others without renumbering them. null clears it (the list falls back to its date order)",
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "ganttPhase": {
+                        "description": "Gantt: id (uuid) of the Phase actor the row was manually put into; overrides the date rule that otherwise assigns rows to phases. null clears it",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
                       },
                       "height": {
                         "type": "number",
@@ -3068,6 +3190,16 @@
                           }
                         },
                         "description": "Text-node typography override"
+                      },
+                      "neighbors": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Gantt, Phase actors only: ids of the actors right after the phase, the first one first (at most 100); breaks the tie when an actor starts at the same moment as the phase. null clears it",
+                        "type": [
+                          "array",
+                          "null"
+                        ]
                       },
                       "offset": {
                         "type": "object",

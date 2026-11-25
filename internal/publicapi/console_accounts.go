@@ -42,6 +42,8 @@ type AccountsOpened struct {
 	CurrencyID int64           `json:"currencyId"`
 	Registered bool            `json:"registered,omitempty"`
 	Accounts   []OpenedAccount `json:"accounts"`
+	// PostingSide is how other actors post one-sided transactions of this pair (fact/plan only).
+	PostingSide *PostingSide `json:"postingSide,omitempty"`
 }
 
 type accountRows struct {
@@ -125,6 +127,9 @@ func (c *Client) OpenAccount(ctx context.Context, in AccountOpenInput) (Accounts
 			return AccountsOpened{}, err
 		}
 		out.Accounts = append(out.Accounts, opened)
+	}
+	if kind == "fact" || kind == "plan" {
+		out.PostingSide, _ = c.PostingSideOf(ctx, pair, kind, in.ActorID) // a hint: a failed read leaves it out
 	}
 	return out, nil
 }
