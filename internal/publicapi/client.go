@@ -214,12 +214,36 @@ func (c *Client) ListLayerActors(ctx context.Context, id string, limit, offset i
 	return page, nil
 }
 
+// keptReasons are the sim-api reasons an APIError carries as sent; any other becomes remote_error.
+// One per line, so adding one does not rewrite the others.
+var keptReasons = map[string]bool{
+	"notAuthorized":          true,
+	"accessDenied":           true,
+	"notFound":               true,
+	"noFoundOrNoAccess":      true,
+	"notAllowed":             true,
+	"notAvailable":           true,
+	"invalidParams":          true,
+	"operationConflict":      true,
+	"operationResultExpired": true,
+	"appEnvironmentChanged":  true,
+	"appFileSourceMismatch":  true,
+	"invalidRoutes":          true,
+	"methodNotFound":         true,
+	"formEditConflict":       true,
+	"ledgerWrongAPI":         true,
+	// Another write held the actor; the refused write changed nothing: retry it.
+	"actorLocked": true,
+	// The call ran out of time on the server and may or may not have been applied (graph_build
+	// reports it as unknown, not as a refusal).
+	"timeout": true,
+}
+
 // apiError keeps the code and an allow-listed reason; only the console profile adds the server's
 // bounded message. Batch item errors go through it too.
 func (c *Client) apiError(e *rpcError) *APIError {
 	reason := "remote_error"
-	switch e.Data.Reason {
-	case "notAuthorized", "accessDenied", "notFound", "noFoundOrNoAccess", "notAllowed", "notAvailable", "invalidParams", "operationConflict", "operationResultExpired", "appEnvironmentChanged", "appFileSourceMismatch", "invalidRoutes", "methodNotFound", "formEditConflict", "ledgerWrongAPI":
+	if keptReasons[e.Data.Reason] {
 		reason = e.Data.Reason
 	}
 	err := &APIError{Code: e.Code, Reason: reason}
