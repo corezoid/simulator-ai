@@ -282,3 +282,47 @@ func TestSaveMemoryRefusedDrawsNoEdge(t *testing.T) {
 		}
 	})
 }
+
+// A legacy note longer than the method takes stays in the key and never blocks a save; a legacy
+// line forget names is dropped, not moved.
+func TestSaveMemoryLegacyOversizedAndForgotten(t *testing.T) {
+	_, f, _ := kbClient(t)
+	c := kbJWTClient(t, f)
+	twin := f.TwinOf(7, 70)
+	long := "- [note] " + strings.Repeat("y", 1200) + "\n"
+	f.Set(func(s *simfake.Server) {
+		s.Actors[twin].Data["aiMemory"] = long + "- [role] Old role\n- [preference] Tea\n"
+	})
+	if _, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7}, Text: "- [role] CFO", Forget: []string{"old role"}}); err != nil {
+		t.Fatal(err)
+	}
+	stored, _ := f.ActorData(twin)
+	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Tea\n- [role] CFO\n" || stored.Data["aiMemory"] != long {
+		t.Fatalf("description %q legacy %.40q", stored.Description, stored.Data["aiMemory"])
+	}
+}
+
+// A relation forgotten and named again in one save keeps its chip and its edge.
+func TestSaveMemoryForgetAndReAddKeepsTheEdge(t *testing.T) {
+	_, f, project := kbClient(t)
+	c := kbJWTClient(t, f)
+	ctx := context.Background()
+	twin := f.TwinOf(7, 70)
+	self := MemoryInput{SelfUserID: 7}
+	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[actor:" + project + "]]"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[actor:" + project + "]]", Forget: []string{"actor:" + project}})
+	if err != nil || len(got.Relations) != 1 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	edge := false
+	f.Set(func(s *simfake.Server) {
+		for _, e := range s.Edges {
+			edge = edge || e.Source == twin && e.Target == project
+		}
+	})
+	if !edge {
+		t.Fatal("the re-added relation lost its edge")
+	}
+}

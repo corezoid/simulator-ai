@@ -196,29 +196,31 @@ func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, er
 	if err != nil {
 		return Memory{}, err
 	}
-	// The legacy data.aiMemory moves into the block first, so forget reaches its lines too.
-	legacyLeft, legacy, err := c.moveLegacyMemory(ctx, first)
-	if err != nil {
-		return Memory{}, err
+	// The legacy data.aiMemory moves into the block first; the lines forget names are not moved.
+	var legacyLeft string
+	var legacyForgotten []MemoryRelation
+	if strings.TrimSpace(first.Legacy) != "" {
+		legacyLeft, legacyForgotten = c.moveLegacyMemory(ctx, first, in.Forget)
 	}
 	saved, err := c.memorySave(ctx, first.ID, adding, in.Forget)
 	if err != nil {
 		return Memory{}, err
 	}
 	// The edges follow what was written: a new relation's edge is drawn, every relation the save
-	// forgot (sim-api's lines among them) loses its own.
-	out := Memory{ActorID: first.ID, UserID: userID, Added: saved.Added, Removed: saved.Removed,
-		Notes: saved.doc().Notes, Relations: saved.doc().Relations}
+	// forgot (sim-api's lines among them) loses its own — unless the same save named it again.
+	held := saved.doc()
+	out := Memory{ActorID: first.ID, UserID: userID, Added: saved.Added, Removed: saved.Removed + len(legacyForgotten),
+		Notes: held.Notes, Relations: held.Relations}
+	if err = c.forgetEdges(ctx, first.ID, stillHeld(append(saved.forgotten(), legacyForgotten...), held)); err != nil {
+		return Memory{}, fmt.Errorf("the memory was saved, but: %w", err)
+	}
 	if len(draw) > 0 {
 		if _, err = c.atomicItems(ctx, draw); err != nil {
 			return Memory{}, fmt.Errorf("the memory was saved, but its relations' edges were not drawn: %w", err)
 		}
 		out.Edges = len(draw)
 	}
-	if err = c.forgetEdges(ctx, first.ID, saved.forgotten()); err != nil {
-		return Memory{}, fmt.Errorf("the memory was saved, but: %w", err)
-	}
-	if legacy {
+	if strings.TrimSpace(first.Legacy) != "" && legacyLeft != first.Legacy {
 		var left any // nil clears the key
 		if legacyLeft != "" {
 			left = legacyLeft
@@ -331,18 +333,21 @@ func (c *Client) memorySave(ctx context.Context, twin string, adding memoryDoc, 
 }
 
 // moveLegacyMemory writes what the legacy data.aiMemory holds into the block (actor/memory/save, in
-// batches the method takes) and answers what the key keeps: the relations no actor this credential
-// sees answers to — a deleted actor's chip, an unknown title — rendered as lines, "" when all moved.
-// legacy is false without a legacy text.
-func (c *Client) moveLegacyMemory(ctx context.Context, t twinState) (left string, legacy bool, err error) {
-	if strings.TrimSpace(t.Legacy) == "" {
-		return "", false, nil
-	}
-	held := aimemory.Parse(t.Legacy)
+// batches the method takes) and answers what the key keeps — the lines that did not move, rendered:
+// a relation no actor this credential sees answers to (a deleted actor's chip, an unknown title), a
+// note longer than the method takes, a batch sim-api refused (the block full) — and the relations
+// forget names (their edges are the caller's to delete). The lines forget names are dropped, not
+// moved. A refusal never fails the person's save: what did not move simply stays in the key.
+func (c *Client) moveLegacyMemory(ctx context.Context, t twinState, forget []string) (left string, forgotten []MemoryRelation) {
+	held, dropped := aimemory.Forget(aimemory.Parse(t.Legacy), forget)
 	moving, kept := newMemoryDoc(), newMemoryDoc()
 	for _, n := range held.Notes {
 		n.Category, n.Text = aimemory.Category(n.Category), aimemory.CleanFact(n.Text)
-		if n.Text != "" {
+		switch {
+		case n.Text == "":
+		case utf8.RuneCountInString(n.Text) > maxFactRunes:
+			kept.Notes = append(kept.Notes, n)
+		default:
 			moving.Notes = append(moving.Notes, n)
 		}
 	}
@@ -355,16 +360,34 @@ func (c *Client) moveLegacyMemory(ctx context.Context, t twinState) (left string
 		r.ActorID, r.Target = id, title
 		moving.Relations = append(moving.Relations, r)
 	}
+	for _, r := range dropped {
+		if id, _, err := c.relationTarget(ctx, r); err == nil {
+			r.ActorID = id
+			forgotten = append(forgotten, r)
+		}
+	}
 	for len(moving.Notes)+len(moving.Relations) > 0 {
 		batch := newMemoryDoc()
 		batch.Notes = moving.Notes[:min(len(moving.Notes), maxMemoryItems)]
 		batch.Relations = moving.Relations[:min(len(moving.Relations), maxMemoryItems)]
 		moving.Notes, moving.Relations = moving.Notes[len(batch.Notes):], moving.Relations[len(batch.Relations):]
 		if _, err := c.memorySave(ctx, t.ID, batch, nil); err != nil {
-			return "", true, fmt.Errorf("move the legacy memory: %w", err)
+			kept.Notes, kept.Relations = append(kept.Notes, batch.Notes...), append(kept.Relations, batch.Relations...)
 		}
 	}
-	return kept.Render(), true, nil
+	return kept.Render(), forgotten
+}
+
+// stillHeld drops from forgotten the relations held still holds (forgotten and named again in one
+// save: sim-api forgets first, then adds), so their edges stay.
+func stillHeld(forgotten []MemoryRelation, held memoryDoc) []MemoryRelation {
+	var out []MemoryRelation
+	for _, r := range forgotten {
+		if r.ActorID == "" || !hasRelation(held, MemoryRelation{Type: r.Type, ActorID: r.ActorID}) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // forgetEdges deletes the edges of forgotten relations from the twin; one already gone is fine.
