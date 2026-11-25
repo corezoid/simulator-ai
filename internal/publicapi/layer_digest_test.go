@@ -39,7 +39,7 @@ func TestLayerDigestSummary(t *testing.T) {
 		big.Actors = append(big.Actors, DigestActor{ID: strings.Repeat("x", 1000)})
 	}
 	fitDigest(&big)
-	if len(big.Actors) == 0 || len(big.Actors) == 400 || !strings.Contains(strings.Join(big.Notes, ""), "KiB") {
+	if len(big.Actors) == 0 || len(big.Actors) == 400 || !strings.Contains(strings.Join(big.Notes, ""), "too long") {
 		t.Fatalf("%d actors, notes %v", len(big.Actors), big.Notes)
 	}
 }

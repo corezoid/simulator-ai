@@ -12,9 +12,15 @@ import (
 
 // layer_digest summarises a layer for a person in one call (brief phase 5.3; eval layer-07 made 14
 // calls and still missed the departments' balances): its counts, its actors by template and by
-// hierarchy level, each actor's key fields and balances, the totals per account and the money moved
-// between its actors. Reads, with no call per actor: the layer and its stats, every placement (paged),
-// the edge types (ontology/get) and one batch of actor/context/get per 100 actors.
+// hierarchy level, each actor's key fields, each actor's balance, the sums of those balances per
+// template and the money moved between its actors. Reads, with no call per actor: the layer and its
+// stats, every placement (paged) and one batch of actor/context/get per 100 actors (their neighbors
+// over every edge type: hierarchy for the levels, money edges for the transfers).
+//
+// A balance is what an account holds now, credit − debit (entity_context_get's balance). The digest
+// never adds balances across templates: the company's money, the departments' and the
+// counterparties' receipts are the same money at different stages (eval r11251105 read "2 000 000 in
+// total over 8 actors" as the departments' money). Its notes are written for the person.
 
 // LayerDigestInput names the layer; Full answers every actor, field and non-zero balance uncut.
 type LayerDigestInput struct {
@@ -27,21 +33,25 @@ const (
 	digestFields     = 4         // filled fields per actor in a compact digest
 	digestValueRunes = 80        // a compact field value is cut here
 	digestMaxActors  = 500       // actors whose cards are read; past it the digest says so
-	digestMoneyTypes = 19        // money edge types read with the hierarchy (actor/context/get takes 20)
+	digestPerType    = 50        // neighbors read per edge type and direction (actor/context/get's maximum)
 	digestTransfers  = 40        // transfer lines a compact digest lists, the largest first
+	digestBalances   = 120       // balance lines a compact digest lists
 	digestMaxBytes   = 256 << 10 // a full digest drops its deepest actors past this
 )
 
 type LayerDigest struct {
-	LayerID   string           `json:"layerId"`
-	Title     string           `json:"title,omitempty"`
-	Stats     json.RawMessage  `json:"stats,omitempty"`
-	Forms     []DigestForm     `json:"forms"`
-	Levels    []DigestLevel    `json:"levels"`
-	Actors    []DigestActor    `json:"actors"`
-	Totals    []DigestBalance  `json:"totals,omitempty"`
-	Transfers []DigestTransfer `json:"transfers,omitempty"`
-	Notes     []string         `json:"notes,omitempty"`
+	LayerID string          `json:"layerId"`
+	Title   string          `json:"title,omitempty"`
+	Stats   json.RawMessage `json:"stats,omitempty"`
+	Forms   []DigestForm    `json:"forms"`
+	Levels  []DigestLevel   `json:"levels"`
+	Actors  []DigestActor   `json:"actors"`
+	// Balances is each actor's balance (credit − debit) of an account, in the actors' order.
+	Balances []DigestBalance `json:"balances,omitempty"`
+	// BalanceSums adds the balances of one account up per template, never across templates.
+	BalanceSums []DigestBalanceSum `json:"balanceSums,omitempty"`
+	Transfers   []DigestTransfer   `json:"transfers,omitempty"`
+	Notes       []string           `json:"notes,omitempty"`
 }
 
 type DigestForm struct {
@@ -57,13 +67,12 @@ type DigestLevel struct {
 }
 
 type DigestActor struct {
-	ID       string          `json:"id"`
-	Title    string          `json:"title,omitempty"`
-	Form     string          `json:"form,omitempty"`
-	Level    int             `json:"level"`
-	ParentID string          `json:"parentId,omitempty"`
-	Data     []DigestField   `json:"data,omitempty"`
-	Balances []DigestBalance `json:"balances,omitempty"`
+	ID       string        `json:"id"`
+	Title    string        `json:"title,omitempty"`
+	Form     string        `json:"form,omitempty"`
+	Level    int           `json:"level"`
+	ParentID string        `json:"parentId,omitempty"`
+	Data     []DigestField `json:"data,omitempty"`
 }
 
 type DigestField struct {
@@ -71,17 +80,28 @@ type DigestField struct {
 	Value any    `json:"value"`
 }
 
-// DigestBalance is credit − debit of one account (name × currency, fact); in totals, summed over
-// the layer's actors that hold it.
+// DigestBalance is what one actor's fact account (name × currency) holds now: credit − debit.
 type DigestBalance struct {
+	ActorID  string `json:"actorId"`
+	Title    string `json:"title,omitempty"`
+	Form     string `json:"form,omitempty"`
 	Account  string `json:"account"`
 	Currency string `json:"currency"`
 	Balance  string `json:"balance"`
-	Actors   int    `json:"actors,omitempty"`
-	sum      *big.Rat
+	value    *big.Rat
 }
 
-// DigestTransfer is the money one layer actor moved to another (transfersAmount edges, summed).
+// DigestBalanceSum is the sum of the balances of one account over the actors of one template.
+type DigestBalanceSum struct {
+	Form          string `json:"form"`
+	Account       string `json:"account"`
+	Currency      string `json:"currency"`
+	SumOfBalances string `json:"sumOfBalances"`
+	Actors        int    `json:"actors"`
+	sum           *big.Rat
+}
+
+// DigestTransfer is the money one layer actor paid another on one account: the transfers summed.
 type DigestTransfer struct {
 	From      string `json:"from"`
 	FromTitle string `json:"fromTitle,omitempty"`
@@ -90,7 +110,7 @@ type DigestTransfer struct {
 	Amount    string `json:"amount"`
 	Account   string `json:"account,omitempty"`
 	Currency  string `json:"currency,omitempty"`
-	Edges     int    `json:"edges"`
+	Count     int    `json:"count"` // transfers
 	sum       *big.Rat
 }
 
@@ -171,11 +191,7 @@ func (c *Client) LayerDigest(ctx context.Context, in LayerDigestInput) (LayerDig
 	for _, a := range layer.Data.Accounts {
 		shown[a.Value] = true
 	}
-	types, note := c.digestEdgeTypes(ctx, shown)
-	if note != "" {
-		out.Notes = append(out.Notes, note)
-	}
-	cards, err := c.digestCards(ctx, ids, types)
+	cards, err := c.digestCards(ctx, ids)
 	if err != nil {
 		return LayerDigest{}, err
 	}
@@ -196,58 +212,19 @@ func fitDigest(out *LayerDigest) {
 		a, _ := json.Marshal(out.Actors[n])
 		size -= len(a) + 1
 	}
-	out.Notes = append(out.Notes, fmt.Sprintf("%d actors listed of %d: the digest keeps within %d KiB (the top levels first)", n, len(out.Actors), digestMaxBytes>>10))
+	out.Notes = append(out.Notes, fmt.Sprintf("showing %d of %d actors (the top levels first): the rest would make the answer too long", n, len(out.Actors)))
 	out.Actors = out.Actors[:n]
-}
-
-// digestEdgeTypes is the hierarchy type and the money types to read neighbors along: the pairs the
-// layer shows first.
-func (c *Client) digestEdgeTypes(ctx context.Context, shown map[string]bool) ([]int64, string) {
-	digest, err := call[map[string]any, struct {
-		EdgeTypes []struct {
-			ID   int64  `json:"id"`
-			Name string `json:"name"`
-			Role string `json:"role"`
-		} `json:"edgeTypes"`
-	}](ctx, c, "ontology/get", map[string]any{"accId": c.workspace(), "fields": []string{"edgeTypes"}, "with": []string{"accountEdgeTypes"}, "limit": 1})
-	if err != nil {
-		return nil, "edge types not read (" + err.Error() + "): no hierarchy levels or transfers"
-	}
-	var hierarchy []int64
-	var first, rest []int64
-	for _, t := range digest.EdgeTypes {
-		switch {
-		case t.Role == "hierarchy":
-			hierarchy = append(hierarchy, t.ID)
-		case t.Role == "transactions" && strings.HasPrefix(t.Name, transfersPrefix):
-			if shown[strings.TrimPrefix(t.Name, transfersPrefix)] {
-				first = append(first, t.ID)
-			} else {
-				rest = append(rest, t.ID)
-			}
-		}
-	}
-	money := append(first, rest...)
-	note := ""
-	if len(money) > digestMoneyTypes {
-		note = fmt.Sprintf("transfers are read on %d of the workspace's %d money edge types (the layer's own accounts first)", digestMoneyTypes, len(money))
-		money = money[:digestMoneyTypes]
-	}
-	return append(hierarchy[:min(len(hierarchy), 1)], money...), note
 }
 
 const transfersPrefix = "transfersAmount_"
 
-// digestCards reads the actors' cards in batches of 100: data, accounts and the neighbors along the
-// given types. An actor whose card is refused is left out of the details.
-func (c *Client) digestCards(ctx context.Context, ids []string, types []int64) (map[string]digestCard, error) {
+// digestCards reads the actors' cards in batches of 100: data, accounts and the neighbors over every
+// edge type (no edgeTypeIds: it takes 20 types at most, and a workspace has one money type per
+// account name × currency). An actor whose card is refused is left out of the details.
+func (c *Client) digestCards(ctx context.Context, ids []string) (map[string]digestCard, error) {
 	params := make([]any, len(ids))
 	for i, id := range ids {
-		p := map[string]any{"accId": c.workspace(), "actorId": id, "fields": []string{"actor", "data", "accounts"}, "perType": 50}
-		if len(types) > 0 {
-			p["fields"], p["edgeTypeIds"] = []string{"actor", "data", "accounts", "neighbors"}, types
-		}
-		params[i] = p
+		params[i] = map[string]any{"accId": c.workspace(), "actorId": id, "fields": []string{"actor", "data", "accounts", "neighbors"}, "perType": digestPerType}
 	}
 	found, err := c.eachItems(ctx, "actor/context/get", params)
 	if err != nil {
@@ -279,8 +256,10 @@ func ratString(r *big.Rat) string {
 	return s
 }
 
-// summarise fills the digest from the cards: levels from the hierarchy parents on the layer,
-// balances (the layer's own pairs when it names some, else every non-zero one), totals and transfers.
+// summarise fills the digest from the cards: levels from the hierarchy parents on the layer, each
+// actor's balances (the layer's own accounts when it names some, else every non-zero one), their sums
+// per template and account, and the transfers between the layer's actors per payer, receiver and
+// account.
 func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, shown map[string]bool, full bool) {
 	onLayer := map[string]bool{}
 	for _, id := range ids {
@@ -306,10 +285,11 @@ func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, show
 		return depth
 	}
 	forms, levels := map[int64]*DigestForm{}, map[int]int{}
-	partial := 0 // actors whose money edges were more than read
-	totals := map[string]*DigestBalance{}
+	partial := 0 // actors that paid more than was read
+	sums := map[string]*DigestBalanceSum{}
 	moves := map[string]*DigestTransfer{}
 	names := map[string][2]string{} // nameId_currencyId -> account, currency
+	var balances []DigestBalance
 	for _, id := range ids {
 		card, ok := cards[id]
 		if !ok {
@@ -343,18 +323,20 @@ func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, show
 			if acc.Type != "" && acc.Type != "fact" || len(shown) > 0 && !shown[pair] && !full || bal.Sign() == 0 {
 				continue
 			}
-			a.Balances = append(a.Balances, DigestBalance{Account: acc.Name, Currency: acc.Currency, Balance: ratString(bal)})
-			t := totals[pair]
-			if t == nil {
-				t = &DigestBalance{Account: acc.Name, Currency: acc.Currency, sum: new(big.Rat)}
-				totals[pair] = t
+			balances = append(balances, DigestBalance{ActorID: id, Title: a.Title, Form: a.Form, Account: acc.Name, Currency: acc.Currency, Balance: ratString(bal), value: bal})
+			key := fmt.Sprintf("%d|%s", card.Actor.FormID, pair)
+			s := sums[key]
+			if s == nil {
+				s = &DigestBalanceSum{Form: a.Form, Account: acc.Name, Currency: acc.Currency, sum: new(big.Rat)}
+				sums[key] = s
 			}
-			t.sum.Add(t.sum, bal)
-			t.Actors++
+			s.sum.Add(s.sum, bal)
+			s.Actors++
 		}
 		more := false
 		for _, g := range card.Neighbors {
-			if g.Role != "transactions" || g.Direction != "out" {
+			pair, ok := strings.CutPrefix(g.EdgeType, transfersPrefix)
+			if g.Role != "transactions" || g.Direction != "out" || !ok {
 				continue
 			}
 			for _, n := range g.Neighbors {
@@ -362,15 +344,14 @@ func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, show
 				if !onLayer[n.ActorID] || !ok {
 					continue
 				}
-				key := id + "|" + n.ActorID + "|" + g.EdgeType
+				key := id + "|" + n.ActorID + "|" + pair
 				m := moves[key]
 				if m == nil {
-					pair := strings.TrimPrefix(g.EdgeType, transfersPrefix)
 					m = &DigestTransfer{From: id, To: n.ActorID, Account: pair, sum: new(big.Rat)}
 					moves[key] = m
 				}
 				m.sum.Add(m.sum, w)
-				m.Edges++
+				m.Count++
 			}
 			more = more || g.HasMore
 		}
@@ -379,9 +360,9 @@ func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, show
 		}
 		out.Actors = append(out.Actors, a)
 	}
-	titles := map[string]string{}
+	titles, depth := map[string]string{}, map[string]int{}
 	for _, a := range out.Actors {
-		titles[a.ID] = a.Title
+		titles[a.ID], depth[a.ID] = a.Title, a.Level
 	}
 	for _, f := range forms {
 		out.Forms = append(out.Forms, *f)
@@ -396,11 +377,21 @@ func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, show
 		out.Levels = append(out.Levels, DigestLevel{Level: l, Count: n})
 	}
 	slices.SortFunc(out.Levels, func(a, b DigestLevel) int { return a.Level - b.Level })
-	for _, t := range totals {
-		t.Balance = ratString(t.sum)
-		out.Totals = append(out.Totals, *t)
+	// Balances by hierarchy level (the company before its departments), the largest first in a level.
+	slices.SortStableFunc(balances, func(a, b DigestBalance) int {
+		if d := depth[a.ActorID] - depth[b.ActorID]; d != 0 {
+			return d
+		}
+		return b.value.Cmp(a.value)
+	})
+	out.Balances = balances
+	for _, s := range sums {
+		s.SumOfBalances = ratString(s.sum)
+		out.BalanceSums = append(out.BalanceSums, *s)
 	}
-	slices.SortFunc(out.Totals, func(a, b DigestBalance) int { return strings.Compare(a.Account+a.Currency, b.Account+b.Currency) })
+	slices.SortFunc(out.BalanceSums, func(a, b DigestBalanceSum) int {
+		return strings.Compare(a.Account+a.Currency+a.Form, b.Account+b.Currency+b.Form)
+	})
 	for _, m := range moves {
 		m.Amount, m.FromTitle, m.ToTitle = ratString(m.sum), titles[m.From], titles[m.To]
 		if n, ok := names[m.Account]; ok {
@@ -415,18 +406,22 @@ func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, show
 		return strings.Compare(a.From+a.To+a.Account, b.From+b.To+b.Account)
 	})
 	if partial > 0 {
-		out.Notes = append(out.Notes, fmt.Sprintf("%d actors paid more than read (50 edges per money type): their transfers here are partial", partial))
+		out.Notes = append(out.Notes, fmt.Sprintf("%d actors made more payments than the digest reads (%d per account): their transfer sums may be higher; entity_context_get of the actor has the rest", partial, digestPerType))
 	}
 	if !full && len(out.Transfers) > digestTransfers {
-		out.Notes = append(out.Notes, fmt.Sprintf("%d transfer lines listed of %d (the largest first); full: true lists all", digestTransfers, len(out.Transfers)))
+		out.Notes = append(out.Notes, fmt.Sprintf("showing the %d largest of %d payer → receiver transfer lines; full: true lists them all", digestTransfers, len(out.Transfers)))
 		out.Transfers = out.Transfers[:digestTransfers]
+	}
+	if !full && len(out.Balances) > digestBalances {
+		out.Notes = append(out.Notes, fmt.Sprintf("showing %d of %d balances (the top levels first); full: true lists them all", digestBalances, len(out.Balances)))
+		out.Balances = out.Balances[:digestBalances]
 	}
 	slices.SortStableFunc(out.Actors, func(a, b DigestActor) int { return a.Level - b.Level })
 	if !full && len(out.Actors) > digestActors {
-		out.Notes = append(out.Notes, fmt.Sprintf("%d actors listed of %d (the top levels first); full: true lists all", digestActors, len(out.Actors)))
+		out.Notes = append(out.Notes, fmt.Sprintf("showing %d of %d actors (the top levels first); full: true lists them all", digestActors, len(out.Actors)))
 		out.Actors = out.Actors[:digestActors]
 	}
 	if len(shown) > 0 && !full {
-		out.Notes = append(out.Notes, "balances are the accounts the layer shows (its settings); full: true adds every other non-zero one")
+		out.Notes = append(out.Notes, "balances are of the accounts this layer displays; full: true adds the actors' other accounts")
 	}
 }

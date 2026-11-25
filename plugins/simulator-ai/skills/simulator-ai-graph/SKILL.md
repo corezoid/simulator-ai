@@ -44,8 +44,12 @@ URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
 
 **Summarise a layer** ("підсумуй шар", a report for a manager: structure, key records, money):
 `layer_digest {layerId}` FIRST — one call answers its counts, actors per template and per hierarchy
-level, each actor's filled fields and balances (credit − debit), totals per account and the
-transfers between its actors. Read further only for what it leaves out (`notes`; `full: true`).
+level, each actor's filled fields, `balances` (what each actor holds now: credit − debit), their
+`balanceSums` per template and the `transfers` between its actors (payer → receiver, amount,
+number of transfers). Report an actor's money from its own balance; a `sumOfBalances` is the sum of
+one template's balances — never add templates together (the company's, the departments' and the
+counterparties' balances are the same money at different stages). Relay `notes` in your own words;
+read further only for what they say is left out (`full: true`).
 
 - `layer_get {layerId}`: compact nodes `{laId, actorId, title, formId, cell, blockId, hole, open}`
   and edges `{laId, edgeId, laIdSource, laIdTarget, name, hole}` (an edge's actors are the
