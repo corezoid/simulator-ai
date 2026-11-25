@@ -2,6 +2,7 @@ package simfake
 
 import (
 	"encoding/json"
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -25,9 +26,12 @@ func memoryRelations(relations []aimemory.Relation) []memoryRelationWire {
 	return out
 }
 
-// memorySave is sim-api's actor/memory/save: the change merged into the twin's memory block as it is
-// at the write (the request holds the server's lock, as sim-api holds the twin's), with its refusals
-// the plugin relies on.
+// memoryTypes are the relation types the fake knows (edge_type/get's), hierarchy the default.
+var memoryTypes = map[string]int64{"hierarchy": 3, "flow": 4, "directedInteraction": 5, "interaction": 6}
+
+// memorySave is sim-api's actor/memory/save (service_ai_memory): the change written into the twin's
+// memory block as it is at the write (the request holds the server's lock, as sim-api holds the
+// twin's), the relations as memory edges from the twin, the relation lines following the edges.
 func (s *Server) memorySave(params json.RawMessage) (any, *rpcError) {
 	var p struct {
 		ActorID string `json:"actorId"`
@@ -38,6 +42,7 @@ func (s *Server) memorySave(params json.RawMessage) (any, *rpcError) {
 		} `json:"notes"`
 		Relations []memoryRelationWire `json:"relations"`
 		Forget    []string             `json:"forget"`
+		ForgetAll bool                 `json:"forgetAll"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, fail("invalidParams", err.Error())
@@ -46,11 +51,12 @@ func (s *Server) memorySave(params json.RawMessage) (any, *rpcError) {
 	if a == nil {
 		return nil, fail("notFound", "actor not found")
 	}
-	if !slices.Contains(slices.Collect(maps.Values(s.KB.Twins)), a.ID) {
+	twins := slices.Collect(maps.Values(s.KB.Twins))
+	if !slices.Contains(twins, a.ID) {
 		return nil, fail("invalidParams", "actorId: not a person's actor")
 	}
-	if len(p.Notes)+len(p.Relations)+len(p.Forget) == 0 {
-		return nil, fail("invalidParams", "notes, relations or forget required")
+	if len(p.Notes)+len(p.Relations)+len(p.Forget) == 0 && !p.ForgetAll {
+		return nil, fail("invalidParams", "notes, relations, forget or forgetAll required")
 	}
 	if len(p.Notes) > 50 || len(p.Relations) > 50 || len(p.Forget) > 50 {
 		return nil, fail("invalidParams", "validation for 'notes' failed on the 'max' tag")
@@ -66,20 +72,123 @@ func (s *Server) memorySave(params json.RawMessage) (any, *rpcError) {
 		}
 		notes = append(notes, aimemory.Note{Category: aimemory.Category(n.Category), Text: text})
 	}
-	relations := make([]aimemory.Relation, 0, len(p.Relations))
+	var relations []aimemory.Relation
 	for _, r := range p.Relations {
-		if s.Actors[r.ActorID] == nil {
-			return nil, fail("notFound", "no found OR no access, actor")
+		typ := r.Type
+		if typ == "" {
+			typ = "hierarchy"
 		}
-		relations = append(relations, aimemory.Relation{Type: r.Type, ActorID: r.ActorID, Target: aimemory.CleanFact(r.Title)})
+		if memoryTypes[typ] == 0 {
+			return nil, fail("invalidParams", "relation type "+typ+" is not one a person's actor may link with")
+		}
+		id, title := r.ActorID, aimemory.CleanFact(r.Title)
+		if id != "" {
+			if s.Actors[id] == nil {
+				return nil, fail("notFound", "no found OR no access, actor")
+			}
+			if title == "" {
+				title = s.Actors[id].Title
+			}
+		} else if id = s.titled(title, twins); id == "" {
+			notes = append(notes, aimemory.Note{Category: "note", Text: aimemory.CleanFact(typ + " " + title)})
+			continue
+		}
+		relations = append(relations, aimemory.Relation{Type: typ, ActorID: id, Target: title})
 	}
-	out, saved, err := aimemory.Save(a.Description, notes, relations, p.Forget)
+	// sim-api writes block and edges in one transaction: a refused write leaves the edges as they were.
+	edges, keys := maps.Clone(s.Edges), maps.Clone(s.EdgeKeys)
+	doc := s.followGraph(a.ID, aimemory.Read(a.Description), relations)
+	held := len(doc.Notes) + len(doc.Relations)
+	var forgotten []aimemory.Relation
+	if p.ForgetAll {
+		forgotten, doc = doc.Relations, aimemory.NewDoc()
+	}
+	doc, more := aimemory.Forget(doc, p.Forget)
+	forgotten = append(forgotten, more...)
+	for _, r := range forgotten {
+		if !aimemory.HasRelation(aimemory.Doc{Relations: relations}, r) {
+			s.dropMemoryEdge(a.ID, r)
+		}
+	}
+	if p.ForgetAll {
+		s.deleteEdges(func(e *Edge) bool { return e.Source == a.ID && e.AiSource == "memory" })
+	}
+	removed, added := held-len(doc.Notes)-len(doc.Relations), 0
+	for _, n := range notes {
+		if !aimemory.HasNote(doc, n) {
+			doc.Notes, added = append(doc.Notes, n), added+1
+		}
+	}
+	for _, r := range relations {
+		if aimemory.HasRelation(doc, r) {
+			continue
+		}
+		if !s.hasEdge(a.ID, r) {
+			e := &Edge{ID: s.id("edge"), Source: a.ID, Target: r.ActorID, TypeID: memoryTypes[r.Type], AiSource: "memory"}
+			s.Edges[e.ID], s.EdgeKeys[fmt.Sprintf("%s>%s|%d", e.Source, e.Target, e.TypeID)] = e, e.ID
+		}
+		doc.Relations, added = append(doc.Relations, r), added+1
+	}
+	out, err := aimemory.Write(a.Description, doc)
 	if err != nil {
+		s.Edges, s.EdgeKeys = edges, keys
 		return nil, fail("invalidParams", err.Error())
 	}
 	changed := out != a.Description
 	a.Description = out
-	held := aimemory.Read(out) // the tags as the text carries them
-	return map[string]any{"actorId": a.ID, "notes": held.Notes, "relations": memoryRelations(held.Relations),
-		"added": saved.Added, "removed": saved.Removed, "forgotten": memoryRelations(saved.Forgotten), "changed": changed}, nil
+	res := aimemory.Read(out) // the tags as the text carries them
+	return map[string]any{"actorId": a.ID, "notes": res.Notes, "relations": memoryRelations(res.Relations),
+		"added": added, "removed": removed, "forgotten": memoryRelations(forgotten), "changed": changed}, nil
+}
+
+// titled is the one actor of exactly that title (case aside, no twin), "" for none or several.
+func (s *Server) titled(title string, twins []string) string {
+	match := ""
+	for _, a := range s.Actors {
+		if strings.EqualFold(aimemory.CleanFact(a.Title), title) && !slices.Contains(twins, a.ID) {
+			if match != "" {
+				return ""
+			}
+			match = a.ID
+		}
+	}
+	return match
+}
+
+// followGraph: a memory edge whose line is gone goes; a line whose edge is gone drops.
+func (s *Server) followGraph(twin string, stored aimemory.Doc, adding []aimemory.Relation) aimemory.Doc {
+	lines := append(slices.Clone(stored.Relations), adding...)
+	s.deleteEdges(func(e *Edge) bool {
+		if e.Source != twin || e.AiSource != "memory" {
+			return false
+		}
+		return !slices.ContainsFunc(lines, func(r aimemory.Relation) bool { return r.ActorID == e.Target && memoryTypes[r.Type] == e.TypeID })
+	})
+	doc := aimemory.Doc{Notes: stored.Notes, Relations: []aimemory.Relation{}}
+	for _, r := range stored.Relations {
+		if r.ActorID == "" || s.hasEdge(twin, r) {
+			doc.Relations = append(doc.Relations, r)
+		}
+	}
+	return doc
+}
+
+func (s *Server) hasEdge(twin string, r aimemory.Relation) bool {
+	return s.Edges[s.EdgeKeys[fmt.Sprintf("%s>%s|%d", twin, r.ActorID, memoryTypes[r.Type])]] != nil
+}
+
+func (s *Server) dropMemoryEdge(twin string, r aimemory.Relation) {
+	s.deleteEdges(func(e *Edge) bool {
+		return e.Source == twin && e.Target == r.ActorID && e.TypeID == memoryTypes[r.Type] && e.AiSource == "memory"
+	})
+}
+
+// deleteEdges deletes the edges gone says, with their natural keys.
+func (s *Server) deleteEdges(gone func(*Edge) bool) {
+	for id, e := range s.Edges {
+		if gone(e) {
+			delete(s.Edges, id)
+			delete(s.EdgeKeys, fmt.Sprintf("%s>%s|%d", e.Source, e.Target, e.TypeID))
+		}
+	}
 }

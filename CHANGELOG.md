@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+- The person's memory is a graph (sim-api `service_ai_memory`): `memory_save` sends relations by actor id or by title
+  and `forgetAll`; sim-api draws each relation as an edge from the person's actor (`hierarchy` unless another type
+  fits) marked `aiSource: memory`, resolves a `[[Title]]` to the one actor of that title (else a text fact), keeps the
+  relation lines in step with the graph and deletes only memory edges. The plugin no longer draws or deletes memory
+  edges itself. `ontology_apply` refuses a person's actor as a hierarchy parent; `layer_digest` levels ignore memory
+  edges. `aiSource` (`console` for an AI Console run's edges) is named in the ontology skill. `actor/memory/save`,
+  `edge/create` and `graph/layer/elements/list` re-pinned.
+
 - `memory_save` no longer writes the person's description itself: it sends the facts, relations and `forget` to
   sim-api's new public `actor/memory/save`, which merges them into the `[h3]AI memory[/h3]` block as it is at the
   write, under the same locks as the automatic memory after a dialog. The known risk — a fact sim-api remembered

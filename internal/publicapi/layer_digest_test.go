@@ -14,26 +14,23 @@ func TestLayerDigestSummary(t *testing.T) {
 		var card digestCard
 		card.Actor.Title, card.Actor.FormTitle = c.id, "Same"
 		card.Actor.FormID = int64(c.form[0] - '0')
-		card.Neighbors = append(card.Neighbors, struct {
-			EdgeTypeID int64  `json:"edgeTypeId"`
-			EdgeType   string `json:"edgeType"`
-			Role       string `json:"role"`
-			Direction  string `json:"direction"`
-			HasMore    bool   `json:"hasMore"`
-			Neighbors  []struct {
-				ActorID string `json:"actorId"`
-				Weight  string `json:"weight"`
-			} `json:"neighbors"`
-		}{Role: "hierarchy", Direction: "in", Neighbors: []struct {
-			ActorID string `json:"actorId"`
-			Weight  string `json:"weight"`
-		}{{ActorID: c.parent}}})
+		card.Neighbors = append(card.Neighbors, digestGroup{Role: "hierarchy", Direction: "in", Neighbors: []digestNeighbor{{ActorID: c.parent}}})
 		cards[c.id] = card
 	}
 	out := LayerDigest{Forms: []DigestForm{}, Levels: []DigestLevel{}, Actors: []DigestActor{}}
 	summarise(&out, []string{"a", "b"}, cards, nil, false)
 	if len(out.Levels) != 1 || out.Levels[0].Count != 2 || len(out.Forms) != 2 {
 		t.Fatalf("levels %+v forms %+v", out.Levels, out.Forms)
+	}
+	// A person's memory edge (twin -> project) is no structure: the project stays a top level.
+	memory := map[string]digestCard{"p": {Neighbors: []digestGroup{{Role: "hierarchy", Direction: "in",
+		Neighbors: []digestNeighbor{{ActorID: "twin", AiSource: "memory"}}}}}, "twin": {}}
+	levels := LayerDigest{Forms: []DigestForm{}, Levels: []DigestLevel{}, Actors: []DigestActor{}}
+	summarise(&levels, []string{"p", "twin"}, memory, nil, false)
+	for _, a := range levels.Actors {
+		if a.Level != 0 {
+			t.Fatalf("a memory edge made a level: %+v", levels.Actors)
+		}
 	}
 	big := LayerDigest{}
 	for i := 0; i < 400; i++ {

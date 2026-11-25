@@ -60,6 +60,8 @@ type Node struct {
 type Edge struct {
 	ID, Source, Target, Name string
 	TypeID                   int64
+	// AiSource is "memory" for an edge actor/memory/save drew.
+	AiSource string
 }
 type Placement struct {
 	LaID     int64
