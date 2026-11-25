@@ -136,7 +136,7 @@ func (c *Client) GetMemory(ctx context.Context, in MemoryInput) (Memory, error) 
 		return Memory{}, err
 	}
 	doc := memoryOf(t)
-	return Memory{ActorID: t.ID, UserID: userID, Notes: doc.Notes, Relations: doc.Relations, Unparsed: doc.Other, Legacy: strings.TrimSpace(t.Legacy) != ""}, nil
+	return Memory{ActorID: t.ID, UserID: userID, Notes: doc.Notes, Relations: doc.Relations, Unparsed: unparsed(doc.Other), Legacy: strings.TrimSpace(t.Legacy) != ""}, nil
 }
 
 // memoryChange is one save's change, applied to whatever the twin holds when it is written.
@@ -216,9 +216,14 @@ func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, er
 	if err != nil {
 		return Memory{}, err
 	}
-	doc, _, _, out.Added, out.Removed = change.apply(t)
+	var late []MemoryRelation
+	doc, _, late, out.Added, out.Removed = change.apply(t)
 	desc, err := writeSection(t.Desc, doc)
 	if err != nil {
+		return Memory{}, err
+	}
+	// A relation forget names that sim-api wrote after the first read loses its edge too.
+	if err = c.forgetEdges(ctx, t.ID, newRelations(late, dropped)); err != nil {
 		return Memory{}, err
 	}
 	update := map[string]any{"accId": c.workspace(), "actorId": t.ID, "description": desc, "fields": []string{"id"}}
@@ -230,8 +235,30 @@ func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, er
 			return Memory{}, fmt.Errorf("write the memory on your actor: %w", err)
 		}
 	}
-	out.Notes, out.Relations, out.Unparsed = doc.Notes, doc.Relations, doc.Other
+	out.Notes, out.Relations, out.Unparsed = doc.Notes, doc.Relations, unparsed(doc.Other)
 	return out, nil
+}
+
+// newRelations are the relations of late that seen does not hold.
+func newRelations(late, seen []MemoryRelation) []MemoryRelation {
+	var out []MemoryRelation
+	for _, r := range late {
+		if !hasRelation(memoryDoc{Relations: seen}, r) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// unparsed are the person's own lines of the section, without its blank ones.
+func unparsed(other []string) []string {
+	var out []string
+	for _, line := range other {
+		if strings.TrimSpace(line) != "" {
+			out = append(out, line)
+		}
+	}
+	return out
 }
 
 // forget drops the notes and relations names name and answers the relations it dropped.

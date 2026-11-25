@@ -3,6 +3,7 @@ package publicapi
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -104,6 +105,12 @@ func parseFacts(text string) (memoryDoc, error) {
 		case !ok:
 			return memoryDoc{}, fmt.Errorf("line %d: %q is neither \"- [category] fact #tag\" nor \"- relation_type [[Actor]]\"", i+1, strings.TrimSpace(line))
 		case n != nil:
+			// A fact is text, never markup: brackets would be BBCode in the description (an [h3]
+			// would end the section, a [/actor] break a chip), as sim-api's FactLine writes them.
+			n.Category, n.Text = factCategory(n.Category), cleanFact(n.Text)
+			if n.Text == "" {
+				return memoryDoc{}, fmt.Errorf("line %d: the fact is empty", i+1)
+			}
 			doc.Notes = append(doc.Notes, *n)
 		default:
 			doc.Relations = append(doc.Relations, *r)
@@ -112,21 +119,64 @@ func parseFacts(text string) (memoryDoc, error) {
 	return doc, nil
 }
 
-// parseSection reads stored lines leniently: what is not the micro-syntax is kept as Other.
+// memoryCategories are sim-api's (e_ai_memory.Categories): both writers name a fact alike, so the
+// same fact is not kept twice under two spellings.
+var memoryCategories = []string{"preference", "role", "responsibility", "works_with", "rule", "note"}
+
+// factCategory is a category as sim-api writes it: lower case, singular where that is one of its
+// own; another English word is kept.
+func factCategory(c string) string {
+	c = strings.ToLower(strings.Join(strings.Fields(c), "_"))
+	if one := strings.TrimSuffix(c, "s"); one != c && slices.Contains(memoryCategories, one) {
+		return one
+	}
+	return c
+}
+
+var factCleaner = strings.NewReplacer("[", "(", "]", ")")
+
+// cleanFact is a fact's text with brackets as parentheses and its spacing collapsed.
+func cleanFact(text string) string {
+	return strings.Join(strings.Fields(factCleaner.Replace(text)), " ")
+}
+
+// parseSection reads stored lines leniently. What is not the micro-syntax (a person's remark, an
+// "# Agent" profile typed below the memory) is kept as Other, line for line with its blank lines,
+// and a raw line is split at [br] only when every piece of it is a memory line.
 func parseSection(body string) memoryDoc {
 	doc := newMemoryDoc()
-	for _, line := range lines(body) {
-		if strings.TrimSpace(line) == "" {
+	for _, raw := range strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n") {
+		if strings.TrimSpace(raw) == "" {
+			if len(doc.Other) > 0 {
+				doc.Other = append(doc.Other, raw)
+			}
 			continue
 		}
-		switch n, r, ok := memoryLine(line); {
-		case !ok:
-			doc.Other = append(doc.Other, strings.TrimRight(line, " \t"))
-		case n != nil:
-			doc.Notes = append(doc.Notes, *n)
-		default:
-			doc.Relations = append(doc.Relations, *r)
+		var notes []MemoryNote
+		var relations []MemoryRelation
+		facts := true
+		for _, piece := range strings.Split(raw, "[br]") {
+			if strings.TrimSpace(piece) == "" {
+				continue
+			}
+			n, r, ok := memoryLine(piece)
+			switch {
+			case !ok:
+				facts = false
+			case n != nil:
+				notes = append(notes, *n)
+			default:
+				relations = append(relations, *r)
+			}
 		}
+		if !facts {
+			doc.Other = append(doc.Other, raw)
+			continue
+		}
+		doc.Notes, doc.Relations = append(doc.Notes, notes...), append(doc.Relations, relations...)
+	}
+	for len(doc.Other) > 0 && strings.TrimSpace(doc.Other[len(doc.Other)-1]) == "" {
+		doc.Other = doc.Other[:len(doc.Other)-1]
 	}
 	return doc
 }
@@ -148,6 +198,9 @@ func (d memoryDoc) render() string {
 		}
 		fmt.Fprintf(&b, "- %s [actor=%s]%s[/actor]\n", r.Type, r.ActorID, title)
 	}
+	if len(d.Other) > 0 && b.Len() > 0 {
+		b.WriteString("\n") // the person's own text stays apart from the memory lines
+	}
 	for _, o := range d.Other {
 		b.WriteString(o + "\n")
 	}
@@ -164,7 +217,8 @@ func section(desc string) (start, body, end int, found bool) {
 			return len(desc), len(desc), len(desc), false
 		}
 		i += at
-		if i == 0 || desc[i-1] == '\n' { // a heading line, not the words inside a sentence
+		// A heading line, not the words inside a sentence; the editor may break the line with [br].
+		if i == 0 || desc[i-1] == '\n' || strings.HasSuffix(desc[:i], "[br]") {
 			body = i + len(memoryHeading)
 			if next := strings.Index(desc[body:], memoryBreak); next >= 0 {
 				return i, body, body + next, true
@@ -189,8 +243,9 @@ func readSection(desc string) memoryDoc {
 // section is appended after a blank line, an existing one replaced in place, an empty one removed.
 func writeSection(desc string, doc memoryDoc) (string, error) {
 	rendered := doc.render()
-	if len(rendered) > maxMemoryBytes {
-		return "", fmt.Errorf("the memory section would be %d bytes, more than %d: forget something first", len(rendered), maxMemoryBytes)
+	// The heading counts, as in sim-api's MaxSectionBytes: past it sim-api drops the oldest lines.
+	if size := len(memoryHeading) + len(rendered); size > maxMemoryBytes {
+		return "", fmt.Errorf("the memory section would be %d bytes, more than %d: forget something first", size, maxMemoryBytes)
 	}
 	start, _, end, found := section(desc)
 	before, after := desc[:start], desc[end:]

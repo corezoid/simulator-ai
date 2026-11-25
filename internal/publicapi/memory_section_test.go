@@ -57,11 +57,46 @@ func TestMemorySectionReadsWhatPeopleAndEditorsWrite(t *testing.T) {
 		len(doc.Other) != 1 || doc.Other[0] != "my own note" {
 		t.Fatalf("%+v", doc)
 	}
-	if got := doc.render(); !strings.HasSuffix(got, "- works_on [actor=p-2]Project Y[/actor]\nmy own note\n") {
+	if got := doc.render(); !strings.HasSuffix(got, "- works_on [actor=p-2]Project Y[/actor]\n\nmy own note\n") {
 		t.Fatalf("render %q", got)
 	}
 	if _, err := parseFacts("- [a] b\nnot a fact"); err == nil || !strings.Contains(err.Error(), "line 2") {
 		t.Fatalf("facts: %v", err)
+	}
+}
+
+// A fact is text: brackets become parentheses, so a fact cannot end the section or break a chip;
+// a category is written as sim-api writes it.
+func TestMemoryFactsAreNotMarkup(t *testing.T) {
+	doc, err := parseFacts("- [Preferences] use [h3] titles and [/actor] [b]bold[/b]   here")
+	if err != nil || doc.Notes[0].Category != "preference" || doc.Notes[0].Text != "use (h3) titles and (/actor) (b)bold(/b) here" {
+		t.Fatalf("%+v %v", doc, err)
+	}
+	desc, _ := writeSection("", doc)
+	desc += "\n[h3]Next[/h3]\nX"
+	if read := readSection(desc); len(read.Notes) != 1 || len(read.Other) != 0 {
+		t.Fatalf("read back %+v from %q", read, desc)
+	}
+}
+
+// Text the person typed under the memory (an "# Agent" profile, a paragraph) keeps its lines and
+// blank lines; a heading the editor wrote after [br] is the section, not a reason for a second one.
+func TestMemorySectionKeepsThePersonsText(t *testing.T) {
+	const profile = "# Agent\n\nrole: lawyer\n\n  indented: yes"
+	desc := "Intro\n\n[h3]AI memory[/h3]\n- [role] Юрист\n\n" + profile + "\n"
+	doc := readSection(desc)
+	doc.Notes = append(doc.Notes, MemoryNote{Category: "rule", Text: "Short answers"})
+	got, err := writeSection(desc, doc)
+	if want := "Intro\n\n[h3]AI memory[/h3]\n- [role] Юрист\n- [rule] Short answers\n\n" + profile + "\n"; err != nil || got != want {
+		t.Fatalf("got  %q\nwant %q", got, want)
+	}
+	again, _ := writeSection(got, readSection(got))
+	if again != got {
+		t.Fatalf("a rewrite changed the text:\n%q\n%q", got, again)
+	}
+	br := "Intro[br][h3]AI memory[/h3][br]- [role] Юрист"
+	if got, _ := writeSection(br, readSection(br)); strings.Count(got, memoryHeading) != 1 {
+		t.Fatalf("a second section: %q", got)
 	}
 }
 

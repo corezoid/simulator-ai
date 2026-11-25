@@ -176,7 +176,9 @@ access rule must carry the JWT's SuperAdmin id; a credential that names no user 
 the line `[h3]AI memory[/h3]` and runs to the next `[h3]` or the end; everything else in the description (the agent
 profile `# Agent`, the person's text) is kept byte for byte. Its lines are `- [category] fact #tag` (category in
 English, the fact in the person's language) and `- relation_type [actor=<id>]Title[/actor]` (`[[Title]]` and
-`[[actor:<id>]]` from the model become the chip); other lines are kept as `unparsed`; at most 8 KiB. `memory_save`
+`[[actor:<id>]]` from the model become the chip); other lines are kept as `unparsed`, with their blank lines, below the memory lines; a fact's brackets
+are written as parentheses and its category as sim-api writes it (`preference`, `role`, `responsibility`, `works_with`,
+`rule`, `note`); at most 8 KiB with the heading, as sim-api counts. `memory_save`
 resolves every relation and edge type first, reads the twin again (`actor/get`) right before writing and merges its
 change into what the section holds then (a section sim-api wrote after a dialog is kept), then writes the
 `description` with `actor/update`; a relation is also an `edge/create` from the twin (atomic `batch`), and `forget`

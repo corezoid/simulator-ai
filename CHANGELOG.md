@@ -18,7 +18,8 @@
   the next `[h3]` or the end; the rest of the description (the agent profile `# Agent`, the person's text) is kept
   byte for byte. Lines are `- [category] fact #tag` (category in English, the fact in the person's language, English
   when unclear or mixed) and `- relation_type [actor=<id>]Title[/actor]` (the model's `[[Title]]` / `[[actor:<id>]]`
-  become the chip; the edge from the twin stays). At most 8 KiB; the person's own lines are kept (`unparsed`). A save
+  become the chip; the edge from the twin stays). At most 8 KiB with the heading; the person's own lines are kept (`unparsed`, with their blank lines); a fact is
+  text (brackets as parentheses), its category as sim-api writes it. A save
   reads the twin again right before writing and merges into the section as it is then, so a section sim-api writes
   after a dialog is not lost. A legacy `data.aiMemory` is shown by `memory_get` (`legacy`) and moved into the section,
   and the key cleared, by the next `memory_save`. The ontology skill and the guide say the fact's language.
