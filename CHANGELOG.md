@@ -8,6 +8,11 @@
 
 ## [Unreleased]
 
+- `ontology_apply` `source: reaction:<id>` writes an actor chip of the comment (`[actor=<id>]comment: <its text
+  without markup, up to 80 characters>[/actor]`) instead of `[quote=…]`: `[quote]` is not in the actor-description
+  tag set (bbcode-tags.json; ui-kit's description editor shows it as literal text), the actor chip is, and backlinks
+  find it.
+
 - Personal memory moves into the description of the person's twin, so they see it in the UI (owner's decision):
   `memory_save` / `memory_get` read and write the section that starts with the line `[h3]AI memory[/h3]` and runs to
   the next `[h3]` or the end; the rest of the description (the agent profile `# Agent`, the person's text) is kept

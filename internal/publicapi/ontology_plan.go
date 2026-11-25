@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -195,20 +196,29 @@ func (p *ontologyPlan) resolveSources(ctx context.Context, c *Client) error {
 		case "attachment":
 			chip = fmt.Sprintf("[file=%s]%s[/file]", ref, ref)
 		case "actor", "reaction":
-			got, err := call[map[string]any, actorBrief](ctx, c, "actor/get", map[string]any{"accId": c.workspace(), "actorId": ref, "fields": []string{"id", "title"}})
+			got, err := call[map[string]any, struct {
+				actorBrief
+				Description string `json:"description"`
+			}](ctx, c, "actor/get", map[string]any{"accId": c.workspace(), "actorId": ref, "fields": []string{"id", "title", "description"}})
 			if err != nil {
 				p.problem("actor %q: source %s is not found or not visible to you", a.in.Key, a.in.Source)
 				continue
 			}
-			label := strings.NewReplacer("[", "(", "]", ")").Replace(got.Title)
+			// A comment is an actor too: an actor chip is in the description's tag set, unlike
+			// [quote] (a message chip of reactions and event cards only), and backlinks find it.
+			label := got.Title
+			if kind == "reaction" {
+				text := got.Description
+				if strings.TrimSpace(text) == "" {
+					text = got.Title
+				}
+				label = "comment: " + excerpt(text, 80)
+			}
+			label = strings.NewReplacer("[", "(", "]", ")").Replace(strings.TrimSpace(label))
 			if label == "" {
 				label = kind
 			}
-			if kind == "actor" {
-				chip = fmt.Sprintf("[actor=%s]%s[/actor]", ref, label)
-			} else {
-				chip = fmt.Sprintf("[quote=%s]%s[/quote]", ref, label)
-			}
+			chip = fmt.Sprintf("[actor=%s]%s[/actor]", ref, label)
 		default:
 			p.problem("actor %q: source kind %q: attachment, actor or reaction", a.in.Key, kind)
 			continue
@@ -267,4 +277,15 @@ func (p *ontologyPlan) resolveEdges(ctx context.Context, c *Client) error {
 		p.edges = append(p.edges, planEdge{from: e.From, to: e.To, name: e.Name, typeID: id})
 	}
 	return nil
+}
+
+var markup = regexp.MustCompile(`\[[^\]]*\]`)
+
+// excerpt is a text's first words without its markup, at most n characters.
+func excerpt(text string, n int) string {
+	plain := strings.Join(strings.Fields(markup.ReplaceAllString(text, " ")), " ")
+	if r := []rune(plain); len(r) > n {
+		return strings.TrimSpace(string(r[:n-1])) + "…"
+	}
+	return plain
 }
