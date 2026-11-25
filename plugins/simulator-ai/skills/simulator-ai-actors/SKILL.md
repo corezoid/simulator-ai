@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-actors
-description: Create, read, update, search and filter Simulator actors — the records of a template — with the data value protocol right, through the public Simulator AI tools. Use when the user wants to create an actor or record, fill in a template, update actor data, find actors where a field has a value, rank them by a balance, set an actor's status, make a placeholder (hole), or asks which Corezoid processes an actor can call ("створи актор", "заповни шаблон", "додай запис", "процеси актора", "создай актор", "заполни шаблон", "добавь запись").
+description: "Simulator actors (records of a template): create, update, read, search, filter, status; the data field format; Corezoid processes. Triggers: \"add a record\", \"заповни шаблон\", \"создай актор\"."
 ---
 
 Use the installed `simulator-ai` catalog. `console` has `actor_get`, `actor_create`,

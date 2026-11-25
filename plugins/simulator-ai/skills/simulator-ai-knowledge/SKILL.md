@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-knowledge
-description: Answer about an actor: mentions, links, history, its card — the Simulator graph read as a knowledge base (ontology, one actor's card, walks and paths, backlinks, change history, trees) with the public Simulator AI tools. Use when the user asks what something is, where it is mentioned, what is linked to it, how two things are connected, what changed or what a value was on a date, or what the workspace is made of ("де згадується", "що відомо про", "як пов'язані", "що змінилось", "яким було на дату", "где упоминается", "что известно о", "where is X mentioned", "what do we know about X").
+description: "Answer about an actor: mentions, links, what changed, its card, a value on a date, from the Simulator graph. Triggers: \"where is X mentioned\", \"що відомо про\", \"як пов'язані\", \"что изменилось\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console-full`; a Console run gets these tools

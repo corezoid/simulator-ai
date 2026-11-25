@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-finance
-description: Balances, who paid whom how much, payments and accounts — Simulator accounts, transactions, transfers, currencies, account names and counters with the public Simulator AI tools (profile console-full). Use when the user asks for a balance or who paid or received how much, wants to open an account on an actor, read a balance or its history, record a transaction, move value between actors, add a currency or category, track a counter, set a balance, write a formula, or tag accounts and bind triggers ("баланс рахунку", "запиши транзакцію", "переказ коштів", "лічильник", "баланс счёта", "перевод средств").
+description: "Balances, who paid whom how much, payments: Simulator accounts, transactions, transfers, currencies, counters. Triggers: \"record a transaction\", \"хто заплатив\", \"переказ коштів\", \"баланс счёта\"."
 ---
 
 Use the installed `simulator-ai` catalog. Plain `console` (AI Console) has `account_create`,

@@ -1,6 +1,6 @@
 ---
 name: simulator-ai
-description: Which simulator-ai skill to load for a Simulator task — the platform guide for the public Simulator AI tools: the model (workspace, templates, actors, links, layers, accounts, reactions, files), the working rules and which simulator-ai-* skill handles what. Use when the user asks anything about Simulator or Simulator.Company, mentions actors, templates, forms, graphs, layers, accounts or Smart Forms, or says "use simulator" and no narrower simulator-ai skill fits.
+description: "Which simulator-ai skill to load for a Simulator task: the model (templates, actors, layers, accounts), working rules, profiles, which skill does what. Use when no narrower skill fits."
 ---
 
 Use the installed `simulator-ai` catalog. The host binds one origin, one workspace and one

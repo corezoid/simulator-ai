@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-simulate
-description: Simulate a Simulator graph ("what if") with the public Simulator AI tools (profile console-full) - describe how actors behave, change parameters (price, capacity, delivery time, growth, AI share), play model time forward and compare scenarios on a layer. Any graph works (a company, a process, infrastructure, a supply chain), and accounts can hold any quantity (money, items, hours, slots). Use for "what if", "simulate", "forecast", "compare scenarios", "where is the bottleneck", "що буде якщо", "симуляція", "змоделюй", "прогноз", "что будет если", "смоделируй", "сравни сценарии", or when the user gives a behaviour model or scenarios to check or run. Read-only - nothing is written to Simulator.
+description: "What-if simulation on a Simulator graph layer: model behaviour, change parameters, forecast, compare scenarios; writes nothing. Triggers: \"what if\", \"simulate\", \"що буде якщо\", \"смоделируй\"."
 ---
 
 Use the installed `simulator-ai` catalog with profile `console-full`; plain `console` has no

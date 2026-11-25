@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-skills
-description: Run or author a saved Simulator skill (a workspace playbook) with the public Simulator AI console tools. A skill is an actor of the Skills system template whose description holds a step-by-step procedure with concrete ids. Use when the user wants to run a saved playbook ("run skill", "use the … skill", "/skill <slug>", "is there a skill for …", "what skills do I have") or save one ("create a skill", "save this as a playbook", "teach simulator to …", "запусти скіл", "які скіли є", "збережи як скіл", "створи скіл", "запусти навык", "сохрани как навык").
+description: "Simulator workspace playbooks (Skills template): find and run a saved skill, or save a procedure as one. Triggers: \"run skill\", \"is there a skill for\", \"збережи як скіл\", \"запусти навык\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console`). A **skill** is a playbook of this

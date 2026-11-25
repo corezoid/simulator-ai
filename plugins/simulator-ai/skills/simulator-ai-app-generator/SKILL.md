@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-app-generator
-description: Generate a multi-page CDU v2 Smart Form from a set of existing Corezoid processes and a product description — pull each process, derive its real input/output contract, design pages that use them all, build the form and the Corezoid middleware that bridges them, test and release — with the public Simulator AI tools and the Corezoid plugin. Use when the user has a working Corezoid backend (process ids or a folder) and wants an app, site or portal on top of it ("build an app from these processes", "turn this API into a smart form", "згенеруй застосунок з цих процесів", "сделай сайт на базе процессов корезоид").
+description: "Generate a multi-page Simulator Smart Form app plus Corezoid middleware from existing Corezoid processes. Triggers: \"build an app from these processes\", \"сделай сайт на базе процессов\"."
 ---
 
 You orchestrate. You own contract extraction, the app design and verification; you delegate

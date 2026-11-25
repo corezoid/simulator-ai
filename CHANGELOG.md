@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+- Skill descriptions cut to at most 200 characters each (4 496 characters across the 24 skills; the first 22 were
+  11 586): what the skill does, its first ~57 characters naming the task (the Hermes index shows that much), named
+  as Simulator's, plus a few EN/UK/RU trigger phrases and the words that tell look-alike skills apart (chat / meetings / tasks, agents / tasks, the Smart Form skills). Hosts load every description into every
+  session that has the plugin, Simulator task or not, and once Claude Code's skill listing overflows it shows skills
+  by name only. Skill bodies are unchanged. A `cmd/client-smoke` test fails `make test` when a description is over 200
+  characters or a skill's `name` differs from its directory; it parses the frontmatter as YAML, so a folded or
+  multi-line description is measured whole.
 - `ontology_apply` `source: reaction:<id>` writes an actor chip of the comment (`[actor=<id>]comment: <its text
   without markup, up to 80 characters>[/actor]`) instead of `[quote=…]`: `[quote]` is not in the actor-description
   tag set (bbcode-tags.json; ui-kit's description editor shows it as literal text), the actor chip is, and backlinks

@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-forms
-description: Design and change Simulator templates (forms, Account Templates, «Шаблон рахунків») — sections and fields, dynamic selects, the template tree and default accounts — and find system templates, through the public Simulator AI tools. Use when the user wants to create or modify a template, add fields, define an actor schema, set a template's status, give every actor of a template an account, or asks what system templates exist ("створи шаблон", "додай поле", "шаблон рахунків", "создай форму", "добавь поле").
+description: "Simulator templates (forms, Account Templates, «Шаблон рахунків»): create, add fields, status, tree, default accounts, system templates. Triggers: \"add a field\", \"створи шаблон\", \"добавь поле\"."
 ---
 
 Use the installed `simulator-ai` catalog. `console` has `form_get`, `forms_list`, `forms_count`, `form_create`,

@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-ontology
-description: Put facts into the graph: several records, links, payments at once — knowledge written into the Simulator graph as one checked patch (ontology_apply) — actors, hierarchy and Gantt links, accounts and their postings (transactions and transfers) — with the public Simulator AI tools; plus saved views (saved filters) and the person's own memory. Use when the user wants several related things created at once ("create the counterparty, a contract under the project and its payment", "з цього договору створи контрагента, договір і оплату", "занеси в граф", "запиши в базу знань", "создай контрагента и договор с оплатой"), turns a file, transcript or comment into structured records, saves or runs a filter as a view ("збережи цей фільтр", "покажи мій вид"), or asks you to remember something about them ("запам'ятай, що я…", "remember that I prefer…").
+description: "Put facts into the graph: several records, links, payments at once, a file into records (ontology_apply); saved views; the person's memory. Triggers: \"занеси в граф\", \"збережи фільтр\", \"запам'ятай\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console-full`, or a Console run with the
