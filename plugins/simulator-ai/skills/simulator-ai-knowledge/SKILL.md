@@ -13,7 +13,9 @@ here only reads.
    options, the accounts each opens), edge types with their role (`hierarchy`, `dependency` = the
    Gantt link, `transactions` = money edges), system templates and `ledgerWrite`. Keep its
    `version`: a repeat with `ifVersion` answers `notModified`. A large workspace pages
-   (`hasMore`, `offset: nextOffset`); `query` or `formIds` narrow it.
+   (`hasMore`, `offset: nextOffset`); `query` or `formIds` narrow it. A template on a page always
+   lists all its accounts; `accountsHasMore` marks one with over 2000, whose rest
+   `form_accounts_list` pages.
 2. **Find the actor** the question names: `actors_search {query}` (or `search_all`), or the id
    from the Current context. Several candidates: name them and let the person pick.
 

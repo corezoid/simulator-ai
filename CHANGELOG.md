@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+- sim-api review follow-ups of the knowledge base (sim-api develop, see its `docs/api/audience.md`): `ontology/get` no
+  longer lists a template with part of its accounts — a page ends before such a template, and one with over 2000
+  accounts alone on its page says `accountsHasMore` (the knowledge skill points to `form_accounts_list` for the rest);
+  `attachment/search` leaves AI Console dialog files out unless `includeAiDialogs` (no tool here calls it yet). The
+  knowledge-base record of `contracts/parity-source.json` is re-pinned to that sim-api revision; the projected params
+  and summaries of its methods are unchanged (the projection carries no results).
+
 - `layer_digest` answers money a person can repeat (eval r11251105 layer-01, layer-07): `balances` lists what each
   actor holds now (credit − debit, as `entity_context_get`), `balanceSums` add them per template and account as
   `sumOfBalances` — the old `totals` added every actor's balance into one figure (2 000 000 over company, departments
