@@ -34,5 +34,13 @@
   ],
   "note": "includeAiDialogs: sim-api leaves the AI Console dialogs out of the search for an AI agent's token; only this method is re-projected for it, the next whole-projection re-pin from develop drops this record."
  },
- "methods": 164
+ "methods": 165,
+ "memorySave": {
+  "source": "sim-api feature/ai-memory-save-server 817d2c72 (actor/memory/save), internal/server/testdata/public-openrpc.json",
+  "documentSha256": "e3a6593503d637b189ac1f0dc530c5dfcd8bec7469ef4c3ff3057cc1baecc9e9",
+  "methods": [
+   "actor/memory/save"
+  ],
+  "note": "memory_save's server-side merge; only this method is projected from this document, the next whole-projection re-pin from develop drops this record."
+ }
 }

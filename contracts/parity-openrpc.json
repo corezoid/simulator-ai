@@ -679,6 +679,149 @@
    "summary": "Updates an existing actor's data"
   },
   {
+   "name": "actor/memory/save",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "type": "string",
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "type": "string",
+      "description": "The person's actor (their twin: actor/by-system_obj/get with objType user)",
+      "minLength": 1,
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "notes",
+     "schema": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "category": {
+         "type": "string",
+         "description": "English category: preference, role, responsibility, works_with, rule, note or another word; anything that is not one word becomes note",
+         "maxLength": 64,
+         "x-validation-rules": [
+          "required",
+          "max=64"
+         ]
+        },
+        "tags": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         },
+         "description": "Tags written after the fact as #tag",
+         "x-validation-rules": [
+          "max=10",
+          "dive",
+          "max=64"
+         ]
+        },
+        "text": {
+         "type": "string",
+         "description": "The fact in the person's language; brackets are written as parentheses and spacing is collapsed",
+         "maxLength": 1000,
+         "x-validation-rules": [
+          "required",
+          "max=1000"
+         ]
+        }
+       },
+       "required": [
+        "category",
+        "text"
+       ]
+      },
+      "description": "Facts to remember (at most 50); one already there, case aside, is not added twice",
+      "x-validation-rules": [
+       "max=50",
+       "dive"
+      ]
+     }
+    },
+    {
+     "name": "relations",
+     "schema": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "actorId": {
+         "type": "string",
+         "description": "The actor the person is related to: a live actor of this workspace",
+         "minLength": 1,
+         "x-validation-rules": [
+          "required",
+          "min=1"
+         ]
+        },
+        "title": {
+         "type": "string",
+         "description": "The chip's title; the actor id when empty",
+         "maxLength": 1000,
+         "x-validation-rules": [
+          "max=1000"
+         ]
+        },
+        "type": {
+         "type": "string",
+         "description": "Relation type: the name of an edge type (letters, digits, _ and -, starting with a letter or _)",
+         "maxLength": 255,
+         "x-validation-rules": [
+          "required",
+          "max=255"
+         ]
+        }
+       },
+       "required": [
+        "type",
+        "actorId"
+       ]
+      },
+      "description": "Typed links to actors to remember (at most 50); the same type and actor is not added twice. No edge is drawn: that is the caller's",
+      "x-validation-rules": [
+       "max=50",
+       "dive"
+      ]
+     }
+    },
+    {
+     "name": "forget",
+     "schema": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "Lines to forget first (at most 50): a fact's text, a relation's title, its actor id or actor:<id>, case aside",
+      "x-validation-rules": [
+       "max=50",
+       "dive",
+       "max=1000"
+      ]
+     }
+    }
+   ],
+   "summary": "Adds and forgets lines of a person's AI memory on their actor, merged on the server"
+  },
+  {
    "name": "actor/delete",
    "params": [
     {

@@ -3,9 +3,11 @@ package publicapi
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/corezoid/simulator-ai/internal/aimemory"
 	"github.com/corezoid/simulator-ai/internal/simfake"
 )
 
@@ -42,7 +44,7 @@ func TestMemorySectionKeepsTheRestOfTheDescription(t *testing.T) {
 			t.Errorf("emptied %q: %q, want %q", tc.desc, got, tc.want)
 		}
 	}
-	big := memoryDoc{Notes: []MemoryNote{{Category: "c", Text: strings.Repeat("x", maxMemoryBytes)}}}
+	big := memoryDoc{Notes: []MemoryNote{{Category: "c", Text: strings.Repeat("x", aimemory.MaxBytes)}}}
 	if _, err := writeSection("", big); err == nil || !strings.Contains(err.Error(), "more than 8192") {
 		t.Errorf("oversized section: %v", err)
 	}
@@ -129,7 +131,7 @@ func TestMemorySectionKeepsThePersonsText(t *testing.T) {
 		t.Fatalf("a rewrite changed the text:\n%q\n%q", got, again)
 	}
 	br := "Intro[br][h3]AI memory[/h3][br]- [role] Юрист"
-	if got, _ := writeSection(br, readSection(br)); strings.Count(got, memoryHeading) != 1 {
+	if got, _ := writeSection(br, readSection(br)); strings.Count(got, aimemory.Heading) != 1 {
 		t.Fatalf("a second section: %q", got)
 	}
 }
@@ -179,4 +181,64 @@ func kbJWTClient(t *testing.T, f *simfake.Server) *Client {
 		t.Fatal(err)
 	}
 	return c
+}
+
+// memory_save never writes the description itself: one actor/memory/save carries the change, which
+// sim-api merges into the block as it is at the write; actor/update only clears the legacy key. A
+// change actor/memory/save would refuse is refused before anything is written.
+func TestSaveMemoryWritesThroughTheServer(t *testing.T) {
+	_, f, _ := kbClient(t)
+	c := kbJWTClient(t, f)
+	ctx := context.Background()
+	twin := f.TwinOf(7, 70)
+	self := MemoryInput{SelfUserID: 7}
+	f.Set(func(s *simfake.Server) {
+		s.Actors[twin].Description = "Intro\n\n[h3]AI memory[/h3]\n- [role] CFO\nMy checklist:\n- [x] buy milk\n"
+	})
+	got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [rule] Short answers", Forget: []string{"cfo"}})
+	if err != nil || got.Added != 1 || got.Removed != 1 || len(got.Notes) != 1 || got.Notes[0].Text != "Short answers" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if n, u := f.Count("actor/memory/save"), f.Count("actor/update"); n != 1 || u != 0 {
+		t.Fatalf("actor/memory/save %d, actor/update %d", n, u)
+	}
+	if stored, _ := f.ActorData(twin); stored.Description != "Intro\n\n[h3]AI memory[/h3]\n- [rule] Short answers\nMy checklist:\n- [x] buy milk\n" {
+		t.Fatalf("stored %q", stored.Description)
+	}
+	many := ""
+	for i := range 51 {
+		many += fmt.Sprintf("- [note] fact %d\n", i)
+	}
+	for _, bad := range []struct {
+		in   MemorySaveInput
+		want string
+	}{
+		{MemorySaveInput{MemoryInput: self, Text: many}, "at most 50 facts"},
+		{MemorySaveInput{MemoryInput: self, Text: "- [note] " + strings.Repeat("x", 1001)}, "at most 1000 characters"},
+	} {
+		if _, err := c.SaveMemory(ctx, bad.in); err == nil || !strings.Contains(err.Error(), bad.want) {
+			t.Errorf("%.30q: %v", bad.in.Text, err)
+		}
+	}
+	if n := f.Count("actor/memory/save"); n != 1 {
+		t.Fatalf("a refused change reached sim-api: %d saves", n)
+	}
+}
+
+// A legacy relation no actor answers to stays in data.aiMemory (memory_get keeps showing it); what
+// resolves moves into the block.
+func TestSaveMemoryKeepsAnUnresolvedLegacyRelation(t *testing.T) {
+	_, f, _ := kbClient(t)
+	c := kbJWTClient(t, f)
+	twin := f.TwinOf(7, 70)
+	f.Set(func(s *simfake.Server) {
+		s.Actors[twin].Data["aiMemory"] = "- [preference] Tea\n- interaction [[Nobody at all]]\n"
+	})
+	if _, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7}, Text: "- [role] CFO"}); err != nil {
+		t.Fatal(err)
+	}
+	stored, _ := f.ActorData(twin)
+	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Tea\n- [role] CFO\n" || stored.Data["aiMemory"] == nil {
+		t.Fatalf("description %q legacy %v", stored.Description, stored.Data["aiMemory"])
+	}
 }
