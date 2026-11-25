@@ -187,14 +187,14 @@ English, the fact in the person's language) and `- relation_type [actor=<id>]Tit
 are written as parentheses and its category as sim-api writes it (`preference`, `role`, `responsibility`, `works_with`,
 `rule`, `note`); at most 8 KiB with the heading, as sim-api counts. `memory_save`
 resolves every relation and edge type first and checks the change against the memory it read (size, at most 50 facts
-of up to 1000 characters), draws a new relation's `edge/create` from the twin (atomic `batch`) and deletes a forgotten
-relation's edge (`edge/by-node/delete`), then sends the change — `notes`, `relations`, `forget` — to sim-api's
-`actor/memory/save`, which merges it into the block as it is at the write under the same locks as its automatic memory
-after a dialog (`e_ai_memory.Save`, the rules and vectors of `internal/aimemory`): no read-modify-write of the
-`description` here, so neither writer loses the other's facts. A relation that the save reports in `forgotten` and the
-first read did not hold loses its edge too. A legacy `data.aiMemory` text is shown by `memory_get` (`legacy: true`),
-moved into the block by the next `memory_save` (its own `actor/memory/save` first) and the key cleared with an
-`actor/update` of that key only; a legacy relation no actor answers to stays in the key.
+of up to 1000 characters), then sends the change — `notes`, `relations`, `forget` — to sim-api's `actor/memory/save`,
+which merges it into the block as it is at the write under the same locks as its automatic memory after a dialog
+(`e_ai_memory.Save`, the rules and vectors of `internal/aimemory`): no read-modify-write of the `description` here, so
+neither writer loses the other's facts. The edges follow what was written: a new relation's `edge/create` from the
+twin (atomic `batch`), and every relation the save reports in `forgotten` loses its edge (`edge/by-node/delete`); a
+refused save draws and deletes nothing. A legacy `data.aiMemory` text is shown by `memory_get` (`legacy: true`) and
+moved into the block by the next `memory_save` (its own `actor/memory/save` first); the key then keeps only the
+relations no actor answers to (an unknown title, a deleted actor), cleared with an `actor/update` of that key only.
 
 </details>
 

@@ -13,8 +13,9 @@
   write, under the same locks as the automatic memory after a dialog. The known risk — a fact sim-api remembered
   between the save's read and its `actor/update` was lost — is closed; the rest of the description stays byte for
   byte. The block's text rules move to `internal/aimemory` (shared with the test fake, the same vectors as sim-api's
-  `e_ai_memory`). One save takes at most 50 facts of up to 1000 characters; a legacy `data.aiMemory` moves in its own
-  save and its key is cleared alone (a legacy relation no actor answers to stays there). `actor/memory/save` is pinned
+  `e_ai_memory`). One save takes at most 50 facts of up to 1000 characters; the relations' edges are drawn and deleted
+  after the write (a refused save touches none); a legacy `data.aiMemory` moves in its own save and its key keeps only
+  the relations no actor answers to. `actor/memory/save` is pinned
   in `contracts/parity-openrpc.json`.
 
 - `layer_digest` answers money a person can repeat (eval r11251105 layer-01, layer-07): `balances` lists what each

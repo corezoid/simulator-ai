@@ -225,20 +225,60 @@ func TestSaveMemoryWritesThroughTheServer(t *testing.T) {
 	}
 }
 
-// A legacy relation no actor answers to stays in data.aiMemory (memory_get keeps showing it); what
-// resolves moves into the block.
+// A legacy relation no actor answers to — an unknown title, a deleted actor's chip — stays in
+// data.aiMemory alone; what resolves moves into the block, the key no longer holds it (so a later
+// forget sticks), and a save is never blocked by it.
 func TestSaveMemoryKeepsAnUnresolvedLegacyRelation(t *testing.T) {
 	_, f, _ := kbClient(t)
 	c := kbJWTClient(t, f)
+	ctx := context.Background()
 	twin := f.TwinOf(7, 70)
+	self := MemoryInput{SelfUserID: 7}
 	f.Set(func(s *simfake.Server) {
-		s.Actors[twin].Data["aiMemory"] = "- [preference] Tea\n- interaction [[Nobody at all]]\n"
+		s.KB.Strict = true // actor/get of a deleted actor answers notFound
+		s.Actors[twin].Data["aiMemory"] = "- [Preferences] Tea\n- interaction [[Nobody at all]]\n- works_with [[actor:gone-1|Old Co]]\n"
 	})
-	if _, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7}, Text: "- [role] CFO"}); err != nil {
+	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [role] CFO"}); err != nil {
 		t.Fatal(err)
 	}
 	stored, _ := f.ActorData(twin)
-	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Tea\n- [role] CFO\n" || stored.Data["aiMemory"] == nil {
-		t.Fatalf("description %q legacy %v", stored.Description, stored.Data["aiMemory"])
+	left := "- interaction [[Nobody at all]]\n- works_with [actor=gone-1]Old Co[/actor]\n"
+	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Tea\n- [role] CFO\n" || stored.Data["aiMemory"] != left {
+		t.Fatalf("description %q legacy %q", stored.Description, stored.Data["aiMemory"])
 	}
+	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Forget: []string{"Tea"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [rule] Short answers"}); err != nil {
+		t.Fatal(err)
+	}
+	if stored, _ := f.ActorData(twin); stored.Description != "[h3]AI memory[/h3]\n- [role] CFO\n- [rule] Short answers\n" {
+		t.Fatalf("a forgotten legacy fact came back: %q", stored.Description)
+	}
+}
+
+// The edges follow the write: a save sim-api refuses (here the block grew past 8 KiB after the first
+// read) draws and deletes nothing.
+func TestSaveMemoryRefusedDrawsNoEdge(t *testing.T) {
+	_, f, project := kbClient(t)
+	c := kbJWTClient(t, f)
+	twin := f.TwinOf(7, 70)
+	f.Set(func(s *simfake.Server) {
+		s.KB.BeforeRead = func(a *simfake.Actor) {
+			if a.ID == twin {
+				a.Description = "[h3]AI memory[/h3]\n- [note] " + strings.Repeat("x", aimemory.MaxBytes) + "\n"
+			}
+		}
+	})
+	_, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7}, Text: "- interaction [[actor:" + project + "]]"})
+	if err == nil {
+		t.Fatal("an oversized block was saved")
+	}
+	f.Set(func(s *simfake.Server) {
+		for _, e := range s.Edges {
+			if e.Source == twin {
+				t.Errorf("an edge was drawn for a refused save: %+v", e)
+			}
+		}
+	})
 }
