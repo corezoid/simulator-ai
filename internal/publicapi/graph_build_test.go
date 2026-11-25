@@ -119,9 +119,10 @@ func TestGraphBuildScale(t *testing.T) {
 				}
 			}
 			// One batch per 99 nodes and per 99 edges, and a constant handful of reads around them: the
-			// layer's template, its by-ref lookup and creation, two edge types.
+			// layer's template, its by-ref lookup, the search for a layer of its title and its creation,
+			// two edge types.
 			want := (n+98)/99 + (edges+98)/99
-			if batches < want || batches > want+1 || other != 5 {
+			if batches < want || batches > want+1 || other != 6 {
 				t.Fatalf("%d batches (want %d or one more for the fat actor), %d other calls: %v", batches, want, other, f.Calls()[:6])
 			}
 			raw, _ := json.Marshal(out)

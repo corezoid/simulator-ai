@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+- `graph_build {newLayer}` no longer makes a second layer of the same title when a build is repeated in a new turn
+  with a new `operationId` (eval build-01): before creating the layer it searches the layers the caller sees
+  (`actor/search/list` on the Layers template) for the title, spaces and case aside; one found answers `done: false`,
+  `existingLayerId` and a warning to build on it (`layerId` with `existing`/`use`) and nothing is written.
+  `allowDuplicateTitle: true` makes the second layer on purpose. The same operation still finds its own layer by ref.
+  The graph skill says a repeat builds on the existing layer.
+
 - `actorLocked` passes through: sim-api answers it while another write holds the actor, and after sim-api !598
   (CE-16160) any call that writes an actor can — `actor/update`, status and read-only changes, Smart Form edits, the
   Corezoid bind, `transfer/form-fields/create` and `reaction/create` / `reaction/delete` of freeze, sign, done and

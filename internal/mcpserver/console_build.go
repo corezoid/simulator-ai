@@ -18,6 +18,8 @@ type buildInput struct {
 	OperationID string `json:"operationId"`
 	LayerID     string `json:"layerId"`
 	NewLayer    string `json:"newLayer"`
+	// AllowDuplicateTitle makes newLayer although a layer of that title exists.
+	AllowDuplicateTitle bool `json:"allowDuplicateTitle"`
 	// FormID, Kind and EdgeType are the defaults of nodes and edges that name none.
 	FormID   int64             `json:"formId"`
 	Kind     string            `json:"kind"`
@@ -88,14 +90,14 @@ func (e *buildEdgeIn) UnmarshalJSON(raw []byte) error {
 
 const (
 	shortTuple  = `{"type":"array","minItems":2,"maxItems":3,"items":{"type":"string"}}`
-	buildSchema = `{"type":"object","properties":{"operationId":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"},"layerId":{"type":"string"},"newLayer":{"type":"string"},"formId":{"type":"integer"},"kind":{"type":"string"},"edgeType":{"type":"string"},"layout":{"enum":["auto","flowchart","layered","grid","given"]},"origin":{"type":"string"},"rowCells":{"type":"integer","minimum":4,"maximum":400},` +
+	buildSchema = `{"type":"object","properties":{"operationId":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"},"layerId":{"type":"string"},"newLayer":{"type":"string"},"allowDuplicateTitle":{"type":"boolean"},"formId":{"type":"integer"},"kind":{"type":"string"},"edgeType":{"type":"string"},"layout":{"enum":["auto","flowchart","layered","grid","given"]},"origin":{"type":"string"},"rowCells":{"type":"integer","minimum":4,"maximum":400},` +
 		`"nodes":{"type":"array","maxItems":2000,"items":{"anyOf":[` + shortTuple + `,{"type":"object","properties":{"key":{"type":"string"},"title":{"type":"string"},"formId":{"type":"integer"},"kind":{"type":"string"},"desc":{"type":"string"},"data":{"type":"object"},"color":{"type":"string"},"hole":{"type":"boolean"},"cell":{"type":"string"}},"required":["key","title"],"additionalProperties":false}]}},` +
 		`"edges":{"type":"array","maxItems":4000,"items":{"anyOf":[` + shortTuple + `,{"type":"object","properties":{"from":{"type":"string"},"to":{"type":"string"},"name":{"type":"string"},"type":{"type":"string"}},"required":["from","to"],"additionalProperties":false}]}},` +
 		`"existing":{"type":"object","additionalProperties":{"type":"string"}},"use":{"type":"array","maxItems":20,"items":{"type":"string"}},"ids":{"type":"array","maxItems":200,"items":{"type":"string"}}},"required":["operationId"],"additionalProperties":false}`
 	// buildOutput names only what every answer has: the rest is described once, in the description.
 	buildOutput        = `{"type":"object","properties":{"done":{"type":"boolean"},"layerId":{"type":"string"}},"required":["done","layerId"]}`
 	buildDeleteSchema  = `{"type":"object","properties":{"layerId":{"type":"string"},"operationId":{"type":"string"},"dryRun":{"type":"boolean"}},"required":["layerId","operationId"],"additionalProperties":false}`
-	buildDescription   = "Build a graph on a layer in ONE call: actors, placements, edges and their placements, by your own keys (no ids to pass around). nodes: [key, title] or {key, title, formId, kind, desc, data, color, hole, cell}; edges: [from, to, name?] or {from, to, name, type}. Top-level formId, kind (a flowchart blockId) and edgeType are the defaults. layerId, or newLayer (a title). layout: auto (directed edges: children under their parent, kind blocks in ranks; else a grid), layered, flowchart (ranks), grid, or given ([key, title, cell]); origin: the top-left cell; omit it: the next free place, sections fill rows; rowCells: row width, default 60. Edge ends may also be keys of operations listed in use, or existing {key: actorId} on the layer. operationId (yours): repeating the call builds only what is missing, never twice. ids: keys whose actorId to return. Returns done, layerId, nodes and edges {total, done, existing}, area; not done: chunks, error, resume. At most 2000 nodes and 4000 edges."
+	buildDescription   = "Build a graph on a layer in ONE call: actors, placements, edges and their placements, by your own keys (no ids to pass around). nodes: [key, title] or {key, title, formId, kind, desc, data, color, hole, cell}; edges: [from, to, name?] or {from, to, name, type}. Top-level formId, kind (a flowchart blockId) and edgeType are the defaults. layerId, or newLayer (a title; if one exists, nothing is built: existingLayerId names it, build on it as layerId; allowDuplicateTitle for a second). layout: auto (directed edges: children under their parent, kind blocks in ranks; else a grid), layered, flowchart (ranks), grid, or given ([key, title, cell]); origin: the top-left cell; omit it: the next free place, sections fill rows; rowCells: row width, default 60. Edge ends may also be keys of operations listed in use, or existing {key: actorId} on the layer. operationId (yours): repeating the call builds only what is missing, never twice. ids: keys whose actorId to return. Returns done, layerId, nodes and edges {total, done, existing}, area; not done: chunks, error, resume. At most 2000 nodes and 4000 edges."
 	buildDeleteDetails = "Delete the actors a graph_build operationId created on a layer, with their placements and edges; a layer it created stays. Destructive: run dryRun (counts only) first and confirm with the user."
 )
 
@@ -325,7 +327,11 @@ func graphBuild(ctx context.Context, c *publicapi.Client, in buildInput) (public
 	if err = checkBuildCells(in); err != nil { // likewise: a bad cell or origin must not leave an empty new layer
 		return publicapi.GraphBuildResult{}, err
 	}
-	b, err := c.OpenGraphBuild(ctx, publicapi.GraphBuildTarget{LayerID: in.LayerID, NewLayer: in.NewLayer, OperationID: in.OperationID})
+	b, err := c.OpenGraphBuild(ctx, publicapi.GraphBuildTarget{LayerID: in.LayerID, NewLayer: in.NewLayer, OperationID: in.OperationID, AllowDuplicateTitle: in.AllowDuplicateTitle})
+	var taken *publicapi.LayerTitleTaken
+	if errors.As(err, &taken) { // a repeat of a build in a new turn: answer the layer, write nothing
+		return publicapi.GraphBuildResult{Done: false, ExistingLayerID: taken.LayerID, Warning: taken.Error()}, nil
+	}
 	if err != nil {
 		return publicapi.GraphBuildResult{}, err
 	}
