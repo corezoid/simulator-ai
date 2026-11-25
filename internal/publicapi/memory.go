@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/corezoid/simulator-ai/internal/aimemory"
 )
 
 // Personal memory is what a person asked the agent to remember about them, kept as a section of
@@ -94,20 +96,11 @@ func (c *Client) twin(ctx context.Context, in MemoryInput) (twinState, int64, er
 	return a.state(), who.ID, nil
 }
 
-// rereadTwin reads the twin again right before a write, from the primary.
-func (c *Client) rereadTwin(ctx context.Context, id string) (twinState, error) {
-	a, err := call[map[string]any, twinWire](ctx, c, "actor/get", map[string]any{"accId": c.workspace(), "actorId": id, "fields": twinFields})
-	if err != nil {
-		return twinState{}, fmt.Errorf("read your actor again before writing: %w", err)
-	}
-	return a.state(), nil
-}
-
 // memoryOf is the twin's memory: the section with what the legacy key still holds merged in.
 func memoryOf(t twinState) memoryDoc {
 	doc := readSection(t.Desc)
 	if strings.TrimSpace(t.Legacy) != "" {
-		legacy := parseSection(t.Legacy)
+		legacy := aimemory.Parse(t.Legacy)
 		for _, n := range legacy.Notes {
 			if !hasNote(doc, n) {
 				doc.Notes = append(doc.Notes, n)
@@ -146,7 +139,7 @@ type memoryChange struct {
 func (m memoryChange) apply(t twinState) (doc memoryDoc, fresh, dropped []MemoryRelation, added, removed int) {
 	doc = memoryOf(t)
 	held := len(doc.Notes) + len(doc.Relations)
-	doc, dropped = forget(doc, m.forget)
+	doc, dropped = aimemory.Forget(doc, m.forget)
 	removed = held - len(doc.Notes) - len(doc.Relations)
 	for _, n := range m.adding.Notes {
 		if !hasNote(doc, n) {
@@ -161,27 +154,33 @@ func (m memoryChange) apply(t twinState) (doc memoryDoc, fresh, dropped []Memory
 	return doc, fresh, dropped, added + len(fresh), removed
 }
 
-// SaveMemory adds and erases facts in the person's memory section. Facts already there are not
-// added twice; a new relation is also an edge from the twin, a forgotten one loses its edge. The
-// twin is read again right before the write and the change merged into what it holds then, so a
-// section sim-api wrote meanwhile (after a dialog) is kept, not overwritten.
+// SaveMemory adds and erases facts in the person's memory block. sim-api merges the change
+// (actor/memory/save) into the block as it is at the write, under the same locks as its automatic
+// memory after a dialog, so neither loses the other's lines. Facts already there are not added
+// twice; a new relation is also an edge from the twin, a forgotten one loses its edge.
 func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, error) {
 	if e := consoleOnly(c); e != nil {
 		return Memory{}, e
 	}
-	if strings.TrimSpace(in.Text) == "" && len(in.Forget) == 0 || utf8.RuneCountInString(in.Text) > 4000 || len(in.Forget) > 50 {
+	if strings.TrimSpace(in.Text) == "" && len(in.Forget) == 0 || utf8.RuneCountInString(in.Text) > 4000 || len(in.Forget) > maxMemoryItems {
 		return Memory{}, errors.New("text (facts to remember, up to 4000 characters) or forget (up to 50) required")
 	}
 	adding, err := parseFacts(in.Text)
 	if err != nil {
 		return Memory{}, err
 	}
+	if len(adding.Notes)+len(adding.Relations)+len(in.Forget) == 0 {
+		return Memory{}, errors.New("text holds no fact: one per line, \"- [category] fact #tag\" or \"- relation_type [[Actor]]\"")
+	}
+	if err = memoryLimits(adding, in.Forget); err != nil {
+		return Memory{}, err
+	}
 	first, userID, err := c.twin(ctx, in.MemoryInput)
 	if err != nil {
 		return Memory{}, err
 	}
-	// Everything is resolved and checked before anything is written: a bad relation or an
-	// oversized memory leaves the twin and its edges as they were.
+	// Everything is resolved and checked before anything is written: a bad relation, an unknown
+	// edge type or an oversized memory leaves the twin and its edges as they were.
 	for i := range adding.Relations {
 		r := &adding.Relations[i]
 		if r.ActorID, r.Target, err = c.relationTarget(ctx, *r); err != nil {
@@ -189,7 +188,7 @@ func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, er
 		}
 	}
 	change := memoryChange{adding: adding, forget: in.Forget}
-	doc, fresh, dropped, _, _ := change.apply(first)
+	doc, fresh, _, _, _ := change.apply(first)
 	if _, err = writeSection(first.Desc, doc); err != nil {
 		return Memory{}, err
 	}
@@ -197,79 +196,198 @@ func (c *Client) SaveMemory(ctx context.Context, in MemorySaveInput) (Memory, er
 	if err != nil {
 		return Memory{}, err
 	}
-	if err = c.forgetEdges(ctx, first.ID, dropped); err != nil {
+	// The legacy data.aiMemory moves into the block first; the lines forget names are not moved.
+	var legacyLeft string
+	var legacyForgotten []MemoryRelation
+	if strings.TrimSpace(first.Legacy) != "" {
+		legacyLeft, legacyForgotten = c.moveLegacyMemory(ctx, first, in.Forget)
+	}
+	saved, err := c.memorySave(ctx, first.ID, adding, in.Forget)
+	if err != nil {
 		return Memory{}, err
 	}
-	out := Memory{ActorID: first.ID, UserID: userID}
+	// The edges follow what was written: a new relation's edge is drawn, every relation the save
+	// forgot (sim-api's lines among them) loses its own — unless the same save named it again.
+	held := saved.doc()
+	out := Memory{ActorID: first.ID, UserID: userID, Added: saved.Added, Removed: saved.Removed + len(legacyForgotten),
+		Notes: held.Notes, Relations: held.Relations}
+	if err = c.forgetEdges(ctx, first.ID, stillHeld(append(saved.forgotten(), legacyForgotten...), held)); err != nil {
+		return Memory{}, fmt.Errorf("the memory was saved, but: %w", err)
+	}
 	if len(draw) > 0 {
 		if _, err = c.atomicItems(ctx, draw); err != nil {
-			return Memory{}, fmt.Errorf("draw the relations, the memory was not saved: %w", err)
+			return Memory{}, fmt.Errorf("the memory was saved, but its relations' edges were not drawn: %w", err)
 		}
 		out.Edges = len(draw)
 	}
-	// The edges are the slow part; the twin is read again only now, and the change merged into
-	// what its description holds at this moment.
-	t, err := c.rereadTwin(ctx, first.ID)
-	if err != nil {
-		return Memory{}, err
-	}
-	var late []MemoryRelation
-	doc, _, late, out.Added, out.Removed = change.apply(t)
-	desc, err := writeSection(t.Desc, doc)
-	if err != nil {
-		return Memory{}, err
-	}
-	// A relation forget names that sim-api wrote after the first read loses its edge too.
-	if err = c.forgetEdges(ctx, t.ID, newRelations(late, dropped)); err != nil {
-		return Memory{}, err
-	}
-	update := map[string]any{"accId": c.workspace(), "actorId": t.ID, "description": desc, "fields": []string{"id"}}
-	if strings.TrimSpace(t.Legacy) != "" {
-		update["data"] = map[string]any{legacyMemoryKey: nil} // moved into the description
-	}
-	if desc != t.Desc || update["data"] != nil {
+	if strings.TrimSpace(first.Legacy) != "" && legacyLeft != first.Legacy {
+		var left any // nil clears the key
+		if legacyLeft != "" {
+			left = legacyLeft
+		}
+		update := map[string]any{"accId": c.workspace(), "actorId": first.ID, "data": map[string]any{legacyMemoryKey: left}, "fields": []string{"id"}}
 		if _, err = call[map[string]any, json.RawMessage](ctx, c, "actor/update", update); err != nil {
-			return Memory{}, fmt.Errorf("write the memory on your actor: %w", err)
+			return Memory{}, fmt.Errorf("the memory was saved, but the legacy memory on your actor was not cleared: %w", err)
 		}
 	}
-	out.Notes, out.Relations = doc.Notes, doc.Relations
 	return out, nil
 }
 
-// newRelations are the relations of late that seen does not hold.
-func newRelations(late, seen []MemoryRelation) []MemoryRelation {
-	var out []MemoryRelation
-	for _, r := range late {
-		if !hasRelation(memoryDoc{Relations: seen}, r) {
-			out = append(out, r)
+// maxMemoryItems is what one actor/memory/save takes of notes, of relations and of forget;
+// maxFactRunes is a fact's or a title's length there.
+const (
+	maxMemoryItems = 50
+	maxFactRunes   = 1000
+)
+
+// capRunes cuts a title to n characters (an actor's title has no bound; the method's has).
+func capRunes(s string, n int) string {
+	if utf8.RuneCountInString(s) <= n {
+		return s
+	}
+	return string([]rune(s)[:n])
+}
+
+// memoryLimits refuses a change actor/memory/save would refuse, before anything is written.
+func memoryLimits(adding memoryDoc, forget []string) error {
+	if len(adding.Notes) > maxMemoryItems || len(adding.Relations) > maxMemoryItems {
+		return fmt.Errorf("at most %d facts and %d relations in one save", maxMemoryItems, maxMemoryItems)
+	}
+	for _, n := range adding.Notes {
+		if utf8.RuneCountInString(n.Text) > maxFactRunes {
+			return fmt.Errorf("a fact is at most %d characters: %.40q…", maxFactRunes, n.Text)
 		}
+	}
+	for _, f := range forget {
+		if utf8.RuneCountInString(f) > maxFactRunes {
+			return fmt.Errorf("a forget entry is at most %d characters", maxFactRunes)
+		}
+	}
+	return nil
+}
+
+// memoryRelationWire is a relation as actor/memory/save takes and answers it.
+type memoryRelationWire struct {
+	Type    string `json:"type"`
+	ActorID string `json:"actorId"`
+	Title   string `json:"title,omitempty"`
+}
+
+// memoryNoteWire is a note as actor/memory/save takes it: its tags are in its text already.
+type memoryNoteWire struct {
+	Category string `json:"category"`
+	Text     string `json:"text"`
+}
+
+// memorySaved is actor/memory/save's answer: the memory after the save.
+type memorySaved struct {
+	Notes     []MemoryNote         `json:"notes"`
+	Relations []memoryRelationWire `json:"relations"`
+	Added     int                  `json:"added"`
+	Removed   int                  `json:"removed"`
+	Forgotten []memoryRelationWire `json:"forgotten"`
+}
+
+func relationsOf(wire []memoryRelationWire) []MemoryRelation {
+	out := make([]MemoryRelation, len(wire))
+	for i, r := range wire {
+		out[i] = MemoryRelation{Type: r.Type, ActorID: r.ActorID, Target: r.Title}
 	}
 	return out
 }
 
-// forget drops the notes and relations names name and answers the relations it dropped.
-func forget(doc memoryDoc, names []string) (memoryDoc, []MemoryRelation) {
-	gone := map[string]bool{}
-	for _, n := range names {
-		gone[strings.ToLower(strings.TrimSpace(n))] = true
+func (m memorySaved) forgotten() []MemoryRelation { return relationsOf(m.Forgotten) }
+
+func (m memorySaved) doc() memoryDoc {
+	doc := newMemoryDoc()
+	doc.Notes = append(doc.Notes, m.Notes...)
+	doc.Relations = append(doc.Relations, relationsOf(m.Relations)...)
+	return doc
+}
+
+// memorySave sends one change to actor/memory/save: sim-api merges it into the block as it is now.
+func (c *Client) memorySave(ctx context.Context, twin string, adding memoryDoc, forget []string) (memorySaved, error) {
+	params := map[string]any{"accId": c.workspace(), "actorId": twin}
+	if len(adding.Notes) > 0 {
+		notes := make([]memoryNoteWire, len(adding.Notes))
+		for i, n := range adding.Notes {
+			notes[i] = memoryNoteWire{Category: n.Category, Text: n.Text}
+		}
+		params["notes"] = notes
 	}
-	notes := doc.Notes[:0:0]
-	for _, n := range doc.Notes {
-		if !gone[strings.ToLower(n.Text)] {
-			notes = append(notes, n)
+	if len(adding.Relations) > 0 {
+		relations := make([]memoryRelationWire, len(adding.Relations))
+		for i, r := range adding.Relations {
+			relations[i] = memoryRelationWire{Type: r.Type, ActorID: r.ActorID, Title: capRunes(r.Target, maxFactRunes)}
+		}
+		params["relations"] = relations
+	}
+	if len(forget) > 0 {
+		params["forget"] = forget
+	}
+	saved, err := call[map[string]any, memorySaved](ctx, c, "actor/memory/save", params)
+	if err != nil {
+		return memorySaved{}, fmt.Errorf("write the memory on your actor: %w", err)
+	}
+	return saved, nil
+}
+
+// moveLegacyMemory writes what the legacy data.aiMemory holds into the block (actor/memory/save, in
+// batches the method takes) and answers what the key keeps — the lines that did not move, rendered:
+// a relation no actor this credential sees answers to (a deleted actor's chip, an unknown title), a
+// note longer than the method takes, a batch sim-api refused (the block full) — and the relations
+// forget names (their edges are the caller's to delete). The lines forget names are dropped, not
+// moved. A refusal never fails the person's save: what did not move simply stays in the key.
+func (c *Client) moveLegacyMemory(ctx context.Context, t twinState, forget []string) (left string, forgotten []MemoryRelation) {
+	held, dropped := aimemory.Forget(aimemory.Parse(t.Legacy), forget)
+	moving, kept := newMemoryDoc(), newMemoryDoc()
+	for _, n := range held.Notes {
+		n.Category, n.Text = aimemory.Category(n.Category), aimemory.CleanFact(n.Text)
+		switch {
+		case n.Text == "":
+		case utf8.RuneCountInString(n.Text) > maxFactRunes:
+			kept.Notes = append(kept.Notes, n)
+		default:
+			moving.Notes = append(moving.Notes, n)
 		}
 	}
-	var dropped []MemoryRelation
-	relations := doc.Relations[:0:0]
-	for _, r := range doc.Relations {
-		if gone[strings.ToLower(r.Target)] || r.ActorID != "" && (gone[strings.ToLower(r.ActorID)] || gone["actor:"+strings.ToLower(r.ActorID)]) {
-			dropped = append(dropped, r)
+	for _, r := range held.Relations {
+		id, title, err := c.relationTarget(ctx, r)
+		if err != nil {
+			kept.Relations = append(kept.Relations, r)
 			continue
 		}
-		relations = append(relations, r)
+		r.ActorID, r.Target = id, title
+		moving.Relations = append(moving.Relations, r)
 	}
-	doc.Notes, doc.Relations = notes, relations
-	return doc, dropped
+	for _, r := range dropped {
+		if id, _, err := c.relationTarget(ctx, r); err == nil {
+			r.ActorID = id
+			forgotten = append(forgotten, r)
+		}
+	}
+	for len(moving.Notes)+len(moving.Relations) > 0 {
+		batch := newMemoryDoc()
+		batch.Notes = moving.Notes[:min(len(moving.Notes), maxMemoryItems)]
+		batch.Relations = moving.Relations[:min(len(moving.Relations), maxMemoryItems)]
+		moving.Notes, moving.Relations = moving.Notes[len(batch.Notes):], moving.Relations[len(batch.Relations):]
+		if _, err := c.memorySave(ctx, t.ID, batch, nil); err != nil {
+			kept.Notes, kept.Relations = append(kept.Notes, batch.Notes...), append(kept.Relations, batch.Relations...)
+		}
+	}
+	return kept.Render(), forgotten
+}
+
+// stillHeld drops from forgotten the relations held still holds (forgotten and named again in one
+// save: sim-api forgets first, then adds), so their edges stay.
+func stillHeld(forgotten []MemoryRelation, held memoryDoc) []MemoryRelation {
+	var out []MemoryRelation
+	for _, r := range forgotten {
+		if r.ActorID == "" || !hasRelation(held, MemoryRelation{Type: r.Type, ActorID: r.ActorID}) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // forgetEdges deletes the edges of forgotten relations from the twin; one already gone is fine.
@@ -294,32 +412,14 @@ func (c *Client) forgetEdges(ctx context.Context, twin string, dropped []MemoryR
 	}
 	results, err := c.eachItems(ctx, "edge/by-node/delete", params)
 	if err != nil {
-		return fmt.Errorf("delete the forgotten relations' edges, nothing was saved: %w", err)
+		return fmt.Errorf("delete the forgotten relations' edges: %w", err)
 	}
 	for _, r := range results {
 		if r.err != nil && r.err.Reason != "notFound" && r.err.Reason != "noFoundOrNoAccess" {
-			return fmt.Errorf("delete a forgotten relation's edge, nothing was saved: %w", r.err)
+			return fmt.Errorf("delete a forgotten relation's edge: %w", r.err)
 		}
 	}
 	return nil
-}
-
-func hasNote(doc memoryDoc, n MemoryNote) bool {
-	for _, m := range doc.Notes {
-		if strings.EqualFold(m.Category, n.Category) && strings.EqualFold(m.Text, n.Text) {
-			return true
-		}
-	}
-	return false
-}
-
-func hasRelation(doc memoryDoc, r MemoryRelation) bool {
-	for _, m := range doc.Relations {
-		if m.Type == r.Type && (m.ActorID != "" && m.ActorID == r.ActorID || m.ActorID == "" && strings.EqualFold(m.Target, r.Target)) {
-			return true
-		}
-	}
-	return false
 }
 
 // relationTarget resolves a relation's actor and title: a chip or [[actor:<id>]] by its id, [[Title]]

@@ -30,8 +30,8 @@ credential; enabling a tool does not grant additional platform permissions.
   leave AI Console dialogs out unless asked.
 - **Write knowledge:** `ontology_apply` turns a patch of actors, links, accounts and postings into graph and ledger
   writes after a strict dry run; saved views and the person's own memory (a block of their actor's description) live on existing platform entities.
-  Known risk: `memory_save` has no conditional write, so a fact sim-api adds between the save's last read and its
-  write can be lost (a window of milliseconds).
+  `memory_save` sends its change to sim-api's `actor/memory/save`, which merges it under the same locks as the
+  automatic memory after a dialog, so neither writer loses the other's facts.
 
 The plugin includes skills that teach the assistant how to use these tools for common tasks.
 It uses the model provided by your host client; no separate model API key is needed by the plugin.

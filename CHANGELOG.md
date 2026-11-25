@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+- `memory_save` no longer writes the person's description itself: it sends the facts, relations and `forget` to
+  sim-api's new public `actor/memory/save`, which merges them into the `[h3]AI memory[/h3]` block as it is at the
+  write, under the same locks as the automatic memory after a dialog. The known risk — a fact sim-api remembered
+  between the save's read and its `actor/update` was lost — is closed; the rest of the description stays byte for
+  byte. The block's text rules move to `internal/aimemory` (shared with the test fake, the same vectors as sim-api's
+  `e_ai_memory`). One save takes at most 50 facts of up to 1000 characters; the relations' edges are drawn and deleted
+  after the write (a refused save touches none); a legacy `data.aiMemory` moves in its own save and its key keeps only
+  the relations no actor answers to. `actor/memory/save` is pinned
+  in `contracts/parity-openrpc.json`.
+
 - sim-api review follow-ups of the knowledge base (sim-api develop, see its `docs/api/audience.md`): `ontology/get` no
   longer lists a template with part of its accounts — a page ends before such a template, and one with over 2000
   accounts alone on its page says `accountsHasMore` (the knowledge skill points to `form_accounts_list` for the rest);
@@ -44,8 +54,7 @@
   text (brackets as parentheses), its category as sim-api writes it. A save
   reads the twin again right before writing and merges into the section as it is then, so a section sim-api writes
   after a dialog is not lost. A legacy `data.aiMemory` is shown by `memory_get` (`legacy`) and moved into the section,
-  and the key cleared, by the next `memory_save`. The ontology skill and the guide say the fact's language. Known
-  risk: memory_save has no conditional write: a fact sim-api adds after the twin is read again and before the write can be lost (a window of milliseconds).
+  and the key cleared, by the next `memory_save`. The ontology skill and the guide say the fact's language.
 - `graph_build {newLayer}` no longer makes a second layer of the same title when a build is repeated in a new turn
   with a new `operationId` (eval build-01): before creating the layer it searches the layers the caller sees
   (`actor/search/list` on the Layers template) for the title, spaces and case aside; one found answers `done: false`,
