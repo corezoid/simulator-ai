@@ -48,64 +48,85 @@ func TestMoneyEdgesRefused(t *testing.T) {
 	}
 }
 
-// layer_digest answers a layer in one call: forms, hierarchy levels, each actor's fields and the
-// balances of the pairs the layer shows, their totals and the money between its actors, reading the
-// cards in one batch.
+// layer_digest answers a layer in one call: forms, hierarchy levels, each actor's fields, each
+// actor's balance (credit − debit: the company funded with 2 000 000 holds 500 000, not 2 000 000),
+// their sums per template, and every payer → receiver pair on any money account with the number of
+// transfers, from one batch of cards read over every edge type (eval r11251105 layer-01, layer-07).
 func TestLayerDigest(t *testing.T) {
+	money := func(nameID, cur, debit, credit string) string {
+		return `{"nameId":"` + nameID + `","name":"Money` + cur + `","currencyId":` + cur + `,"currency":"C` + cur + `","type":"fact","debit":` + debit + `,"credit":` + credit + `}`
+	}
+	out := func(edgeType string, to ...string) string {
+		var ns []string
+		for i := 0; i < len(to); i += 2 {
+			ns = append(ns, `{"actorId":"`+to[i]+`","weight":"`+to[i+1]+`"}`)
+		}
+		return `{"edgeTypeId":9,"edgeType":"` + edgeType + `","role":"transactions","direction":"out","neighbors":[` + strings.Join(ns, ",") + `]}`
+	}
+	parentOf := func(id string) string {
+		return `{"edgeTypeId":1,"edgeType":"hierarchy","role":"hierarchy","direction":"in","neighbors":[{"actorId":"` + id + `"}]}`
+	}
 	cards := map[string]string{
-		"co":    `{"actor":{"title":"Company","formId":1,"formTitle":"Company"},"data":[{"title":"Staff","value":240}],"accounts":[{"nameId":"n1","name":"Money","currencyId":5,"currency":"UAH","type":"fact","debit":1500000,"credit":2000000},{"nameId":"n2","name":"Rating","currencyId":6,"currency":"count","type":"fact","debit":0,"credit":3}],"neighbors":[{"edgeTypeId":9,"edgeType":"transfersAmount_n1_5","role":"transactions","direction":"out","neighbors":[{"actorId":"dev","weight":"900000"},{"actorId":"dev","weight":"100000"},{"actorId":"outside","weight":"5"}]}]}`,
-		"dev":   `{"actor":{"title":"Development","formId":2,"formTitle":"Department"},"data":[{"title":"Head","value":"` + strings.Repeat("x", 120) + `"}],"accounts":[{"nameId":"n1","name":"Money","currencyId":5,"currency":"UAH","type":"fact","debit":300000,"credit":900000}],"neighbors":[{"edgeTypeId":1,"edgeType":"hierarchy","role":"hierarchy","direction":"in","neighbors":[{"actorId":"co"}]}]}`,
-		"proj":  `{"actor":{"title":"Portal","formId":3,"formTitle":"Project"},"data":[],"accounts":[],"neighbors":[{"edgeTypeId":1,"edgeType":"hierarchy","role":"hierarchy","direction":"in","neighbors":[{"actorId":"dev"}]}]}`,
-		"other": `{"actor":{"title":"Sales","formId":2,"formTitle":"Department"},"data":[],"accounts":[{"nameId":"n1","name":"Money","currencyId":5,"currency":"UAH","type":"fact","debit":0,"credit":0}],"neighbors":[{"edgeTypeId":1,"edgeType":"hierarchy","role":"hierarchy","direction":"in","neighbors":[{"actorId":"co"}]}]}`,
+		"co": `{"actor":{"title":"Company","formId":1,"formTitle":"Company"},"data":[{"title":"Staff","value":240}],"accounts":[` + money("n1", "5", "1500000", "2000000") + `,{"nameId":"n2","name":"Rating","currencyId":6,"currency":"count","type":"fact","debit":0,"credit":3}],` +
+			`"neighbors":[` + out("transfersAmount_n1_5", "dev", "900000", "sales", "400000", "outside", "5") + `,` + out("transfersAmount_n1_5", "sales", "200000") + `,` +
+			// The card's 200-neighbor budget cut this money type to nothing: it is read again alone.
+			`{"edgeTypeId":12,"edgeType":"transfersAmount_n9_5","role":"transactions","direction":"out","hasMore":true,"neighbors":[]}]}`,
+		"dev": `{"actor":{"title":"Development","formId":2,"formTitle":"Department"},"data":[{"title":"Head","value":"` + strings.Repeat("x", 120) + `"}],"accounts":[` + money("n1", "5", "300000", "900000") + `],` +
+			`"neighbors":[` + parentOf("co") + `,` + out("transfersAmount_n1_5", "acme", "100000", "acme", "150000", "nl", "50000") + `,` + out("transfersAmount_n7_8", "nl", "3") + `]}`,
+		"sales": `{"actor":{"title":"Sales","formId":2,"formTitle":"Department"},"data":[],"accounts":[` + money("n1", "5", "280000", "600000") + `],"neighbors":[` + parentOf("co") + `]}`,
+		"acme":  `{"actor":{"title":"Acme","formId":3,"formTitle":"Counterparty"},"data":[],"accounts":[` + money("n1", "5", "0", "250000") + `],"neighbors":[` + parentOf("co") + `]}`,
+		"nl":    `{"actor":{"title":"Nordline","formId":3,"formTitle":"Counterparty"},"data":[],"accounts":[` + money("n1", "5", "0", "50000") + `,` + money("n7", "8", "0", "3") + `],"neighbors":[` + parentOf("co") + `]}`,
 	}
 	send, calls := kbServer(t, func(method string, p map[string]json.RawMessage) string {
 		switch method {
 		case "actor/get":
-			return `{"id":"L","title":"Company map","data":{"accounts":[{"value":"n1_5","title":"Money, UAH"}]}}`
+			return `{"id":"L","title":"Company map","data":{"accounts":[{"value":"n1_5","title":"Money5, C5"}]}}`
 		case "graph/layer/stats/get":
-			return `{"nodes":4,"edges":3}`
+			return `{"nodes":5,"edges":4}`
 		case "graph/layer/actors/list":
 			if string(p["offset"]) != "0" && p["offset"] != nil {
 				return `{"list":[]}`
 			}
 			rows := []string{}
-			for i, id := range []string{"co", "dev", "proj", "other"} {
+			for i, id := range []string{"co", "dev", "sales", "acme", "nl"} {
 				rows = append(rows, fmt.Sprintf(`{"id":%q,"laId":%d,"actor":{"title":%q}}`, id, i+1, id))
 			}
 			return `{"list":[` + strings.Join(rows, ",") + `]}`
-		case "ontology/get":
-			return `{"edgeTypes":[{"id":1,"name":"hierarchy","role":"hierarchy"},{"id":9,"name":"transfersAmount_n1_5","role":"transactions"}]}`
 		case "actor/context/get":
 			var id string
 			_ = json.Unmarshal(p["actorId"], &id)
-			if string(p["edgeTypeIds"]) != "[1,9]" {
-				t.Errorf("card of %s read along %s", id, p["edgeTypeIds"])
+			if id == "co" && string(p["edgeTypeIds"]) == "[12]" && string(p["fields"]) == `["neighbors"]` {
+				return `{"neighbors":[{"edgeTypeId":12,"edgeType":"transfersAmount_n9_5","role":"transactions","direction":"out","neighbors":[{"actorId":"acme","weight":"7"}]}]}`
+			}
+			if p["edgeTypeIds"] != nil || string(p["perType"]) != "50" {
+				t.Errorf("card of %s read along %s, perType %s", id, p["edgeTypeIds"], p["perType"])
 			}
 			return cards[id]
 		}
+		t.Errorf("unexpected %s", method)
 		return `{}`
 	})
 	r := send("layer_digest", `{"layerId":"L"}`)
-	for _, want := range []string{`"levels":[{"level":0,"count":1},{"level":1,"count":2},{"level":2,"count":1}]`,
-		`"balances":[{"account":"Money","currency":"UAH","balance":"500000"}]`, `"balance":"600000"`,
-		`"totals":[{"account":"Money","currency":"UAH","balance":"1100000","actors":2}]`,
-		`"transfers":[{"from":"co","fromTitle":"Company","to":"dev","toTitle":"Development","amount":"1000000","account":"Money","currency":"UAH","edges":2}]`,
-		`"parentId":"dev"`, "xxx…", `"stats":{"nodes":4,"edges":3}`} {
+	for _, want := range []string{`"levels":[{"level":0,"count":1},{"level":1,"count":4}]`,
+		`"balances":[{"actorId":"co","title":"Company","form":"Company","account":"Money5","currency":"C5","balance":"500000"},{"actorId":"dev","title":"Development","form":"Department","account":"Money5","currency":"C5","balance":"600000"},{"actorId":"sales","title":"Sales","form":"Department","account":"Money5","currency":"C5","balance":"320000"},{"actorId":"acme","title":"Acme","form":"Counterparty","account":"Money5","currency":"C5","balance":"250000"},{"actorId":"nl","title":"Nordline","form":"Counterparty","account":"Money5","currency":"C5","balance":"50000"}],"balanceSums"`,
+		`{"form":"Department","account":"Money5","currency":"C5","sumOfBalances":"920000","actors":2}`,
+		`{"from":"co","fromTitle":"Company","to":"dev","toTitle":"Development","amount":"900000","account":"Money5","currency":"C5","count":1}`,
+		`{"from":"co","fromTitle":"Company","to":"sales","toTitle":"Sales","amount":"600000","account":"Money5","currency":"C5","count":2}`,
+		`{"from":"dev","fromTitle":"Development","to":"acme","toTitle":"Acme","amount":"250000","account":"Money5","currency":"C5","count":2}`,
+		`{"from":"dev","fromTitle":"Development","to":"nl","toTitle":"Nordline","amount":"3","account":"Money8","currency":"C8","count":1}`,
+		`{"from":"co","fromTitle":"Company","to":"acme","toTitle":"Acme","amount":"7","account":"n9_5","count":1}`,
+		"xxx…", `"stats":{"nodes":5,"edges":4}`} {
 		if !strings.Contains(r, want) {
 			t.Fatalf("missing %s in %s", want, r)
 		}
 	}
-	if strings.Contains(r, "Rating") || strings.Contains(r, `"outside"`) {
-		t.Fatal(r)
-	}
-	batches := 0
-	for _, c := range *calls {
-		if c.Method == "actor/context/get" {
-			batches++
+	for _, bad := range []string{"2000000", "Rating", `"outside"`, "totals", "edge type", "types"} {
+		if strings.Contains(r, bad) {
+			t.Fatalf("%s in %s", bad, r)
 		}
 	}
-	if batches != 4 {
-		t.Fatalf("%d card reads", batches)
+	if len(*calls) != 5+len(cards) { // layer, stats, two placement pages, one card each, the cut money type again
+		t.Fatalf("%d calls", len(*calls))
 	}
 	if r = send("layer_digest", `{"layerId":"L","full":true}`); !strings.Contains(r, `"account":"Rating"`) || !strings.Contains(r, strings.Repeat("x", 120)) {
 		t.Fatal(r)

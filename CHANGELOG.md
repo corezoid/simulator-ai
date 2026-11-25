@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+- `layer_digest` answers money a person can repeat (eval r11251105 layer-01, layer-07): `balances` lists what each
+  actor holds now (credit − debit, as `entity_context_get`), `balanceSums` add them per template and account as
+  `sumOfBalances` — the old `totals` added every actor's balance into one figure (2 000 000 over company, departments
+  and counterparties), which read as the departments' money. `transfers` cover every money account (the cards are read
+  over every edge type, no longer 19 types; `ontology/get` is not read), per payer → receiver × account with `count`.
+  Notes are written for the person, without edge-type details.
+
 - Skill descriptions cut to at most 200 characters each (4 496 characters across the 24 skills; the first 22 were
   11 586): what the skill does, its first ~57 characters naming the task (the Hermes index shows that much), named
   as Simulator's, plus a few EN/UK/RU trigger phrases and the words that tell look-alike skills apart (chat / meetings / tasks, agents / tasks, the Smart Form skills). Hosts load every description into every

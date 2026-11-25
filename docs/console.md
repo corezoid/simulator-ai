@@ -49,12 +49,17 @@ sent as `data.<id>` (one `actor/get` + `form/get`; `fieldKey` in the answer), an
 `edgeTypes [{id, name, role}]` for the types of their edges from `ontology/get {fields: ["edgeTypes"]}`; a type that
 list lacks and whose edge has a weight is `role: transactions`; a failed read leaves the answer as it is.
 
-`layer_digest {layerId, full?}` reads the layer actor (`data.accounts`), `graph/layer/stats/get`, every node placement,
-`ontology/get {fields: ["edgeTypes"], with: ["accountEdgeTypes"]}` and one non-atomic `batch` of `actor/context/get`
-(`actor`, `data`, `accounts`, `neighbors` along hierarchy and up to 19 money types, the layer's own pairs first) per
-100 actors (at most 500). Levels come from each actor's hierarchy parent on the layer; balances are fact credit −
-debit of the pairs the layer shows (every non-zero pair without such settings, or with `full`); transfers sum the
-outgoing money edges between two actors of the layer.
+`layer_digest {layerId, full?}` reads the layer actor (`data.accounts`), `graph/layer/stats/get`, every node placement
+and one non-atomic `batch` of `actor/context/get` (`actor`, `data`, `accounts`, `neighbors` over every edge type, 50 per
+type and direction) per 100 actors (at most 500). Levels come from each actor's hierarchy parent on the layer.
+`balances` are each actor's fact credit − debit of the pairs the layer shows (every non-zero pair without such
+settings, or with `full`); `balanceSums` add them per template and account (`sumOfBalances`), never across templates.
+`transfers` sum the outgoing money edges (`transfersAmount_*`, every account) between two actors of the layer per payer,
+receiver and account, with `count`; the 40 largest in a compact answer. A card lists at most 200 neighbors and spends
+them on the hierarchy and other links first, so an outgoing money group it cut (`hasMore`, under 50 listed) is read
+again alone (`edgeTypeIds: [that type]`, one more non-atomic `batch` per 100, at most 300 such reads). A full answer
+stays within 256 KiB: past it the deepest actors, then the smallest transfers, then the deepest balances are left out,
+each with a note.
 
 Money edges are refused by every edge write (`edge_create`, `edges_create`, `graph_build` by type name;
 `edge_endpoints_update`, and `edge_update` with `linkedActorId` or `hole`, by the edge's type through `ontology/get`).
