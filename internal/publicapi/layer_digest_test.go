@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -41,5 +42,18 @@ func TestLayerDigestSummary(t *testing.T) {
 	fitDigest(&big)
 	if len(big.Actors) == 0 || len(big.Actors) == 400 || !strings.Contains(strings.Join(big.Notes, ""), "too long") {
 		t.Fatalf("%d actors, notes %v", len(big.Actors), big.Notes)
+	}
+}
+
+// The budget holds when the transfers, not the actors, make a full digest too long.
+func TestLayerDigestFitsTransfers(t *testing.T) {
+	big := LayerDigest{}
+	for i := 0; i < 3000; i++ {
+		big.Transfers = append(big.Transfers, DigestTransfer{From: strings.Repeat("f", 60), To: strings.Repeat("t", 60), Amount: "1", Count: 1})
+	}
+	fitDigest(&big)
+	b, _ := json.Marshal(big)
+	if len(b) > digestMaxBytes || len(big.Transfers) == 0 || !strings.Contains(strings.Join(big.Notes, ""), "transfer lines") {
+		t.Fatalf("%d bytes, %d transfers, notes %v", len(b), len(big.Transfers), big.Notes)
 	}
 }

@@ -68,7 +68,9 @@ func TestLayerDigest(t *testing.T) {
 	}
 	cards := map[string]string{
 		"co": `{"actor":{"title":"Company","formId":1,"formTitle":"Company"},"data":[{"title":"Staff","value":240}],"accounts":[` + money("n1", "5", "1500000", "2000000") + `,{"nameId":"n2","name":"Rating","currencyId":6,"currency":"count","type":"fact","debit":0,"credit":3}],` +
-			`"neighbors":[` + out("transfersAmount_n1_5", "dev", "900000", "sales", "400000", "outside", "5") + `,` + out("transfersAmount_n1_5", "sales", "200000") + `]}`,
+			`"neighbors":[` + out("transfersAmount_n1_5", "dev", "900000", "sales", "400000", "outside", "5") + `,` + out("transfersAmount_n1_5", "sales", "200000") + `,` +
+			// The card's 200-neighbor budget cut this money type to nothing: it is read again alone.
+			`{"edgeTypeId":12,"edgeType":"transfersAmount_n9_5","role":"transactions","direction":"out","hasMore":true,"neighbors":[]}]}`,
 		"dev": `{"actor":{"title":"Development","formId":2,"formTitle":"Department"},"data":[{"title":"Head","value":"` + strings.Repeat("x", 120) + `"}],"accounts":[` + money("n1", "5", "300000", "900000") + `],` +
 			`"neighbors":[` + parentOf("co") + `,` + out("transfersAmount_n1_5", "acme", "100000", "acme", "150000", "nl", "50000") + `,` + out("transfersAmount_n7_8", "nl", "3") + `]}`,
 		"sales": `{"actor":{"title":"Sales","formId":2,"formTitle":"Department"},"data":[],"accounts":[` + money("n1", "5", "280000", "600000") + `],"neighbors":[` + parentOf("co") + `]}`,
@@ -93,6 +95,9 @@ func TestLayerDigest(t *testing.T) {
 		case "actor/context/get":
 			var id string
 			_ = json.Unmarshal(p["actorId"], &id)
+			if id == "co" && string(p["edgeTypeIds"]) == "[12]" && string(p["fields"]) == `["neighbors"]` {
+				return `{"neighbors":[{"edgeTypeId":12,"edgeType":"transfersAmount_n9_5","role":"transactions","direction":"out","neighbors":[{"actorId":"acme","weight":"7"}]}]}`
+			}
 			if p["edgeTypeIds"] != nil || string(p["perType"]) != "50" {
 				t.Errorf("card of %s read along %s, perType %s", id, p["edgeTypeIds"], p["perType"])
 			}
@@ -109,6 +114,7 @@ func TestLayerDigest(t *testing.T) {
 		`{"from":"co","fromTitle":"Company","to":"sales","toTitle":"Sales","amount":"600000","account":"Money5","currency":"C5","count":2}`,
 		`{"from":"dev","fromTitle":"Development","to":"acme","toTitle":"Acme","amount":"250000","account":"Money5","currency":"C5","count":2}`,
 		`{"from":"dev","fromTitle":"Development","to":"nl","toTitle":"Nordline","amount":"3","account":"Money8","currency":"C8","count":1}`,
+		`{"from":"co","fromTitle":"Company","to":"acme","toTitle":"Acme","amount":"7","account":"n9_5","count":1}`,
 		"xxx…", `"stats":{"nodes":5,"edges":4}`} {
 		if !strings.Contains(r, want) {
 			t.Fatalf("missing %s in %s", want, r)
@@ -119,7 +125,7 @@ func TestLayerDigest(t *testing.T) {
 			t.Fatalf("%s in %s", bad, r)
 		}
 	}
-	if len(*calls) != 4+len(cards) { // layer, stats, two placement pages, one card each
+	if len(*calls) != 5+len(cards) { // layer, stats, two placement pages, one card each, the cut money type again
 		t.Fatalf("%d calls", len(*calls))
 	}
 	if r = send("layer_digest", `{"layerId":"L","full":true}`); !strings.Contains(r, `"account":"Rating"`) || !strings.Contains(r, strings.Repeat("x", 120)) {

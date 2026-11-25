@@ -37,6 +37,9 @@ const (
 	digestTransfers  = 40        // transfer lines a compact digest lists, the largest first
 	digestBalances   = 120       // balance lines a compact digest lists
 	digestMaxBytes   = 256 << 10 // a full digest drops its deepest actors past this
+	// digestMoneyReads bounds the second reads of payers whose money edges the card's neighbor
+	// budget cut (one per actor and money account).
+	digestMoneyReads = 300
 )
 
 type LayerDigest struct {
@@ -134,16 +137,19 @@ type digestCard struct {
 		Debit      json.Number `json:"debit"`
 		Credit     json.Number `json:"credit"`
 	} `json:"accounts"`
-	Neighbors []struct {
-		EdgeTypeID int64  `json:"edgeTypeId"`
-		EdgeType   string `json:"edgeType"`
-		Role       string `json:"role"`
-		Direction  string `json:"direction"`
-		HasMore    bool   `json:"hasMore"`
-		Neighbors  []struct {
-			ActorID string `json:"actorId"`
-			Weight  string `json:"weight"`
-		} `json:"neighbors"`
+	Neighbors []digestGroup `json:"neighbors"`
+}
+
+// digestGroup is one edge type and direction of a card's neighbors.
+type digestGroup struct {
+	EdgeTypeID int64  `json:"edgeTypeId"`
+	EdgeType   string `json:"edgeType"`
+	Role       string `json:"role"`
+	Direction  string `json:"direction"`
+	HasMore    bool   `json:"hasMore"`
+	Neighbors  []struct {
+		ActorID string `json:"actorId"`
+		Weight  string `json:"weight"`
 	} `json:"neighbors"`
 }
 
@@ -195,25 +201,42 @@ func (c *Client) LayerDigest(ctx context.Context, in LayerDigestInput) (LayerDig
 	if err != nil {
 		return LayerDigest{}, err
 	}
+	if skipped := c.completeMoney(ctx, ids, cards); skipped > 0 {
+		out.Notes = append(out.Notes, fmt.Sprintf("%d payers' transfers on some accounts were not read (the digest reads at most %d such accounts): their transfer sums may be higher", skipped, digestMoneyReads))
+	}
 	summarise(&out, ids, cards, shown, in.Full)
 	fitDigest(&out)
 	return out, nil
 }
 
-// fitDigest keeps a full digest within digestMaxBytes: the deepest actors (listed last) go first.
+// fitDigest keeps a full digest within digestMaxBytes: the deepest actors (listed last) go first,
+// then the smallest transfers, then the deepest balances; each cut says what it left out.
 func fitDigest(out *LayerDigest) {
 	b, err := json.Marshal(out)
 	if err != nil || len(b) <= digestMaxBytes {
 		return
 	}
-	size, n := len(b), len(out.Actors)
-	for n > 0 && size > digestMaxBytes {
-		n--
-		a, _ := json.Marshal(out.Actors[n])
-		size -= len(a) + 1
+	size := len(b)
+	cut := func(n int, row func(int) any) int {
+		for n > 0 && size > digestMaxBytes {
+			n--
+			r, _ := json.Marshal(row(n))
+			size -= len(r) + 1
+		}
+		return n
 	}
-	out.Notes = append(out.Notes, fmt.Sprintf("showing %d of %d actors (the top levels first): the rest would make the answer too long", n, len(out.Actors)))
-	out.Actors = out.Actors[:n]
+	if n := cut(len(out.Actors), func(i int) any { return out.Actors[i] }); n < len(out.Actors) {
+		out.Notes = append(out.Notes, fmt.Sprintf("showing %d of %d actors (the top levels first): the rest would make the answer too long", n, len(out.Actors)))
+		out.Actors = out.Actors[:n]
+	}
+	if n := cut(len(out.Transfers), func(i int) any { return out.Transfers[i] }); n < len(out.Transfers) {
+		out.Notes = append(out.Notes, fmt.Sprintf("showing the %d largest of %d payer → receiver transfer lines: the rest would make the answer too long", n, len(out.Transfers)))
+		out.Transfers = out.Transfers[:n]
+	}
+	if n := cut(len(out.Balances), func(i int) any { return out.Balances[i] }); n < len(out.Balances) {
+		out.Notes = append(out.Notes, fmt.Sprintf("showing %d of %d balances (the top levels first): the rest would make the answer too long", n, len(out.Balances)))
+		out.Balances = out.Balances[:n]
+	}
 }
 
 const transfersPrefix = "transfersAmount_"
@@ -238,6 +261,61 @@ func (c *Client) digestCards(ctx context.Context, ids []string) (map[string]dige
 		}
 	}
 	return out, nil
+}
+
+// completeMoney reads again, along that one money type, every outgoing money group a card cut: a card
+// lists at most 200 neighbors and spends them on the hierarchy and other links before the money
+// edges, so a hub's payments came back as hasMore with none or a few listed. One non-atomic batch per
+// 100 (actor, type) reads; it answers how many it left unread (past digestMoneyReads). A failed read
+// leaves the card as it was.
+func (c *Client) completeMoney(ctx context.Context, ids []string, cards map[string]digestCard) int {
+	type want struct {
+		id     string
+		group  int
+		typeID int64
+	}
+	var wants []want
+	for _, id := range ids {
+		card, ok := cards[id]
+		if !ok {
+			continue
+		}
+		for i, g := range card.Neighbors {
+			if g.Role == "transactions" && g.Direction == "out" && g.HasMore && g.EdgeTypeID > 0 && len(g.Neighbors) < digestPerType {
+				wants = append(wants, want{id, i, g.EdgeTypeID})
+			}
+		}
+	}
+	skipped := 0
+	if len(wants) > digestMoneyReads {
+		skipped, wants = len(wants)-digestMoneyReads, wants[:digestMoneyReads]
+	}
+	if len(wants) == 0 {
+		return skipped
+	}
+	params := make([]any, len(wants))
+	for i, w := range wants {
+		params[i] = map[string]any{"accId": c.workspace(), "actorId": w.id, "fields": []string{"neighbors"}, "edgeTypeIds": []int64{w.typeID}, "perType": digestPerType}
+	}
+	found, err := c.eachItems(ctx, "actor/context/get", params)
+	if err != nil {
+		return skipped + len(wants)
+	}
+	for i, f := range found {
+		var again struct {
+			Neighbors []digestGroup `json:"neighbors"`
+		}
+		if f.err != nil || json.Unmarshal(f.raw, &again) != nil {
+			continue
+		}
+		w := wants[i]
+		for _, g := range again.Neighbors {
+			if g.EdgeTypeID == w.typeID && g.Direction == "out" {
+				cards[w.id].Neighbors[w.group] = g
+			}
+		}
+	}
+	return skipped
 }
 
 func ratOf(n json.Number) *big.Rat {
@@ -406,7 +484,7 @@ func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, show
 		return strings.Compare(a.From+a.To+a.Account, b.From+b.To+b.Account)
 	})
 	if partial > 0 {
-		out.Notes = append(out.Notes, fmt.Sprintf("%d actors made more payments than the digest reads (%d per account): their transfer sums may be higher; entity_context_get of the actor has the rest", partial, digestPerType))
+		out.Notes = append(out.Notes, fmt.Sprintf("%d actors made more payments than the digest reads (the newest %d per account): their transfer sums here may be lower than the real ones", partial, digestPerType))
 	}
 	if !full && len(out.Transfers) > digestTransfers {
 		out.Notes = append(out.Notes, fmt.Sprintf("showing the %d largest of %d payer → receiver transfer lines; full: true lists them all", digestTransfers, len(out.Transfers)))
