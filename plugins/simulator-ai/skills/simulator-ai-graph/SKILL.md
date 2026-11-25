@@ -146,7 +146,12 @@ your own `key`; no actor ids, `laId`s or coordinates.
    `process`, `decision`, ...; the workspace's catalog is the truth). Ask about real ambiguity
    before writing.
 2. **Layer:** the one the user named, else the current layer of the request's Current context
-   (AI Console: `layer <id>`); only with neither, or when asked, `newLayer: "<title>"`.
+   (AI Console: `layer <id>`); only with neither, or when asked, `newLayer: "<title>"`. A layer of
+   that title may exist already (the same request in an earlier turn): `graph_build` then builds
+   nothing and answers `existingLayerId`. A repeat ("build it again", the same request) builds on
+   that layer — `layerId: <existingLayerId>` with `use`/`existing` for what is on it — never a copy;
+   a separate layer gets another title, and `allowDuplicateTitle: true` only when the person asks
+   for a second layer of the same name.
 3. **Build:** `graph_build {operationId, layerId, kind | formId, nodes: [[key, title], ...],
    edges: [[from, to, "label"?], ...]}`. `kind` (a blockId) or `formId` is the default; a node
    that differs is an object `{key, title, kind | formId, data, color, hole}`, an edge of

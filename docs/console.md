@@ -194,7 +194,10 @@ deletes a forgotten relation's edge (`edge/by-node/delete`). A legacy `data.aiMe
 
 **Public calls:** `graph/layer/actors/list` (the layer, once), then atomic `batch`es of up to 99 `actor/create` plus the
 `graph/layer/actors/manage` that places them by result reference, and of up to 99 `edge/create` plus the `manage` that
-draws them; `edge_type/get` per edge type; `actor/by-ref/get` and `actor/create` for `newLayer`. Delete: the layer read,
+draws them; `edge_type/get` per edge type; `actor/by-ref/get`, `actor/search/list` (Layers, the title) and `actor/create`
+for `newLayer`: a new operation whose title a visible layer already has (spaces and case aside) builds nothing and answers
+`done: false`, `existingLayerId` (the newest of them) and a `warning` saying to build on it, unless `allowDuplicateTitle`.
+Delete: the layer read,
 then `batch`es of `actor/delete`.
 
 **Input:** nodes and edges are short tuples (`[key, title]`, `[from, to, name?]`) or objects; call-level `formId`,
