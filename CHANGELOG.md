@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-27
+
 - `chart_data_get` says what an answer without series means: sim-api's public `dashboard/get` now reads a chart
   nobody configured (a `Dashboards` actor without a saved source) as an empty chart instead of refusing it with
   `invalidParams`. The tool description and the charts skill state that an answer without series
