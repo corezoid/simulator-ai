@@ -72,7 +72,7 @@ jobs:
             notes=(--notes-file "$notes_file")
             echo "::notice::Release notes from CHANGELOG.md section ## [${RELEASE_TAG#v}]"
           else
-            echo "::warning::No CHANGELOG.md section ## [${RELEASE_TAG#v}]; using generated release notes"
+            echo "::warning::CHANGELOG.md section ## [${RELEASE_TAG#v}] is missing or empty; using generated release notes"
           fi
           gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" "${notes[@]}" dist/*
       # Only sim-deploy publishes the verified draft after backend deployment.
