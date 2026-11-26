@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- `chart_data_get` says what an answer without series means: sim-api's public `dashboard/get` now reads a chart
+  nobody configured (a `Dashboards` actor without a saved source) as an empty chart instead of refusing it with
+  `invalidParams`. The tool description and the charts skill state that an answer without series
+  is a chart with none to show — never configured, without accounts, with its series hidden or gone, or `actorIds`
+  that matched none — and not a period without movement; the skill no longer lists a missing source among the
+  `invalidParams` causes. Params and result schema are unchanged, so the pinned `dashboard/get` contract stays as is.
+  `chart_update` on such a chart now says to set it up in the web app (`build_link`) instead of pointing to
+  `chart_create`, which would make a second chart.
+
 - The person's memory is a graph (sim-api `service_ai_memory`): `memory_save` sends relations by actor id or by title
   and `forgetAll`; sim-api draws each relation as an edge from the person's actor (`hierarchy` unless another type
   fits) marked `aiSource: memory`, resolves a `[[Title]]` to the one actor of that title (else a text fact), keeps the

@@ -98,6 +98,13 @@ computes on the server the series of the saved chart: one item of `data[]` per s
 `actorTitle`, `nameId`, `accountName`, `currencyId`, `currencyName`, `incomeType`, `value`). Never
 rebuild it from `accounts_list`: an actorFilter chart's top actors and its saved series are resolved
 for you, and series the user may not see are left out.
+An answer **without series** (top-level `data: []`) is not an error and not "nothing moved": a series
+without movement is still listed (its `value` 0 or its base, no buckets). The chart has none to show:
+it was never configured (a `Dashboards` actor saved without a source reads as an empty chart), has no
+accounts, its accounts or actors are gone or hidden from the user, or `actorIds` matched none. Read
+`data.source` with `actor_get` to tell which. `chart_update` adds accounts only to a chart that has a
+source; one that has none is set up in the web app (in a console profile, `build_link {entity: "chart", id: chartId}`
+links to it).
 
 - **The period is yours.** The chart's saved `range` is NOT applied: take `from` and `to` (Unix ms,
   together) from the user's request ("for March", "last week"); when they name none and want what the
@@ -129,7 +136,7 @@ for you, and series the user may not see are left out.
 - Errors: `notFound` — `chartId` is not a chart (find it with `actors_search` or on its layer);
   `accessDenied` — no view on the chart, its ActorFilters actor or the account that filter ranks by;
   `invalidParams` — a missing, reversed (`from` > `to`) or too long period, `series` without
-  `from`/`to`, a chart with no or a broken saved source, a `groupBy` chart, or mixed currencies with
+  `from`/`to`, a chart with a broken saved source, a `groupBy` chart, or mixed currencies with
   `total`.
 
 ```

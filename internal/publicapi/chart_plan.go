@@ -54,7 +54,7 @@ func parseStoredSource(raw json.RawMessage) (storedSource, map[string]json.RawMe
 	raw = unwrapString(raw)
 	keys := rawObject(raw)
 	if len(keys) == 0 {
-		return s, nil, errors.New("the actor has no chart source (data.source): create the chart with chart_create")
+		return s, nil, errors.New("the actor has no chart source (data.source): chart_update needs one; set the chart up in the web app (build_link entity chart)")
 	}
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return s, nil, fmt.Errorf("the chart source cannot be read: %w", err)
