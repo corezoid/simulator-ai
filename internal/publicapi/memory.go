@@ -243,8 +243,6 @@ func relationsOf(wire []memoryRelationWire) []MemoryRelation {
 	return out
 }
 
-func (m memorySaved) forgotten() []MemoryRelation { return relationsOf(m.Forgotten) }
-
 func (m memorySaved) doc() memoryDoc {
 	doc := newMemoryDoc()
 	doc.Notes = append(doc.Notes, m.Notes...)
