@@ -103,7 +103,8 @@ without movement is still listed (its `value` 0 or its base, no buckets). The ch
 it was never configured (a `Dashboards` actor saved without a source reads as an empty chart), has no
 accounts, its accounts or actors are gone or hidden from the user, or `actorIds` matched none. Read
 `data.source` with `actor_get` to tell which. `chart_update` adds accounts only to a chart that has a
-source; one that has none is set up in the web app (`build_link {entity: "chart", id: chartId}`).
+source; one that has none is set up in the web app (in a console profile, `build_link {entity: "chart", id: chartId}`
+links to it).
 
 - **The period is yours.** The chart's saved `range` is NOT applied: take `from` and `to` (Unix ms,
   together) from the user's request ("for March", "last week"); when they name none and want what the
