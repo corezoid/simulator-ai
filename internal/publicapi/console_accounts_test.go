@@ -27,6 +27,10 @@ func TestOpenAccountByNameAsUIKit(t *testing.T) {
 			return pairShared
 		case "batch":
 			return batchOf(`{"id":"0","result":{}}`, factRows, `{"id":"2","result":{"existed":true,"list":[{"id":"c2","incomeType":"credit"},{"id":"d2","incomeType":"debit"}]}}`)
+		case "transaction/filter":
+			// x and y post on credit, z on debit; a transfer leg and the actor's own posting do not count.
+			return `{"list":[{"actorId":"x","incomeType":"credit"},{"actorId":"x","incomeType":"credit"},{"actorId":"y","incomeType":"credit"},` +
+				`{"actorId":"z","incomeType":"debit"},{"actorId":"w","incomeType":"debit","transferId":"t1"},{"actorId":"a1","incomeType":"debit"}]}`
 		}
 		return `{}`
 	})
@@ -38,7 +42,10 @@ func TestOpenAccountByNameAsUIKit(t *testing.T) {
 	if out.NameID != "n-default" || out.CurrencyID != 3 || len(out.Accounts) != 2 || out.Accounts[0] != (OpenedAccount{AccountType: "fact", Credit: "c1", Debit: "d1"}) || out.Accounts[1] != (OpenedAccount{AccountType: "plan", Credit: "c2", Debit: "d2", Existed: true}) {
 		t.Fatalf("%+v", out)
 	}
-	last, _ := json.Marshal((*calls)[len(*calls)-1].Params)
+	if s := out.PostingSide; s == nil || s.Side != "credit" || s.Actors != 2 || s.Other != 1 {
+		t.Fatalf("posting side %+v", s)
+	}
+	last, _ := json.Marshal((*calls)[len(*calls)-2].Params) // the batch; the convention read follows it
 	for _, want := range []string{
 		`"isAtomic":true`,
 		`"method":"account/create","params":{"accId":"ws","currencyId":3,"nameId":"n-default"}`,

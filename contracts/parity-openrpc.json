@@ -246,6 +246,36 @@
      }
     },
     {
+     "name": "ownerId",
+     "required": false,
+     "schema": {
+      "description": "Owner (user id) to hand the new actor to; omitted means the creator. Records no transfer",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "extraData",
+     "required": false,
+     "schema": {
+      "description": "Extra data recorded with the create: ownerId.comment",
+      "properties": {
+       "ownerId": {
+        "description": "Extra data of an owner change (ownerId)",
+        "properties": {
+         "comment": {
+          "description": "Comment of the owner change, kept on the owner transfer and on the ownerId history row",
+          "maxLength": 4000,
+          "type": "string"
+         }
+        },
+        "type": "object"
+       }
+      },
+      "type": "object"
+     }
+    },
+    {
      "name": "fields",
      "required": false,
      "schema": {
@@ -594,6 +624,36 @@
      }
     },
     {
+     "name": "ownerId",
+     "required": false,
+     "schema": {
+      "description": "New owner (user id). Allowed to the current owner or a user with transfers:management (API key: transfers.management scope); records an owner transfer. The current owner's id changes nothing",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    {
+     "name": "extraData",
+     "required": false,
+     "schema": {
+      "description": "Extra data recorded with the change: ownerId.comment",
+      "properties": {
+       "ownerId": {
+        "description": "Extra data of an owner change (ownerId)",
+        "properties": {
+         "comment": {
+          "description": "Comment of the owner change, kept on the owner transfer and on the ownerId history row",
+          "maxLength": 4000,
+          "type": "string"
+         }
+        },
+        "type": "object"
+       }
+      },
+      "type": "object"
+     }
+    },
+    {
      "name": "fields",
      "required": false,
      "schema": {
@@ -617,6 +677,150 @@
     }
    ],
    "summary": "Updates an existing actor's data"
+  },
+  {
+   "name": "actor/memory/save",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "type": "string",
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "type": "string",
+      "description": "The person's actor (their twin: actor/by-system_obj/get with objType user)",
+      "minLength": 1,
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "notes",
+     "schema": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "category": {
+         "type": "string",
+         "description": "English category: preference, role, responsibility, works_with, rule, note or another word; anything that is not one word becomes note",
+         "maxLength": 64,
+         "x-validation-rules": [
+          "required",
+          "max=64"
+         ]
+        },
+        "tags": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         },
+         "description": "Tags written after the fact as #tag",
+         "x-validation-rules": [
+          "max=10",
+          "dive",
+          "max=64"
+         ]
+        },
+        "text": {
+         "type": "string",
+         "description": "The fact in the person's language; brackets are written as parentheses and spacing is collapsed",
+         "maxLength": 1000,
+         "x-validation-rules": [
+          "required",
+          "max=1000"
+         ]
+        }
+       },
+       "required": [
+        "category",
+        "text"
+       ]
+      },
+      "description": "Facts to remember (at most 50); one already there, case aside, is not added twice",
+      "x-validation-rules": [
+       "max=50",
+       "dive"
+      ]
+     }
+    },
+    {
+     "name": "relations",
+     "schema": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "actorId": {
+         "type": "string",
+         "description": "The actor the person is related to: a live actor of this workspace the caller can view",
+         "x-validation-rules": [
+          "required_without=Title"
+         ]
+        },
+        "title": {
+         "type": "string",
+         "description": "Without actorId: the actor's exact title (case aside), resolved to the one live actor of that title the caller can view; none or several keep it as a text fact. With actorId: the chip's title (the actor's own when empty)",
+         "maxLength": 1000,
+         "x-validation-rules": [
+          "required_without=ActorID",
+          "max=1000"
+         ]
+        },
+        "type": {
+         "type": "string",
+         "description": "Relation type: the name of an edge type that is not a tree type nor a transfer's; hierarchy when omitted",
+         "maxLength": 255,
+         "x-validation-rules": [
+          "max=255"
+         ]
+        }
+       }
+      },
+      "description": "Typed links to actors to remember (at most 50): an edge of that type from the person's actor (hierarchy when no type is named), marked aiSource memory, and its line. The same type and actor is not added twice; named again, its edge's updatedAt is refreshed",
+      "x-validation-rules": [
+       "max=50",
+       "dive"
+      ]
+     }
+    },
+    {
+     "name": "forget",
+     "schema": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "Lines to forget first (at most 50): a fact's text, a relation's title, its actor id or actor:<id>, case aside. A forgotten relation's memory edge is deleted; an edge a person drew is never touched",
+      "x-validation-rules": [
+       "max=50",
+       "dive",
+       "max=1000"
+      ]
+     }
+    },
+    {
+     "name": "forgetAll",
+     "schema": {
+      "type": "boolean",
+      "description": "Forget everything: the memory block is removed and every memory edge of the person's actor deleted"
+     }
+    }
+   ],
+   "summary": "Adds and forgets lines of a person's AI memory on their actor, merged on the server"
   },
   {
    "name": "actor/delete",
@@ -681,12 +885,15 @@
      "schema": {
       "description": "Workspace identifier",
       "minLength": 1,
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
      }
     },
     {
      "name": "formId",
-     "required": false,
      "schema": {
       "description": "Account template identifier",
       "type": "integer"
@@ -699,24 +906,30 @@
       "description": "Search query string",
       "maxLength": 1000,
       "minLength": 1,
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1",
+       "max=1000"
+      ]
      }
     },
     {
      "name": "searchType",
-     "required": false,
      "schema": {
       "description": "Search engine: text (Postgres full-text) or semantic (vectorizer). Default: semantic where the vectorizer is configured, text otherwise",
       "enum": [
        "text",
        "semantic"
       ],
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=text semantic"
+      ]
      }
     },
     {
      "name": "fields",
-     "required": false,
      "schema": {
       "description": "Projection: keep only these keys; data.<key> keeps one template field",
       "items": {
@@ -727,7 +940,6 @@
     },
     {
      "name": "with",
-     "required": false,
      "schema": {
       "description": "Related data to add to each actor: owner, user, privs, access[:compact], defaultAccess, attachments[:user], lastReaction[:user], lastComment[:user], reactionsStats, unreadReactions, unread, starred, executionState, notificationSettings, meeting, formTitle, avatar",
       "items": {
@@ -738,22 +950,34 @@
     },
     {
      "name": "limit",
-     "required": false,
      "schema": {
       "default": 20,
       "description": "Maximum number of items to return",
       "maximum": 100,
       "minimum": 1,
-      "type": "integer"
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=100"
+      ]
      }
     },
     {
      "name": "offset",
-     "required": false,
      "schema": {
       "description": "Number of items to skip",
       "minimum": 0,
-      "type": "integer"
+      "type": "integer",
+      "x-validation-rules": [
+       "min=0"
+      ]
+     }
+    },
+    {
+     "name": "includeAiDialogs",
+     "schema": {
+      "description": "Include AI Console dialog Events and the comments under them. Default: false for an AI agent's token, true otherwise",
+      "type": "boolean"
      }
     }
    ],
@@ -1851,7 +2075,7 @@
      "name": "pictureObject",
      "required": false,
      "schema": {
-      "description": "Legacy account template actor picture object",
+      "description": "Account template actor picture {type, img, width, height}: img is the stored file name of an uploaded image (upload it first), width/height the size actors of this template are drawn at on a graph when they have no picture of their own. Stored in the template's form JSON, the one place both the legacy and the new stack read it from",
       "type": [
        "object",
        "null"
@@ -2070,7 +2294,7 @@
      "name": "pictureObject",
      "required": false,
      "schema": {
-      "description": "Legacy account template actor picture object patch",
+      "description": "Account template actor picture patch {type, img, width, height} (omitted keeps, null clears): img is the stored file name of an uploaded image (upload it first). Stored in the template's form JSON, the one place both the legacy and the new stack read it from",
       "type": [
        "object",
        "null"
@@ -3012,6 +3236,23 @@
              "description": "Whether anisotropic texture filtering is enabled",
              "type": "boolean"
             },
+            "baseline": {
+             "description": "Gantt: the dates the actor had before it was first moved on the Gantt chart (unix seconds, startDate ≤ endDate). null clears it",
+             "properties": {
+              "endDate": {
+               "description": "Planned end, unix seconds",
+               "type": "integer"
+              },
+              "startDate": {
+               "description": "Planned start, unix seconds",
+               "type": "integer"
+              }
+             },
+             "type": [
+              "object",
+              "null"
+             ]
+            },
             "expand": {
              "description": "Whether the node is open in place, showing the content named by expandType",
              "type": "boolean"
@@ -3036,6 +3277,20 @@
             "fullScreen": {
              "description": "Whether the expanded node is in full screen",
              "type": "boolean"
+            },
+            "ganttOrder": {
+             "description": "Gantt: manual sort key of the row among its siblings, ascending; a fraction drops a row between two others without renumbering them. null clears it (the list falls back to its date order)",
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "ganttPhase": {
+             "description": "Gantt: id (uuid) of the Phase actor the row was manually put into; overrides the date rule that otherwise assigns rows to phases. null clears it",
+             "type": [
+              "string",
+              "null"
+             ]
             },
             "height": {
              "description": "Box height in graph units; same meaning as width",
@@ -3124,6 +3379,16 @@
               }
              },
              "type": "object"
+            },
+            "neighbors": {
+             "description": "Gantt, Phase actors only: ids of the actors right after the phase, the first one first (at most 100); breaks the tie when an actor starts at the same moment as the phase. null clears it",
+             "items": {
+              "type": "string"
+             },
+             "type": [
+              "array",
+              "null"
+             ]
             },
             "offset": {
              "description": "How far an expanded node reaches past its cell. Typed here as {x, y}, while legacy clients and the graph editor store {top, right, bottom, left}: such a value reads back as {x: 0, y: 0}, and one sent here is stored as {x: 0, y: 0}. Do not send it",
@@ -4965,7 +5230,7 @@
      "name": "type",
      "required": true,
      "schema": {
-      "description": "Reaction type: comment, done, freeze, rating, view, reject, sign or ds",
+      "description": "Reaction type: comment, done, freeze, rating, view, reject or sign",
       "enum": [
        "comment",
        "done",
@@ -4973,8 +5238,7 @@
        "rating",
        "view",
        "reject",
-       "sign",
-       "ds"
+       "sign"
       ],
       "type": "string"
      }
@@ -5176,7 +5440,7 @@
      "name": "hidden",
      "required": false,
      "schema": {
-      "description": "Hide the reaction from users without execute access to the root actor",
+      "description": "Hide the reaction from users without execute access to the root actor. A reply to a hidden reaction (parentId) is always hidden, whatever is sent, and only users who read that reaction may reply to it",
       "type": "boolean"
      }
     },
@@ -5204,7 +5468,7 @@
      "name": "sipTranscription",
      "required": false,
      "schema": {
-      "description": "Also write the reaction into the live meeting transcript of the root actor (flags extra.sipTranscription)",
+      "description": "Write the reaction into the live meeting transcript of the root actor (flags extra.sipTranscription). A hidden reaction (or a reply to one) is never written, even with true. Omitted: a person's reaction is written whenever the root actor's call runs, except view and empty ones; false keeps it out",
       "type": "boolean"
      }
     },
@@ -5288,7 +5552,7 @@
      "name": "hidden",
      "required": false,
      "schema": {
-      "description": "Hide or show the reaction for users without execute access to the root actor",
+      "description": "Hide or show the reaction for users without execute access to the root actor. Hiding a reaction removes it from the live meeting transcript; a reply to a hidden reaction cannot be shown (false is refused)",
       "type": "boolean"
      }
     },
@@ -5911,7 +6175,7 @@
      "name": "accId",
      "required": true,
      "schema": {
-      "description": "Workspace identifier",
+      "description": "Workspace the link names — its accId or short id. A member of it finds only its actors; a person who is not a member may still ask, in the actor's own workspace",
       "minLength": 1,
       "type": "string"
      }
@@ -5937,7 +6201,7 @@
      "name": "sendEvent",
      "required": false,
      "schema": {
-      "description": "Send notification event (default: true)",
+      "description": "Create an Access Request event for the actor's hosts, signed to confirm and rejected to decline (default: true). Only a new request creates one",
       "type": "boolean"
      }
     }
@@ -6007,7 +6271,7 @@
      "name": "accId",
      "required": true,
      "schema": {
-      "description": "Workspace identifier",
+      "description": "The workspace of the request (the accId request/create and request/get return). A person outside it may withdraw only their own request",
       "minLength": 1,
       "type": "string"
      }
@@ -9321,7 +9585,7 @@
      "name": "with",
      "required": false,
      "schema": {
-      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row)",
+      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row), actors (every actor the details name, with its labels and avatar sources), privs (whether transfer/create would take each account from the caller)",
       "items": {
        "type": "string"
       },
@@ -9356,7 +9620,7 @@
      "name": "with",
      "required": false,
      "schema": {
-      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row)",
+      "description": "Related entities to include: user (the transfer author), transactions (template-field transfer history rows; transactions:user adds each row author), legs (account transfer ledger legs, each a transaction/filter row), actors (every actor the details name, with its labels and avatar sources), privs (whether transfer/create would take each account from the caller)",
       "items": {
        "type": "string"
       },
@@ -9375,12 +9639,15 @@
      "schema": {
       "description": "Workspace identifier",
       "minLength": 1,
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
      }
     },
     {
      "name": "type",
-     "required": false,
      "schema": {
       "description": "Transfer type: completed, authorized, declined, canceled or reversed",
       "enum": [
@@ -9390,35 +9657,46 @@
        "canceled",
        "reversed"
       ],
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=authorized declined completed canceled reversed"
+      ]
      }
     },
     {
      "name": "actorIds",
-     "required": false,
      "schema": {
-      "description": "Actor filter — matches a leg on either side. Combined with accounts and/or accountType, all must hold on the same leg",
+      "description": "Actor filter — matches a leg on either side, or an owner transfer that moved one of these actors (the actor whose owner changed). Combined with accounts, accountType or formFields, all must hold on the same leg",
       "items": {
        "type": "string"
       },
-      "type": "array"
+      "type": "array",
+      "x-validation-rules": [
+       "max=100"
+      ]
      }
     },
     {
      "name": "accounts",
-     "required": false,
      "schema": {
       "description": "Account (nameId, currencyId) pairs — matches a leg on either side. Combined with actorIds and/or accountType, all must hold on the same leg",
       "items": {
        "properties": {
         "currencyId": {
          "description": "Currency identifier",
-         "type": "integer"
+         "type": "integer",
+         "x-validation-rules": [
+          "required"
+         ]
         },
         "nameId": {
          "description": "Account name identifier",
          "minLength": 1,
-         "type": "string"
+         "type": "string",
+         "x-validation-rules": [
+          "required",
+          "min=1"
+         ]
         }
        },
        "required": [
@@ -9427,33 +9705,93 @@
        ],
        "type": "object"
       },
-      "type": "array"
+      "type": "array",
+      "x-validation-rules": [
+       "max=100",
+       "dive"
+      ]
      }
     },
     {
      "name": "accountType",
-     "required": false,
      "schema": {
       "description": "Type of the leg's account (fact, plan); omitted = any. Alone it matches a transfer with any account leg of that type; with actorIds and/or accounts all must hold on the same leg",
       "enum": [
        "fact",
        "plan"
       ],
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=fact plan"
+      ]
+     }
+    },
+    {
+     "name": "formFields",
+     "schema": {
+      "description": "Form-field filter: (formId, fieldId) pairs — matches a form-field transfer with a leg on any of them, on either side. Combined with actorIds both must hold on the same leg. Not combinable with accounts or accountType",
+      "items": {
+       "properties": {
+        "fieldId": {
+         "description": "Item id of the field in its template (select_1, ownerId) — not the data.* key",
+         "maxLength": 255,
+         "minLength": 1,
+         "type": "string",
+         "x-validation-rules": [
+          "required",
+          "min=1",
+          "max=255"
+         ]
+        },
+        "formId": {
+         "description": "Account template id of the field. Matched whether the transfer stored it as a number or as a string",
+         "minimum": 1,
+         "type": "integer",
+         "x-validation-rules": [
+          "required",
+          "min=1"
+         ]
+        }
+       },
+       "required": [
+        "formId",
+        "fieldId"
+       ],
+       "type": "object"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=100",
+       "dive"
+      ]
+     }
+    },
+    {
+     "name": "kind",
+     "schema": {
+      "description": "formFields: only form-field transfers (owner transfers included), on any field. Not combinable with accounts or accountType",
+      "enum": [
+       "formFields"
+      ],
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=formFields"
+      ]
      }
     },
     {
      "name": "query",
-     "required": false,
      "schema": {
       "description": "Full-text search over the transfer comment",
       "maxLength": 200,
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "max=200"
+      ]
      }
     },
     {
      "name": "ref",
-     "required": false,
      "schema": {
       "description": "Exact ref",
       "type": "string"
@@ -9461,51 +9799,68 @@
     },
     {
      "name": "transferId",
-     "required": false,
      "schema": {
       "description": "Exact transfer id",
       "type": "string"
      }
     },
     {
-     "name": "from",
-     "required": false,
+     "name": "dateBy",
      "schema": {
-      "description": "Window start (ms). Default: current month start",
+      "default": "createdAt",
+      "description": "What from/to bound and the list is ordered by: createdAt (when the transfer was recorded, default) or originalDate (its business date: a transfer with a leg whose originalDate is in the window; the latest such date orders it and comes back as originalDate; not with formFields or kind formFields, which have no ledger legs)",
+      "enum": [
+       "createdAt",
+       "originalDate"
+      ],
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=createdAt originalDate"
+      ]
+     }
+    },
+    {
+     "name": "from",
+     "schema": {
+      "description": "Window start, unix MILLISECONDS. Default: current month start. to − from may not exceed 366 days (31622400000 ms); pass both or neither",
       "type": "integer"
      }
     },
     {
      "name": "to",
-     "required": false,
      "schema": {
-      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "description": "Window end, unix MILLISECONDS. Default: current month end. Max window 366 days (to − from ≤ 31622400000); query longer periods in 366-day slices",
       "type": "integer"
      }
     },
     {
      "name": "limit",
-     "required": false,
      "schema": {
       "description": "Page size (default 50)",
       "maximum": 1000,
       "minimum": 1,
-      "type": "integer"
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=1000"
+      ]
      }
     },
     {
      "name": "offset",
-     "required": false,
      "schema": {
       "description": "Offset paging (legacy compatibility; prefer cursor)",
       "maximum": 10000,
       "minimum": 0,
-      "type": "integer"
+      "type": "integer",
+      "x-validation-rules": [
+       "min=0",
+       "max=10000"
+      ]
      }
     },
     {
      "name": "cursor",
-     "required": false,
      "schema": {
       "description": "Keyset cursor from a previous response's nextCursor",
       "type": "string"
@@ -9523,12 +9878,15 @@
      "schema": {
       "description": "Workspace identifier",
       "minLength": 1,
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
      }
     },
     {
      "name": "type",
-     "required": false,
      "schema": {
       "description": "Transfer type: completed, authorized, declined, canceled or reversed",
       "enum": [
@@ -9538,35 +9896,46 @@
        "canceled",
        "reversed"
       ],
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=authorized declined completed canceled reversed"
+      ]
      }
     },
     {
      "name": "actorIds",
-     "required": false,
      "schema": {
-      "description": "Actor filter — matches a leg on either side. Combined with accounts and/or accountType, all must hold on the same leg",
+      "description": "Actor filter — matches a leg on either side, or an owner transfer that moved one of these actors (the actor whose owner changed). Combined with accounts, accountType or formFields, all must hold on the same leg",
       "items": {
        "type": "string"
       },
-      "type": "array"
+      "type": "array",
+      "x-validation-rules": [
+       "max=100"
+      ]
      }
     },
     {
      "name": "accounts",
-     "required": false,
      "schema": {
       "description": "Account (nameId, currencyId) pairs — matches a leg on either side. Combined with actorIds and/or accountType, all must hold on the same leg",
       "items": {
        "properties": {
         "currencyId": {
          "description": "Currency identifier",
-         "type": "integer"
+         "type": "integer",
+         "x-validation-rules": [
+          "required"
+         ]
         },
         "nameId": {
          "description": "Account name identifier",
          "minLength": 1,
-         "type": "string"
+         "type": "string",
+         "x-validation-rules": [
+          "required",
+          "min=1"
+         ]
         }
        },
        "required": [
@@ -9575,33 +9944,93 @@
        ],
        "type": "object"
       },
-      "type": "array"
+      "type": "array",
+      "x-validation-rules": [
+       "max=100",
+       "dive"
+      ]
      }
     },
     {
      "name": "accountType",
-     "required": false,
      "schema": {
       "description": "Type of the leg's account (fact, plan); omitted = any. Alone it matches a transfer with any account leg of that type; with actorIds and/or accounts all must hold on the same leg",
       "enum": [
        "fact",
        "plan"
       ],
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=fact plan"
+      ]
+     }
+    },
+    {
+     "name": "formFields",
+     "schema": {
+      "description": "Form-field filter: (formId, fieldId) pairs — matches a form-field transfer with a leg on any of them, on either side. Combined with actorIds both must hold on the same leg. Not combinable with accounts or accountType",
+      "items": {
+       "properties": {
+        "fieldId": {
+         "description": "Item id of the field in its template (select_1, ownerId) — not the data.* key",
+         "maxLength": 255,
+         "minLength": 1,
+         "type": "string",
+         "x-validation-rules": [
+          "required",
+          "min=1",
+          "max=255"
+         ]
+        },
+        "formId": {
+         "description": "Account template id of the field. Matched whether the transfer stored it as a number or as a string",
+         "minimum": 1,
+         "type": "integer",
+         "x-validation-rules": [
+          "required",
+          "min=1"
+         ]
+        }
+       },
+       "required": [
+        "formId",
+        "fieldId"
+       ],
+       "type": "object"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=100",
+       "dive"
+      ]
+     }
+    },
+    {
+     "name": "kind",
+     "schema": {
+      "description": "formFields: only form-field transfers (owner transfers included), on any field. Not combinable with accounts or accountType",
+      "enum": [
+       "formFields"
+      ],
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=formFields"
+      ]
      }
     },
     {
      "name": "query",
-     "required": false,
      "schema": {
       "description": "Full-text search over the transfer comment",
       "maxLength": 200,
-      "type": "string"
+      "type": "string",
+      "x-validation-rules": [
+       "max=200"
+      ]
      }
     },
     {
      "name": "ref",
-     "required": false,
      "schema": {
       "description": "Exact ref",
       "type": "string"
@@ -9609,51 +10038,68 @@
     },
     {
      "name": "transferId",
-     "required": false,
      "schema": {
       "description": "Exact transfer id",
       "type": "string"
      }
     },
     {
-     "name": "from",
-     "required": false,
+     "name": "dateBy",
      "schema": {
-      "description": "Window start (ms). Default: current month start",
+      "default": "createdAt",
+      "description": "What from/to bound and the list is ordered by: createdAt (when the transfer was recorded, default) or originalDate (its business date: a transfer with a leg whose originalDate is in the window; the latest such date orders it and comes back as originalDate; not with formFields or kind formFields, which have no ledger legs)",
+      "enum": [
+       "createdAt",
+       "originalDate"
+      ],
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=createdAt originalDate"
+      ]
+     }
+    },
+    {
+     "name": "from",
+     "schema": {
+      "description": "Window start, unix MILLISECONDS. Default: current month start. to − from may not exceed 366 days (31622400000 ms); pass both or neither",
       "type": "integer"
      }
     },
     {
      "name": "to",
-     "required": false,
      "schema": {
-      "description": "Window end (ms). Default: current month end. Max window ≈ 12 months",
+      "description": "Window end, unix MILLISECONDS. Default: current month end. Max window 366 days (to − from ≤ 31622400000); query longer periods in 366-day slices",
       "type": "integer"
      }
     },
     {
      "name": "limit",
-     "required": false,
      "schema": {
       "description": "Page size (default 50)",
       "maximum": 1000,
       "minimum": 1,
-      "type": "integer"
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=1000"
+      ]
      }
     },
     {
      "name": "offset",
-     "required": false,
      "schema": {
       "description": "Offset paging (legacy compatibility; prefer cursor)",
       "maximum": 10000,
       "minimum": 0,
-      "type": "integer"
+      "type": "integer",
+      "x-validation-rules": [
+       "min=0",
+       "max=10000"
+      ]
      }
     },
     {
      "name": "cursor",
-     "required": false,
      "schema": {
       "description": "Keyset cursor from a previous response's nextCursor",
       "type": "string"
@@ -12202,6 +12648,934 @@
     }
    ],
    "summary": "Re-opens the edge-holes an edge closed, restoring the placeholder links"
+  },
+  {
+   "name": "transfer/form-fields/create",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    {
+     "name": "ref",
+     "required": false,
+     "schema": {
+      "description": "Workspace-unique reference of the transfer; a second transfer with the same ref is refused",
+      "maxLength": 255,
+      "type": "string"
+     }
+    },
+    {
+     "name": "comment",
+     "required": false,
+     "schema": {
+      "description": "Comment, stored on the transfer and on every history row it writes",
+      "type": "string"
+     }
+    },
+    {
+     "name": "data",
+     "required": false,
+     "schema": {
+      "description": "Caller data stored with the transfer",
+      "type": "object"
+     }
+    },
+    {
+     "name": "from",
+     "required": true,
+     "schema": {
+      "description": "Legs giving values away (1..20): each takes its values out of its actor's field",
+      "items": {
+       "properties": {
+        "actorId": {
+         "description": "Actor whose field gives or receives the values",
+         "minLength": 1,
+         "type": "string"
+        },
+        "fieldId": {
+         "description": "Field id inside the template (a select or multiSelect field), or its data key __form__<formId>:<itemId>",
+         "minLength": 1,
+         "type": "string"
+        },
+        "formId": {
+         "description": "Account template (form) the field belongs to — the actor's own template or one linked to it",
+         "minimum": 1,
+         "type": "integer"
+        },
+        "value": {
+         "description": "Values moved (1..200): the value of each stored {value, title} item",
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        }
+       },
+       "required": [
+        "actorId",
+        "formId",
+        "fieldId",
+        "value"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "to",
+     "required": true,
+     "schema": {
+      "description": "Legs receiving values (1..20): each adds its values to its actor's field. Together they receive exactly the values the from legs give",
+      "items": {
+       "properties": {
+        "actorId": {
+         "description": "Actor whose field gives or receives the values",
+         "minLength": 1,
+         "type": "string"
+        },
+        "fieldId": {
+         "description": "Field id inside the template (a select or multiSelect field), or its data key __form__<formId>:<itemId>",
+         "minLength": 1,
+         "type": "string"
+        },
+        "formId": {
+         "description": "Account template (form) the field belongs to — the actor's own template or one linked to it",
+         "minimum": 1,
+         "type": "integer"
+        },
+        "value": {
+         "description": "Values moved (1..200): the value of each stored {value, title} item",
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        }
+       },
+       "required": [
+        "actorId",
+        "formId",
+        "fieldId",
+        "value"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Moves form-field values (select / multiSelect items) from actors' fields to others' as one transfer"
+  },
+  {
+   "name": "ontology/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "query",
+     "schema": {
+      "description": "Narrow the templates as form/list does: a substring of the title, ref or description, or a template id",
+      "maxLength": 200,
+      "type": "string",
+      "x-validation-rules": [
+       "max=200"
+      ]
+     }
+    },
+    {
+     "name": "formIds",
+     "schema": {
+      "description": "Narrow the templates to these ids (at most 100)",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=100",
+       "dive",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "offset",
+     "schema": {
+      "description": "Templates to skip: nextOffset of the previous page",
+      "minimum": 0,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=0"
+      ]
+     }
+    },
+    {
+     "name": "limit",
+     "schema": {
+      "default": 50,
+      "description": "Templates per page at most (1–100, default 50); the size budget may cut the page earlier",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=100"
+      ]
+     }
+    },
+    {
+     "name": "maxBytes",
+     "schema": {
+      "default": 12000,
+      "description": "Size budget of the page in bytes of JSON (2000–64000, default 12000); a page holds at least one template",
+      "maximum": 64000,
+      "minimum": 2000,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=2000",
+       "max=64000"
+      ]
+     }
+    },
+    {
+     "name": "ifVersion",
+     "schema": {
+      "description": "version of a digest you hold: when nothing changed the answer is just {version, notModified: true}",
+      "maxLength": 64,
+      "type": "string",
+      "x-validation-rules": [
+       "max=64"
+      ]
+     }
+    },
+    {
+     "name": "fields",
+     "schema": {
+      "description": "Projection: keep only these sections — ledgerWrite, edgeRoles, edgeTypes, systemForms, forms; forms.description, forms.fields, forms.accounts, forms.processes narrow each template. Empty keeps everything",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "schema": {
+      "description": "Extras: accountEdgeTypes (also list the per-account edge types: transactions transfersAmount_<nameId>_<currencyId> and account trees), processDetails (ask Corezoid for each process's title, description and status)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Returns a compact digest of a workspace: templates with their fields, accounts and Corezoid processes, edge types with their meaning, and who writes the ledger"
+  },
+  {
+   "name": "ontology/count",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "query",
+     "schema": {
+      "description": "Same as ontology/get query",
+      "maxLength": 200,
+      "type": "string",
+      "x-validation-rules": [
+       "max=200"
+      ]
+     }
+    },
+    {
+     "name": "formIds",
+     "schema": {
+      "description": "Same as ontology/get formIds",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=100",
+       "dive",
+       "min=1"
+      ]
+     }
+    }
+   ],
+   "summary": "Counts the templates ontology/get pages over, with the same filter"
+  },
+  {
+   "name": "graph/traverse",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "actorIds",
+     "required": true,
+     "schema": {
+      "description": "Start actors (1–20); the caller needs view access on each",
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "required",
+       "min=1",
+       "max=20",
+       "dive",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "direction",
+     "schema": {
+      "default": "down",
+      "description": "down follows source → target (children, successors, receivers), up follows target → source (parents, predecessors, givers), both does both. Default down",
+      "enum": [
+       "down",
+       "up",
+       "both"
+      ],
+      "type": "string",
+      "x-validation-rules": [
+       "oneof=down up both"
+      ]
+     }
+    },
+    {
+     "name": "edgeTypeIds",
+     "schema": {
+      "description": "Edge types to follow (ontology/get edgeTypes); the hierarchy type when omitted",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=20",
+       "dive",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "depth",
+     "schema": {
+      "default": 2,
+      "description": "Steps from the start actors, 1–3 (default 2)",
+      "maximum": 3,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=3"
+      ]
+     }
+    },
+    {
+     "name": "limit",
+     "schema": {
+      "default": 100,
+      "description": "Actors in the answer at most, start actors included (1–200, default 100); hasMore says the walk was cut",
+      "maximum": 200,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=200"
+      ]
+     }
+    },
+    {
+     "name": "includeAiDialogs",
+     "schema": {
+      "description": "Include the AI Console dialog Events (hierarchy children of their layer): left out by default",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Walks the graph from 1–20 actors up to 3 steps along chosen edge types and returns the reached subgraph (at most 200 actors)"
+  },
+  {
+   "name": "graph/path/find",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "fromActorId",
+     "required": true,
+     "schema": {
+      "description": "Path start; the caller needs view access",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "toActorId",
+     "required": true,
+     "schema": {
+      "description": "Path end; the caller needs view access",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "edgeTypeIds",
+     "schema": {
+      "description": "Edge types the path may use (ontology/get edgeTypes); the hierarchy type when omitted",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=20",
+       "dive",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "directed",
+     "schema": {
+      "description": "Follow edges source → target only; by default either way (two actors under one parent are 2 steps apart)",
+      "type": "boolean"
+     }
+    },
+    {
+     "name": "maxSteps",
+     "schema": {
+      "default": 4,
+      "description": "Edges on the path at most, 1–4 (default 4)",
+      "maximum": 4,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=4"
+      ]
+     }
+    },
+    {
+     "name": "includeAiDialogs",
+     "schema": {
+      "description": "Include the AI Console dialog Events: left out of the path by default",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Finds the shortest path (at most 4 edges) between two actors along chosen edge types"
+  },
+  {
+   "name": "actor/context/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "fields",
+     "schema": {
+      "description": "Projection: keep only these sections — actor, data, neighbors, accounts, reactions, history, processes. Empty keeps everything",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "schema": {
+      "description": "Extras: edgeCounts (count each neighbor group, capped at 1000), processDetails (ask Corezoid for each process's title, description and status)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "edgeTypeIds",
+     "schema": {
+      "description": "Neighbors of these edge types only; every type when omitted",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=20",
+       "dive",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "perType",
+     "schema": {
+      "default": 10,
+      "description": "Neighbors per edge type and direction (1–50, default 10)",
+      "maximum": 50,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=50"
+      ]
+     }
+    },
+    {
+     "name": "reactionsLimit",
+     "schema": {
+      "default": 10,
+      "description": "Latest reactions (1–50, default 10)",
+      "maximum": 50,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=50"
+      ]
+     }
+    },
+    {
+     "name": "historyLimit",
+     "schema": {
+      "default": 10,
+      "description": "Latest changes (1–50, default 10)",
+      "maximum": 50,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=50"
+      ]
+     }
+    },
+    {
+     "name": "includeAiDialogs",
+     "schema": {
+      "description": "Include the AI Console dialog Events among the neighbors: left out by default",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Returns an actor's card in one call: the actor, its data with field titles, neighbors by edge type, balances, latest reactions and changes, and its Corezoid processes"
+  },
+  {
+   "name": "actor/backlinks/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "fields",
+     "schema": {
+      "description": "Projection: keep only these sections — incoming, mentions. Empty keeps both",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "schema": {
+      "description": "Extras: edgeCounts (count each incoming group, capped at 1000)",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "edgeTypeIds",
+     "schema": {
+      "description": "Incoming edges of these types only; every type when omitted",
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=20",
+       "dive",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "perType",
+     "schema": {
+      "default": 10,
+      "description": "Incoming edges per type (1–50, default 10)",
+      "maximum": 50,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=50"
+      ]
+     }
+    },
+    {
+     "name": "mentionsLimit",
+     "schema": {
+      "default": 20,
+      "description": "Mentions per page (1–50, default 20)",
+      "maximum": 50,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=50"
+      ]
+     }
+    },
+    {
+     "name": "mentionsOffset",
+     "schema": {
+      "description": "Mentions to skip: mentionsNextOffset of the previous page",
+      "minimum": 0,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=0"
+      ]
+     }
+    },
+    {
+     "name": "includeAiDialogs",
+     "schema": {
+      "description": "Include the AI Console dialog Events among the incoming edges, and dialogs and the comments under them among the mentions: left out by default",
+      "type": "boolean"
+     }
+    }
+   ],
+   "summary": "Returns what points at an actor: incoming edges by type and the actors and comments that mention it"
+  },
+  {
+   "name": "history/list",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "objType",
+     "required": true,
+     "schema": {
+      "description": "Object kind",
+      "enum": [
+       "actor",
+       "formTemplate",
+       "templateActors",
+       "account"
+      ],
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "oneof=actor formTemplate templateActors account"
+      ]
+     }
+    },
+    {
+     "name": "objId",
+     "required": true,
+     "schema": {
+      "description": "Object identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "from",
+     "required": true,
+     "schema": {
+      "description": "Window start (ms), exclusive",
+      "type": "integer",
+      "x-validation-rules": [
+       "required"
+      ]
+     }
+    },
+    {
+     "name": "to",
+     "required": true,
+     "schema": {
+      "description": "Window end (ms), inclusive",
+      "type": "integer",
+      "x-validation-rules": [
+       "required"
+      ]
+     }
+    },
+    {
+     "name": "field",
+     "schema": {
+      "description": "Restrict to one changed field: a bare field id matches it and data.<field>; a key as stored (data.<field>, data.__form__<formId>:<field>) matches itself",
+      "type": "string"
+     }
+    },
+    {
+     "name": "limit",
+     "schema": {
+      "description": "Page size (default 20, max 50)",
+      "maximum": 50,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=50"
+      ]
+     }
+    },
+    {
+     "name": "offset",
+     "schema": {
+      "description": "Offset paging",
+      "minimum": 0,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=0"
+      ]
+     }
+    },
+    {
+     "name": "fields",
+     "schema": {
+      "description": "Fields to include in response",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "schema": {
+      "description": "Related entities to include",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    }
+   ],
+   "summary": "Lists an object's change history, newest first"
+  },
+  {
+   "name": "graph/tree/get",
+   "params": [
+    {
+     "name": "accId",
+     "required": true,
+     "schema": {
+      "description": "Workspace identifier",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "actorId",
+     "required": true,
+     "schema": {
+      "description": "Actor whose subtree to read",
+      "minLength": 1,
+      "type": "string",
+      "x-validation-rules": [
+       "required",
+       "min=1"
+      ]
+     }
+    },
+    {
+     "name": "edgeTypeId",
+     "required": true,
+     "schema": {
+      "description": "Edge type of the tree; must be a tree type (isTree)",
+      "type": "integer",
+      "x-validation-rules": [
+       "required"
+      ]
+     }
+    },
+    {
+     "name": "fields",
+     "schema": {
+      "description": "Projection of each node, as in actor/get",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "with",
+     "schema": {
+      "description": "Related entities to add to each node, as in actor/get",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    {
+     "name": "sysLinkTypes",
+     "schema": {
+      "description": "Synthetic system relations to add: workspace, creator, owner, layers, layerActors, layerActorsStats, actorsOwner",
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "x-validation-rules": [
+       "max=7",
+       "dive",
+       "oneof=workspace creator owner layers layerActors layerActorsStats actorsOwner"
+      ]
+     }
+    },
+    {
+     "name": "sysLinkLimit",
+     "schema": {
+      "default": 5,
+      "description": "Maximum items per collection relation (layers, layerActors, actorsOwner)",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=1",
+       "max=100"
+      ]
+     }
+    },
+    {
+     "name": "sysLinkOffset",
+     "schema": {
+      "description": "Items to skip per collection relation (layers, layerActors, actorsOwner)",
+      "minimum": 0,
+      "type": "integer",
+      "x-validation-rules": [
+       "min=0"
+      ]
+     }
+    }
+   ],
+   "summary": "Returns the whole actor tree (only for tree edge types)"
   }
  ]
 }

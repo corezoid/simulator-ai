@@ -44,16 +44,122 @@
         },
         {
           "name": "maxVisibleChildren",
-          "required": true,
           "schema": {
             "type": "integer",
-            "description": "The layer's limit of direct children shown per actor — the ranks the fan shows and this list skips; linked children are never listed",
+            "description": "For a wide fan: the layer's limit of direct children shown per actor — the ranks the fan shows and this list skips; linked children are never listed. Required unless roots or conditional are given",
             "minimum": 1,
             "maximum": 200,
             "x-validation-rules": [
-              "required",
               "min=1",
               "max=200"
+            ]
+          }
+        },
+        {
+          "name": "roots",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "For a collapsed actor: every placement (laId) collapsed whole, as passed to graph/layer/collapse/resolve; laId must be among roots or conditional. Lists the direct children of laId the collapse folds",
+            "x-validation-rules": [
+              "max=500",
+              "dive",
+              "min=1"
+            ]
+          }
+        },
+        {
+          "name": "conditional",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "condition": {
+                  "type": "object",
+                  "properties": {
+                    "accountNameId": {
+                      "type": "string",
+                      "description": "Account name whose balance amountFrom/amountTo bound",
+                      "minLength": 1,
+                      "x-validation-rules": [
+                        "min=1"
+                      ]
+                    },
+                    "amountFrom": {
+                      "type": "number",
+                      "description": "Lower bound (inclusive) on the account balance"
+                    },
+                    "amountTo": {
+                      "type": "number",
+                      "description": "Upper bound (inclusive) on the account balance"
+                    },
+                    "currencyId": {
+                      "type": "integer",
+                      "description": "Currency of the bounded account",
+                      "minimum": 1,
+                      "x-validation-rules": [
+                        "min=1"
+                      ]
+                    },
+                    "formId": {
+                      "type": "integer",
+                      "description": "Account template the matching children carry",
+                      "minimum": 1,
+                      "x-validation-rules": [
+                        "required",
+                        "min=1"
+                      ]
+                    },
+                    "incomeType": {
+                      "type": "string",
+                      "description": "Bound one side of the account; omitted bounds the signed balance (credit minus debit)",
+                      "enum": [
+                        "credit",
+                        "debit"
+                      ],
+                      "x-validation-rules": [
+                        "oneof=credit debit"
+                      ]
+                    },
+                    "q": {
+                      "type": "string",
+                      "description": "Condition on the children's template field values, in the saved actor-filter grammar: key=value terms joined by \u0026 (and), groups joined by || (or); operators = != \u003c \u003c= \u003e \u003e=",
+                      "maxLength": 10000,
+                      "x-validation-rules": [
+                        "max=10000"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "formId"
+                  ],
+                  "description": "Which direct children fold: the actors of formId that q and the balance bounds select",
+                  "x-validation-rules": [
+                    "required"
+                  ]
+                },
+                "laId": {
+                  "type": "integer",
+                  "description": "Placement identifier (laId) of the collapsed actor",
+                  "minimum": 1,
+                  "x-validation-rules": [
+                    "required",
+                    "min=1"
+                  ]
+                }
+              },
+              "required": [
+                "laId",
+                "condition"
+              ]
+            },
+            "description": "For a collapsed actor: every placement collapsed by condition, as passed to graph/layer/collapse/resolve",
+            "x-validation-rules": [
+              "max=100",
+              "dive"
             ]
           }
         },
@@ -113,6 +219,13 @@
         "schema": {
           "type": "object",
           "properties": {
+            "branching": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "For a collapsed actor, on the first page without q: the folded direct children (laId) that have children of their own, at most 500 — what expanding it one level leaves collapsed"
+            },
             "hasMore": {
               "type": "boolean",
               "description": "More hidden children follow this page"
@@ -137,6 +250,10 @@
                         "type": "integer",
                         "description": "Template (form) identifier of the actor"
                       },
+                      "formTitle": {
+                        "type": "string",
+                        "description": "For a collapsed actor's list: the title of the actor's account template"
+                      },
                       "id": {
                         "type": "string",
                         "description": "Actor identifier"
@@ -151,6 +268,10 @@
                       }
                     },
                     "description": "The child actor"
+                  },
+                  "childCount": {
+                    "type": "integer",
+                    "description": "For a collapsed actor's list: the child's own direct children on the layer"
                   },
                   "laId": {
                     "type": "integer",
@@ -788,7 +909,121 @@
                   "condition"
                 ]
               },
-              "description": "Placements the caller collapsed by condition, oldest first; [] when none"
+              "description": "Placements collapsed by condition for the caller — their own first, then the layer's default ones they did not change; [] when none"
+            },
+            "default": {
+              "type": "object",
+              "properties": {
+                "conditional": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "condition": {
+                        "type": "object",
+                        "properties": {
+                          "accountNameId": {
+                            "type": "string",
+                            "description": "Account name whose balance amountFrom/amountTo bound",
+                            "minLength": 1,
+                            "x-validation-rules": [
+                              "min=1"
+                            ]
+                          },
+                          "amountFrom": {
+                            "type": "number",
+                            "description": "Lower bound (inclusive) on the account balance"
+                          },
+                          "amountTo": {
+                            "type": "number",
+                            "description": "Upper bound (inclusive) on the account balance"
+                          },
+                          "currencyId": {
+                            "type": "integer",
+                            "description": "Currency of the bounded account",
+                            "minimum": 1,
+                            "x-validation-rules": [
+                              "min=1"
+                            ]
+                          },
+                          "formId": {
+                            "type": "integer",
+                            "description": "Account template the matching children carry",
+                            "minimum": 1,
+                            "x-validation-rules": [
+                              "required",
+                              "min=1"
+                            ]
+                          },
+                          "incomeType": {
+                            "type": "string",
+                            "description": "Bound one side of the account; omitted bounds the signed balance (credit minus debit)",
+                            "enum": [
+                              "credit",
+                              "debit"
+                            ],
+                            "x-validation-rules": [
+                              "oneof=credit debit"
+                            ]
+                          },
+                          "q": {
+                            "type": "string",
+                            "description": "Condition on the children's template field values, in the saved actor-filter grammar: key=value terms joined by \u0026 (and), groups joined by || (or); operators = != \u003c \u003c= \u003e \u003e=",
+                            "maxLength": 10000,
+                            "x-validation-rules": [
+                              "max=10000"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "formId"
+                        ],
+                        "description": "Which direct children fold: the actors of formId that q and the balance bounds select",
+                        "x-validation-rules": [
+                          "required"
+                        ]
+                      },
+                      "laId": {
+                        "type": "integer",
+                        "description": "Placement identifier (laId) of the actor collapsed by condition",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "required",
+                          "min=1"
+                        ]
+                      },
+                      "summary": {
+                        "type": "string",
+                        "description": "The words the fold is shown with in the Graph Editor (its badge tooltip), e.g. \"Order: Stage = paid\"; empty when none was given",
+                        "maxLength": 500,
+                        "x-validation-rules": [
+                          "max=500"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "laId",
+                      "condition"
+                    ]
+                  },
+                  "description": "Placements the layer's author collapsed by condition for everyone; [] when none"
+                },
+                "roots": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "Placements (laId) the layer's author collapsed whole for everyone; [] when none"
+                }
+              },
+              "description": "The layer's default collapse, set by its author for every viewer (data.collapseDefault); each viewer's own changes override it placement by placement"
+            },
+            "expanded": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Placements of the layer's default collapse the caller expanded for themselves; [] when none"
             },
             "fanOpen": {
               "type": "array",
@@ -826,7 +1061,7 @@
               "items": {
                 "type": "integer"
               },
-              "description": "Placements (laId) the caller collapsed whole, oldest first; [] when none"
+              "description": "Placements (laId) collapsed whole for the caller — their own first, oldest first, then the layer's default ones they did not change; [] when none"
             }
           }
         }
@@ -1140,7 +1375,121 @@
                   "condition"
                 ]
               },
-              "description": "Placements the caller collapsed by condition, oldest first; [] when none"
+              "description": "Placements collapsed by condition for the caller — their own first, then the layer's default ones they did not change; [] when none"
+            },
+            "default": {
+              "type": "object",
+              "properties": {
+                "conditional": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "condition": {
+                        "type": "object",
+                        "properties": {
+                          "accountNameId": {
+                            "type": "string",
+                            "description": "Account name whose balance amountFrom/amountTo bound",
+                            "minLength": 1,
+                            "x-validation-rules": [
+                              "min=1"
+                            ]
+                          },
+                          "amountFrom": {
+                            "type": "number",
+                            "description": "Lower bound (inclusive) on the account balance"
+                          },
+                          "amountTo": {
+                            "type": "number",
+                            "description": "Upper bound (inclusive) on the account balance"
+                          },
+                          "currencyId": {
+                            "type": "integer",
+                            "description": "Currency of the bounded account",
+                            "minimum": 1,
+                            "x-validation-rules": [
+                              "min=1"
+                            ]
+                          },
+                          "formId": {
+                            "type": "integer",
+                            "description": "Account template the matching children carry",
+                            "minimum": 1,
+                            "x-validation-rules": [
+                              "required",
+                              "min=1"
+                            ]
+                          },
+                          "incomeType": {
+                            "type": "string",
+                            "description": "Bound one side of the account; omitted bounds the signed balance (credit minus debit)",
+                            "enum": [
+                              "credit",
+                              "debit"
+                            ],
+                            "x-validation-rules": [
+                              "oneof=credit debit"
+                            ]
+                          },
+                          "q": {
+                            "type": "string",
+                            "description": "Condition on the children's template field values, in the saved actor-filter grammar: key=value terms joined by \u0026 (and), groups joined by || (or); operators = != \u003c \u003c= \u003e \u003e=",
+                            "maxLength": 10000,
+                            "x-validation-rules": [
+                              "max=10000"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "formId"
+                        ],
+                        "description": "Which direct children fold: the actors of formId that q and the balance bounds select",
+                        "x-validation-rules": [
+                          "required"
+                        ]
+                      },
+                      "laId": {
+                        "type": "integer",
+                        "description": "Placement identifier (laId) of the actor collapsed by condition",
+                        "minimum": 1,
+                        "x-validation-rules": [
+                          "required",
+                          "min=1"
+                        ]
+                      },
+                      "summary": {
+                        "type": "string",
+                        "description": "The words the fold is shown with in the Graph Editor (its badge tooltip), e.g. \"Order: Stage = paid\"; empty when none was given",
+                        "maxLength": 500,
+                        "x-validation-rules": [
+                          "max=500"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "laId",
+                      "condition"
+                    ]
+                  },
+                  "description": "Placements the layer's author collapsed by condition for everyone; [] when none"
+                },
+                "roots": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "Placements (laId) the layer's author collapsed whole for everyone; [] when none"
+                }
+              },
+              "description": "The layer's default collapse, set by its author for every viewer (data.collapseDefault); each viewer's own changes override it placement by placement"
+            },
+            "expanded": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Placements of the layer's default collapse the caller expanded for themselves; [] when none"
             },
             "fanOpen": {
               "type": "array",
@@ -1182,7 +1531,7 @@
               "items": {
                 "type": "integer"
               },
-              "description": "Placements (laId) the caller collapsed whole, oldest first; [] when none"
+              "description": "Placements (laId) collapsed whole for the caller — their own first, oldest first, then the layer's default ones they did not change; [] when none"
             }
           }
         }

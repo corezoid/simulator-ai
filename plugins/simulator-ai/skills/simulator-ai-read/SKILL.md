@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-read
-description: Read actor or account-template metadata and paged layer node placements through the new public Simulator AI MCP. Use for inspecting supplied actor, form or layer identifiers in the configured workspace.
+description: Read Simulator actor or template metadata and paged layer placements with the desktop read profiles. Use to inspect actor, form or layer ids in the configured workspace.
 ---
 
 Use the installed Simulator AI MCP catalog. The desktop `read` profile includes actor

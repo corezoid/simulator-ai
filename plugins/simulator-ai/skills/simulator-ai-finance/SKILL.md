@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-finance
-description: Manage Simulator accounts, balances, transactions, transfers, currencies, account names and counters with the public Simulator AI tools (profile console-full). Use when the user wants to open an account on an actor, read a balance or its history, record a transaction, move value between actors, add a currency or category, track a counter, set a balance, write a formula, or tag accounts and bind triggers ("баланс рахунку", "запиши транзакцію", "переказ коштів", "лічильник", "баланс счёта", "перевод средств").
+description: "Balances, who paid whom how much, payments: Simulator accounts, transactions, transfers, currencies, counters. Triggers: \"record a transaction\", \"хто заплатив\", \"переказ коштів\", \"баланс счёта\"."
 ---
 
 Use the installed `simulator-ai` catalog. Plain `console` (AI Console) has `account_create`,
@@ -16,9 +16,14 @@ below is `console-full`. Every tool works in the host workspace.
   or `plan`, `min`, `max`, `avg`): two rows, `credit` and `debit`, each with its own `id`, the
   `accountId` of the transaction tools.
 - Amounts are real values: `500` on a USD account is 500 USD; `precision` is display only.
-- `incomeType` is the side: post income (what the actor receives or earns) to its `credit`
-  row and spending to its `debit` row; a transfer moves value from `debit` rows to `credit`
-  rows.
+- `incomeType` is the side. **The workspace's convention for the pair comes first:** a budget
+  account may keep its spending on `credit` on every project. `account_create` answers
+  `postingSide {side, actors, otherSide}` — how other actors post one-sided transactions of the
+  pair — and `ontology_apply`'s dry run shows it per transaction ("convention: credit (3 actors)").
+  Without either, look: `transactions_filter {accounts: [{nameId, currencyId}], from, to}` and the
+  `incomeType` of rows without `transferId` on other actors. Follow the majority unless the person
+  names the side; only with no history: income (what the actor receives or earns) to `credit`,
+  spending to `debit`. A transfer always moves value from `debit` rows to `credit` rows.
 
 ## Set up
 
@@ -63,18 +68,67 @@ With ids, step by step:
   `chart_data_get` (see the charts skill), not a rebuild from `accounts_list`.
 - `transactions_list {actorId, nameId, currencyId}` explains a balance; `account_transactions_list
   {accountId}` pages one row; `transactions_filter` searches the workspace. A window needs
-  both `from` and `to` (Unix ms, at most about 12 months): one alone is ignored, and without
-  both it is this month.
+  both `from` and `to` (Unix ms): one alone is ignored, and without both it is this month.
+  sim-api reads at most 366 days per window; the tools split a longer period (all time: `from: 0`)
+  into 366-day windows, newest first, up to 5 years back from `to`, sum the `*_count` tools and
+  join pages up to `limit`. `next {from, to, cursor?}` is the call that reads on; `note` names a
+  part the 5-year ceiling left unread. `offset` does not page a long period: use `next`.
+
+## Who paid whom, how much
+
+Start from the graph, not from the ledger: every transfer leaves a money edge
+`transfersAmount_<nameId>_<currencyId>` from the payer to the receiver, its `weight` the amount
+and its `linkedActorId` the transfer's Transfers actor (the tools below name the transfer itself).
+
+1. `entity_context_get {actorId}` (one call): `transfers` sums those edges per counterparty —
+   `direction` `in` (it paid this actor) or `out` (this actor paid it), `amount`, `account`,
+   `currency` and `transferIds` (`transferActorIds`: transfers whose actor you may not read).
+   A `partial` line sums only the newest `perType` edges of its type: repeat with `perType: 50`;
+   still `partial`, page `graph_get {actorId, edgeTypeIds: [edgeTypeId]}` (limit/offset) and add
+   up its `transfers` — never report a partial sum as the total. The actor's balances are in
+   `accounts` of the same answer.
+2. Details of one payment (date, comment, legs): `transfer_get {id: <transferId>, with: ["legs"]}`.
+3. **A payment "for" a contract, an invoice, a project** — something that is seldom a party to it:
+   `entity_context_get {actorId: <the contract>}` answers `payments`, the transfers of the last
+   366 days it is a party to or whose comment names its number ("Оплата за договором №22"), each
+   with `from`, `to`, amounts and `createdAt`. That answers "which payment, from whom, to whom".
+4. **A period of payment** ("in April", "this year"): `transfers_filter {from, to, dateBy:
+   "originalDate", actorIds?}` (and `transfers_filter_count` with the same filter) — sim-api bounds
+   and orders the transfers by their legs' business date and answers it as `originalDate`. Without
+   `dateBy` the window is when the transfer was ENTERED, which misses payments entered later for
+   that month. A form-field transfer has no business date: `dateBy: "originalDate"` with
+   `formFields` or `kind: "formFields"` is refused (-32602 invalid params); search those by
+   `createdAt`. Over 366 days the tools read windows as usual, each with `dateBy`.
+`graph_get` names the money edges of its answer in `transfers` too.
 
 ## Record a transaction
 
-`transaction_create {accountId, amount, ref, comment}` posts to one row and returns the
+`transaction_create {accountId, amount, ref, comment}` posts to one row — the row of the side the
+convention above names (`credit` or `debit` id from `account_create` / `accounts_list`) — and returns the
 balance after it. An amount past the account's limits is stored as `type: "declined"` and
 moves nothing: check the returned `type`. Always send a `ref`: after a timeout read `transaction_by_ref_get {accountId,
 ref}` before retrying, never post twice. A hold is two steps: `type: "authorized"`, then a
 second call with `type` `completed`, `canceled` or `reversed` and `parentId` (or `parentRef`).
 `transaction_by_actor_ref_create` posts by the actor's template and ref without looking up the row.
 A blocked, formula, statistical or transfer-only account refuses plain transactions.
+
+## Transactions vs transfers
+
+- A **transaction** is an event on ONE account (income, spending, a plan, an adjustment).
+- A **transfer** is an exchange between parties: its legs are transactions, and it is what draws
+  the graph's "transaction" edges (`transfersAmount_<nameId>_<currencyId>` between the from and
+  to actors, asynchronously). Never create such an edge yourself, even when asked to "draw it
+  directly": `edge_create`, `edges_create`, `graph_build` and `ontology_apply` refuse the type, and
+  `edge_update` / `edge_endpoints_update` refuse to relink or re-point one. An edge without a
+  transfer lies about money: explain that and offer the transfer instead.
+- Wrong postings are corrected by a reversing one (storno), never deleted.
+- Structure and money together ("a contract with its payment"): one `ontology_apply` patch with a
+  dry run (`simulator-ai-ontology`).
+
+**Legacy ledger.** A workspace whose ledger is not yet on this API refuses every posting with
+"wrong financial API … legacy API" (`ledgerWrongAPI`): transactions and transfers there are still
+made in the web app. Say so plainly; do not retry with other tools. Reading balances and history
+works everywhere.
 
 ## Move value
 
@@ -93,6 +147,19 @@ hold's `transferId`, and the `from` and `to` legs again, each with `parentId` (i
 transaction id) or `parentRef`. After a timeout read `transfer_by_ref_get {ref}` before
 retrying. Between people, find each person (`users_search`) and their twin actor
 (`actor_system_get {objType: "user", objId: <userId>}`), then their account rows.
+
+Find transfers with `transfers_filter` (`transfers_filter_count` totals the same filter):
+`actorIds` lists an actor's transfers, a leg of the actor or an owner change that moved it.
+A change of a form field's value between actors (and of the owner) is a transfer too:
+`kind: "formFields"` keeps only those, any field, and `formFields: [{formId, fieldId}]` narrows
+to fields (`fieldId` is the template item id, `select_1` or `ownerId`). Neither combines with
+`accounts` or `accountType`. The window is `from` and `to` (Unix ms), this month by default.
+
+**A form field's value or owner** moves between actors with `transfer_form_fields_create {ref,
+comment?, from: [{actorId, formId, fieldId, value: [option values]}], to: [...]}`: from legs take
+the values out of a select or multiSelect field, to legs add them, together exactly the same
+values. Confirm the actors, field and values first; it shows in `transfers_filter` with
+`kind: "formFields"`.
 
 ## Counters
 

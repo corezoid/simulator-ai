@@ -68,6 +68,7 @@ func build(c *publicapi.Client) *server.MCPServer {
 		addFormEngines(s, c)
 		addParity(s, c, graphTools)
 		addGraphEngines(s, c)
+		addParity(s, c, knowledgeTools)
 		addParity(s, c, reactionTools)
 		addParity(s, c, accessRequestTools)
 		addParity(s, c, accountTools)

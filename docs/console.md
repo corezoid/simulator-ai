@@ -18,10 +18,77 @@ positions; `layer_edges_list` keeps of each edge its type, ends, label and hole;
 most 150 nodes and the edges between them with `total`, the `box` every node centre lies in and `truncated`; `layer_placements_all`
 answers `count`, `summary {forms [{formId, count}], box}` and the first `limit` (150) rows by `cell`. Tool groups: Console entries in `tools/list` carry `_meta: {"simulator-ai/groups": [...]}`.
 Hosts can select `core` plus the domains needed for a task. A tool can belong to multiple groups.
-Groups include graph, graph_extra (holes, pencil drawings, opening a node, layer settings, the compact and prune
+Groups include knowledge (the knowledge-base reads below, with `graph_get`, `actors_search` and `search_all`),
+graph, graph_extra (holes, pencil drawings, opening a node, layer settings, the compact and prune
 engines), smart_forms, forms, finance, finance_setup, people, files, meetings,
 jobs, charts, simulation and corezoid. The plain `console` catalog is a curated subset,
-not the union of all these groups. Use `tools/list` for the current inventory.
+not the union of all these groups. Use `tools/list` for the current inventory. The knowledge-base write tools:
+`ontology_apply` is in graph (the plain catalog's budget has no room for it), saved views in forms (and charts),
+the person's memory (`memory_get`, `memory_save`) in core. The knowledge-base reads are in knowledge, and
+`ontology_get` and `entity_context_get` also in core; none is in the plain catalog (its 108 KiB budget has 1.2 KiB left, `ontology_get` alone is 2.3 KiB).
+
+## Knowledge-base reads, long periods and AI Console dialogs
+
+`ontology_get`, `entity_context_get`, `graph_traverse`, `graph_path_find`, `actor_backlinks_get`, `history_list` and
+`graph_tree_get` call the public methods of the same name (`ontology/get`, `actor/context/get`, `graph/traverse`,
+`graph/path/find`, `actor/backlinks/get`, `history/list`, `graph/tree/get`), pinned in `contracts/parity-openrpc.json`
+from sim-api `feature/ai-knowledge-base` (see `parity-source.json`). They are console-only for now. `entity_context_get`
+is compact unless `full: true`: data values and comment texts are cut at 300 characters, history values at 200, and
+the neighbor groups of money edges (`transfersAmount_<nameId>_<currencyId>`) become `transfers [{direction, actorId,
+title, amount, account, currency, transferIds}]`, the weights summed per counterparty, account and direction
+(the type's last `_` segment is the currency, as sim-api reads it); a group with more edges than `perType` marks its
+lines `partial` with their `edgeTypeId` (and `transfersHasMore`). `graph_get` adds `transfers [{from, to, amount,
+edgeTypeId, transferId}]` for edges with a weight and a linked actor. A money edge's `linkedActorId` is the
+transfer's Transfers actor (control-tasks makes one per transfer, ref = the transfer id): both tools read those
+actors' `ref` in one `batch` of `actor/get` and name the transfer; one the caller may not read stays as
+`transferActorIds` / `transferActorId`.
+
+`history_list` maps `field` to the key history rows store: a template field named by its id or title (any case) is
+sent as `data.<id>` (one `actor/get` + `form/get`; `fieldKey` in the answer), anything else as given; a `to` below
+10^11 is read as Unix seconds (both bounds ×1000, `note`). `graph_traverse`, `graph_path_find` and `graph_get` add
+`edgeTypes [{id, name, role}]` for the types of their edges from `ontology/get {fields: ["edgeTypes"]}`; a type that
+list lacks and whose edge has a weight is `role: transactions`; a failed read leaves the answer as it is.
+
+`layer_digest {layerId, full?}` reads the layer actor (`data.accounts`), `graph/layer/stats/get`, every node placement
+and one non-atomic `batch` of `actor/context/get` (`actor`, `data`, `accounts`, `neighbors` over every edge type, 50 per
+type and direction) per 100 actors (at most 500). Levels come from each actor's hierarchy parent on the layer.
+`balances` are each actor's fact credit − debit of the pairs the layer shows (every non-zero pair without such
+settings, or with `full`); `balanceSums` add them per template and account (`sumOfBalances`), never across templates.
+`transfers` sum the outgoing money edges (`transfersAmount_*`, every account) between two actors of the layer per payer,
+receiver and account, with `count`; the 40 largest in a compact answer. A card lists at most 200 neighbors and spends
+them on the hierarchy and other links first, so an outgoing money group it cut (`hasMore`, under 50 listed) is read
+again alone (`edgeTypeIds: [that type]`, one more non-atomic `batch` per 100, at most 300 such reads). A full answer
+stays within 256 KiB: past it the deepest actors, then the smallest transfers, then the deepest balances are left out,
+each with a note.
+
+Money edges are refused by every edge write (`edge_create`, `edges_create`, `graph_build` by type name;
+`edge_endpoints_update`, and `edge_update` with `linkedActorId` or `hole`, by the edge's type through `ontology/get`).
+`ontology_apply` transactions without `side` follow the pair's posting side on other actors (`transaction/filter`, last
+366 days, transfer legs left out); `account_create` answers it as `postingSide`.
+
+`transfers_filter` and `transfers_filter_count` pass `dateBy` to sim-api (`transfer/filter` re-pinned for it, see
+`contracts/parity-source.json` `ledgerDates`): `originalDate` bounds the window by the legs' business date (half-open, as
+`createdAt`) and answers it as `originalDate`; with `formFields` or `kind: formFields` sim-api refuses it (-32602). Long
+periods are split as for `createdAt`, every window carrying `dateBy`. `entity_context_get` adds `payments` from one `batch` of `transfer/filter`
+(last 366 days, 10 each): `{actorIds: [actor]}` and `{query: <token>}` for up to two words of its title that hold a digit.
+`graph_traverse` adds `countsByForm`.
+
+**Long periods.** sim-api reads transactions and transfers in a window of at most 366 days. `transfers_filter`,
+`transactions_filter`, `transactions_list`, `account_transactions_list` and the two `*_filter_count` tools split a
+longer `from`/`to` into 366-day windows, newest first, at most 5 (the filters read `from <= t < to`, the lists
+`from <= t <= to`: the windows meet without a gap or an overlap on either) (about five years back from `to`; `note` names what was
+left unread). Counts are summed (`windows` says how many); pages are joined up to `limit` (default 50), keeping the first
+window's other keys, and `next {from, to, cursor?}` is the call that reads on. `offset` is refused for such a period.
+
+**AI Console dialogs** are Events actors whose `metaInfo.aiDialogParentId` names the layer or Smart Form they belong
+to; the console's messages are comments under them. sim-api leaves them (and the comments under them) out of
+`actor/search/list` (`actors_search`, `search_all`), `actor/context/get`, `actor/backlinks/get`, `graph/traverse` and
+`graph/path/find` for an AI agent's token (a person's token keeps them); the tools pass `includeAiDialogs` through as a
+contract param (re-projected from sim-api `feature/ai-knowledge-base` `a5d500b6`, `parity-source.json` `aiDialogs` and
+`knowledgeBase`). What sim-api does not filter, the plugin does after the page is read: `layer_actors_search` adds
+`metaInfo` to the projection and drops those rows (and the `metaInfo` it did not ask for), counting them in
+`aiDialogsHidden` (a page can come back shorter than `limit`); `reactions_list` under a dialog answers
+`{list: [], aiDialog: true, note}` after one `actor/get`. `includeAiDialogs: true` turns either off.
 
 ## Actor defaults and placeholders
 
@@ -77,11 +144,70 @@ refs `gb:<operationId>:<index>` and a repeated call answers the same actors (`ac
 </details>
 
 <details>
+<summary>ontology_apply</summary>
+
+**Public calls (dry run, reads only):** `form/list` (a template by title), `form/get` (its fields), `actor/get`
+(existing actors and sources), `edge_type/get`, non-atomic `batch`es of `actor/by-ref/get` (the operation's own
+actors), `actor/search/list` (same title) and `actor/filter/list` (`queryData {"$or": [{"aliases": {"$all":
+[name]}}]}`), `account_name/list`, `account_currency/list`, `account_actor/get`, `account_form/list`, and — when the
+patch posts — `ontology/get {fields: ["ledgerWrite"]}` for the ledger mode (a stand without it answers `unknown`);
+with a layer and transfers, `actor/get` of the layer's `data.accounts`. **Apply:** with a layer, `graph/layer/actors/list` once; one atomic
+`batch` of `actor/create` (ref `gb:<operationId>:<key>`), `graph/layer/actors/manage` (nodes, then edges by
+`$<item>.nodes.<n>.laId`), `edge/create` (`forceDirection`) and `account_actor/create` (`ignoreIfExist`), at most 100
+items; edges between actors already on the layer are drawn after it only when the layer does not show them. Then
+`transaction/by-ref/get` + `transaction/atom/create`, and `transfer/by-ref/get` + `transfer/create` per transfer, refs
+`<operationId>:<key>` (legs `…:f<i>` / `…:t<i>`; closing a hold names `parentRef` of the hold's legs). With a layer
+and transfers (not on a legacy ledger), one `actor/update` of the layer adds the transfers' account pairs to its
+`data.accounts` after the ones it has (as `layer_settings_update` writes them, the old `accountName`/`currency` keys
+cleared, at most 32): the Graph Editor draws transfers only for the pairs a layer names.
+
+**Result:** `done`, `actors [{key, status create|created|exists|existing, actorId, candidates}]`, `edges`, `accounts`,
+`postings [{key, kind, status plan|posted|exists|skipped|failed, ref, id}]`, `ledger simapi|legacy|unknown`,
+`layerAccounts` (the pairs added to the layer, or on a dry run to add),
+`bulk`, `warnings`, `summary`. Problems (all of them) come back as one error before any write. The data key
+`aliases` (a list of strings) holds an actor's other names; it is not a template field and not in full-text search.
+
+</details>
+
+<details>
+<summary>saved_view_create / saved_views_find / saved_view_run, memory_get / memory_save</summary>
+
+A saved view is an `ActorFilters` actor (`form/system/get`, `actor/create`): `data.filter` is the JSON string the filter
+editor writes, with `formId`, `selectedForms`, `q` (`field=value&other>=10||…`, values without `&` or `|`), `status`
+and the order; `saved_view_run` is `actor/filter/list` (and `actor/filter/count`) with `filterActorId`.
+Personal memory is a section of the description of the person's twin (`actor/by-system_obj/get {objType: user}`; the
+user is the one the Simulator JWT names, found via `user/list`; without viewUsers `selfUserId` finds the twin and its
+access rule must carry the JWT's SuperAdmin id; a credential that names no user is refused). The memory block is the
+line `[h3]AI memory[/h3]` and the memory lines right after it with no other line between them; the first line that is
+not a memory line (a blank line, a paragraph, a next `[h3]`) ends it, and everything after it is the person's text,
+never read as memory even when it looks like a memory line (a `- [x] done` checklist). Everything outside the block
+(the agent profile `# Agent`, the person's text) is kept byte for byte. Its lines are `- [category] fact #tag` (category in
+English, the fact in the person's language) and `- relation_type [actor=<id>]Title[/actor]` (`[[Title]]` and
+`[[actor:<id>]]` from the model become the chip); a fact's brackets
+are written as parentheses and its category as sim-api writes it (`preference`, `role`, `responsibility`, `works_with`,
+`rule`, `note`); at most 8 KiB with the heading, as sim-api counts. `memory_save`
+checks the change against the method's limits (at most 50 facts of up to 1000 characters) and sends it — `notes`,
+`relations` (type, actor id from a chip or `[[actor:<id>]]`, or the title of a `[[Title]]`), `forget`, `forgetAll` — to
+sim-api's `actor/memory/save`. sim-api (`service_ai_memory`, the writer its automatic memory shares) writes block and
+edges in one transaction under the twin's lock: a relation is an edge from the twin (`hierarchy` by default), marked
+`aiSource: memory`; a title resolves to the one actor of that title the caller sees, else it stays a text fact; the
+relation lines follow the graph (a link deleted in the UI drops its line, a line the person deleted takes its memory
+edge); forgetting deletes only memory edges; past 8 KiB the oldest links go first. The plugin draws or deletes no edge
+itself. A legacy `data.aiMemory` text is shown by `memory_get` (`legacy: true`) and moved by the next `memory_save`
+(notes in batches, each relation on its own); the key then keeps only what sim-api refused (a relation to an actor that
+is gone, a note over the limit), cleared with an `actor/update` of that key only.
+
+</details>
+
+<details>
 <summary>graph_build / graph_build_delete</summary>
 
 **Public calls:** `graph/layer/actors/list` (the layer, once), then atomic `batch`es of up to 99 `actor/create` plus the
 `graph/layer/actors/manage` that places them by result reference, and of up to 99 `edge/create` plus the `manage` that
-draws them; `edge_type/get` per edge type; `actor/by-ref/get` and `actor/create` for `newLayer`. Delete: the layer read,
+draws them; `edge_type/get` per edge type; `actor/by-ref/get`, `actor/search/list` (Layers, the title) and `actor/create`
+for `newLayer`: a new operation whose title a visible layer already has (spaces and case aside) builds nothing and answers
+`done: false`, `existingLayerId` (the newest of them) and a `warning` saying to build on it, unless `allowDuplicateTitle`.
+Delete: the layer read,
 then `batch`es of `actor/delete`.
 
 **Input:** nodes and edges are short tuples (`[key, title]`, `[from, to, name?]`) or objects; call-level `formId`,

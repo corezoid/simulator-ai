@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-charts
-description: Create, change and read Simulator charts (dashboards of account values on a graph layer) with the public Simulator AI tools. Use when the user wants to create, add or reconfigure a chart or dashboard, plot actor balances or transaction counts, change the chart type, range, sorting, series or size, or asks what a dashboard shows for a period, its totals or per-day values ("create chart", "add dashboard", "switch to bar chart", "show last week", "visualise account data", "dashboard data for March", "створи графік", "додай дашборд", "покажи баланси на графіку", "що показує дашборд за тиждень", "сума по дашборду", "создай график", "дашборд", "данные дашборда за период").
+description: "Simulator charts and dashboards on a graph layer: create, reconfigure, read what one shows for a period. Triggers: \"create a chart\", \"add a dashboard\", \"створи графік\", \"данные дашборда\"."
 ---
 
 Use the installed `simulator-ai` catalog with profile `console-full` (`chart_create`,

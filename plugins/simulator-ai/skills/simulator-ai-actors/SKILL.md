@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-actors
-description: Create, read, update, search and filter Simulator actors — the records of a template — with the data value protocol right, through the public Simulator AI tools. Use when the user wants to create an actor or record, fill in a template, update actor data, find actors where a field has a value, rank them by a balance, set an actor's status, make a placeholder (hole), or asks which Corezoid processes an actor can call ("створи актор", "заповни шаблон", "додай запис", "процеси актора", "создай актор", "заполни шаблон", "добавь запись").
+description: "Simulator actors (records of a template): create, update, read, search, filter, status; the data field format; Corezoid processes. Triggers: \"add a record\", \"заповни шаблон\", \"создай актор\"."
 ---
 
 Use the installed `simulator-ai` catalog. `console` has `actor_get`, `actor_create`,
@@ -59,6 +59,13 @@ it. Closing a hole on a layer with a real actor is `hole_close` (`simulator-ai-g
 
 - `actor_get {actorId, fields: ["id","title","data"]}`; `with` adds `access`, `privs`, `owner`,
   `reactionsStats` and the like only when needed. By ref: `actor_by_ref_get {formId, ref}`.
+- How a graph draws an actor: an actor with no `color` of its own is painted in its template's
+  colour, one with no `picture`/`pictureObject` is drawn as the template's picture.
+  `with: ["avatar"]` adds them as `formColor` and `formPictureObject` on `actor_get`,
+  `actors_search`, `actors_filter`, `layer_placements_list`, `layer_actors_search` and
+  `graph_get` (not on `actor_by_ref_get`, `actor_system_get` or `graph_list`). A new template
+  colour repaints only actors without their own; `actor_create` without `color` still gives the
+  actor its own (a palette colour), so it is not repainted.
 - `actor_update {actorId, ...}` changes only the keys you send; `data` merges key by key
   (`replaceEmpty` replaces the whole object). Send `[]` to clear a multi-value field. `ref` can
   be set or changed later.

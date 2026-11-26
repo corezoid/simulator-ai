@@ -212,6 +212,7 @@ func TestParityRequestsCarryArgumentsAndWorkspace(t *testing.T) {
 		{"edge_exist", `{"source":"a","target":"b","edgeTypeId":3,"bidirected":true}`, "edge/by-node/get", `"bidirected":true,"edgeTypeId":3`},
 		{"transaction_create", `{"accountId":"r1","amount":10,"ref":"t1"}`, "transaction/create", `"accountId":"r1","amount":10,"ref":"t1"`},
 		{"transfer_create", `{"ref":"t2","from":[{"accountId":"d1","amount":5}],"to":[{"accountId":"c1","amount":5}]}`, "transfer/create", `"from":[{"accountId":"d1","amount":5}],"ref":"t2","to":[{"accountId":"c1","amount":5}]`},
+		{"transfer_form_fields_create", `{"ref":"own-1","from":[{"actorId":"a1","formId":5,"fieldId":"owner_sel","value":["v1"]}],"to":[{"actorId":"a2","formId":5,"fieldId":"owner_sel","value":["v1"]}]}`, "transfer/form-fields/create", `"from":[{"actorId":"a1","formId":5,"fieldId":"owner_sel","value":["v1"]}],"ref":"own-1"`},
 		{"atom_transaction_create", `{"transactions":[{"accountId":"d1","amount":1,"ref":"a"},{"accountId":"c1","amount":1,"ref":"b"}]}`, "transaction/atom/create", `"transactions":[{"accountId":"d1","amount":1,"ref":"a"},{"accountId":"c1","amount":1,"ref":"b"}]`},
 		{"account_amount_set", `{"id":"r1","amount":7}`, "account_actor/amount/update", `"amount":7,"id":"r1"`},
 		{"actor_field_triggers_set", `{"actorId":"a1","dataField":"price","triggers":["t1"]}`, "actor/field/triggers/update", `"actorId":"a1","dataField":"price","triggers":["t1"]`},
