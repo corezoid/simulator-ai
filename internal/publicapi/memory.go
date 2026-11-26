@@ -267,7 +267,11 @@ func (c *Client) memorySave(ctx context.Context, twin string, adding memoryDoc, 
 		for i, r := range adding.Relations {
 			// A chip or [[actor:<id>]] names the actor; a [[Title]] is resolved by sim-api to the one
 			// actor of that title the caller sees, or kept as a text fact.
-			relations[i] = memoryRelationWire{Type: r.Type, ActorID: r.ActorID, Title: capRunes(r.Target, maxFactRunes)}
+			typ := r.Type
+			if typ == "gantt" {
+				typ = ganttEdgeType // the Gantt dependency, as every other tool names it
+			}
+			relations[i] = memoryRelationWire{Type: typ, ActorID: r.ActorID, Title: capRunes(r.Target, maxFactRunes)}
 		}
 		params["relations"] = relations
 	}

@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/corezoid/simulator-ai/internal/aimemory"
 )
@@ -97,7 +98,7 @@ func (s *Server) memorySave(params json.RawMessage) (any, *rpcError) {
 	}
 	// sim-api writes block and edges in one transaction: a refused write leaves the edges as they were.
 	edges, keys := maps.Clone(s.Edges), maps.Clone(s.EdgeKeys)
-	doc := s.followGraph(a.ID, aimemory.Read(a.Description), relations)
+	doc := s.followGraph(a.ID, a.Description, aimemory.Read(a.Description), relations)
 	held := len(doc.Notes) + len(doc.Relations)
 	var forgotten []aimemory.Relation
 	if p.ForgetAll {
@@ -141,28 +142,53 @@ func (s *Server) memorySave(params json.RawMessage) (any, *rpcError) {
 		"added": added, "removed": removed, "forgotten": memoryRelations(forgotten), "changed": changed}, nil
 }
 
-// titled is the one actor of exactly that title (case aside, no twin), "" for none or several.
+// titled is sim-api's resolution: the one actor of exactly that title (case aside, no twin), else the
+// one whose title holds the name as whole words; "" for none or several.
 func (s *Server) titled(title string, twins []string) string {
-	match := ""
+	var exact, words []string
 	for _, a := range s.Actors {
-		if strings.EqualFold(aimemory.CleanFact(a.Title), title) && !slices.Contains(twins, a.ID) {
-			if match != "" {
-				return ""
-			}
-			match = a.ID
+		if slices.Contains(twins, a.ID) {
+			continue
+		}
+		got := aimemory.CleanFact(a.Title)
+		switch {
+		case strings.EqualFold(got, title):
+			exact = append(exact, a.ID)
+		case holdsWords(got, title):
+			words = append(words, a.ID)
 		}
 	}
-	return match
+	switch {
+	case len(exact) == 1:
+		return exact[0]
+	case len(exact) == 0 && len(words) == 1:
+		return words[0]
+	}
+	return ""
 }
 
-// followGraph: a memory edge whose line is gone goes; a line whose edge is gone drops.
-func (s *Server) followGraph(twin string, stored aimemory.Doc, adding []aimemory.Relation) aimemory.Doc {
-	lines := append(slices.Clone(stored.Relations), adding...)
+func holdsWords(title, name string) bool {
+	split := func(s string) []string {
+		return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+	}
+	t, n := split(title), split(name)
+	for i := 0; len(n) > 0 && i+len(n) <= len(t); i++ {
+		if slices.Equal(t[i:i+len(n)], n) {
+			return true
+		}
+	}
+	return false
+}
+
+// followGraph: a memory edge whose actor the description names nowhere goes (sim-api searches the
+// whole description, not the parsed block); a line whose edge is gone drops.
+func (s *Server) followGraph(twin, desc string, stored aimemory.Doc, adding []aimemory.Relation) aimemory.Doc {
 	s.deleteEdges(func(e *Edge) bool {
 		if e.Source != twin || e.AiSource != "memory" {
 			return false
 		}
-		return !slices.ContainsFunc(lines, func(r aimemory.Relation) bool { return r.ActorID == e.Target && memoryTypes[r.Type] == e.TypeID })
+		named := strings.Contains(desc, "[actor="+e.Target+"]") || strings.Contains(desc, "actor:"+e.Target)
+		return !named && !slices.ContainsFunc(adding, func(r aimemory.Relation) bool { return r.ActorID == e.Target && memoryTypes[r.Type] == e.TypeID })
 	})
 	doc := aimemory.Doc{Notes: stored.Notes, Relations: []aimemory.Relation{}}
 	for _, r := range stored.Relations {

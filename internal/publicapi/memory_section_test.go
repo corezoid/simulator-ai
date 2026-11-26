@@ -326,3 +326,28 @@ func TestSaveMemoryForgetAndReAddKeepsTheEdge(t *testing.T) {
 		t.Fatal("the re-added relation lost its edge")
 	}
 }
+
+// A "gantt" link is the Gantt dependency type, as every other tool names it; a name resolves to the
+// one actor whose title holds it as whole words.
+func TestSaveMemoryGanttAndWholeWords(t *testing.T) {
+	_, f, project := kbClient(t)
+	c := kbJWTClient(t, f)
+	twin := f.TwinOf(7, 70)
+	park := f.AddActor(14, "kb-eval Проєкт Автопарк", nil)
+	got, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7},
+		Text: "- gantt [[actor:" + project + "]]\n- hierarchy [[Автопарк]]"})
+	if err != nil || len(got.Relations) != 2 || got.Relations[0].Type != "directedInteraction" || got.Relations[1].ActorID != park {
+		t.Fatalf("%+v %v", got, err)
+	}
+	drawn := 0
+	f.Set(func(s *simfake.Server) {
+		for _, e := range s.Edges {
+			if e.Source == twin && e.AiSource == "memory" && (e.Target == project && e.TypeID == 5 || e.Target == park && e.TypeID == 3) {
+				drawn++
+			}
+		}
+	})
+	if drawn != 2 {
+		t.Fatalf("memory edges drawn: %d", drawn)
+	}
+}
