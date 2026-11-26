@@ -265,10 +265,13 @@ func HasNote(doc Doc, n Note) bool {
 	})
 }
 
-// HasRelation reports the same relation: its type and actor (or, unresolved, its title).
+// HasRelation reports the same relation: its type and actor (or, both unresolved, its title).
 func HasRelation(doc Doc, r Relation) bool {
 	return slices.ContainsFunc(doc.Relations, func(m Relation) bool {
-		return m.Type == r.Type && (m.ActorID != "" && m.ActorID == r.ActorID || m.ActorID == "" && strings.EqualFold(m.Target, r.Target))
+		if r.ActorID != "" { // an actor's relation is that actor's, never a [[Title]] line of the same title
+			return m.Type == r.Type && m.ActorID == r.ActorID
+		}
+		return m.Type == r.Type && m.ActorID == "" && strings.EqualFold(m.Target, r.Target)
 	})
 }
 

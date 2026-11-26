@@ -36,8 +36,8 @@
  },
  "methods": 165,
  "memorySave": {
-  "source": "sim-api develop 745fa860 (actor/memory/save), internal/server/testdata/public-openrpc.json",
-  "documentSha256": "8049b897e273c488b7d8229ebf4570d18c64807b2915fb65c6a33d34272207c3",
+  "source": "sim-api develop 40e34c4d (actor/memory/save as a graph: relations by id or title, forgetAll), internal/server/testdata/public-openrpc.json",
+  "documentSha256": "5834af889384bf9a534d2cbfe90065c858a659455dde1d6ded052d89c709b0e4",
   "methods": [
    "actor/memory/save"
   ],

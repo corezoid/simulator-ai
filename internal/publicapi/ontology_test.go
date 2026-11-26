@@ -76,6 +76,7 @@ func postingStatuses(out OntologyResult) string {
 // missing account and an unbalanced transfer are refused with what to do instead.
 func TestOntologyApplyRefusals(t *testing.T) {
 	c, f, project := kbClient(t)
+	twin := f.TwinOf(7, 70)
 	f.Set(func(s *simfake.Server) { s.KB.Names["Bonus pool"], s.KB.Unregistered["n-bonus/980"] = "n-bonus", true })
 	for _, tc := range []struct{ patch, want string }{
 		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"c","formId":12,"title":"C","data":{"stauts":"signed"}}]}`,
@@ -88,6 +89,8 @@ func TestOntologyApplyRefusals(t *testing.T) {
 		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"c","formId":12,"title":"C"}],"accounts":[{"actor":"c","name":"Bonus","currency":"UAH"}]}`, `account name "Bonus" is not in the workspace`},
 		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"a","form":"Counterparty","title":"A"},{"key":"b","form":"Counterparty","title":"B"}],"transfers":[{"key":"x","from":[{"actor":"a","account":"Money","currency":"UAH","amount":5}],"to":[{"actor":"b","account":"Money","currency":"UAH","amount":4}]}]}`, `an exchange is balanced`},
 		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"c","form":"Nope","title":"C"}]}`, `no template titled "Nope"`},
+		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"me","existing":"` + twin + `"},{"key":"c","formId":12,"title":"C","parent":"me"}]}`, `is a person's actor, never a hierarchy parent`},
+		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"me","existing":"` + twin + `"},{"key":"c","formId":12,"title":"C"}],"edges":[{"type":"parent","from":"me","to":"c"}]}`, `is a person's actor, never a hierarchy parent`},
 		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"c","existing":"missing-actor"}],"edges":[]}`, `existing missing-actor is not found or not visible`},
 		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"c","formId":12,"title":"C"}],"accounts":[{"actor":"c","name":"Bonus pool","currency":"UAH"}]}`, `account Bonus pool / UAH is not registered as a pair`},
 		{`{"operationId":"kb-test-2","dryRun":true,"actors":[{"key":"a","form":"Counterparty","title":"A"},{"key":"b","form":"Counterparty","title":"B"}],"transfers":[{"key":"c","hold":"h","type":"completed"},{"key":"h","type":"authorized","from":[{"actor":"a","account":"Money","currency":"UAH","amount":5}],"to":[{"actor":"b","account":"Money","currency":"UAH","amount":5}]}]}`, `put hold "h" before the transfer that closes it`},

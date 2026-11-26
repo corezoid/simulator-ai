@@ -129,6 +129,10 @@
                   "edge": {
                     "type": "object",
                     "properties": {
+                      "aiSource": {
+                        "type": "string",
+                        "description": "Where an AI-created edge comes from: memory (the person's AI memory, an edge from their actor) or console (an AI Console run); absent for an edge a person drew"
+                      },
                       "createdAt": {
                         "type": "integer",
                         "description": "Creation time (Unix seconds)"

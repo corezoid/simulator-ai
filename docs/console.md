@@ -186,15 +186,16 @@ English, the fact in the person's language) and `- relation_type [actor=<id>]Tit
 `[[actor:<id>]]` from the model become the chip); a fact's brackets
 are written as parentheses and its category as sim-api writes it (`preference`, `role`, `responsibility`, `works_with`,
 `rule`, `note`); at most 8 KiB with the heading, as sim-api counts. `memory_save`
-resolves every relation and edge type first and checks the change against the memory it read (size, at most 50 facts
-of up to 1000 characters), then sends the change — `notes`, `relations`, `forget` — to sim-api's `actor/memory/save`,
-which merges it into the block as it is at the write under the same locks as its automatic memory after a dialog
-(`e_ai_memory.Save`, the rules and vectors of `internal/aimemory`): no read-modify-write of the `description` here, so
-neither writer loses the other's facts. The edges follow what was written: a new relation's `edge/create` from the
-twin (atomic `batch`), and every relation the save reports in `forgotten` loses its edge (`edge/by-node/delete`); a
-refused save draws and deletes nothing. A legacy `data.aiMemory` text is shown by `memory_get` (`legacy: true`) and
-moved into the block by the next `memory_save` (its own `actor/memory/save` first); the key then keeps only the
-relations no actor answers to (an unknown title, a deleted actor), cleared with an `actor/update` of that key only.
+checks the change against the method's limits (at most 50 facts of up to 1000 characters) and sends it — `notes`,
+`relations` (type, actor id from a chip or `[[actor:<id>]]`, or the title of a `[[Title]]`), `forget`, `forgetAll` — to
+sim-api's `actor/memory/save`. sim-api (`service_ai_memory`, the writer its automatic memory shares) writes block and
+edges in one transaction under the twin's lock: a relation is an edge from the twin (`hierarchy` by default), marked
+`aiSource: memory`; a title resolves to the one actor of that title the caller sees, else it stays a text fact; the
+relation lines follow the graph (a link deleted in the UI drops its line, a line the person deleted takes its memory
+edge); forgetting deletes only memory edges; past 8 KiB the oldest links go first. The plugin draws or deletes no edge
+itself. A legacy `data.aiMemory` text is shown by `memory_get` (`legacy: true`) and moved by the next `memory_save`
+(notes in batches, each relation on its own); the key then keeps only what sim-api refused (a relation to an actor that
+is gone, a note over the limit), cleared with an `actor/update` of that key only.
 
 </details>
 

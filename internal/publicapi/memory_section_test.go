@@ -159,7 +159,7 @@ func TestSaveMemoryMigratesAndMerges(t *testing.T) {
 		t.Fatalf("get before the move %+v %v", read, err)
 	}
 	got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [workflow] Sends drafts first"})
-	if err != nil || got.Added != 1 || got.Edges != 0 {
+	if err != nil || got.Added != 1 {
 		t.Fatalf("%+v %v", got, err)
 	}
 	stored, _ := f.ActorData(twin)
@@ -225,9 +225,9 @@ func TestSaveMemoryWritesThroughTheServer(t *testing.T) {
 	}
 }
 
-// A legacy relation no actor answers to — an unknown title, a deleted actor's chip — stays in
-// data.aiMemory alone; what resolves moves into the block, the key no longer holds it (so a later
-// forget sticks), and a save is never blocked by it.
+// A legacy relation to an actor that is gone stays in data.aiMemory alone; an unknown title moves as a
+// text fact, the rest moves into the block, the key no longer holds it (so a later forget sticks),
+// and a save is never blocked by it.
 func TestSaveMemoryKeepsAnUnresolvedLegacyRelation(t *testing.T) {
 	_, f, _ := kbClient(t)
 	c := kbJWTClient(t, f)
@@ -242,8 +242,8 @@ func TestSaveMemoryKeepsAnUnresolvedLegacyRelation(t *testing.T) {
 		t.Fatal(err)
 	}
 	stored, _ := f.ActorData(twin)
-	left := "- interaction [[Nobody at all]]\n- works_with [actor=gone-1]Old Co[/actor]\n"
-	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Tea\n- [role] CFO\n" || stored.Data["aiMemory"] != left {
+	left := "- works_with [actor=gone-1]Old Co[/actor]\n"
+	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Tea\n- [note] interaction Nobody at all\n- [role] CFO\n" || stored.Data["aiMemory"] != left {
 		t.Fatalf("description %q legacy %q", stored.Description, stored.Data["aiMemory"])
 	}
 	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Forget: []string{"Tea"}}); err != nil {
@@ -252,7 +252,7 @@ func TestSaveMemoryKeepsAnUnresolvedLegacyRelation(t *testing.T) {
 	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [rule] Short answers"}); err != nil {
 		t.Fatal(err)
 	}
-	if stored, _ := f.ActorData(twin); stored.Description != "[h3]AI memory[/h3]\n- [role] CFO\n- [rule] Short answers\n" {
+	if stored, _ := f.ActorData(twin); stored.Description != "[h3]AI memory[/h3]\n- [note] interaction Nobody at all\n- [role] CFO\n- [rule] Short answers\n" {
 		t.Fatalf("a forgotten legacy fact came back: %q", stored.Description)
 	}
 }
@@ -324,5 +324,30 @@ func TestSaveMemoryForgetAndReAddKeepsTheEdge(t *testing.T) {
 	})
 	if !edge {
 		t.Fatal("the re-added relation lost its edge")
+	}
+}
+
+// A "gantt" link is the Gantt dependency type, as every other tool names it; a name resolves to the
+// one actor whose title holds it as whole words.
+func TestSaveMemoryGanttAndWholeWords(t *testing.T) {
+	_, f, project := kbClient(t)
+	c := kbJWTClient(t, f)
+	twin := f.TwinOf(7, 70)
+	park := f.AddActor(14, "kb-eval Проєкт Автопарк", nil)
+	got, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7},
+		Text: "- gantt [[actor:" + project + "]]\n- hierarchy [[Автопарк]]"})
+	if err != nil || len(got.Relations) != 2 || got.Relations[0].Type != "directedInteraction" || got.Relations[1].ActorID != park {
+		t.Fatalf("%+v %v", got, err)
+	}
+	drawn := 0
+	f.Set(func(s *simfake.Server) {
+		for _, e := range s.Edges {
+			if e.Source == twin && e.AiSource == "memory" && (e.Target == project && e.TypeID == 5 || e.Target == park && e.TypeID == 3) {
+				drawn++
+			}
+		}
+	})
+	if drawn != 2 {
+		t.Fatalf("memory edges drawn: %d", drawn)
 	}
 }

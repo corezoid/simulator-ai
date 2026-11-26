@@ -1,6 +1,6 @@
 {
   "source": "public sim-api OpenRPC projection",
-  "revision": "b2d4aeb9cfd6ede2b4f81826ede8ff2b59660ef5",
-  "projectionSha256": "27bd719366466fa320f1318a7d798be266a15895b787586d874506d12d144b66",
+  "revision": "40e34c4da26aec4b6535da08f9223ebd983821d5",
+  "projectionSha256": "2f04655d1228cc99ccdd61d42d983db83df9095479cb6f198e40430317dc2f56",
   "methods": 1
 }

@@ -142,15 +142,20 @@ type digestCard struct {
 
 // digestGroup is one edge type and direction of a card's neighbors.
 type digestGroup struct {
-	EdgeTypeID int64  `json:"edgeTypeId"`
-	EdgeType   string `json:"edgeType"`
-	Role       string `json:"role"`
-	Direction  string `json:"direction"`
-	HasMore    bool   `json:"hasMore"`
-	Neighbors  []struct {
-		ActorID string `json:"actorId"`
-		Weight  string `json:"weight"`
-	} `json:"neighbors"`
+	EdgeTypeID int64            `json:"edgeTypeId"`
+	EdgeType   string           `json:"edgeType"`
+	Role       string           `json:"role"`
+	Direction  string           `json:"direction"`
+	HasMore    bool             `json:"hasMore"`
+	Neighbors  []digestNeighbor `json:"neighbors"`
+}
+
+// digestNeighbor is one linked actor of a group.
+type digestNeighbor struct {
+	ActorID string `json:"actorId"`
+	Weight  string `json:"weight"`
+	// AiSource "memory" is a person's AI memory edge: no structure, never a level's parent.
+	AiSource string `json:"aiSource"`
 }
 
 // LayerDigest reads and summarises the layer.
@@ -348,7 +353,7 @@ func summarise(out *LayerDigest, ids []string, cards map[string]digestCard, show
 		for _, g := range cards[id].Neighbors {
 			if g.Role == "hierarchy" && g.Direction == "in" {
 				for _, n := range g.Neighbors {
-					if onLayer[n.ActorID] && parent[id] == "" && n.ActorID != id {
+					if onLayer[n.ActorID] && parent[id] == "" && n.ActorID != id && n.AiSource != "memory" {
 						parent[id] = n.ActorID
 					}
 				}
