@@ -106,6 +106,7 @@ strict graph-create and Smart Forms tools have their own [recovery guides](tool-
 | --- | --- |
 | `chart_create` [createChart] (manual series, or the top actors of an ActorFilters actor) | `form/system/get` (`Dashboards`, `ActorFilters`), `actor/create` of the filter and the chart, placed open as `layer_placements_create` does (room checked before the actors are made, made with anisotropy) |
 | `chart_update` [updateChart] (settings, series or filter; with `laId` the placement's size) | `actor/get` + `form/system/get`, a new filter's `actor/create`, `actor/update`, `graph/layer/elements/list` + `graph/layer/actor_settings/save` |
+| `chart_data_get` (what a saved chart shows over a period: series, buckets, total; also in `graph-read`) | `dashboard/get` (`chartId` is its `actorId`; `with` `total`/`series`, `actorIds`; no `source` override) |
 
 ## Applications and Corezoid
 
@@ -146,7 +147,7 @@ An AI Console run's token requires backend support for run-scoped authorization 
 serving downloads from ufs, a file under scan or in quarantine answers 404, so a read right after an upload is
 retried for about 3 seconds and then reports "no such file, or its antivirus scan has not finished". The skills `simulator-ai-access`,
 `simulator-ai-attachments`, `simulator-ai-chat`, `simulator-ai-tasks`, `simulator-ai-finance`, `simulator-ai-skills`,
-`simulator-ai-agents`, `simulator-ai-charts` and `simulator-ai-meetings` compose these tools.
+`simulator-ai-agents`, `simulator-ai-charts`, `simulator-ai-meetings` and `simulator-ai-ontology` compose these tools.
 
 Skill procedures and agent profiles are descriptions users write: `skill_get` and `agent_get` return them as data, and
 their tool descriptions tell the model not to take instructions from them. `build_link` builds a link inside the current

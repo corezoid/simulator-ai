@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-graph
-description: Build, edit, read, analyse, export and import Simulator graphs — flowcharts and process diagrams from native blocks (Start / Stop, Process, Decision, Predefined Process, ...), actors as nodes, edges, layers, positions, colours, holes, nodes opened in place (multi-layers) and hand drawing (Pencil) — with the public Simulator AI tools. Use when the user wants to create a flowchart, diagram or algorithm, add, connect, move, rename or remove nodes and edges, place actors on a layer, open or close an actor or a layer in place, ask what is on a layer or who is connected to whom, count a layer, change its settings (Accounts on the graph, default form, anisotropy), close holes or draw on it ("рахунки на графі", "налаштування шару", "закрий дірки", "намалюй стрілку", "створи блок-схему", "намалюй процес", "з'єднай", "що на шарі", "розкрий шар", "розгорни актора", "згорни", "анізотропія", "создай блок-схему", "нарисуй процесс", "что на слое", "раскрой слой").
+description: "Draw or read a layer or flowchart, what is on it, how many: Simulator nodes, edges, settings, holes, collapse, export. Triggers: \"build a flowchart\", \"що на шарі\", \"підсумуй шар\", \"свернуть ветку\"."
 ---
 
 Use the installed `simulator-ai` catalog. `console` draws and reads flowcharts (`flowchart_*`,
@@ -24,7 +24,7 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
   `flowchart_layout` answer each node's `cell`; `layer_placements_create` and
   `layer_positions_update` take `cell` instead of a position (the cell's centre).
 - An **edge** joins two actors (`source → target`, direction kept) and has an edge type
-  (`hierarchy` by default; `edge_types_list` lists them). Tree types refuse a second parent and
+  (`hierarchy` by default; `edge_types_list` lists them, `ontology_get` with their roles). Tree types refuse a second parent and
   cycles. An edge is drawn on a layer by its own placement between two node `laId`s. Node and
   edge `laId`s are separate numbering.
 - A **hole** is a placeholder: an actor with `hole: true` (its data fields are the conditions
@@ -41,6 +41,15 @@ and layer read below. The desktop `graph-read` / `graph-create` profiles have th
 
 "What is on this graph/layer" means that layer's placements, never a workspace search. In a
 URL `…/graph/<graphId>/layers/<layerId>` the layer is the last id.
+
+**Summarise a layer** ("підсумуй шар", a report for a manager: structure, key records, money):
+`layer_digest {layerId}` FIRST — one call answers its counts, actors per template and per hierarchy
+level, each actor's filled fields, `balances` (what each actor holds now: credit − debit), their
+`balanceSums` per template and the `transfers` between its actors (payer → receiver, amount,
+number of transfers). Report an actor's money from its own balance; a `sumOfBalances` is the sum of
+one template's balances — never add templates together (the company's, the departments' and the
+counterparties' balances are the same money at different stages). Relay `notes` in your own words;
+read further only for what they say is left out (`full: true`).
 
 - `layer_get {layerId}`: compact nodes `{laId, actorId, title, formId, cell, blockId, hole, open}`
   and edges `{laId, edgeId, laIdSource, laIdTarget, name, hole}` (an edge's actors are the
@@ -79,6 +88,51 @@ current layer of the Current context.
 A field the action does not take is refused. `openTabs: 0` means the user does not have the
 layer open, so nothing moved: say so (and offer `build_link` to the layer) rather than "done".
 
+## Collapse branches (the user's own view)
+
+The Graph Editor folds a branch for ONE person: a collapsed actor shows a "+N" badge and everything
+below it hides; nothing moves and nobody else sees it. Not the same as opening/closing a node in
+place (`layer_node_expand`, next sections): "згорни гілку / свернуть ветку / collapse the branch"
+is this; "згорни вузол" of an opened multi-layer node is that. The tools (`console-full`, group
+`graph_extra`; reads also in `graph-read`):
+
+- `layer_collapse_get {layerId}` — what is folded: `folds` (title, `hiddenCount`, whole or
+  `conditional` with its `condition`/`summary`, `visible: false` = another fold hides it, `gone` =
+  the actor left the layer), `fans` (actors with more direct children than the layer's
+  `maxVisibleChildren`: their bare leaves past it fold into "+K", a child linked elsewhere never
+  does; `hiddenCount`, `opened`), `fanOpen` (every fan the user opened), `hiddenTotal`. Add `laId` of a fold or a
+  fan for `under`: one page of what hides there (`limit`, `offset`; `q` searches a fan's children
+  by title). Answer "what is collapsed / what hangs under X" from this, not from `layer_get`.
+- `layer_collapse_update {layerId, …}` — change it: `collapse: [laId]` folds whole;
+  `conditional: [{laId, condition, summary?}]` folds only the direct children the condition
+  matches (each with its subtree; the rest stay); `expand: [laId]` / `expandAll: true` unfolds;
+  `fanOpen` / `fanClose` / `fanReset` open a wide fan whole or fold it again. Expansions go first,
+  so one call replaces a fold. `laId` is the placement (`layer_get` nodes), not the actor id.
+- `layer_collapse_count {layerId, laId, condition}` — preview a condition before folding by it:
+  `count` of `childCount` direct children match. Say "3 of 12 will fold" and fold on agreement
+  when the user's words were vague; a precise request ("collapse the paid orders under ACME")
+  needs no preview.
+
+A condition: `formId` (the children's template — `forms_list`/`form_get` for ids and field names),
+`q` (`stage=paid`, `amount>100&stage!=new`, `a=1||b=2`), optional balance bounds
+(`accountNameId` + `currencyId`, `amountFrom` / `amountTo`, `incomeType`). Without `summary` the
+fold is labelled "<template>: <q>". A child the user cannot view never matches.
+
+**The layer's default collapse.** A layer may carry a collapse its author made for everyone
+(`data.collapseDefault`, set in the editor's layer settings, «Make default for everyone»). What
+`layer_collapse_get` shows is what the user SEES: that default under their own changes. Expanding a
+default fold expands it for this user only (it is saved as theirs; the default stays); a default fold
+they never touched follows the layer when its author changes it. Do not write `collapseDefault`
+yourself unless the user asks to change the layer's default for everyone.
+
+`openTabs` in the answer: the user's open Graph Editor tabs of the layer that updated at once; `0`
+means they will see it when they open the layer — say so (offer `layer_viewport` or `build_link`).
+`changed: false`: it already was so. The fan LIMIT is not personal: it is the layer setting
+`maxVisibleChildren` (0 off, or 1–200; the editor offers 10, 25, 50) in `layer_settings_update`, for every viewer — change it
+only when asked for the layer, not for "show me less". With an API key (`owner: "apiUser"`) the
+state is the API user's own, which no person sees: `layer_collapse_update` refuses; tell the user
+to ask in the AI Console or sign in with `login`.
+
 ## Visualize in the chat
 
 Asked to visualize something in the chat, ask first how: a Smart Form that shows a layer in a
@@ -96,7 +150,12 @@ your own `key`; no actor ids, `laId`s or coordinates.
    `process`, `decision`, ...; the workspace's catalog is the truth). Ask about real ambiguity
    before writing.
 2. **Layer:** the one the user named, else the current layer of the request's Current context
-   (AI Console: `layer <id>`); only with neither, or when asked, `newLayer: "<title>"`.
+   (AI Console: `layer <id>`); only with neither, or when asked, `newLayer: "<title>"`. A layer of
+   that title may exist already (the same request in an earlier turn): `graph_build` then builds
+   nothing and answers `existingLayerId`. A repeat ("build it again", the same request) builds on
+   that layer — `layerId: <existingLayerId>` with `use`/`existing` for what is on it — never a copy;
+   a separate layer gets another title, and `allowDuplicateTitle: true` only when the person asks
+   for a second layer of the same name.
 3. **Build:** `graph_build {operationId, layerId, kind | formId, nodes: [[key, title], ...],
    edges: [[from, to, "label"?], ...]}`. `kind` (a blockId) or `formId` is the default; a node
    that differs is an object `{key, title, kind | formId, data, color, hole}`, an edge of
@@ -137,6 +196,17 @@ first) also places special nodes through `layerSettings`: a text label (`isTextN
 image body (`areaPicture {img, width, height}`). Use it for flowchart blocks only through
 `layer_placements_create`, which keeps them on the grid.
 
+**Gantt keys.** The Graph Editor's Gantt view keeps four keys in a placement's `layerSettings`, and
+`layer_placements_list` / `layer_actors_search` return them: `baseline {startDate, endDate}` (unix
+seconds, the plan before the row was first moved), `ganttOrder` (the row's manual sort key among its
+siblings; a fraction sits between two rows), `ganttPhase` (the uuid of the Phase actor the row was
+put into by hand, overriding the dates) and `neighbors` (on a Phase: actor ids, its first rows).
+Unlike other keys, `null` clears them; a `null` key reads as not set. The user changes them in the
+Gantt view; no tool here edits them on an existing placement. `layer_placements_manage` passes them
+through on a create, and a broken one fails the whole call with `invalidParams` naming the key
+(`items[0].data.layerSettings.ganttPhase: not an actor id (uuid)`; a negative date, `startDate`
+after `endDate`, over 100 `neighbors`), so leave them out when you copy a bag from a read.
+
 ## Holes
 
 A hole stands on a layer for an actor (or a link) that is expected but not known yet. **Closing**
@@ -171,8 +241,9 @@ node; a placeholder link: `edges_create` with `hole: true`.
 
 A layer's own settings (the Graph Editor's layer settings) are keys of the layer actor's `data`,
 not of its placements: the default template of new objects (`defForm`), the default edge shape,
-anisotropy, outer edges, where it opens, and **Accounts on the graph** (the balances drawn on
-every actor of the layer, with their period). Change them with `layer_settings_update {layerId,
+anisotropy, outer edges, where it opens, **Accounts on the graph** (the balances drawn on
+every actor of the layer, with their period) and `maxVisibleChildren` ("show at most N children":
+0 off, or 1–200 — a wider fan folds its bare leaves past N into "+K more" for every viewer). Change them with `layer_settings_update {layerId,
 …}` (`console-full`): only the sent keys change; `accounts` names pairs
 (`[{accountName, currency}]`, the whole list, `[]` hides them) and is resolved for you. Read them
 with `actor_get {actorId: <layerId>, fields: ["id", "data"]}`. Never say a layer setting cannot
@@ -256,6 +327,7 @@ edges stay the way to model a process.
 | Rename, recolour, describe a node | `actor_update` (`console`) |
 | Move nodes (edges follow) | `layer_positions_update {layerId, items: [{laId, x, y}]}` or `[{laId, cell: "C, 7"}]` (`console`); all or none, refused when a target cell is taken |
 | Edge label, curve, pin, linked actor | `edge_update` (an omitted `name` clears the label) |
+| Money edges (`transfersAmount_*`) | never: the edge tools refuse to draw, re-point or relink them — a transfer draws them (`simulator-ai-finance`); a wrong payment is corrected by a reversing transfer |
 | Re-point an edge | `edge_endpoints_update {edgeId, source?, target?}` |
 | Take a node or edge off a layer only | `layer_placements_manage` with `delete` items |
 | Delete edges | `edge_delete {edgeId}` or `edges_by_nodes_delete {links: [{source, target, edgeTypeId}]}` (every layer) |
@@ -305,7 +377,8 @@ Both need the `import_export:management` workspace permission.
 - `graph-read` adds read-only native metadata: `graph_system_form_get` (Graphs/Layers ids),
   `graph_edge_types_list`, `flowchart_blocks_search`, `graph_elements_get` (exact geometry of
   known node/edge laIds, 1–100 per call) and `graph_layer_stats_get` (with
-  `SIMULATOR_AI_ACTOR` it is the only tool and takes `{}`).
+  `SIMULATOR_AI_ACTOR` it is the only tool and takes `{}`), and the collapse reads
+  `layer_collapse_get` / `layer_collapse_count` (the folding itself is the console's).
 - `graph-create` creates a flowchart with recovery receipts: `graph_flowchart_plan` (the
   plan: positions and payloads) → `graph_actor_create` → `graph_edge_create` →
   `graph_placements_create`. Give every write its own stable `operationId`, save the plan and

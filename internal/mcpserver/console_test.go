@@ -118,32 +118,38 @@ func TestConsoleCatalog(t *testing.T) {
 	// The exact console catalog: its own tools plus every actor, form, graph, access, reaction, user,
 	// attachment, finance, registry, chart, simulation, Corezoid, graph export/import, guest link and transcript tool.
 	want := "access_request_cancel,access_request_confirm,access_request_create,access_requests_list,access_rules_get,access_rules_save,account_actor_tags_count," +
-		"account_actor_tags_list,account_actor_triggers_list,account_actor_triggers_set,account_amount_set,account_by_id_get,account_by_ref_create,account_by_ref_get," +
-		"account_create,account_delete,account_formula_get,account_formula_preview,account_formula_set,account_get,account_name_create,account_name_get," +
-		"account_name_update,account_names_list,account_pair_create,account_pair_unregister,account_status_update,account_tag_add,account_tags_list,account_tags_set," +
-		"account_transactions_list,account_triggers_list,account_triggers_set,account_update,accounts_by_ref_list,accounts_count,accounts_list,actor_attach,actor_by_ref_get," +
-		"actor_corezoid_processes_list,actor_create,actor_delete,actor_field_triggers_list,actor_field_triggers_set,actor_get,actor_picture_upload,actor_status_update," +
-		"actor_system_get,actor_update,actors_create,actors_filter,actors_filter_count,actors_search,agent_get,agents_find,atom_transaction_create,attachment_attach," +
-		"attachment_detach,attachment_read,attachment_update,attachment_upload,attachments_by_actor_list,attachments_list,bbcode_tags_get,build_link,chart_create," +
-		"chart_update,chat_open,corezoid_processes_list,corezoid_project_bind,corezoid_project_create,corezoid_project_get,corezoid_projects_list,corezoid_stages_list," +
+		"account_actor_tags_list,account_actor_triggers_list,account_actor_triggers_set,account_amount_set,account_by_id_get,account_by_ref_create," +
+		"account_by_ref_get,account_create,account_delete,account_formula_get,account_formula_preview,account_formula_set,account_get,account_name_create," +
+		"account_name_get,account_name_update,account_names_list,account_pair_create,account_pair_unregister,account_status_update,account_tag_add," +
+		"account_tags_list,account_tags_set,account_transactions_list,account_triggers_list,account_triggers_set,account_update,accounts_by_ref_list," +
+		"accounts_count,accounts_list,actor_attach,actor_backlinks_get,actor_by_ref_get,actor_corezoid_processes_list,actor_create,actor_delete," +
+		"actor_field_triggers_list,actor_field_triggers_set,actor_get,actor_picture_upload,actor_status_update,actor_system_get,actor_update,actors_create," +
+		"actors_filter,actors_filter_count,actors_search,agent_get,agents_find,atom_transaction_create,attachment_attach,attachment_detach,attachment_read," +
+		"attachment_update,attachment_upload,attachments_by_actor_list,attachments_list,bbcode_tags_get,build_link,chart_create,chart_data_get,chart_update," +
+		"chat_open,corezoid_processes_list,corezoid_project_bind,corezoid_project_create,corezoid_project_get,corezoid_projects_list,corezoid_stages_list," +
 		"counter_by_period_get,counter_get,counter_increment,counter_set,currencies_list,currency_create,currency_get,currency_update,edge_create,edge_delete," +
-		"edge_endpoints_update,edge_exist,edge_get,edge_hole_close,edge_hole_reopen,edge_types_list,edge_update,edges_by_nodes_delete,edges_create,flowchart_blocks_list,flowchart_layout," +
-		"form_account_create,form_account_delete,form_accounts_list,form_create,form_delete,form_fields_patch,form_get,form_linked_get,form_status_update,form_update,forms_count," +
-		"forms_list,forms_tree_get,graph_build,graph_build_delete,graph_export_create,graph_file_upload,graph_get,graph_import_create,graph_list,hole_close,hole_conditions_get,hole_reopen,layer_actors_move,layer_actors_search,layer_clean," +
-		"layer_compact,layer_create,layer_draw,layer_edge_settings_save,layer_edges_list,layer_element_exist,layer_get,layer_node_expand,layer_placements_all,layer_placements_create," +
-		"layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_settings_update,layer_skeleton_get,layer_stats_get,layer_viewport,meet_transcription_list," +
-		"public_link_create,public_link_get,public_link_revoke,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,reactions_mark_read," +
-		"search_all,simulation_check,simulation_run,simulation_snapshot_get,skill_get,skills_find,smart_form_components,smart_form_create,smart_form_data_form_create," +
-		"smart_form_file_rollback,smart_form_file_version_get,smart_form_file_versions_list,smart_form_files_create,smart_form_files_get,smart_form_files_update," +
-		"smart_form_folders_create,smart_form_page_patch,smart_form_page_render,smart_form_page_submit,smart_form_reference_grep,smart_form_reference_read,smart_form_release,smart_form_release_diff,smart_form_release_get," +
-		"smart_form_release_rollback,smart_form_releases_list,smart_form_trash_list,smart_form_trash_restore,task_get,transaction_by_actor_ref_create," +
-		"transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter,transactions_filter_count,transactions_list," +
-		"transfer_by_ref_get,transfer_create,transfer_get,transfers_filter,transfers_filter_count,user_get,users_search,workspaces_list"
+		"edge_endpoints_update,edge_exist,edge_get,edge_hole_close,edge_hole_reopen,edge_types_list,edge_update,edges_by_nodes_delete,edges_create," +
+		"entity_context_get,flowchart_blocks_list,flowchart_layout,form_account_create,form_account_delete,form_accounts_list,form_create,form_delete," +
+		"form_fields_patch,form_get,form_linked_get,form_status_update,form_update,forms_count,forms_list,forms_tree_get,graph_build,graph_build_delete," +
+		"graph_export_create,graph_file_upload,graph_get,graph_import_create,graph_list,graph_path_find,graph_traverse,graph_tree_get,history_list,hole_close," +
+		"hole_conditions_get,hole_reopen,layer_actors_move,layer_actors_search,layer_clean,layer_collapse_count,layer_collapse_get,layer_collapse_update," +
+		"layer_compact,layer_create,layer_digest,layer_draw,layer_edge_settings_save,layer_edges_list,layer_element_exist,layer_get,layer_node_expand,layer_placements_all," +
+		"layer_placements_create,layer_placements_list,layer_placements_manage,layer_positions_update,layer_prune_long_edges,layer_settings_update," +
+		"layer_skeleton_get,layer_stats_get,layer_viewport,meet_transcription_list,memory_get,memory_save,ontology_apply,ontology_get,public_link_create," +
+		"public_link_get,public_link_revoke,reaction_create,reaction_delete,reaction_update,reactions_count,reactions_list,reactions_mark_read," +
+		"saved_view_create,saved_view_run,saved_views_find,search_all,simulation_check,simulation_run,simulation_snapshot_get,skill_get,skills_find," +
+		"smart_form_components,smart_form_create,smart_form_data_form_create,smart_form_file_rollback,smart_form_file_version_get," +
+		"smart_form_file_versions_list,smart_form_files_create,smart_form_files_get,smart_form_files_update,smart_form_folders_create,smart_form_page_patch," +
+		"smart_form_page_render,smart_form_page_submit,smart_form_reference_grep,smart_form_reference_read,smart_form_release,smart_form_release_diff," +
+		"smart_form_release_get,smart_form_release_rollback,smart_form_releases_list,smart_form_trash_list,smart_form_trash_restore,task_get," +
+		"transaction_by_actor_ref_create,transaction_by_ref_get,transaction_children_list,transaction_create,transaction_get,transactions_filter," +
+		"transactions_filter_count,transactions_list,transfer_by_ref_get,transfer_create,transfer_form_fields_create,transfer_get,transfers_filter," +
+		"transfers_filter_count,user_get,users_search,workspaces_list"
 	sort.Strings(names)
-	if got := strings.Join(names, ","); got != want || len(names) != 194 {
+	if got := strings.Join(names, ","); got != want || len(names) != 213 {
 		t.Fatalf("console catalog has %d tools:\n%s", len(names), got)
 	}
-	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get", "smart_form_reference_grep", "smart_form_reference_read"} {
+	for _, name := range []string{"actor_get", "smart_form_components", "flowchart_blocks_list", "flowchart_layout", "layer_get", "smart_form_files_get", "smart_form_release_get", "access_rules_get", "attachment_read", "reactions_list", "users_search", "skills_find", "skill_get", "agents_find", "agent_get", "build_link", "bbcode_tags_get", "simulation_check", "simulation_run", "simulation_snapshot_get", "smart_form_reference_grep", "smart_form_reference_read", "chart_data_get"} {
 		if !reads[name] {
 			t.Errorf("%s must be read-only", name)
 		}

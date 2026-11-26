@@ -30,4 +30,12 @@ wrapper is removed; per-type fields and absent/zero distinctions are retained.
 Current backend recipient and cache protections are required even if a historical
 legacy installation had a broader counter cache. The `reactions-read` profile provides counts only. Console profiles separately expose
 reaction list/create/update/delete/mark-read tools; use them only when present and authorized.
+A hidden reaction is an executors' note: a reply to one (`parentId`) is always hidden, whatever
+`hidden` says, and only a user who reads the note may answer it — anyone else gets "Parent actor
+not found". Do not try to show such a reply with `reaction_update {hidden: false}` (it fails with
+`notAllowed`). A hidden reaction never reaches a live meeting transcript, and hiding a transcribed
+one takes its line out. A reply can still be visible while the reaction it answers is hidden (it
+predates that rule, or its parent was hidden later): `reactions_list` with `with: ["parentActor"]`
+then leaves `parentActor` out for a user without execute, and `parentId` alone names the parent —
+do not guess or look up its text another way.
 Pinned reactions are unsupported.

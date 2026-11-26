@@ -1,6 +1,6 @@
 ---
 name: simulator-ai-access
-description: Share or unshare a Simulator object, read who has access, and request or answer access requests with the public Simulator AI console tools. Use when the user wants to share with someone, grant or revoke view/modify/remove/sign/execute, make something read-only, asks who can see or edit an actor, a template, a template's actors or an account, or is blocked by "access denied" ("поділись з", "надай доступ", "забери доступ", "хто має доступ", "запроси доступ", "немає доступу", "открой доступ", "нет доступа").
+description: "Access to Simulator actors, templates and accounts: share, grant, revoke, who has access; request or answer access after \"access denied\". Triggers: \"share with\", \"надай доступ\", \"нет доступа\"."
 ---
 
 Use the installed `simulator-ai` catalog (profile `console` or `console-full`). Access rules

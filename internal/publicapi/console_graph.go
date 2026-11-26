@@ -267,6 +267,9 @@ func (c *Client) CreateEdge(ctx context.Context, in EdgeCreateInput) (GraphCreat
 	if name == "" {
 		name = "hierarchy"
 	}
+	if e := LedgerEdgeError(name); e != nil {
+		return GraphCreatedEdge{}, e
+	}
 	t, e := call[edgeTypeRequest, edgeTypeWire](ctx, c, "edge_type/get", edgeTypeRequest{AccID: c.workspace(), Name: name})
 	if e != nil {
 		return GraphCreatedEdge{}, e

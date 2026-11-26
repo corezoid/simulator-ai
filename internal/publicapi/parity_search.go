@@ -15,6 +15,9 @@ type SearchAllInput struct {
 	Fields     []string `json:"fields,omitempty"`
 	Limit      int64    `json:"limit,omitempty"`
 	Offset     int64    `json:"offset,omitempty"`
+	// IncludeAIDialogs is sim-api's switch for the AI Console dialogs and the comments under them
+	// (left out by default for an AI agent's token, kept for a person's).
+	IncludeAIDialogs *bool `json:"includeAiDialogs,omitempty"`
 }
 
 // SearchAll holds each part's own page (no shared ranking, as in legacy /search) or its error.
@@ -39,6 +42,8 @@ type actorSearchParams struct {
 	With       []string `json:"with,omitempty"`
 	Limit      int64    `json:"limit,omitempty"`
 	Offset     int64    `json:"offset,omitempty"`
+	// IncludeAIDialogs: sim-api filters the AI Console dialogs itself.
+	IncludeAIDialogs *bool `json:"includeAiDialogs,omitempty"`
 }
 
 // SearchAll runs user/list and/or actor/search/list in one non-atomic public batch; a failed part
@@ -76,7 +81,7 @@ func (c *Client) SearchAll(ctx context.Context, in SearchAllInput) (SearchAll, e
 	if actors {
 		parts = append(parts, "actors")
 		req.List = append(req.List, atomicItem{ID: "actors", Method: "actor/search/list", Params: actorSearchParams{AccID: c.workspace(), Query: in.Query,
-			SearchType: searchType, FormID: in.FormID, Fields: in.Fields, Limit: in.Limit, Offset: in.Offset}})
+			SearchType: searchType, FormID: in.FormID, Fields: in.Fields, Limit: in.Limit, Offset: in.Offset, IncludeAIDialogs: in.IncludeAIDialogs}})
 	}
 	wire, err := call[atomicRequest, atomicWire](ctx, c, "batch", req)
 	if err != nil {

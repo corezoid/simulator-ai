@@ -23,6 +23,15 @@ credential; enabling a tool does not grant additional platform permissions.
 - **Work with graphs:** inspect relationships and placements, plan flowcharts, and create graph elements with the appropriate profile.
 - **Build Smart Forms:** create applications, edit their files and manage releases with guided workflows.
 - **Use workspace tools:** Console profiles add access management, chats, files, accounts, charts and simulation.
+- **Ask the graph as a knowledge base (AI Console):** `ontology_get` says what the workspace is made of,
+  `entity_context_get` answers one actor's card (data, links, balances, who paid it and how much, comments,
+  changes) in one call, `actor_backlinks_get` finds where it is mentioned, and `graph_traverse`, `graph_path_find`,
+  `graph_tree_get` and `history_list` walk links and changes. Ledger reads split periods over 366 days, and searches
+  leave AI Console dialogs out unless asked.
+- **Write knowledge:** `ontology_apply` turns a patch of actors, links, accounts and postings into graph and ledger
+  writes after a strict dry run; saved views and the person's own memory (a block of their actor's description) live on existing platform entities.
+  `memory_save` sends its change to sim-api's `actor/memory/save`, which merges it under the same locks as the
+  automatic memory after a dialog, so neither writer loses the other's facts.
 
 The plugin includes skills that teach the assistant how to use these tools for common tasks.
 It uses the model provided by your host client; no separate model API key is needed by the plugin.
@@ -144,7 +153,7 @@ profile below and give the assistant the specific change you want it to make.
 | Profile | Capabilities | Writes |
 | --- | --- | --- |
 | `read` — default | Actor search and reads, form-template discovery, and paginated layer records. | No |
-| `graph-read` | Read tools plus graph relationships, nodes, edges, placements and statistics. | No |
+| `graph-read` | Read tools plus graph relationships, nodes, edges, placements, statistics and chart (dashboard) data. | No |
 | `reactions-read` | Metadata reads and reaction counts. | No |
 | `graph-create` | Graph reads, flowchart planning, and graph-element creation with recovery tools. | Create operations |
 | `smart-forms` | Metadata reads plus application creation, file editing, releases and recovery. | Yes |

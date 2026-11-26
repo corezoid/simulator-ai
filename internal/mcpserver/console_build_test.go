@@ -454,3 +454,24 @@ func TestGraphBuildToolResumesAtItsDefaultOrigin(t *testing.T) {
 		}
 	}
 }
+
+// The same build asked again in a new turn (another operationId) answers the layer it made and
+// writes nothing; allowDuplicateTitle makes a second layer (eval build-01).
+func TestGraphBuildRepeatFindsLayer(t *testing.T) {
+	call, f := fakeConsole(t)
+	reply, failed := call("graph_build", buildArgs(`"operationId":"turn-1","newLayer":"Org chart"`, 40))
+	if failed {
+		t.Fatal(reply)
+	}
+	layer := layerOf(t, reply)
+	before, _, _ := f.Snapshot(layer)
+	reply, failed = call("graph_build", buildArgs(`"operationId":"turn-2","newLayer":"Org chart"`, 40))
+	after, _, _ := f.Snapshot(layer)
+	if failed || !strings.Contains(reply, `"existingLayerId":"`+layer+`"`) || !strings.Contains(reply, `"done":false`) || len(after) != len(before) {
+		t.Fatalf("%d -> %d actors: %s", len(before), len(after), reply)
+	}
+	reply, failed = call("graph_build", buildArgs(`"operationId":"turn-3","newLayer":"Org chart","allowDuplicateTitle":true`, 40))
+	if failed || layerOf(t, reply) == layer {
+		t.Fatal(reply)
+	}
+}

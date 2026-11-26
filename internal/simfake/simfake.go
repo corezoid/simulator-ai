@@ -43,6 +43,8 @@ type Actor struct {
 	ID, Title, Ref, Color string
 	FormID                int64
 	Recent                bool
+	Description           string
+	Data                  map[string]any
 }
 
 // Node is a node placement of a layer.
@@ -58,6 +60,8 @@ type Node struct {
 type Edge struct {
 	ID, Source, Target, Name string
 	TypeID                   int64
+	// AiSource is "memory" for an edge actor/memory/save drew.
+	AiSource string
 }
 type Placement struct {
 	LaID     int64
@@ -81,11 +85,14 @@ type state struct {
 	EdgeKeys   map[string]string
 	Placements []Placement
 	Seq        int64
+	// Ledger holds accounts, transactions and transfers (kb.go).
+	Ledger ledger
 }
 
 func (s state) clone() state {
 	out := state{Actors: make(map[string]*Actor, len(s.Actors)), Refs: make(map[string]string, len(s.Refs)), Edges: make(map[string]*Edge, len(s.Edges)),
-		EdgeKeys: make(map[string]string, len(s.EdgeKeys)), Nodes: append([]Node(nil), s.Nodes...), Placements: append([]Placement(nil), s.Placements...), Seq: s.Seq}
+		EdgeKeys: make(map[string]string, len(s.EdgeKeys)), Nodes: append([]Node(nil), s.Nodes...), Placements: append([]Placement(nil), s.Placements...), Seq: s.Seq,
+		Ledger: s.Ledger.clone()}
 	for k, v := range s.Actors {
 		out.Actors[k] = v
 	}
@@ -118,6 +125,8 @@ type Server struct {
 	Blocks string
 	// apps are the Smart Forms (see apps.go); they take no part in batches.
 	apps map[string]*app
+	// KB is the workspace the knowledge-base tools read (kb.go): templates, dictionaries, users.
+	KB KB
 }
 
 // BlockCatalog is a one-kind flowchart catalog: "process", 200 x 100.
@@ -125,7 +134,7 @@ const BlockCatalog = `{"list":[{"id":6,"parentId":5,"title":"Process","blockId":
 
 // New starts a fake backend; close it with Close.
 func New() *Server {
-	s := &Server{Blocks: BlockCatalog, apps: map[string]*app{}, state: state{Actors: map[string]*Actor{}, Refs: map[string]string{}, Edges: map[string]*Edge{}, EdgeKeys: map[string]string{}}}
+	s := &Server{Blocks: BlockCatalog, apps: map[string]*app{}, state: state{Actors: map[string]*Actor{}, Refs: map[string]string{}, Edges: map[string]*Edge{}, EdgeKeys: map[string]string{}, Ledger: newLedger()}, KB: newKB()}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	return s
 }
