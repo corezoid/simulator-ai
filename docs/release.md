@@ -19,7 +19,9 @@ The release tag is vX.Y.Z; no environment branches and no per-PR version bumps.
    publication if main moved, verifies its already-prepared version, tags it and publishes the
    checked draft. It never commits metadata to main or incorporates later develop changes.
 5. Release workflow rechecks the tag, main ancestry and version equality, then builds Linux/macOS amd64/arm64 archives and a Windows amd64 ZIP containing the platform executable plus manifests/skills, SHA256 checksums and
-   Go build dependency information. It stages a draft; the release automation publishes only after success.
+   Go build dependency information. It stages a draft whose notes are the tag's `## [X.Y.Z]` section of
+   CHANGELOG.md (generated notes only if that section is missing or empty); the release automation
+   publishes only after success.
 
 The project is MIT-licensed. Archives include the project license, dependency notices and
 per-platform BUILD_INFO.txt. Issuer-revoke and environment acceptance remain separate live gates.

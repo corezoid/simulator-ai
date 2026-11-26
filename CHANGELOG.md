@@ -1,11 +1,5 @@
 # Changelog
 
-## [0.1.0]
-
-### Changed
-- record verified release quality evidence without review gates
-- use a repository link in copied PR descriptions
-
 ## [Unreleased]
 
 - `chart_data_get` says what an answer without series means: sim-api's public `dashboard/get` now reads a chart
@@ -225,6 +219,11 @@
   `layer_settings_update` takes `maxVisibleChildren` (0 off or 1–200: the layer's fan limit for every viewer).
   The new public methods are pinned in `contracts/collapse-openrpc.json` (`cmd/gen-graph-contract -profile collapse`).
 
+- The Release workflow fills the draft GitHub release from the tag's `## [X.Y.Z]` section of `CHANGELOG.md`
+  (a ` - YYYY-MM-DD` suffix on the heading is fine) and falls back to generated notes only when that section is
+  missing or empty. `[Unreleased]` moves back to the top of this file, and the entries that shipped in 0.1.0 (left
+  under `[Unreleased]` when that release was cut) move into its section, so the next release lists only what is new.
+
 - `reactions_list` and the reactions skill say that `with: ["parentActor"]` leaves the parent out when it is a
   hidden reaction the caller cannot read (no `execute` on the actor) — sim-api now omits it for a still-visible
   reply to such a note (CE-16234 follow-up); `parentId` keeps naming it. Description-only; tool schemas unchanged.
@@ -244,6 +243,8 @@
   not the `console` core). Pinned as its own projection (`contracts/dashboard-openrpc.json`, sim-api `d13fc772`: `timezoneOffset` -840..720, JS sign) by
   `cmd/gen-graph-contract -profile dashboard`. The CDU v2 reference is regenerated from sim-api `d13fc772` and
   simulator-ui-kit `edefb4b5`.
+
+## [0.1.0]
 
 - Sign in as yourself, without an API key: with no host credential the server starts in login mode, and `login`
   opens the SuperAdmin page in the browser (OAuth2 PKCE, the legacy plugin's public client), `workspaces_list` and
@@ -318,6 +319,8 @@
 
 ### Changed
 - Rewrite the public README around installation, profiles and examples; move the detailed tool catalog into its own reference.
+- record verified release quality evidence without review gates
+- use a repository link in copied PR descriptions
 
 ### Fixed
 - Upgrade the Go toolchain to 1.27.3 for GO-2026-6809.
