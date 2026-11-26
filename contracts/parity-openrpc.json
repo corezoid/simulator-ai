@@ -766,37 +766,31 @@
        "properties": {
         "actorId": {
          "type": "string",
-         "description": "The actor the person is related to: a live actor of this workspace",
-         "minLength": 1,
+         "description": "The actor the person is related to: a live actor of this workspace the caller can view",
          "x-validation-rules": [
-          "required",
-          "min=1"
+          "required_without=Title"
          ]
         },
         "title": {
          "type": "string",
-         "description": "The chip's title; the actor id when empty",
+         "description": "Without actorId: the actor's exact title (case aside), resolved to the one live actor of that title the caller can view; none or several keep it as a text fact. With actorId: the chip's title (the actor's own when empty)",
          "maxLength": 1000,
          "x-validation-rules": [
+          "required_without=ActorID",
           "max=1000"
          ]
         },
         "type": {
          "type": "string",
-         "description": "Relation type: the name of an edge type (letters, digits, _ and -, starting with a letter or _)",
+         "description": "Relation type: the name of an edge type that is not a tree type nor a transfer's; hierarchy when omitted",
          "maxLength": 255,
          "x-validation-rules": [
-          "required",
           "max=255"
          ]
         }
-       },
-       "required": [
-        "type",
-        "actorId"
-       ]
+       }
       },
-      "description": "Typed links to actors to remember (at most 50); the same type and actor is not added twice. No edge is drawn: that is the caller's",
+      "description": "Typed links to actors to remember (at most 50): an edge of that type from the person's actor (hierarchy when no type is named), marked aiSource memory, and its line. The same type and actor is not added twice; named again, its edge's updatedAt is refreshed",
       "x-validation-rules": [
        "max=50",
        "dive"
@@ -810,12 +804,19 @@
       "items": {
        "type": "string"
       },
-      "description": "Lines to forget first (at most 50): a fact's text, a relation's title, its actor id or actor:<id>, case aside",
+      "description": "Lines to forget first (at most 50): a fact's text, a relation's title, its actor id or actor:<id>, case aside. A forgotten relation's memory edge is deleted; an edge a person drew is never touched",
       "x-validation-rules": [
        "max=50",
        "dive",
        "max=1000"
       ]
+     }
+    },
+    {
+     "name": "forgetAll",
+     "schema": {
+      "type": "boolean",
+      "description": "Forget everything: the memory block is removed and every memory edge of the person's actor deleted"
      }
     }
    ],
