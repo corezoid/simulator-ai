@@ -20,6 +20,10 @@ type planActor struct {
 	status     string // existing, exists or create (created once phase a ran)
 	title      string
 	candidates []OntologyCandidate
+	// twin: the existing actor is a person's (system_obj_type user): never a hierarchy parent — the
+	// person's AI memory links them to what they work on (memory_save), and a built layer must not
+	// pull people in through their memory's edges.
+	twin bool
 }
 
 // planEdge is an edge between two keys with its type resolved.
@@ -157,7 +161,7 @@ func (p *ontologyPlan) resolveExisting(ctx context.Context, c *Client) error {
 	for _, a := range p.actors {
 		if a.in.Existing != "" {
 			named = append(named, a)
-			params = append(params, map[string]any{"accId": c.workspace(), "actorId": a.in.Existing, "fields": []string{"id", "title", "formId"}})
+			params = append(params, map[string]any{"accId": c.workspace(), "actorId": a.in.Existing, "fields": []string{"id", "title", "formId", "systemObjType"}})
 		}
 	}
 	if len(named) == 0 {
@@ -168,12 +172,15 @@ func (p *ontologyPlan) resolveExisting(ctx context.Context, c *Client) error {
 		return err
 	}
 	for i, a := range named {
-		var got actorBrief
+		var got struct {
+			actorBrief
+			SystemObjType string `json:"systemObjType"`
+		}
 		if results[i].err != nil || json.Unmarshal(results[i].raw, &got) != nil || got.ID == "" {
 			p.problem("actor %q: existing %s is not found or not visible to you", a.in.Key, a.in.Existing)
 			continue
 		}
-		a.id, a.status, a.title, a.formID = got.ID, "existing", got.Title, got.FormID
+		a.id, a.status, a.title, a.formID, a.twin = got.ID, "existing", got.Title, got.FormID, got.SystemObjType == "user"
 	}
 	return nil
 }
@@ -255,6 +262,10 @@ func (p *ontologyPlan) resolveEdges(ctx context.Context, c *Client) error {
 		if !ok {
 			return errors.New("the hierarchy edge type is not readable")
 		}
+		if p.isTwin(a.in.Parent) {
+			p.problem("actor %q: its parent %q is a person's actor, never a hierarchy parent; the person's AI memory links them (memory_save)", a.in.Key, a.in.Parent)
+			continue
+		}
 		p.edges = append(p.edges, planEdge{from: a.in.Parent, to: a.in.Key, typeID: id})
 	}
 	for _, e := range p.in.Edges {
@@ -274,9 +285,19 @@ func (p *ontologyPlan) resolveEdges(ctx context.Context, c *Client) error {
 			p.problem("edge %s -> %s: edge type %q is unknown (edge_types_list; hierarchy, gantt, interaction, directedInteraction)", e.From, e.To, e.Type)
 			continue
 		}
+		if name == "hierarchy" && p.isTwin(e.From) {
+			p.problem("edge %s -> %s: %s is a person's actor, never a hierarchy parent; the person's AI memory links them (memory_save)", e.From, e.To, e.From)
+			continue
+		}
 		p.edges = append(p.edges, planEdge{from: e.From, to: e.To, name: e.Name, typeID: id})
 	}
 	return nil
+}
+
+// isTwin reports the key names an existing person's actor.
+func (p *ontologyPlan) isTwin(key string) bool {
+	a := p.byKey[key]
+	return a != nil && a.twin
 }
 
 var markup = regexp.MustCompile(`\[[^\]]*\]`)

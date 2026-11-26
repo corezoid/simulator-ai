@@ -3,8 +3,8 @@
  "documentSha256": "987fd9d40b36adaa175f9cf7b2936b39ea4612381e4b2f66f7e24c148722d006",
  "note": "Each method comes from source unless a record below names it.",
  "knowledgeBase": {
-  "source": "sim-api develop cf12b49c (AI Console knowledge base), internal/server/testdata/public-openrpc.json",
-  "documentSha256": "e2e313a05840761fd0dea91b2bb2a3c5406bafcf66a5263f969a903b0a924255",
+  "source": "sim-api develop ced32dfa (AI Console knowledge base, review follow-ups), internal/server/testdata/public-openrpc.json",
+  "documentSha256": "99935d36b36511347b95e1eb07d3ba02bb5b76d1f4e73133625896ad386455dd",
   "methods": [
    "ontology/get",
    "ontology/count",
@@ -15,7 +15,7 @@
    "history/list",
    "graph/tree/get"
   ],
-  "note": "Only these methods are projected from the knowledge-base document; the other 156 keep the develop 87dd69ce pin until the next whole-projection re-pin."
+  "note": "Only these methods are projected from the knowledge-base document; the other 156 keep the develop 87dd69ce pin until the next whole-projection re-pin. Re-pinned from cf12b49c to ced32dfa: their projected params and summaries are identical (ontology/get gained only the result field accountsHasMore, which the projection does not carry)."
  },
  "ledgerDates": {
   "source": "sim-api develop cf12b49c (AI Console knowledge base; dateBy), internal/server/testdata/public-openrpc.json",
@@ -34,5 +34,13 @@
   ],
   "note": "includeAiDialogs: sim-api leaves the AI Console dialogs out of the search for an AI agent's token; only this method is re-projected for it, the next whole-projection re-pin from develop drops this record."
  },
- "methods": 164
+ "methods": 165,
+ "memorySave": {
+  "source": "sim-api develop 40e34c4d (actor/memory/save as a graph: relations by id or title, forgetAll), internal/server/testdata/public-openrpc.json",
+  "documentSha256": "5834af889384bf9a534d2cbfe90065c858a659455dde1d6ded052d89c709b0e4",
+  "methods": [
+   "actor/memory/save"
+  ],
+  "note": "memory_save's server-side merge; only this method is projected from this document, the next whole-projection re-pin from develop drops this record."
+ }
 }

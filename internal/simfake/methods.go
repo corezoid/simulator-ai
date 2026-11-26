@@ -3,6 +3,7 @@ package simfake
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 )
 
@@ -41,6 +42,9 @@ func (s *Server) run(method string, params json.RawMessage) (any, *rpcError) {
 		out := map[string]any{"id": p.ActorID, "data": map[string]any{"anisotropy": false}}
 		if a := s.Actors[p.ActorID]; a != nil {
 			out["color"], out["formId"], out["title"], out["description"] = a.Color, a.FormID, a.Title, a.Description
+			if slices.Contains(slices.Collect(maps.Values(s.KB.Twins)), a.ID) {
+				out["systemObjType"] = "user"
+			}
 			if a.Data != nil {
 				out["data"] = a.Data
 			}

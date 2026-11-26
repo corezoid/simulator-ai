@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"encoding/base64"
+	"slices"
 	"strings"
 	"testing"
 
@@ -81,7 +82,7 @@ func TestPersonalMemoryOnTheTwin(t *testing.T) {
 		t.Fatalf("a credential that names nobody read user 7's memory: %v", err)
 	}
 	got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [preference] Answers in Ukrainian #language\n\n- interaction [[Project X]]"})
-	if err != nil || got.Added != 2 || got.Edges != 1 || len(got.Notes) != 1 || got.Notes[0].Tags[0] != "language" || got.ActorID != twin {
+	if err != nil || got.Added != 2 || len(got.Notes) != 1 || got.Notes[0].Tags[0] != "language" || got.ActorID != twin {
 		t.Fatalf("%+v %v", got, err)
 	}
 	stored, _ := f.ActorData(twin)
@@ -91,14 +92,14 @@ func TestPersonalMemoryOnTheTwin(t *testing.T) {
 	edge := false
 	f.Set(func(s *simfake.Server) {
 		for _, e := range s.Edges {
-			edge = edge || e.Source == twin && e.Target == project && e.TypeID == 6
+			edge = edge || e.Source == twin && e.Target == project && e.TypeID == 6 && e.AiSource == "memory"
 		}
 	})
 	if !edge {
-		t.Fatal("no interaction edge from the twin")
+		t.Fatal("no interaction edge from the twin, drawn by the server as the memory's")
 	}
 	again, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [Preference] answers in ukrainian #language\n- interaction [[actor:" + project + "]]"})
-	if err != nil || again.Added != 0 || again.Edges != 0 { // the same note, and [[actor:id]] is the same actor
+	if err != nil || again.Added != 0 { // the same note, and [[actor:id]] is the same actor
 		t.Fatalf("repeat %+v %v", again, err)
 	}
 	read, err := c.GetMemory(ctx, self)
@@ -117,7 +118,7 @@ func TestPersonalMemoryOnTheTwin(t *testing.T) {
 		}
 	})
 	// A relation named [[actor:<id>]] alone is stored so, and forgetting it deletes its edge too.
-	if got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[actor:" + project + "]]"}); err != nil || got.Edges != 1 {
+	if got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[actor:" + project + "]]"}); err != nil || got.Added != 1 {
 		t.Fatalf("by id %+v %v", got, err)
 	}
 	if forgot, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Forget: []string{"actor:" + project}}); err != nil || forgot.Removed != 1 {
@@ -135,16 +136,20 @@ func TestPersonalMemoryOnTheTwin(t *testing.T) {
 		want string
 	}{
 		{MemorySaveInput{MemoryInput: self, Text: "I like tea"}, `line 1: "I like tea" is neither`},
-		{MemorySaveInput{MemoryInput: self, Text: "- likes [[Project X]]"}, `a relation type is an edge type`},
-		{MemorySaveInput{MemoryInput: self, Text: "- interaction [[Nobody]]"}, `no actor has this title`},
-		{MemorySaveInput{MemoryInput: self, Text: "- interaction [[actor:missing]]"}, `no such actor you see`},
-		{MemorySaveInput{MemoryInput: self, Text: "- transfersAmount_x [[Project X]]"}, `an edge a transfer draws`},
+		{MemorySaveInput{MemoryInput: self, Text: "- likes [[Project X]]"}, `not one a person's actor may link with`},
+		{MemorySaveInput{MemoryInput: self, Text: "- interaction [[actor:missing]]"}, `no found OR no access`},
+		{MemorySaveInput{MemoryInput: self, Text: "- transfersAmount_x [[Project X]]"}, `not one a person's actor may link with`},
 		{MemorySaveInput{MemoryInput: self}, `text (facts to remember`},
 		{MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 8}, Text: "- [a] b"}, `selfUserId 8 is not you: you are user 7`},
 	} {
 		if _, err := c.SaveMemory(ctx, bad.in); err == nil || !strings.Contains(err.Error(), bad.want) {
 			t.Errorf("%+v: %v", bad.in, err)
 		}
+	}
+	// A title no actor has stays a text fact.
+	if got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[Nobody]]"}); err != nil ||
+		len(got.Relations) != 0 || len(got.Notes) != 1 || got.Notes[0].Text != "interaction Nobody" {
+		t.Fatalf("unresolved title %+v %v", got, err)
 	}
 	// Without viewUsers the argument finds the twin, and the twin's own rule must carry the token's
 	// SuperAdmin id: another member's id is refused, the person's own is served.
@@ -160,7 +165,8 @@ func TestPersonalMemoryOnTheTwin(t *testing.T) {
 	}
 	f.Set(func(s *simfake.Server) { s.KB.NoViewUsers = false })
 	f.AddActor(14, "Project X", nil) // a second actor of the title
-	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[Project X]]"}); err == nil || !strings.Contains(err.Error(), "2 actors have this title") {
-		t.Errorf("ambiguous title: %v", err)
+	if got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[Project X]]"}); err != nil || len(got.Relations) != 0 ||
+		!slices.ContainsFunc(got.Notes, func(n MemoryNote) bool { return n.Text == "interaction Project X" }) {
+		t.Errorf("two actors of the title: the text fact stays: %+v %v", got, err)
 	}
 }

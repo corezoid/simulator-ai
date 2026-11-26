@@ -3,9 +3,11 @@ package publicapi
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/corezoid/simulator-ai/internal/aimemory"
 	"github.com/corezoid/simulator-ai/internal/simfake"
 )
 
@@ -42,7 +44,7 @@ func TestMemorySectionKeepsTheRestOfTheDescription(t *testing.T) {
 			t.Errorf("emptied %q: %q, want %q", tc.desc, got, tc.want)
 		}
 	}
-	big := memoryDoc{Notes: []MemoryNote{{Category: "c", Text: strings.Repeat("x", maxMemoryBytes)}}}
+	big := memoryDoc{Notes: []MemoryNote{{Category: "c", Text: strings.Repeat("x", aimemory.MaxBytes)}}}
 	if _, err := writeSection("", big); err == nil || !strings.Contains(err.Error(), "more than 8192") {
 		t.Errorf("oversized section: %v", err)
 	}
@@ -129,7 +131,7 @@ func TestMemorySectionKeepsThePersonsText(t *testing.T) {
 		t.Fatalf("a rewrite changed the text:\n%q\n%q", got, again)
 	}
 	br := "Intro[br][h3]AI memory[/h3][br]- [role] Юрист"
-	if got, _ := writeSection(br, readSection(br)); strings.Count(got, memoryHeading) != 1 {
+	if got, _ := writeSection(br, readSection(br)); strings.Count(got, aimemory.Heading) != 1 {
 		t.Fatalf("a second section: %q", got)
 	}
 }
@@ -157,7 +159,7 @@ func TestSaveMemoryMigratesAndMerges(t *testing.T) {
 		t.Fatalf("get before the move %+v %v", read, err)
 	}
 	got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [workflow] Sends drafts first"})
-	if err != nil || got.Added != 1 || got.Edges != 0 {
+	if err != nil || got.Added != 1 {
 		t.Fatalf("%+v %v", got, err)
 	}
 	stored, _ := f.ActorData(twin)
@@ -179,4 +181,173 @@ func kbJWTClient(t *testing.T, f *simfake.Server) *Client {
 		t.Fatal(err)
 	}
 	return c
+}
+
+// memory_save never writes the description itself: one actor/memory/save carries the change, which
+// sim-api merges into the block as it is at the write; actor/update only clears the legacy key. A
+// change actor/memory/save would refuse is refused before anything is written.
+func TestSaveMemoryWritesThroughTheServer(t *testing.T) {
+	_, f, _ := kbClient(t)
+	c := kbJWTClient(t, f)
+	ctx := context.Background()
+	twin := f.TwinOf(7, 70)
+	self := MemoryInput{SelfUserID: 7}
+	f.Set(func(s *simfake.Server) {
+		s.Actors[twin].Description = "Intro\n\n[h3]AI memory[/h3]\n- [role] CFO\nMy checklist:\n- [x] buy milk\n"
+	})
+	got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [rule] Short answers", Forget: []string{"cfo"}})
+	if err != nil || got.Added != 1 || got.Removed != 1 || len(got.Notes) != 1 || got.Notes[0].Text != "Short answers" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if n, u := f.Count("actor/memory/save"), f.Count("actor/update"); n != 1 || u != 0 {
+		t.Fatalf("actor/memory/save %d, actor/update %d", n, u)
+	}
+	if stored, _ := f.ActorData(twin); stored.Description != "Intro\n\n[h3]AI memory[/h3]\n- [rule] Short answers\nMy checklist:\n- [x] buy milk\n" {
+		t.Fatalf("stored %q", stored.Description)
+	}
+	many := ""
+	for i := range 51 {
+		many += fmt.Sprintf("- [note] fact %d\n", i)
+	}
+	for _, bad := range []struct {
+		in   MemorySaveInput
+		want string
+	}{
+		{MemorySaveInput{MemoryInput: self, Text: many}, "at most 50 facts"},
+		{MemorySaveInput{MemoryInput: self, Text: "- [note] " + strings.Repeat("x", 1001)}, "at most 1000 characters"},
+	} {
+		if _, err := c.SaveMemory(ctx, bad.in); err == nil || !strings.Contains(err.Error(), bad.want) {
+			t.Errorf("%.30q: %v", bad.in.Text, err)
+		}
+	}
+	if n := f.Count("actor/memory/save"); n != 1 {
+		t.Fatalf("a refused change reached sim-api: %d saves", n)
+	}
+}
+
+// A legacy relation to an actor that is gone stays in data.aiMemory alone; an unknown title moves as a
+// text fact, the rest moves into the block, the key no longer holds it (so a later forget sticks),
+// and a save is never blocked by it.
+func TestSaveMemoryKeepsAnUnresolvedLegacyRelation(t *testing.T) {
+	_, f, _ := kbClient(t)
+	c := kbJWTClient(t, f)
+	ctx := context.Background()
+	twin := f.TwinOf(7, 70)
+	self := MemoryInput{SelfUserID: 7}
+	f.Set(func(s *simfake.Server) {
+		s.KB.Strict = true // actor/get of a deleted actor answers notFound
+		s.Actors[twin].Data["aiMemory"] = "- [Preferences] Tea\n- interaction [[Nobody at all]]\n- works_with [[actor:gone-1|Old Co]]\n"
+	})
+	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [role] CFO"}); err != nil {
+		t.Fatal(err)
+	}
+	stored, _ := f.ActorData(twin)
+	left := "- works_with [actor=gone-1]Old Co[/actor]\n"
+	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Tea\n- [note] interaction Nobody at all\n- [role] CFO\n" || stored.Data["aiMemory"] != left {
+		t.Fatalf("description %q legacy %q", stored.Description, stored.Data["aiMemory"])
+	}
+	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Forget: []string{"Tea"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- [rule] Short answers"}); err != nil {
+		t.Fatal(err)
+	}
+	if stored, _ := f.ActorData(twin); stored.Description != "[h3]AI memory[/h3]\n- [note] interaction Nobody at all\n- [role] CFO\n- [rule] Short answers\n" {
+		t.Fatalf("a forgotten legacy fact came back: %q", stored.Description)
+	}
+}
+
+// The edges follow the write: a save sim-api refuses (here the block grew past 8 KiB after the first
+// read) draws and deletes nothing.
+func TestSaveMemoryRefusedDrawsNoEdge(t *testing.T) {
+	_, f, project := kbClient(t)
+	c := kbJWTClient(t, f)
+	twin := f.TwinOf(7, 70)
+	f.Set(func(s *simfake.Server) {
+		s.KB.BeforeRead = func(a *simfake.Actor) {
+			if a.ID == twin {
+				a.Description = "[h3]AI memory[/h3]\n- [note] " + strings.Repeat("x", aimemory.MaxBytes) + "\n"
+			}
+		}
+	})
+	_, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7}, Text: "- interaction [[actor:" + project + "]]"})
+	if err == nil {
+		t.Fatal("an oversized block was saved")
+	}
+	f.Set(func(s *simfake.Server) {
+		for _, e := range s.Edges {
+			if e.Source == twin {
+				t.Errorf("an edge was drawn for a refused save: %+v", e)
+			}
+		}
+	})
+}
+
+// A legacy note longer than the method takes stays in the key and never blocks a save; a legacy
+// line forget names is dropped, not moved.
+func TestSaveMemoryLegacyOversizedAndForgotten(t *testing.T) {
+	_, f, _ := kbClient(t)
+	c := kbJWTClient(t, f)
+	twin := f.TwinOf(7, 70)
+	long := "- [note] " + strings.Repeat("y", 1200) + "\n"
+	f.Set(func(s *simfake.Server) {
+		s.Actors[twin].Data["aiMemory"] = long + "- [role] Old role\n- [preference] Tea\n"
+	})
+	if _, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7}, Text: "- [role] CFO", Forget: []string{"old role"}}); err != nil {
+		t.Fatal(err)
+	}
+	stored, _ := f.ActorData(twin)
+	if stored.Description != "[h3]AI memory[/h3]\n- [preference] Tea\n- [role] CFO\n" || stored.Data["aiMemory"] != long {
+		t.Fatalf("description %q legacy %.40q", stored.Description, stored.Data["aiMemory"])
+	}
+}
+
+// A relation forgotten and named again in one save keeps its chip and its edge.
+func TestSaveMemoryForgetAndReAddKeepsTheEdge(t *testing.T) {
+	_, f, project := kbClient(t)
+	c := kbJWTClient(t, f)
+	ctx := context.Background()
+	twin := f.TwinOf(7, 70)
+	self := MemoryInput{SelfUserID: 7}
+	if _, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[actor:" + project + "]]"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.SaveMemory(ctx, MemorySaveInput{MemoryInput: self, Text: "- interaction [[actor:" + project + "]]", Forget: []string{"actor:" + project}})
+	if err != nil || len(got.Relations) != 1 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	edge := false
+	f.Set(func(s *simfake.Server) {
+		for _, e := range s.Edges {
+			edge = edge || e.Source == twin && e.Target == project
+		}
+	})
+	if !edge {
+		t.Fatal("the re-added relation lost its edge")
+	}
+}
+
+// A "gantt" link is the Gantt dependency type, as every other tool names it; a name resolves to the
+// one actor whose title holds it as whole words.
+func TestSaveMemoryGanttAndWholeWords(t *testing.T) {
+	_, f, project := kbClient(t)
+	c := kbJWTClient(t, f)
+	twin := f.TwinOf(7, 70)
+	park := f.AddActor(14, "kb-eval Проєкт Автопарк", nil)
+	got, err := c.SaveMemory(context.Background(), MemorySaveInput{MemoryInput: MemoryInput{SelfUserID: 7},
+		Text: "- gantt [[actor:" + project + "]]\n- hierarchy [[Автопарк]]"})
+	if err != nil || len(got.Relations) != 2 || got.Relations[0].Type != "directedInteraction" || got.Relations[1].ActorID != park {
+		t.Fatalf("%+v %v", got, err)
+	}
+	drawn := 0
+	f.Set(func(s *simfake.Server) {
+		for _, e := range s.Edges {
+			if e.Source == twin && e.AiSource == "memory" && (e.Target == project && e.TypeID == 5 || e.Target == park && e.TypeID == 3) {
+				drawn++
+			}
+		}
+	})
+	if drawn != 2 {
+		t.Fatalf("memory edges drawn: %d", drawn)
+	}
 }
