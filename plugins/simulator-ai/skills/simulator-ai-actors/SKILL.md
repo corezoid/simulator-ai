@@ -59,6 +59,9 @@ it. Closing a hole on a layer with a real actor is `hole_close` (`simulator-ai-g
 
 - `actor_get {actorId, fields: ["id","title","data"]}`; `with` adds `access`, `privs`, `owner`,
   `reactionsStats` and the like only when needed. By ref: `actor_by_ref_get {formId, ref}`.
+- `with: ["lastReaction"]` is the newest reaction other than a view: opening an actor records a
+  view but never replaces it, so it shows the last comment, sign or rating. `lastComment` is the
+  newest comment alone. Neither says who has seen the actor — `reactionsStats` counts the views.
 - How a graph draws an actor: an actor with no `color` of its own is painted in its template's
   colour, one with no `picture`/`pictureObject` is drawn as the template's picture.
   `with: ["avatar"]` adds them as `formColor` and `formPictureObject` on `actor_get`,

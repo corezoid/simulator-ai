@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- `lastReaction` leaves views out (sim-api CE-16332): `with: ["lastReaction"]` on `actor_get`, `actors_filter` and
+  the other actor reads is the newest reaction other than a view, so opening an actor no longer replaces its last
+  comment, sign or rating. The actors skill says so and points to `reactionsStats` for views. Only field
+  descriptions changed in the public contract; params and result schemas did not, so the pinned projections keep
+  their pins.
+
 - `graph_list` with `sysLinkTypes` pages by `hasMore` (sim-api CE-16312): public `graph/list` now answers `hasMore`
   for the synthetic system relations — `true` when a relation read a full page of rows, so the next `offset` may
   hold more. Their pages are cut before the view check, so a page can come back short or even empty while more
