@@ -66,7 +66,10 @@ read further only for what they say is left out (`full: true`).
   (no pictures, shapes or timestamps); `full: true` returns everything — on a large layer that is
   megabytes, never needed for an answer.
 - Around one actor: `graph_get {actorId}` (every edge and the actor at its other end);
-  `graph_list {actorId, type: "children"|"parents"|"linked"}` walks one relation page by page.
+  `graph_list {actorId, type: "children"|"parents"|"linked"}` walks one relation page by page;
+  `graph_list {actorId, sysLinkTypes: ["layers"]}` (or `workspace`, `creator`, `owner`,
+  `layerActors`, `actorsOwner`) walks a system relation instead — page it by `hasMore`: its pages
+  can be short or empty (hidden neighbours are dropped) while more follow.
 - A short page does not prove the end: follow `hasMore`/`offset` under a finite budget and say
   when the read is incomplete.
 

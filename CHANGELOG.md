@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- `graph_list` with `sysLinkTypes` pages by `hasMore` (sim-api CE-16312): public `graph/list` now answers `hasMore`
+  for the synthetic system relations — `true` when a relation read a full page of rows, so the next `offset` may
+  hold more. Their pages are cut before the view check, so a page can come back short or even empty while more
+  follow; the length of a page no longer tells the end. The tool description and the graph skill say so. Tool input
+  schemas are unchanged and the pinned parity projection carries no results, so `contracts/parity-openrpc.json`
+  keeps its pin.
+
 ## [0.2.0] - 2026-11-27
 
 - `chart_data_get` says what an answer without series means: sim-api's public `dashboard/get` now reads a chart
